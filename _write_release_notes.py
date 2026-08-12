@@ -1,0 +1,354 @@
+import pathlib
+
+html = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RFS 2.0 - Feature Update - Jul 31 2026</title>
+<style>
+:root {
+  --bg:     #1e1e2e;
+  --card:   #2a2a3c;
+  --text:   #e0e0e0;
+  --muted:  #9aa0b0;
+  --accent: #7aa2f7;
+  --green:  #9ece6a;
+  --red:    #f7768e;
+  --yellow: #e0af68;
+  --purple: #bb9af7;
+  --cyan:   #7dcfff;
+  --border: #3a3a4c;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding: 2.5rem 1.5rem;
+  line-height: 1.6;
+  font-size: 14px;
+}
+.wrapper { max-width: 820px; margin: 0 auto; }
+
+/* HEADER */
+.eyebrow {
+  font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--cyan); margin-bottom: 8px;
+}
+.page-header h1 {
+  color: var(--accent); font-size: 2rem; font-weight: 700; margin-bottom: 4px;
+}
+.page-header .sub { color: var(--muted); font-size: 0.88rem; }
+.page-header { margin-bottom: 2rem; }
+
+.callout {
+  background: var(--card);
+  border-left: 4px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  padding: 1rem 1.4rem;
+  color: var(--text);
+  font-size: 0.92rem;
+  margin-bottom: 2.5rem;
+}
+
+/* GROUP HEADERS */
+.group-header {
+  display: flex; align-items: center; gap: 0.75rem;
+  background: var(--card);
+  border-left: 4px solid var(--accent);
+  padding: 0.65rem 1.2rem;
+  border-radius: 0 6px 6px 0;
+  font-weight: 700; font-size: 0.78rem;
+  letter-spacing: 1.8px; text-transform: uppercase;
+  color: var(--accent);
+  margin-top: 2rem; margin-bottom: 0;
+}
+.group-header.grp-fix    { border-color: var(--yellow); color: var(--yellow); }
+.group-header.grp-ui     { border-color: var(--cyan);   color: var(--cyan);   }
+.group-header.grp-data   { border-color: var(--purple); color: var(--purple); }
+.group-header.grp-calc   { border-color: var(--red);    color: var(--red);    }
+.group-count {
+  margin-left: auto; font-size: 0.72rem; color: var(--muted);
+  font-weight: 400; letter-spacing: 0; text-transform: none;
+}
+
+/* ITEMS */
+.group {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+}
+.item {
+  display: flex; gap: 1rem; align-items: flex-start;
+  padding: 0.9rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+}
+.item:last-child { border-bottom: none; }
+.item-tag {
+  display: inline-block; font-size: 0.68rem; font-weight: 700;
+  padding: 2px 8px; border-radius: 4px; white-space: nowrap;
+  flex-shrink: 0; margin-top: 3px; min-width: 58px; text-align: center;
+}
+.tag-fix     { background: rgba(224,175,104,.15); color: var(--yellow); border: 1px solid rgba(224,175,104,.3); }
+.tag-ui      { background: rgba(125,207,255,.12); color: var(--cyan);   border: 1px solid rgba(125,207,255,.25); }
+.tag-data    { background: rgba(187,154,247,.12); color: var(--purple); border: 1px solid rgba(187,154,247,.25); }
+.tag-feature { background: rgba(158,206,106,.12); color: var(--green);  border: 1px solid rgba(158,206,106,.25); }
+.tag-calc    { background: rgba(247,118,142,.12); color: var(--red);    border: 1px solid rgba(247,118,142,.25); }
+.item-body { flex: 1; }
+.item-title { font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.item-desc  { color: var(--muted); font-size: 0.87rem; line-height: 1.55; }
+.item-desc code, .item-title code {
+  background: rgba(255,255,255,.07);
+  border-radius: 3px; padding: 1px 5px; font-size: 0.82rem;
+  font-family: "Cascadia Code", Consolas, monospace; color: var(--cyan);
+}
+.formula-block {
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 0.6rem 1rem; margin-top: 0.5rem;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 0.82rem; color: var(--cyan);
+}
+.note { margin-top: 0.45rem; }
+
+/* FOOTER */
+.page-footer {
+  margin-top: 3rem; text-align: center; color: var(--muted);
+  font-size: 0.78rem; border-top: 1px solid var(--border); padding-top: 1.5rem;
+}
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <div class="page-header">
+    <div class="eyebrow">Peak AppHub 4.0</div>
+    <h1>Rent Forecasting 2.0 -- Feature Update</h1>
+    <div class="sub">Development cycle ending July 31, 2026 &nbsp;&bull;&nbsp; Internal release notes</div>
+  </div>
+
+  <div class="callout">
+    Over the past ~2 weeks, Rent Forecasting 2.0 received a significant round of UI, stability,
+    and calculation improvements. Below is a complete summary of everything that landed, organized by category.
+  </div>
+
+  <!-- STABILITY FIXES -->
+  <div class="group-header grp-fix">
+    Stability &amp; Bug Fixes
+    <span class="group-count">4 items</span>
+  </div>
+  <div class="group">
+
+    <div class="item">
+      <span class="item-tag tag-fix">Fix</span>
+      <div class="item-body">
+        <div class="item-title"><code>resetKpis()</code> crash on property change</div>
+        <div class="item-desc">The function was calling <code>.textContent</code> on elements that no longer existed in the DOM, causing all data loads to silently fail when switching properties. Fixed with null-guards throughout.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <span class="item-tag tag-fix">Fix</span>
+      <div class="item-body">
+        <div class="item-title">SVG chart markup corruption</div>
+        <div class="item-desc">A prior edit accidentally merged a closing <code>&lt;div&gt;</code> tag with an SVG opening tag, breaking both the Leasing Trend and Rate Trends charts. Both chart blocks were manually corrected and validated.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <span class="item-tag tag-fix">Fix</span>
+      <div class="item-body">
+        <div class="item-title">Duplicate CSS rules in bottom section</div>
+        <div class="item-desc"><code>.stkh-sec</code> and <code>.comps-sec</code> were duplicated during a layout refactor, causing unpredictable sizing. Duplicate rules removed.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <span class="item-tag tag-fix">Fix</span>
+      <div class="item-body">
+        <div class="item-title">Comps table expanding the page</div>
+        <div class="item-desc">The market comps table had no scroll cap, causing the bottom section to grow taller than the viewport on properties with many comps. Fixed with <code>max-height: 320px</code> on the comps scroll container.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- UI / LAYOUT -->
+  <div class="group-header grp-ui">
+    UI &amp; Layout Improvements
+    <span class="group-count">7 items</span>
+  </div>
+  <div class="group">
+
+    <div class="item">
+      <span class="item-tag tag-ui">UI</span>
+      <div class="item-body">
+        <div class="item-title">Floorplan custom dropdown with bed count</div>
+        <div class="item-desc">The floorplan selector was converted from a plain <code>&lt;select&gt;</code> to a styled custom dropdown matching the property selector. Each floorplan item shows its bed count badge (e.g. <em>118bd</em>), making it easier to identify at a glance.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <span class="item-tag tag-ui">UI</span>
+      <div class="item-body">
+        <div class="item-title">Editable tier panel headers renamed</div>
+        <div class="item-desc">The two editable columns in the Renewals &amp; New Leases tier table were relabeled to <strong>Renewal Reforecast</strong> and <strong>New Lease Reforecast</strong> for clarity.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <span class="item-tag tag-ui">UI</span>
+      <div class="item-body">
+        <div class="item-title">Tier section height reduced 30%</div>
+        <div class="item-desc">Default max-height for the renewals/new leases tier scroll containers reduced from 240px to 168px, leaving more room for charts and the bottom section.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <span class="item-tag tag-ui">UI</span>
+      <div class="item-body">
+        <div class="item-title">SVG chart height reduced 10%</div>
+        <div class="item-desc">Both chart viewBoxes (Leasing Trend and Rate Trends) were trimmed ~10% vertically, and the default wrapper height set to 280px -- reducing blank space without losing data legibility.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <span class="item-tag tag-ui">UI</span>
+      <div class="item-body">
+        <div class="item-title">Bottom section: side-by-side layout</div>
+        <div class="item-desc">The Market Comps table and the Stakeholder charts panel now sit side-by-side in a flex row, filling the available viewport height rather than stacking vertically.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <span class="item-tag tag-ui">UI</span>
+      <div class="item-body">
+        <div class="item-title">Chart Focus mode (67vh overlay)</div>
+        <div class="item-desc">A <strong>Focus</strong> button on the Stakeholder chart panel expands the charts section to a 67% viewport-height overlay fixed to the bottom of the screen. Clicking <strong>Back</strong> restores the normal layout -- designed for quick deep-dives without leaving the page.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <span class="item-tag tag-ui">UI</span>
+      <div class="item-body">
+        <div class="item-title">Tier section 2-state expand button</div>
+        <div class="item-desc">A toggle button on the Renewals &amp; New Leases section header cycles between <em>Default</em> (truncated) and <em>Expanded</em> (full height) views. State resets to default on property change, but persists when switching floorplans within the same property.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PLAN USE FEATURE -->
+  <div class="group-header grp-data">
+    Plan Use -- New DB-Backed Feature
+    <span class="group-count">6 items</span>
+  </div>
+  <div class="group">
+
+    <div class="item">
+      <span class="item-tag tag-data">Data</span>
+      <div class="item-body">
+        <div class="item-title">New table: <code>FORECAST_FP_INDUCEMENT</code></div>
+        <div class="item-desc">Created in DB_APP_SUPPORT to store per-floorplan planned inducement/concession values. Keyed on <code>(FORECAST_KEY, FLOORPLAN_KEY)</code> -- one row per floorplan per plan. Includes full CRUD with audit fields (created by, dates).</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <span class="item-tag tag-data">Data</span>
+      <div class="item-body">
+        <div class="item-title">GET / POST <code>/api/fp-inducement</code> endpoints</div>
+        <div class="item-desc">Two new API endpoints let the front-end read and write a single floorplan's Plan Use value. POST upserts on the unique key, so the same call handles both new entries and updates.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <span class="item-tag tag-data">Data</span>
+      <div class="item-body">
+        <div class="item-title">GET <code>/api/fp-inducements</code> (bulk)</div>
+        <div class="item-desc">A bulk endpoint returns all FP inducement values for a given forecast in a single call, used to pre-populate the client-side cache when a property is loaded.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <span class="item-tag tag-data">Data</span>
+      <div class="item-body">
+        <div class="item-title">Clone plan copies FP inducement rows</div>
+        <div class="item-desc">When cloning a reforecast plan, all FP inducement rows from the source plan are automatically duplicated to the new plan -- no need to re-enter concession values.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <span class="item-tag tag-feature">Feature</span>
+      <div class="item-body">
+        <div class="item-title">FP Plan Use -- sticky per-floorplan input</div>
+        <div class="item-desc">Each floorplan now has its own annual concession dollar input (<strong>FP Plan Use</strong>). Values are loaded from the DB when you select a floorplan and auto-saved after 800ms of inactivity (debounced). Switching floorplans shows each one's saved value.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <span class="item-tag tag-feature">Feature</span>
+      <div class="item-body">
+        <div class="item-title">Client-side FP inducement cache (<code>_fpPuCache</code>)</div>
+        <div class="item-desc">All FP Plan Use values for the current property + plan are bulk-loaded into a JS cache on property/plan select. Switching between floorplans reads from cache (no DB round-trip). Cache is updated immediately on input changes, and cleared on property or plan change.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CALCULATIONS -->
+  <div class="group-header grp-calc">
+    NER W/Plan Calculation Logic
+    <span class="group-count">4 items</span>
+  </div>
+  <div class="group">
+
+    <div class="item">
+      <span class="item-tag tag-calc">Calc</span>
+      <div class="item-body">
+        <div class="item-title">Unified <code>_recalcAll()</code> function</div>
+        <div class="item-desc">A single function now drives both the Floorplan NER w/plan and the Property NER w/plan columns. It runs any time a Plan Use value changes, keeping both metrics in sync without double-counting.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <span class="item-tag tag-calc">Calc</span>
+      <div class="item-body">
+        <div class="item-title">FP NER w/plan -- direct FP math</div>
+        <div class="item-desc">Calculated purely from the current floorplan's actual + forecast lease pool. The annual FP Plan Use is converted to a per-month concession and subtracted from each forecast lease's NER, then blended with actuals using the FP's total lease count as the denominator.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <span class="item-tag tag-calc">Calc</span>
+      <div class="item-body">
+        <div class="item-title">Property NER w/plan -- sum of ALL FP concessions</div>
+        <div class="item-desc">Starts from the property-wide forecast NER (all floorplans), then subtracts the monthly equivalent of all floorplan Plan Use values combined, plus the Prop Plan Use:</div>
+        <div class="formula-block">Prop NER w/plan = forecast_ner - (Sum of all FP Plan Use / 12) - (Prop Plan Use / 12)</div>
+        <div class="item-desc note">Concessions across multiple floorplans all roll up into the property-level metric -- and the Property NER w/plan only updates when a Plan Use value is actually edited, not when you flip between floorplans.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <span class="item-tag tag-calc">Calc</span>
+      <div class="item-body">
+        <div class="item-title">W/Plan columns show dash when no inputs set</div>
+        <div class="item-desc">If both Prop Plan Use and all FP Plan Use values are zero/empty, both w/plan columns display <strong>--</strong> instead of repeating the same value as the Fcst column, keeping the display clean.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="page-footer">
+    Generated 2026-07-31 &nbsp;&bull;&nbsp; Peak AppHub 4.0 / Rent Forecasting 2.0 &nbsp;&bull;&nbsp; Internal use only
+  </div>
+
+</div>
+</body>
+</html>'''
+
+out = pathlib.Path(r"C:\Users\cpell\OneDrive - PeakMade Real Estate\VS_Code_Files\APPHUB_4\rfs2_release_notes.html")
+out.write_text(html, encoding="utf-8")
+print(f"Written: {out} ({len(html)} chars)")

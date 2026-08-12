@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peak AppHub 4.0</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/apphub.css') }}?v=30">
+    <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('apphub_theme') || 'dark');</script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fontawesome.min.css') }}?v=2">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="apphub-container">
+        <!-- Left Navigation Panel -->
+        <nav class="apphub-nav">
+            <div class="nav-header">
+                <div class="nav-logo">
+                    <img src="{{ url_for('static', filename='img/apphub_logo.png') }}" alt="AppHub Logo" class="logo-img">
+                    <span class="version-badge">v{{ version }}</span>
+                </div>
+                <button class="nav-toggle-btn" id="navToggleBtn" title="Collapse navigation">
+                    <i class="fa-solid fa-chevron-left" id="navToggleIcon"></i>
+                </button>
+            </div>
+
+            <ul class="nav-modules">
+                <li class="nav-item {% if active_module == 'dashboard' %}active{% endif %}">
+                    <a href="{{ url_for('main.index') }}" title="Dashboard" data-tooltip="Dashboard">
+                        <span class="nav-icon-dot" style="background: var(--nav-active-border)"><i class="fa-solid fa-th-large"></i></span>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                {% for mod in modules %}
+                <li class="nav-item {% if mod.id == active_module %}active{% endif %}"
+                    data-module-id="{{ mod.id }}"
+                    data-module-type="{{ mod.type }}">
+                    <a href="{{ url_for('main.module', module_id=mod.id) }}" title="{{ mod.name }}" data-tooltip="{{ mod.name }}">
+                        <span class="nav-icon-dot" style="background: {{ mod.color | default('#64748b') }}"><i class="{{ mod.icon }}"></i></span>
+                        <span>{{ mod.name }}</span>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+
+            <div class="nav-footer">
+                {% if is_impersonating %}
+                <div class="impersonation-banner">
+                    <span class="impersonate-label">Viewing as:</span>
+                    <span class="impersonate-name">{{ impersonating_user.name }}</span>
+                    <span class="impersonate-group">{{ impersonating_user.title_group }}</span>
+                    <button id="stopImpersonation" class="btn-stop-impersonate" title="Stop impersonating">✕</button>
+                </div>
+                {% endif %}
+
+                {% if is_developer and is_dev_mode and not is_impersonating %}
+                <div class="impersonation-picker">
+                    <label class="impersonate-label">Impersonate:</label>
+                    <input type="text" id="impersonateFilter" class="impersonate-filter" placeholder="Search employees...">
+                    <select id="impersonateSelect" class="impersonate-select" size="6">
+                        <option value="" disabled selected>Loading employees...</option>
+                    </select>
+                    <button id="impersonateBtn" class="btn-impersonate" disabled>Go</button>
+                </div>
+                {% endif %}
+
+                <div class="nav-theme-toggle">
+                    <div class="theme-selector">
+                        <button class="theme-btn" data-theme="light" title="Light"><i class="fa-solid fa-sun"></i></button>
+                        <button class="theme-btn" data-theme="medium" title="Medium"><i class="fa-solid fa-circle-half-stroke"></i></button>
+                        <button class="theme-btn" data-theme="dark" title="Dark"><i class="fa-solid fa-moon"></i></button>
+                    </div>
+                </div>
+
+                <div class="nav-user">
+                    <div class="user-avatar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v2h20v-2c0-3.3-6.7-5-10-5z"/></svg>
+                    </div>
+                    <span class="user-name">{{ user.name }}</span>
+                    {% if is_developer %}
+                    <label class="dev-toggle" title="Developer Mode">
+                        <input type="checkbox" id="devModeToggle" {% if is_dev_mode %}checked{% endif %}>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    {% endif %}
+                </div>
+
+                <a href="{{ url_for('auth.logout') }}" class="logout-link">
+                    <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+                </a>
+
+                {% if is_developer %}
+                <button id="themeStudioBtn" class="ts-launch-btn" title="Theme Studio">
+                    <i class="fa-solid fa-palette"></i>
+                </button>
+                {% endif %}
+            </div>
+        </nav>
+
+        <!-- ── Theme Studio Panel (dev only) ───────────────────────────────── -->
+        {% if is_developer %}
+        <div id="themeStudio" class="ts-panel" style="display:none;">
+            <div class="ts-titlebar" id="tsHandle">
+                <span><i class="fa-solid fa-palette"></i> Theme Studio</span>
+                <button class="ts-close" id="tsClose">✕</button>
+            </div>
+            <div class="ts-tabs">
+                <button class="ts-tab active" data-ts-theme="dark"><i class="fa-solid fa-moon"></i> Dark</button>
+                <button class="ts-tab" data-ts-theme="medium"><i class="fa-solid fa-circle-half-stroke"></i> Mid</button>
+                <button class="ts-tab" data-ts-theme="light"><i class="fa-solid fa-sun"></i> Light</button>
+            </div>
+            <div class="ts-body">
+                <div class="ts-group-label">Navigation</div>
+                <div class="ts-row" data-var="--nav-bg"><span>Nav background</span></div>
+                <div class="ts-row" data-var="--nav-active-border"><span>Active / accent</span></div>
+                <div class="ts-row" data-var="--nav-hover"><span>Hover background</span></div>
+
+                <div class="ts-group-label">Content</div>
+                <div class="ts-row" data-var="--content-bg"><span>Page background</span></div>
+                <div class="ts-row" data-var="--content-header"><span>Header strip</span></div>
+                <div class="ts-row" data-var="--surface-raised"><span>Card / raised surface</span></div>
+                <div class="ts-row" data-var="--card-bg"><span>Card fill</span></div>
+
+                <div class="ts-group-label">Section Headers &amp; Panels</div>
+                <div class="ts-row" data-var="--section-hd-bg"><span>Section header bg</span></div>
+                <div class="ts-row" data-var="--section-hd-border"><span>Section header accent</span></div>
+
+                <div class="ts-group-label">Text</div>
+                <div class="ts-row" data-var="--text-primary"><span>Primary text</span></div>
+                <div class="ts-row" data-var="--text-secondary"><span>Secondary text</span></div>
+
+                <div class="ts-group-label">Accents</div>
+                <div class="ts-row" data-var="--accent-cyan"><span>Cyan</span></div>
+                <div class="ts-row" data-var="--accent-blue"><span>Blue</span></div>
+                <div class="ts-row" data-var="--accent-gold"><span>Gold</span></div>
+            </div>
+            <div class="ts-footer">
+                <button class="ts-btn ts-apply" id="tsApply" title="Save to this browser only"><i class="fa-solid fa-eye"></i> Preview</button>
+                <button class="ts-btn ts-publish" id="tsPublish" title="Publish to all users of this app"><i class="fa-solid fa-globe"></i> Publish</button>
+                <button class="ts-btn ts-copy" id="tsCopy"><i class="fa-solid fa-copy"></i> Copy CSS</button>
+                <button class="ts-btn ts-reset" id="tsReset"><i class="fa-solid fa-rotate-left"></i> Reset</button>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Main Content Area -->
+        <div class="main-wrapper">
+            <main class="apphub-content">
+            {% block content %}
+            <!-- Default: show launcher for powerapps modules (no iframe - avoids double-nav) -->
+            {% set mod = modules | selectattr('id', 'equalto', active_module) | first %}
+            {% if mod and mod.type == 'powerapps' %}
+            <div class="module-launcher">
+                <div class="launcher-card">
+                    <div class="launcher-icon">
+                        <i class="{{ mod.icon }}"></i>
+                    </div>
+                    <h2>{{ mod.name }}</h2>
+                    <p>This module has not yet been rebuilt natively. Click below to open it in Power Apps.</p>
+                    <a href="{{ config.POWERAPPS_APP_URL }}&hideNavBar=true" target="_blank" rel="noopener" class="btn-launch">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i> Open in Power Apps
+                    </a>
+                    <span class="launcher-hint">Opens in a new tab</span>
+                </div>
+            </div>
+            {% endif %}
+            {% endblock %}
+        </main>
+        </div>
+    </div>
+
+    <script>
+        // ── Collapsible nav ─────────────────────────────────────────────────────
+        (function() {
+            const nav  = document.querySelector('.apphub-nav');
+            const btn  = document.getElementById('navToggleBtn');
+            const icon = document.getElementById('navToggleIcon');
+            const KEY  = 'apphub_nav_collapsed';
+
+            function setCollapsed(collapsed) {
+                nav.classList.toggle('nav-collapsed', collapsed);
+                icon.className = collapsed ? 'fa-solid fa-chevron-right' : 'fa-solid fa-chevron-left';
+                btn.title = collapsed ? 'Expand navigation' : 'Collapse navigation';
+                localStorage.setItem(KEY, collapsed ? '1' : '0');
+            }
+
+            // Restore saved state
+            setCollapsed(localStorage.getItem(KEY) === '1');
+
+            btn.addEventListener('click', () => setCollapsed(!nav.classList.contains('nav-collapsed')));
+        })();
+
+        // Theme selector (light / medium / dark) — persists in localStorage
+        const root = document.documentElement;
+        const savedTheme = localStorage.getItem('apphub_theme') || 'dark';
+        root.setAttribute('data-theme', savedTheme);
+        document.querySelectorAll('.theme-btn').forEach(btn => {
+            if (btn.dataset.theme === savedTheme) btn.classList.add('active');
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                root.setAttribute('data-theme', btn.dataset.theme);
+                localStorage.setItem('apphub_theme', btn.dataset.theme);
+            });
+        });
+
+        // Developer mode toggle (only exists if is_developer)
+        const devToggle = document.getElementById('devModeToggle');
+        if (devToggle) {
+            devToggle.addEventListener('change', async function() {
+                const resp = await fetch('/api/toggle-dev-mode', { method: 'POST' });
+                const data = await resp.json();
+                window.location.reload();
+            });
+        }
+
+        // Impersonation searchable dropdown
+        const impFilter = document.getElementById('impersonateFilter');
+        const impSelect = document.getElementById('impersonateSelect');
+        const impBtn = document.getElementById('impersonateBtn');
+        let empCache = null;
+
+        if (impSelect) {
+            // Load employees immediately
+            (async () => {
+                const resp = await fetch('/api/employees');
+                empCache = await resp.json();
+                renderOptions(empCache);
+            })();
+
+            function renderOptions(employees) {
+                impSelect.innerHTML = employees.map(e =>
+                    `<option value="${e.email}">${e.name} — ${e.title_group} (${e.property})</option>`
+                ).join('');
+            }
+
+            impFilter.addEventListener('input', function() {
+                if (!empCache) return;
+                const q = this.value.toLowerCase().trim();
+                if (!q) { renderOptions(empCache); return; }
+                const matches = empCache.filter(e =>
+                    e.name.toLowerCase().includes(q) ||
+                    e.email.toLowerCase().includes(q) ||
+                    (e.title_group || '').toLowerCase().includes(q) ||
+                    (e.property || '').toLowerCase().includes(q)
+                );
+                renderOptions(matches);
+            });
+
+            impSelect.addEventListener('change', function() {
+                impBtn.disabled = !this.value;
+            });
+
+            impBtn.addEventListener('click', async function() {
+                const email = impSelect.value;
+                if (!email) return;
+                this.disabled = true;
+                this.textContent = '...';
+                const resp = await fetch('/api/impersonate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({email})
+                });
+                if (resp.ok) window.location.reload();
+            });
+        }
+
+        // Stop impersonation
+        const stopBtn = document.getElementById('stopImpersonation');
+        if (stopBtn) {
+            stopBtn.addEventListener('click', async function() {
+                await fetch('/api/stop-impersonation', { method: 'POST' });
+                window.location.reload();
+            });
+        }
+
+        // Active nav highlighting (for SPA-like behavior later)
+        document.querySelectorAll('.nav-item a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                const li = this.parentElement;
+                const moduleType = li.dataset.moduleType;
+
+                // Flask-native modules: full page navigation (no SPA swap)
+                if (moduleType === 'flask') return;
+
+                e.preventDefault();
+                const url = this.getAttribute('href');
+
+                // Update active state immediately
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                li.classList.add('active');
+
+                // Fetch the new page and swap only the main content
+                fetch(url)
+                    .then(r => r.text())
+                    .then(html => {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const newContent = doc.querySelector('.apphub-content');
+                        if (newContent) {
+                            document.querySelector('.apphub-content').innerHTML = newContent.innerHTML;
+                            // Execute any scripts in the swapped content
+                            document.querySelector('.apphub-content').querySelectorAll('script').forEach(function(oldScript) {
+                                var newScript = document.createElement('script');
+                                newScript.textContent = oldScript.textContent;
+                                oldScript.parentNode.replaceChild(newScript, oldScript);
+                            });
+                        }
+                        // Update browser URL without reload
+                        history.pushState(null, '', url);
+                    });
+            });
+        });
+
+        // Handle browser back/forward
+        window.addEventListener('popstate', function() {
+            fetch(location.href)
+                .then(r => r.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newContent = doc.querySelector('.apphub-content');
+                    if (newContent) {
+                        document.querySelector('.apphub-content').innerHTML = newContent.innerHTML;
+                        // Execute any scripts in the swapped content
+                        document.querySelector('.apphub-content').querySelectorAll('script').forEach(function(oldScript) {
+                            var newScript = document.createElement('script');
+                            newScript.textContent = oldScript.textContent;
+                            oldScript.parentNode.replaceChild(newScript, oldScript);
+                        });
+                    }
+                    // Update active nav item
+                    const path = location.pathname;
+                    document.querySelectorAll('.nav-item').forEach(i => {
+                        const link = i.querySelector('a');
+                        i.classList.toggle('active', link && link.getAttribute('href') === path);
+                    });
+                });
+        });
+    </script>
+
+    {% if is_developer %}
+    <script>
+    // ══════════════════════════════════════════════════════════════════════════
+    // THEME STUDIO
+    // ══════════════════════════════════════════════════════════════════════════
+    (function() {
+        const LS_KEY  = 'apphub_theme_overrides';
+        const APP_ID  = '{{ active_module }}';
+        const VARS = [
+            '--nav-bg','--nav-active-border','--nav-hover',
+            '--content-bg','--content-header','--surface-raised','--card-bg',
+            '--section-hd-bg','--section-hd-border',
+            '--text-primary','--text-secondary',
+            '--accent-cyan','--accent-blue','--accent-gold'
+        ];
+
+        // ── Defaults baked into CSS (read on first open per theme) ──────────
+        const DEFAULTS = {};
+
+        function getDefaultsForTheme(theme) {
+            if (DEFAULTS[theme]) return DEFAULTS[theme];
+            // Temporarily apply theme to root to read computed values
+            const prev = document.documentElement.getAttribute('data-theme');
+            document.documentElement.setAttribute('data-theme', theme);
+            const style = getComputedStyle(document.documentElement);
+            const vals = {};
+            VARS.forEach(v => { vals[v] = style.getPropertyValue(v).trim(); });
+            document.documentElement.setAttribute('data-theme', prev);
+            DEFAULTS[theme] = vals;
+            return vals;
+        }
+
+        // ── Server-side overrides (set by admin, apply to all users) ────────
+        let _serverOverrides = {};
+
+        function loadServerOverrides() {
+            fetch(`/api/theme-settings/${APP_ID}`)
+                .then(r => r.ok ? r.json() : {})
+                .then(data => { _serverOverrides = data || {}; applyOverrides(); })
+                .catch(() => {});
+        }
+
+        // ── Load saved overrides from localStorage ───────────────────────────
+        function loadOverrides() {
+            try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
+        }
+
+        // ── Apply overrides for current theme ────────────────────────────────
+        // Priority: localStorage (dev preview) → server (published) → CSS defaults
+        function applyOverrides() {
+            const all    = loadOverrides();
+            const theme  = document.documentElement.getAttribute('data-theme') || 'dark';
+            const server = (_serverOverrides[theme] || {});
+            const local  = (all[theme] || {});
+            // Apply server first, then local on top (local can override for dev preview)
+            const merged = Object.assign({}, server, local);
+            VARS.forEach(v => {
+                if (merged[v]) document.documentElement.style.setProperty(v, merged[v]);
+                else document.documentElement.style.removeProperty(v);
+            });
+        }
+        loadServerOverrides();  // fetch from server, then applies
+
+        // Re-apply when theme toggle fires
+        document.querySelectorAll('.theme-btn').forEach(btn => {
+            btn.addEventListener('click', () => setTimeout(applyOverrides, 50));
+        });
+
+        // ── Panel state ───────────────────────────────────────────────────────
+        const panel      = document.getElementById('themeStudio');
+        const openBtn    = document.getElementById('themeStudioBtn');
+        const closeBtn   = document.getElementById('tsClose');
+        const applyBtn   = document.getElementById('tsApply');
+        const publishBtn = document.getElementById('tsPublish');
+        const copyBtn    = document.getElementById('tsCopy');
+        const resetBtn   = document.getElementById('tsReset');
+        let activeTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+
+        // ── Open / close ──────────────────────────────────────────────────────
+        openBtn.addEventListener('click', () => {
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            if (panel.style.display === 'block') renderRows();
+        });
+        closeBtn.addEventListener('click', () => { panel.style.display = 'none'; });
+
+        // ── Tab switching ─────────────────────────────────────────────────────
+        document.querySelectorAll('.ts-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.ts-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                activeTheme = this.dataset.tsTheme;
+                renderRows();
+            });
+        });
+
+        // ── Render color rows ─────────────────────────────────────────────────
+        function renderRows() {
+            const defaults = getDefaultsForTheme(activeTheme);
+            const saved    = (loadOverrides()[activeTheme] || {});
+            document.querySelectorAll('.ts-row').forEach(row => {
+                const varName = row.dataset.var;
+                const current = saved[varName] || defaults[varName] || '#000000';
+                const hex = toHex(current);
+                // Clear and rebuild controls
+                let ctrl = row.querySelector('.ts-row-controls');
+                if (!ctrl) {
+                    ctrl = document.createElement('div');
+                    ctrl.className = 'ts-row-controls';
+                    row.appendChild(ctrl);
+                }
+                ctrl.innerHTML =
+                    `<input type="color" class="ts-swatch" value="${hex}" data-var="${varName}">` +
+                    `<input type="text"  class="ts-hex"   value="${hex}" data-var="${varName}" maxlength="9" spellcheck="false">`;
+
+                // Live preview on swatch change
+                ctrl.querySelector('.ts-swatch').addEventListener('input', function() {
+                    const v = this.value;
+                    ctrl.querySelector('.ts-hex').value = v;
+                    livePreview(varName, v);
+                });
+                // Live preview on hex input
+                ctrl.querySelector('.ts-hex').addEventListener('input', function() {
+                    const v = this.value.trim();
+                    if (/^#[0-9a-fA-F]{3,8}$/.test(v)) {
+                        ctrl.querySelector('.ts-swatch').value = v.length > 7 ? v.slice(0,7) : v;
+                        livePreview(varName, v);
+                    }
+                });
+            });
+        }
+
+        function livePreview(varName, value) {
+            // Only preview if this theme is currently active
+            if (document.documentElement.getAttribute('data-theme') === activeTheme) {
+                document.documentElement.style.setProperty(varName, value);
+            }
+        }
+
+        // ── Preview (localStorage only — this browser only) ──────────────────
+        applyBtn.addEventListener('click', () => {
+            const all = loadOverrides();
+            all[activeTheme] = all[activeTheme] || {};
+            document.querySelectorAll('.ts-row').forEach(row => {
+                const varName = row.dataset.var;
+                const hex = row.querySelector('.ts-hex')?.value;
+                if (hex) all[activeTheme][varName] = hex;
+            });
+            localStorage.setItem(LS_KEY, JSON.stringify(all));
+            applyOverrides();
+            applyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Previewing…';
+            setTimeout(() => { applyBtn.innerHTML = '<i class="fa-solid fa-eye"></i> Preview'; }, 1500);
+        });
+
+        // ── Publish (save to server → all users) ─────────────────────────────
+        publishBtn.addEventListener('click', () => {
+            const payload = {};
+            document.querySelectorAll('.ts-row').forEach(row => {
+                const varName = row.dataset.var;
+                const hex = row.querySelector('.ts-hex')?.value;
+                if (hex) payload[varName] = hex;
+            });
+            publishBtn.disabled = true;
+            publishBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publishing…';
+            fetch('/api/theme-settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ app_id: APP_ID, theme: activeTheme, overrides: payload })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.ok) {
+                    _serverOverrides[activeTheme] = payload;
+                    applyOverrides();
+                    publishBtn.innerHTML = '<i class="fa-solid fa-check"></i> Published!';
+                } else {
+                    publishBtn.innerHTML = '<i class="fa-solid fa-xmark"></i> Error';
+                }
+            })
+            .catch(() => { publishBtn.innerHTML = '<i class="fa-solid fa-xmark"></i> Failed'; })
+            .finally(() => {
+                setTimeout(() => {
+                    publishBtn.disabled = false;
+                    publishBtn.innerHTML = '<i class="fa-solid fa-globe"></i> Publish';
+                }, 2000);
+            });
+        });
+
+        // ── Copy CSS ──────────────────────────────────────────────────────────
+        copyBtn.addEventListener('click', () => {
+            const all = loadOverrides();
+            const themes = ['dark','medium','light'];
+            let out = '';
+            themes.forEach(theme => {
+                const defaults = getDefaultsForTheme(theme);
+                const saved    = all[theme] || {};
+                const merged   = Object.assign({}, defaults, saved);
+                const selector = theme === 'dark' ? ':root, [data-theme="dark"]' : `[data-theme="${theme}"]`;
+                out += `/* ${theme.toUpperCase()} */\n${selector} {\n`;
+                VARS.forEach(v => { out += `    ${v}: ${merged[v]};\n`; });
+                out += '}\n\n';
+            });
+            navigator.clipboard.writeText(out).then(() => {
+                copyBtn.textContent = '✓ Copied!';
+                setTimeout(() => { copyBtn.innerHTML = '<i class="fa-solid fa-copy"></i> Copy CSS'; }, 2000);
+            });
+        });
+
+        // ── Reset ─────────────────────────────────────────────────────────────
+        resetBtn.addEventListener('click', () => {
+            // Clear localStorage for this theme
+            const all = loadOverrides();
+            delete all[activeTheme];
+            localStorage.setItem(LS_KEY, JSON.stringify(all));
+            // Also clear server-side for this theme (publishes an empty override set)
+            fetch('/api/theme-settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ app_id: APP_ID, theme: activeTheme, overrides: {} })
+            }).catch(() => {});
+            delete _serverOverrides[activeTheme];
+            VARS.forEach(v => document.documentElement.style.removeProperty(v));
+            delete DEFAULTS[activeTheme];
+            renderRows();
+        });
+
+        // ── Drag ─────────────────────────────────────────────────────────────
+        const handle = document.getElementById('tsHandle');
+        let dragging = false, ox = 0, oy = 0;
+        handle.addEventListener('mousedown', e => {
+            dragging = true;
+            ox = e.clientX - panel.getBoundingClientRect().left;
+            oy = e.clientY - panel.getBoundingClientRect().top;
+        });
+        document.addEventListener('mousemove', e => {
+            if (!dragging) return;
+            panel.style.left = (e.clientX - ox) + 'px';
+            panel.style.top  = (e.clientY - oy) + 'px';
+            panel.style.right = 'auto';
+        });
+        document.addEventListener('mouseup', () => { dragging = false; });
+
+        // ── Helpers ───────────────────────────────────────────────────────────
+        function toHex(color) {
+            if (!color) return '#000000';
+            if (color.startsWith('#')) return color.length === 4
+                ? '#' + color[1]+color[1]+color[2]+color[2]+color[3]+color[3]
+                : color.slice(0, 7);
+            // rgb(r,g,b) or rgba(...)
+            const m = color.match(/\d+/g);
+            if (m && m.length >= 3) {
+                return '#' + [m[0],m[1],m[2]].map(n => parseInt(n).toString(16).padStart(2,'0')).join('');
+            }
+            return '#000000';
+        }
+    })();
+    </script>
+    {% endif %}
+
+    {% block scripts %}{% endblock %}
+    <script>
+        // Global collapsible info blurb — used by all modules
+        window.toggleBlurb = function(id) {
+            var body   = document.getElementById('blurbBody-' + id);
+            var toggle = document.getElementById('blurbToggle-' + id);
+            if (!body) return;
+            var collapsed = body.classList.toggle('collapsed');
+            toggle.innerHTML = collapsed ? '&#9654;' : '&#9660;';
+            localStorage.setItem('apphub_blurb_' + id, collapsed ? '1' : '0');
+        };
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('[id^="blurbBody-"]').forEach(function(body) {
+                var id = body.id.replace('blurbBody-', '');
+                if (localStorage.getItem('apphub_blurb_' + id) === '1') {
+                    body.classList.add('collapsed');
+                    var toggle = document.getElementById('blurbToggle-' + id);
+                    if (toggle) toggle.innerHTML = '&#9654;';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

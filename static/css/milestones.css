@@ -1,0 +1,419 @@
+/* ── Milestones Module CSS v5 ───────────────────────────────────────────────── */
+
+/* Outer wrapper: header + blurb + split layout stacked vertically */
+.ms-outer {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 60px);
+    padding: 20px 24px 0;
+    box-sizing: border-box;
+}
+
+/* Page header — matches Cultivate's cult-header pattern exactly */
+.ms-page-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.ms-page-header h1 {
+    font-size: 1.4rem;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.ms-header-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: #8b5cf6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+/* Override info-blurb margin inside ms-outer */
+.ms-outer > .info-blurb {
+    margin-bottom: 16px;
+    flex-shrink: 0;
+}
+
+/* Split layout fills remaining height */
+.ms-layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    border: 1px solid var(--border-medium);
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+/* ── Left panel ─────────────────────────────────────────────────────────────── */
+.ms-left {
+    width: 260px;
+    min-width: 260px;
+    background: var(--surface-raised);
+    border-right: 1px solid var(--border-medium);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Small section label above the search */
+.ms-left-label {
+    padding: 10px 16px 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.ms-prop-count {
+    font-weight: 400;
+    margin-left: 4px;
+}
+
+.ms-search-wrap {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.ms-search-wrap input {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--border-input);
+    color: var(--text-primary);
+    padding: 7px 10px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+.ms-search-wrap input::placeholder { color: var(--text-secondary); }
+
+.ms-prop-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0;
+}
+
+.ms-prop-item {
+    padding: 9px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-subtle);
+    transition: background 0.15s;
+}
+
+.ms-prop-item:hover { background: var(--hover-bg); }
+.ms-prop-item.active { background: rgba(139, 92, 246, 0.15); border-left: 3px solid #8b5cf6; padding-left: 13px; }
+
+.ms-prop-item-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.ms-prop-item-type {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+/* ── Right panel ────────────────────────────────────────────────────────────── */
+.ms-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--surface-base);
+}
+
+/* Empty state */
+.ms-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text-secondary);
+    padding: 40px;
+}
+
+.ms-empty-icon { font-size: 3rem; opacity: 0.4; }
+.ms-empty-title { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); }
+.ms-empty-sub { font-size: 0.85rem; text-align: center; max-width: 320px; line-height: 1.5; }
+
+/* Content */
+.ms-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.ms-content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px 14px;
+    border-bottom: 1px solid var(--border-medium);
+    background: var(--surface-raised);
+}
+
+.ms-header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+/* Month count selector */
+.ms-month-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ms-month-label {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ms-month-btns {
+    display: flex;
+    gap: 3px;
+}
+
+.ms-mbtn {
+    padding: 4px 10px;
+    border: 1px solid var(--border-input);
+    background: var(--input-bg);
+    color: var(--text-secondary);
+    border-radius: 4px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+}
+
+.ms-mbtn:hover { border-color: #8b5cf6; color: var(--text-primary); }
+.ms-mbtn.active { background: #8b5cf6; border-color: #8b5cf6; color: #fff; }
+
+.ms-prop-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.ms-prop-type {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.ms-save-status {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    transition: color 0.3s;
+    min-width: 120px;
+    text-align: right;
+}
+
+.ms-save-status.saving { color: #f59e0b; }
+.ms-save-status.saved  { color: #22c55e; }
+.ms-save-status.error  { color: #ef4444; }
+
+/* Table */
+.ms-table-wrap {
+    flex: 1;
+    overflow: auto;
+    padding: 16px 24px 24px;
+}
+
+.ms-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+}
+
+.ms-table th {
+    text-align: left;
+    padding: 8px 10px;
+    background: var(--surface-raised);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border-medium);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    white-space: nowrap;
+}
+
+.ms-table th.month-col { text-align: center; min-width: 90px; }
+.ms-table th.month-current { color: #8b5cf6; }
+
+.ms-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    vertical-align: middle;
+}
+
+.ms-table tr:hover td { background: var(--hover-bg); }
+
+/* Section group header row */
+.ms-group-row td {
+    background: rgba(139, 92, 246, 0.08) !important;
+    font-weight: 700;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #8b5cf6;
+    padding: 10px 10px 6px;
+    border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+/* Points input */
+.ms-pts-input {
+    width: 72px;
+    text-align: center;
+    background: var(--input-bg);
+    border: 1px solid var(--border-input);
+    color: var(--text-primary);
+    padding: 5px 6px;
+    border-radius: 5px;
+    font-size: 0.84rem;
+    font-family: inherit;
+    display: block;
+    margin: 0 auto;
+    transition: border-color 0.2s;
+}
+
+.ms-pts-input:focus {
+    outline: none;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+.ms-pts-input.saving { border-color: #f59e0b; }
+.ms-pts-input.saved  { border-color: #22c55e; }
+.ms-pts-input.error  { border-color: #ef4444; }
+
+/* Current month column highlight */
+td.month-current { background: rgba(139, 92, 246, 0.04); }
+
+/* Read-only prior month cells */
+.ms-readonly-cell {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+}
+
+.ms-no-val { color: var(--border-medium); }
+
+.ms-type-cell { color: var(--text-secondary); font-size: 0.78rem; }
+
+/* "editable" badge in current month header */
+.ms-editable-badge {
+    display: inline-block;
+    margin-left: 5px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(139, 92, 246, 0.2);
+    color: #8b5cf6;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    vertical-align: middle;
+}
+
+/* Loading */
+.ms-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 30px 24px;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.ms-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border-medium);
+    border-top-color: #8b5cf6;
+    border-radius: 50%;
+    animation: ms-spin 0.7s linear infinite;
+}
+
+@keyframes ms-spin { to { transform: rotate(360deg); } }
+
+/* Lock banner */
+.ms-lock-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 24px 16px;
+    padding: 14px 18px;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: 8px;
+    color: #f59e0b;
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.ms-lock-icon { font-size: 1.2rem; }
+.ms-lock-text { flex: 1; }
+
+/* Entry rules panel at bottom of left sidebar */
+.ms-rules {
+    padding: 12px 16px 16px;
+    border-top: 1px solid var(--border-subtle);
+    margin-top: auto;
+}
+
+.ms-rules-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.ms-rules-list {
+    margin: 0;
+    padding-left: 16px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+.ms-rules-list strong { color: var(--text-primary); }
+
+/* Info blurb (matches market benchmark pattern) */
+.info-blurb { background: rgba(139,92,246,0.04); border: 1px solid rgba(139,92,246,0.15); border-radius: 8px; padding: 0; font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; overflow: hidden; }
+.blurb-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; cursor: pointer; user-select: none; }
+.blurb-header:hover { background: rgba(139,92,246,0.06); }
+.blurb-title { font-weight: 600; color: var(--text-primary); font-size: 0.85rem; }
+.blurb-toggle { font-size: 0.7rem; color: var(--text-secondary); }
+.blurb-body { padding: 0 14px 12px; }
+.blurb-body.collapsed { display: none; }

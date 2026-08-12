@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Benchmark</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=6">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <span class="header-icon"><i class="icon-home"></i></span>
+                <h1>Market Benchmark</h1>
+            </div>
+            <div class="header-right">
+                <div class="theme-toggle">
+                    <button class="theme-btn" data-theme="light" title="Light">☀</button>
+                    <button class="theme-btn" data-theme="medium" title="Medium">◐</button>
+                    <button class="theme-btn" data-theme="dark" title="Dark">🌙</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tab Bar -->
+        <nav class="tab-bar">
+            <button class="tab active" data-tab="data-entry">Data Entry</button>
+            <button class="tab" data-tab="schools">Schools</button>
+            <button class="tab" data-tab="markets">Markets</button>
+            <button class="tab" data-tab="comps">Comps</button>
+            <button class="tab" data-tab="assign-comps">Assign Comps</button>
+            <button class="tab" data-tab="floorplans">Floor Plans</button>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Left Panel (selectors) -->
+            <aside class="left-panel">
+                <div class="selector-group">
+                    <label>Parent Property</label>
+                    <select id="ddParentProperty">
+                        <option value="">Loading...</option>
+                    </select>
+                </div>
+                <div class="selector-group">
+                    <label>Week</label>
+                    <select id="ddWeeks">
+                        <option value="">Loading...</option>
+                    </select>
+                </div>
+                <div class="selector-group">
+                    <label>AY</label>
+                    <select id="ddAY">
+                        <option value="2026" selected>2026</option>
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
+                    </select>
+                </div>
+                <div class="selector-group">
+                    <label>Comp Properties</label>
+                    <div id="compList" class="comp-list"></div>
+                </div>
+            </aside>
+
+            <!-- Right Panel (tab content) -->
+            <section class="right-panel">
+                <div class="readonly-banner">⚠ Read-only — this survey date is more than 6 days old.</div>
+
+                <!-- Data Entry Tab -->
+                <div class="tab-panel active" id="panel-data-entry">
+                    <div id="compFactSection" class="section comp-section">
+                        <h3 class="comp-section-toggle">Comp Summary <span class="toggle-arrow">&#9650;</span></h3>
+                        <div id="compFactGrid" class="data-grid"></div>
+                    </div>
+                    <div id="floorplanSection" class="section floorplan-section">
+                        <h3>Floorplans</h3>
+                        <div id="floorplanGrid" class="data-grid"></div>
+                    </div>
+                </div>
+
+                <!-- Schools Tab -->
+                <div class="tab-panel" id="panel-schools">
+                    <div class="schools-toolbar">
+                        <input type="text" id="schoolSearch" placeholder="Search schools..." class="school-search-input">
+                        <label class="school-toggle"><input type="checkbox" id="schoolShowInactive"> Show inactive</label>
+                        <button id="btnAddSchool" class="btn-add-school">+ Add School</button>
+                    </div>
+                    <div id="schoolsGrid" class="schools-grid"></div>
+                </div>
+
+                <!-- Markets Tab -->
+                <div class="tab-panel" id="panel-markets">
+                    <div class="schools-toolbar">
+                        <input type="text" id="marketSearch" placeholder="Search markets..." class="school-search-input">
+                        <button id="btnAddMarket" class="btn-add-school">+ Add Market</button>
+                    </div>
+                    <div id="marketsGrid" class="schools-grid"></div>
+                </div>
+
+                <!-- Comps Tab -->
+                <div class="tab-panel" id="panel-comps">
+                    <div class="schools-toolbar">
+                        <input type="text" id="compSearch" placeholder="Search comp properties..." class="school-search-input">
+                        <label class="school-toggle"><input type="checkbox" id="compShowInactive"> Show inactive</label>
+                        <button id="btnAddComp" class="btn-add-school">+ Add Comp</button>
+                    </div>
+                    <div id="compsGrid" class="schools-grid"></div>
+                </div>
+
+                <!-- Comp Detail Slide-out -->
+                <div class="comp-detail-overlay" id="compDetailOverlay">
+                    <div class="comp-resize-handle" id="compResizeHandle"></div>
+                    <button class="comp-detail-close" id="compDetailClose">&times;</button>
+                    <div class="comp-detail-sticky-header">
+                        <div class="comp-detail-name" id="compDetailName"></div>
+                        <div class="comp-detail-controls">
+                            <div class="comp-jump-bar">
+                                <input type="text" id="compJumpSearch" placeholder="Jump to field...">
+                            </div>
+                            <div class="comp-sort-toggle">
+                                <button class="active" data-sort="category">Category</button>
+                                <button data-sort="az">A–Z</button>
+                            </div>
+                            <button class="comp-gear-btn" id="compGearBtn" title="Customize fields">⚙</button>
+                        </div>
+                    </div>
+                    <div class="comp-detail-body" id="compDetailBody"></div>
+                </div>
+
+                <!-- Comp Settings Modal (drag/drop field visibility) -->
+                <div class="comp-settings-overlay" id="compSettingsOverlay"></div>
+                <div class="comp-settings-modal" id="compSettingsModal">
+                    <div class="comp-settings-header">
+                        <h3>Customize Comp Detail</h3>
+                        <button class="comp-detail-close" id="compSettingsClose">&times;</button>
+                    </div>
+                    <div class="comp-settings-body" id="compSettingsBody">
+                        <p class="comp-settings-hint">Drag categories to reorder. Click 👁 to show/hide sections or fields.</p>
+                        <div id="compSettingsList" class="comp-settings-list"></div>
+                    </div>
+                </div>
+
+                <!-- Assign Comps Tab -->
+                <div class="tab-panel" id="panel-assign-comps">
+                    <div class="assign-comps-header">
+                        <span id="assignCompsTitle">Select a parent property and week to manage comp assignments.</span>
+                    </div>
+                    <div class="assign-comps-body">
+                        <!-- Left: Available comps -->
+                        <div class="assign-available-panel">
+                            <div class="assign-panel-header">Available Comps</div>
+                            <input type="text" id="assignAvailSearch" placeholder="Search available comps..." class="assign-panel-search" autocomplete="off">
+                            <div id="assignAvailList" class="assign-avail-list">
+                                <p class="placeholder">Select a parent property and week.</p>
+                            </div>
+                        </div>
+                        <!-- Right: Assigned comps -->
+                        <div class="assign-assigned-panel">
+                            <div class="assign-panel-header">Assigned Comps <span id="assignCountBadge" class="assign-count-badge"></span></div>
+                            <div id="assignCompsList" class="assign-comps-list">
+                                <p class="placeholder">Select a parent property and week.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Floor Plans Tab -->
+                <div class="tab-panel" id="panel-floorplans">
+                    <div class="fp-toolbar">
+                        <div class="fp-comp-selector">
+                            <span class="fp-comp-label">Comp Property:</span>
+                            <div class="fp-comp-search-wrap">
+                                <input type="text" id="fpCompSearch" placeholder="Search all comp properties..." autocomplete="off" class="fp-comp-search-input">
+                                <div id="fpCompDropdown" class="fp-comp-dropdown" style="display:none;"></div>
+                            </div>
+                            <span id="fpTitle" class="fp-title"></span>
+                        </div>
+                        <div class="fp-toolbar-right">
+                            <label class="fp-toggle-label"><input type="checkbox" id="fpShowInactive"> Show inactive</label>
+                            <button id="btnAddFloorplan" class="btn-add-school" disabled>+ New Floor Plan</button>
+                        </div>
+                    </div>
+                    <div class="fp-body">
+                        <div id="fpGrid" class="fp-grid"></div>
+                    </div>
+                </div>
+
+                <!-- Floor Plan Detail Slide-out -->
+                <div class="fp-detail-overlay" id="fpDetailOverlay">
+                    <div class="fp-resize-handle" id="fpResizeHandle"></div>
+                    <button class="fp-detail-close" id="fpDetailClose">&times;</button>
+                    <div class="fp-detail-sticky-header">
+                        <div class="fp-detail-comp-name" id="fpDetailCompName"></div>
+                        <div class="fp-detail-name" id="fpDetailName"></div>
+                        <div class="fp-detail-controls">
+                            <span class="fp-modified-by" id="fpModifiedBy"></span>
+                            <button class="fp-activate-btn" id="fpActivateBtn"></button>
+                        </div>
+                    </div>
+                    <div class="fp-detail-body" id="fpDetailBody"></div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=11"></script>
+</body>
+</html>

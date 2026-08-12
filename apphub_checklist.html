@@ -1,0 +1,330 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AppHub 4.0 -- Sprint Checklist</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #e0e0e0; padding: 24px; }
+  .container { max-width: 940px; margin: 0 auto; }
+
+  h1 { font-size: 22px; color: #53c0f0; margin-bottom: 4px; }
+  .meta { font-size: 12px; color: #888; margin-bottom: 20px; line-height: 1.7; }
+  .meta strong { color: #aaa; }
+
+  .progress-bar { margin: 16px 0; background: rgba(255,255,255,.08); border-radius: 8px; height: 24px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #27ae60, #2ecc71); border-radius: 8px; transition: width .3s; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; min-width: 36px; }
+  .progress-label { font-size: 11px; color: #888; margin-top: 4px; text-align: center; }
+
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 16px 0; padding: 10px 14px; background: rgba(255,255,255,.04); border-radius: 6px; font-size: 11px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+  .week-section { margin-bottom: 28px; }
+  .week-header {
+    background: linear-gradient(90deg, #16213e, #0f3460);
+    padding: 10px 16px; border-radius: 6px 6px 0 0;
+    font-size: 14px; font-weight: 700; color: #53c0f0;
+    border-bottom: 2px solid #2980b9;
+    cursor: pointer; user-select: none; list-style: none;
+  }
+  .week-header::-webkit-details-marker { display: none; }
+  .week-header::before { content: '\25B6  '; font-size: 10px; margin-right: 4px; display: inline-block; transition: transform .2s; }
+  details[open] > .week-header::before { transform: rotate(90deg); }
+  .week-header .week-badge { float: right; font-size: 11px; padding: 1px 8px; border-radius: 10px; }
+  .week-badge.complete   { background: rgba(39,174,96,.2);  color: #27ae60; }
+  .week-badge.in-progress{ background: rgba(83,192,240,.15); color: #53c0f0; }
+  .week-badge.upcoming   { background: rgba(149,165,166,.15); color: #888; }
+  details:not([open]) > .week-header { border-radius: 6px; border-bottom-color: transparent; }
+
+  .day-section { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); border-top: none; }
+  .day-section:last-child { border-radius: 0 0 6px 6px; }
+  .day-title { font-size: 13px; font-weight: 700; color: #8ab4d4; padding: 10px 16px; cursor: pointer; user-select: none; list-style: none; }
+  .day-title::-webkit-details-marker { display: none; }
+  .day-title::before { content: '\25B8  '; font-size: 10px; display: inline-block; transition: transform .2s; }
+  details.day-section[open] > .day-title::before { transform: rotate(90deg); }
+  .day-badge { font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-left: 8px; }
+  .day-badge.complete   { background: rgba(39,174,96,.2);  color: #27ae60; }
+  .day-badge.in-progress{ background: rgba(83,192,240,.12); color: #53c0f0; }
+  .day-content { padding: 4px 16px 12px 16px; }
+
+  .task { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; font-size: 13px; line-height: 1.5; }
+  .task input[type="checkbox"] { margin-top: 3px; accent-color: #27ae60; width: 15px; height: 15px; flex-shrink: 0; }
+  .task.milestone { color: #f1c40f; font-weight: 700; }
+  .task.blocker   { border-left: 3px solid #e74c3c; padding-left: 12px; }
+  .task.infra     { border-left: 3px solid #9b59b6; padding-left: 12px; }
+  .task.sharepoint{ border-left: 3px solid #2980b9; padding-left: 12px; }
+  .task label { cursor: pointer; }
+  .task input:not(:checked) + label { font-weight: 600; }
+  .task input:checked + label { opacity: .45; }
+  .task input:checked + label .task-text { text-decoration: line-through; }
+  .date-badge { font-size: 10px; padding: 1px 7px; border-radius: 8px; background: rgba(39,174,96,.15); color: #27ae60; white-space: nowrap; margin-left: 6px; text-decoration: none !important; opacity: 1; }
+  .est-badge  { font-size: 10px; padding: 1px 7px; border-radius: 8px; background: rgba(83,192,240,.12); color: #6ba3d6; white-space: nowrap; margin-left: 6px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>AppHub 4.0 -- Sprint Checklist</h1>
+<div class="meta">
+  <strong>Sprint:</strong> Jul 1 -- Sep 3, 2026 (45 working days)<br>
+  <strong>Capacity:</strong> 1 developer, 6 hrs/day with AI assistance<br>
+  <strong>Target:</strong> Full platform live on Azure App Service by Sep 3<br>
+  <strong>Scope:</strong> 14 Flask native modules + 11 PowerApps pass-through + infrastructure<br>
+  <strong>Last Updated:</strong> Aug 10, 2026
+</div>
+
+<div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%">0%</div></div>
+<div class="progress-label" id="progressLabel">Loading...</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#27ae60"></div> Complete</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f1c40f"></div> Milestone</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#e74c3c"></div> Blocker</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#9b59b6"></div> Infrastructure</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#2980b9"></div> SharePoint / Graph</div>
+</div>
+
+<!-- ===== PHASE 1: FOUNDATION (DONE) ===== -->
+<details class="week-section" open>
+<summary class="week-header" style="background:linear-gradient(90deg,#1a3a1a,#0f4f0f);border-bottom-color:#27ae60;">
+  PHASE 1: Foundation &amp; Shell (Jul 1-18) -- COMPLETE
+  <span class="week-badge complete">Done</span>
+</summary>
+
+<details class="day-section" open>
+<summary class="day-title">Week 1: Jul 1-7 -- Flask Shell + Auth <span class="day-badge complete">Done</span></summary>
+<div class="day-content">
+  <div class="task"><input type="checkbox" id="t1" checked><label for="t1"><span class="task-text">Flask 3.x project scaffolded (app.py, config.py, run_dev.py)</span> <span class="date-badge">Jul 1</span></label></div>
+  <div class="task"><input type="checkbox" id="t2" checked><label for="t2"><span class="task-text">Entra ID MSAL auth-code flow implemented (auth.py)</span> <span class="date-badge">Jul 3</span></label></div>
+  <div class="task"><input type="checkbox" id="t3" checked><label for="t3"><span class="task-text">DEV_BYPASS mode added for local development without login</span> <span class="date-badge">Jul 3</span></label></div>
+  <div class="task"><input type="checkbox" id="t4" checked><label for="t4"><span class="task-text">shell.html layout created -- sticky nav, content block, module list sidebar</span> <span class="date-badge">Jul 5</span></label></div>
+  <div class="task"><input type="checkbox" id="t5" checked><label for="t5"><span class="task-text">apphub.css base styles (dark theme, nav, cards, tables)</span> <span class="date-badge">Jul 7</span></label></div>
+</div>
+</details>
+
+<details class="day-section">
+<summary class="day-title">Week 2: Jul 8-14 -- Module Framework + SPA Nav <span class="day-badge complete">Done</span></summary>
+<div class="day-content">
+  <div class="task"><input type="checkbox" id="t6" checked><label for="t6"><span class="task-text">modules.py registry created -- 26 modules, APP_ID_MAP, type (flask/powerapps)</span> <span class="date-badge">Jul 10</span></label></div>
+  <div class="task"><input type="checkbox" id="t7" checked><label for="t7"><span class="task-text">MODULE_AUDIENCE security model implemented -- TITLE_GROUP-based access</span> <span class="date-badge">Jul 10</span></label></div>
+  <div class="task"><input type="checkbox" id="t8" checked><label for="t8"><span class="task-text">SPA navigation: nav clicks fetch + swap .apphub-content innerHTML</span> <span class="date-badge">Jul 12</span></label></div>
+  <div class="task"><input type="checkbox" id="t9" checked><label for="t9"><span class="task-text">Script re-execution fix after SPA content swap (createElement workaround)</span> <span class="date-badge">Jul 14</span></label></div>
+  <div class="task milestone"><input type="checkbox" id="t10" checked><label for="t10"><span class="task-text">&#9733; MILESTONE: Shell live on localhost:5001 -- nav working, auth working</span> <span class="date-badge">Jul 14</span></label></div>
+</div>
+</details>
+
+<details class="day-section">
+<summary class="day-title">Week 3: Jul 15-21 -- Graph API Client + PowerApps Pass-Through <span class="day-badge complete">Done</span></summary>
+<div class="day-content">
+  <div class="task sharepoint"><input type="checkbox" id="t11" checked><label for="t11"><span class="task-text">graph_client.py -- MSAL client-credentials, get_site_id(), list_items(), create_item()</span> <span class="date-badge">Jul 18</span></label></div>
+  <div class="task sharepoint"><input type="checkbox" id="t12" checked><label for="t12"><span class="task-text">Graph API tested against BaseCampApps site -- Peak Link list confirmed readable</span> <span class="date-badge">Jul 18</span></label></div>
+  <div class="task"><input type="checkbox" id="t13" checked><label for="t13"><span class="task-text">Assess all 11 remaining modules: document current PA functionality, data sources, and user workflows needed in Flask</span> <span class="date-badge">Jul 21</span></label></div>
+  <div class="task milestone"><input type="checkbox" id="t14m" checked><label for="t14m"><span class="task-text">&#9733; MILESTONE: All 11 remaining modules scoped -- routes, backend filenames, data sources confirmed</span> <span class="date-badge">Jul 21</span></label></div>
+</div>
+</details>
+</details>
+
+<!-- ===== PHASE 2: Module Development ===== -->
+<details class="week-section">
+<summary class="week-header" style="background:linear-gradient(90deg,#1a3a1a,#0f4f0f);border-bottom-color:#27ae60;">
+  PHASE 2: Module Development (Jul 22 - Aug 22)
+  <span class="week-badge complete">Done</span>
+</summary>
+
+<details class="day-section">
+<summary class="day-title">Week 4: Jul 22-28 -- Dashboard + PDM + EDM + Maintenance <span class="day-badge complete">Done</span></summary>
+<div class="day-content">
+  <div class="task"><input type="checkbox" id="t15" checked><label for="t15"><span class="task-text">Dashboard (/) -- module launcher grid, audience filtering, search, quick-launch cards</span> <span class="date-badge">Jul 22</span></label></div>
+  <div class="task"><input type="checkbox" id="t16" checked><label for="t16"><span class="task-text">Property Data Manager (/pdm/) -- pdm.py + pdm.html, 3-tab UI, detail panel, property search</span> <span class="date-badge">Jul 25</span></label></div>
+  <div class="task"><input type="checkbox" id="t17" checked><label for="t17"><span class="task-text">Employee Data Manager (/edm/) -- edm.py + edm.html, title groups, Entrata mappings, soft-term overrides</span> <span class="date-badge">Jul 28</span></label></div>
+  <div class="task"><input type="checkbox" id="t17b" checked><label for="t17b"><span class="task-text">AppHub Maintenance (/maintenance/) -- module registry, audience mgmt, module on/off toggle</span> <span class="date-badge">Jul 28</span></label></div>
+</div>
+</details>
+
+<details class="day-section">
+<summary class="day-title">Week 5: Jul 29 - Aug 4 -- Recognition + People Modules <span class="day-badge complete">Done</span></summary>
+<div class="day-content">
+  <div class="task sharepoint"><input type="checkbox" id="t18" checked><label for="t18"><span class="task-text">Cultivate Nomination (/cultivate/) -- nomination submit, All Noms admin tab, SharePoint-backed</span> <span class="date-badge">Jul 31</span></label></div>
+  <div class="task"><input type="checkbox" id="t19" checked><label for="t19"><span class="task-text">FastTrack Recommendation (/fasttrack/) -- recommendation submit, admin review, DB-backed</span> <span class="date-badge">Aug 1</span></label></div>
+  <div class="task sharepoint"><input type="checkbox" id="t20" checked><label for="t20"><span class="task-text">Mindset Award Nomination (/mindset/) -- mindset.py rewritten to SP, Peak Standard column added</span> <span class="date-badge">Aug 4</span></label></div>
+  <div class="task blocker"><input type="checkbox" id="t21" checked><label for="t21"><span class="task-text">Mindset -- unique permissions blocker discovered; admin request for Sites.FullControl.All submitted</span> <span class="date-badge">Aug 8</span></label></div>
+  <div class="task"><input type="checkbox" id="t21b" checked><label for="t21b"><span class="task-text">New Hire Alert (/new-hire/) -- new_hire.py + template, alert notifications, admin view, DB-backed</span> <span class="date-badge">Aug 5</span></label></div>
+  <div class="task"><input type="checkbox" id="t21c" checked><label for="t21c"><span class="task-text">Mentor Certification (/mentor-cert/) -- mentor_cert.py + template, cert tracking, admin view, DB-backed</span> <span class="date-badge">Aug 6</span></label></div>
+  <div class="task sharepoint"><input type="checkbox" id="t21d" checked><label for="t21d"><span class="task-text">Peak Link (/peak-link/) -- peak_link.py + template, idea submit/admin, SharePoint-backed</span> <span class="date-badge">Aug 7</span></label></div>
+  <div class="task sharepoint"><input type="checkbox" id="t21e" checked><label for="t21e"><span class="task-text">Promotion/Transfer Alert (/paf/) -- paf.py + template, PAF form submit/admin, SharePoint-backed</span> <span class="date-badge">Aug 8</span></label></div>
+</div>
+</details>
+
+<details class="day-section">
+<summary class="day-title">Week 6: Aug 5-9 -- Sort Fix Sprint + Module Verification <span class="day-badge complete">Done</span></summary>
+<div class="day-content">
+  <div class="task"><input type="checkbox" id="t22" checked><label for="t22"><span class="task-text">IIFE sort scope bug diagnosed -- all module sort functions inside (function(){})() unreachable from onclick HTML attrs</span> <span class="date-badge">Aug 9</span></label></div>
+  <div class="task"><input type="checkbox" id="t23" checked><label for="t23"><span class="task-text">[Sort Fix] cultivate.html -- window.sortNoms = sortNoms; window.sortCultAdmins = sortCultAdmins</span> <span class="date-badge">Aug 9</span></label></div>
+  <div class="task"><input type="checkbox" id="t24" checked><label for="t24"><span class="task-text">[Sort Fix] fasttrack.html -- window.sortRecs = sortRecs; window.sortFtAdmins = sortFtAdmins</span> <span class="date-badge">Aug 9</span></label></div>
+  <div class="task"><input type="checkbox" id="t25" checked><label for="t25"><span class="task-text">[Sort Fix] mindset.html -- window.sortNoms = sortNoms; window.sortMsAdmins = sortMsAdmins</span> <span class="date-badge">Aug 9</span></label></div>
+  <div class="task"><input type="checkbox" id="t26" checked><label for="t26"><span class="task-text">[Sort Fix] new_hire.html -- window.sortAlerts = sortAlerts; window.sortNhAdmins = sortNhAdmins</span> <span class="date-badge">Aug 9</span></label></div>
+  <div class="task"><input type="checkbox" id="t27" checked><label for="t27"><span class="task-text">[Sort Fix] mentor_cert.html -- window.sortCerts = sortCerts; window.sortMcAdmins = sortMcAdmins</span> <span class="date-badge">Aug 9</span></label></div>
+  <div class="task"><input type="checkbox" id="t28" checked><label for="t28"><span class="task-text">[Sort Fix] peak_link.html -- window.sortSubs = sortSubs; window.sortPlAdmins = sortPlAdmins</span> <span class="date-badge">Aug 9</span></label></div>
+  <div class="task milestone"><input type="checkbox" id="t29" checked><label for="t29"><span class="task-text">&#9733; MILESTONE: All 12 Flask modules rendering correctly with working sort -- Phase 2 complete</span> <span class="date-badge">Aug 9</span></label></div>
+</div>
+</details>
+</details>
+
+<!-- ===== PHASE 3: MODULE DEVELOPMENT -- CONTINUED (IN PROGRESS) ===== -->
+<details class="week-section" open>
+<summary class="week-header" style="background:linear-gradient(90deg,#1a2a3a,#0f2a4a);border-bottom-color:#3498db;">
+  PHASE 3: Remaining Modules (Aug 10-22) -- IN PROGRESS
+  <span class="week-badge in-progress">Active</span>
+</summary>
+
+<details class="day-section" open>
+<summary class="day-title">Week 7: Aug 10-14 -- Mindset Unblock + Milestones + Rent Forecast 1.0 <span class="day-badge in-progress">Active</span></summary>
+<div class="day-content">
+  <div class="task blocker"><input type="checkbox" id="t30" checked><label for="t30"><span class="task-text">Admin grants Sites.FullControl.All to FabricPipelineApp in Azure AD (admin request submitted Aug 10)</span> <span class="est-badge">~0.25 d</span></label></div>
+  <div class="task sharepoint"><input type="checkbox" id="t31" checked><label for="t31"><span class="task-text">Re-run _grant_site_permissions.py to add app to Mindset list -- confirm data loads</span> <span class="est-badge">0.5 hr</span></label></div>
+  <div class="task sharepoint"><input type="checkbox" id="t32" checked><label for="t32"><span class="task-text">Verify /mindset/api/nominations returns items in browser</span> <span class="est-badge">0.5 hr</span></label></div>
+  <div class="task"><input type="checkbox" id="t33"><label for="t33"><span class="task-text">milestones.py -- wire backend to employee anniversary/milestone data from WH_STAGING</span> <span class="est-badge">~3 hrs</span></label></div>
+  <div class="task"><input type="checkbox" id="t34"><label for="t34"><span class="task-text">milestones.html -- review template, implement any missing UI logic</span> <span class="est-badge">~1 hr</span></label></div>
+  <div class="task"><input type="checkbox" id="t35"><label for="t35"><span class="task-text">rfs.py (Rent Forecasting 1.0) -- backend routes: property list, forecast tiers, budget tiers, SP calls</span> <span class="est-badge">~1 day</span></label></div>
+  <div class="task"><input type="checkbox" id="t36"><label for="t36"><span class="task-text">rent_forecast.html -- review template, wire API calls for tier editing</span> <span class="est-badge">~4 hrs</span></label></div>
+</div>
+</details>
+
+<details class="day-section">
+<summary class="day-title">Week 8: Aug 17-21 -- Rent Forecast 2.0 + Market Benchmark Floor Plans <span class="day-badge upcoming">Upcoming</span></summary>
+<div class="day-content">
+  <div class="task"><input type="checkbox" id="t37"><label for="t37"><span class="task-text">rfs2.py (Rent Forecasting 2.0) -- backend: tier editing, market comps integration, chart data endpoints</span> <span class="est-badge">~1 day</span></label></div>
+  <div class="task"><input type="checkbox" id="t38"><label for="t38"><span class="task-text">rent_forecast2.html -- stakeholder-facing charts, market comps table, tier edit UI</span> <span class="est-badge">~4 hrs</span></label></div>
+  <div class="task"><input type="checkbox" id="t39"><label for="t39"><span class="task-text">Market Benchmark Floor Plans tab -- data model, API routes, floorplan rate/availability UI</span> <span class="est-badge">~6 hrs</span></label></div>
+  <div class="task"><input type="checkbox" id="t40"><label for="t40"><span class="task-text">Market Benchmark: full regression test of all 6 tabs (Data Entry, Schools, Markets, Comps, Assign Comps, Floor Plans)</span> <span class="est-badge">~2 hrs</span></label></div>
+  <div class="task"><input type="checkbox" id="t41"><label for="t41"><span class="task-text">Verify all 14 Flask module routes registered in app.py and accessible in nav</span> <span class="est-badge">Aug 21</span></label></div>
+  <div class="task milestone"><input type="checkbox" id="t41m"><label for="t41m"><span class="task-text">&#9733; MILESTONE: All 14 Flask modules feature-complete and tested locally</span> <span class="est-badge">Aug 22</span></label></div>
+</div>
+</details>
+</details>
+
+<!-- ===== PHASE 4: TESTING ===== -->
+<details class="week-section">
+<summary class="week-header">
+  Phase 4: Remaining Modules \+ Integration Testing (Aug 24 - Sep 2)
+  <span class="week-badge upcoming">Upcoming</span>
+</summary>
+
+<details class="day-section">
+<summary class="day-title">Week 9-10: Aug 24 - Sep 2 -- 11 Flask Module Builds</summary>
+<div class="day-content">
+  <div class="task"><input type="checkbox" id="b1"><label for="b1"><span class="task-text">Canada Market Survey (/canada-survey/) -- canada_survey.py + template, survey form + responses admin</span> <span class="est-badge">1 d</span></label></div>
+  <div class="task"><input type="checkbox" id="b2"><label for="b2"><span class="task-text">Rush Check Request (/rush-check/) -- rush_check.py + template, request form + approvals tracking</span> <span class="est-badge">1 d</span></label></div>
+  <div class="task"><input type="checkbox" id="b3"><label for="b3"><span class="task-text">SAM Ad Spend Planning (/sam-adspend/) -- sam_adspend.py + template, property-level budget grid</span> <span class="est-badge">1.5 d</span></label></div>
+  <div class="task"><input type="checkbox" id="b4"><label for="b4"><span class="task-text">SAM Contract Manager (/sam-contracts/) -- sam_contracts.py + template, contract list + status tracking</span> <span class="est-badge">1.5 d</span></label></div>
+  <div class="task"><input type="checkbox" id="b5"><label for="b5"><span class="task-text">Special Handling Form (/special-handling/) -- special_handling.py + template, exception request + ops admin</span> <span class="est-badge">0.5 d</span></label></div>
+  <div class="task"><input type="checkbox" id="b6"><label for="b6"><span class="task-text">Support Data Manager (/support-dm/) -- support_dm.py + template, support ticket table + admin</span> <span class="est-badge">1 d</span></label></div>
+  <div class="task"><input type="checkbox" id="b7"><label for="b7"><span class="task-text">The Pitch Workflow (/pitch/) -- pitch.py + template, idea submission + voting/scoring + approval</span> <span class="est-badge">1.5 d</span></label></div>
+  <div class="task"><input type="checkbox" id="b8"><label for="b8"><span class="task-text">Vendor Setup Form (/vendor-setup/) -- vendor_setup.py + template, new vendor form + admin review queue</span> <span class="est-badge">0.5 d</span></label></div>
+  <div class="task"><input type="checkbox" id="b9"><label for="b9"><span class="task-text">ACH Request (/ach-request/) -- ach_request.py + template, ACH payment request + finance admin</span> <span class="est-badge">0.5 d</span></label></div>
+  <div class="task"><input type="checkbox" id="b10"><label for="b10"><span class="task-text">Prepaid Visa Compliance (/prepaid-visa/) -- prepaid_visa.py + template, usage compliance form + audit log</span> <span class="est-badge">0.5 d</span></label></div>
+  <div class="task"><input type="checkbox" id="b11"><label for="b11"><span class="task-text">RM Inspections (/rm-inspections/) -- rm_inspections.py + template, inspection tracking + scoring + history</span> <span class="est-badge">1.5 d</span></label></div>
+  <div class="task milestone"><input type="checkbox" id="bm"><label for="bm"><span class="task-text">&#9733; MILESTONE: All 11 remaining modules built, routed, and running locally</span> <span class="est-badge">Sep 2</span></label></div>
+</div>
+</details>
+
+<details class="day-section">
+<summary class="day-title">Week 10: Sep 3-4 -- Full Integration Test Pass</summary>
+<div class="day-content">
+  <div class="task infra"><input type="checkbox" id="t42"><label for="t42"><span class="task-text">Regression test checklist: each module -- load, submit, admin view, sort, edge cases, error messages</span> <span class="est-badge">1 day</span></label></div>
+  <div class="task infra"><input type="checkbox" id="t43"><label for="t43"><span class="task-text">Auth flow test: login, logout, session expiry, unauthorized access (403 handling)</span> <span class="est-badge">1 hr</span></label></div>
+  <div class="task infra"><input type="checkbox" id="t44"><label for="t44"><span class="task-text">Audience model test: verify TITLE_GROUP filtering works for all 14 modules</span> <span class="est-badge">1 hr</span></label></div>
+  <div class="task sharepoint"><input type="checkbox" id="t45"><label for="t45"><span class="task-text">Graph API test: Cultivate, Peak Link, PAF, Mindset -- submit + read all tested end-to-end</span> <span class="est-badge">1 hr</span></label></div>
+  <div class="task infra"><input type="checkbox" id="t46"><label for="t46"><span class="task-text">SPA navigation: navigate between all modules, verify no JS state leakage</span> <span class="est-badge">1 hr</span></label></div>
+  <div class="task infra"><input type="checkbox" id="t47"><label for="t47"><span class="task-text">Fix all bugs found during integration test pass</span> <span class="est-badge">1 day</span></label></div>
+</div>
+</details>
+</details>
+
+<!-- ===== PHASE 5: DEPLOYMENT ===== -->
+<details class="week-section">
+<summary class="week-header">
+  PHASE 5: Azure Deployment + Go-Live (Aug 31 - Sep 3)
+  <span class="week-badge upcoming">Upcoming</span>
+</summary>
+
+<details class="day-section">
+<summary class="day-title">Week 10: Aug 31 - Sep 3 -- Staging + Production</summary>
+<div class="day-content">
+  <div class="task infra"><input type="checkbox" id="t48"><label for="t48"><span class="task-text">Azure App Service provisioned -- Linux, Python 3.12, East US, B2 SKU minimum</span> <span class="est-badge">2 hrs</span></label></div>
+  <div class="task infra"><input type="checkbox" id="t49"><label for="t49"><span class="task-text">Custom startup script for ODBC Driver 18 on Linux (apt-get install msodbcsql18)</span> <span class="est-badge">1 hr</span></label></div>
+  <div class="task infra"><input type="checkbox" id="t50"><label for="t50"><span class="task-text">All production environment variables set in App Service Configuration panel</span> <span class="est-badge">1 hr</span></label></div>
+  <div class="task infra"><input type="checkbox" id="t51"><label for="t51"><span class="task-text">Azure AD redirect URI updated for prod URL (FabricPipelineApp app registration)</span> <span class="est-badge">0.5 hr</span></label></div>
+  <div class="task infra"><input type="checkbox" id="t52"><label for="t52"><span class="task-text">GitHub Actions CI/CD pipeline configured -- push to main = deploy to App Service</span> <span class="est-badge">2 hrs</span></label></div>
+  <div class="task infra"><input type="checkbox" id="t53"><label for="t53"><span class="task-text">Custom domain configured (apphub.peakmade.com or similar) + SSL cert bound</span> <span class="est-badge">1 hr</span></label></div>
+  <div class="task infra"><input type="checkbox" id="t54"><label for="t54"><span class="task-text">First staging deployment -- smoke test all 14 modules on prod URL</span> <span class="est-badge">2 hrs</span></label></div>
+  <div class="task"><input type="checkbox" id="t55"><label for="t55"><span class="task-text">UAT: module owners test their module in staging (Maintenance, PDM, Cultivate, Mindset leads)</span> <span class="est-badge">1 day</span></label></div>
+  <div class="task"><input type="checkbox" id="t56"><label for="t56"><span class="task-text">Stakeholder sign-off received -- all critical issues resolved</span> <span class="est-badge">Sep 2</span></label></div>
+  <div class="task infra"><input type="checkbox" id="t57"><label for="t57"><span class="task-text">Legacy Power Apps deprecation notice sent -- AppHub URL shared with all users</span> <span class="est-badge">Sep 2</span></label></div>
+  <div class="task milestone"><input type="checkbox" id="t58"><label for="t58"><span class="task-text">&#9733; MILESTONE: AppHub 4.0 LIVE in production -- all 26 modules available to all users</span> <span class="est-badge">Sep 3</span></label></div>
+</div>
+</details>
+</details>
+
+</div>
+
+<script>
+(function() {
+  var STORAGE_KEY = 'apphub4_checklist';
+  var SEED_VERSION = 'v1';
+  var SEED_KEY     = 'apphub4_checklist_seed';
+
+  /* IDs of tasks confirmed complete -- HTML checked attr is the source of truth */
+  var COMPLETED = ['t1','t2','t3','t4','t5','t6','t7','t8','t9','t10','t11','t12','t13','t14m','t15','t16','t17','t17b','t18','t19','t20','t21','t21b','t21c','t21d','t21e','t22','t23','t24','t25','t26','t27','t28','t29','t30','t31','t32'];
+
+  function saveState() {
+    var state = {};
+    document.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+      state[cb.id] = cb.checked;
+    });
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+  }
+
+  function loadState() {
+    try {
+      var seeded = localStorage.getItem(SEED_KEY);
+      var raw    = localStorage.getItem(STORAGE_KEY);
+      var state  = raw ? JSON.parse(raw) : {};
+
+      /* On first load (or re-seed), force completed items to true */
+      if (seeded !== SEED_VERSION) {
+        COMPLETED.forEach(function(id) { state[id] = true; });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        localStorage.setItem(SEED_KEY, SEED_VERSION);
+      }
+
+      document.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+        if (state[cb.id] !== undefined) cb.checked = state[cb.id];
+      });
+    } catch(e) {}
+  }
+
+  function updateProgress() {
+    var all  = document.querySelectorAll('input[type="checkbox"]');
+    var done = document.querySelectorAll('input[type="checkbox"]:checked');
+    var pct  = all.length ? Math.round(done.length / all.length * 100) : 0;
+    var fill = document.getElementById('progressFill');
+    var lbl  = document.getElementById('progressLabel');
+    if (fill) { fill.style.width = pct + '%'; fill.textContent = pct + '%'; }
+    if (lbl)  { lbl.textContent = done.length + ' of ' + all.length + ' tasks complete'; }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    loadState();
+    updateProgress();
+    document.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+      cb.addEventListener('change', function() { saveState(); updateProgress(); });
+    });
+  });
+})();
+</script>
+</body>
+</html>
+
+

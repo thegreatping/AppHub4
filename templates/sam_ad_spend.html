@@ -1,0 +1,487 @@
+{% extends "shell.html" %}
+{% block head %}
+<style>
+    .sam-container { padding: 24px; max-width: 100%; }
+    .sam-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+    .sam-header h1 { font-size: 1.4rem; color: var(--text-primary); margin: 0; }
+    .sam-header-icon { width: 40px; height: 40px; border-radius: 10px; background: #ec4899; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.1rem; flex-shrink: 0; }
+
+    /* Top controls bar */
+    .sam-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; padding: 12px 16px; background: var(--surface-raised); border: 1px solid var(--border-light); border-radius: 10px; }
+    .sam-controls label { font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+    .sam-controls select { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 7px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; min-width: 260px; }
+    .sam-controls select option { background: var(--surface-raised); color: var(--text-primary); }
+    .sam-controls .ctrl-sep { width: 1px; height: 28px; background: var(--border-medium); margin: 0 4px; }
+    .sam-save-indicator { margin-left: auto; font-size: 0.78rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+    .sam-save-indicator.saving { color: #f59e0b; }
+    .sam-save-indicator.saved  { color: #10b981; }
+    .sam-save-indicator.error  { color: #ef4444; }
+
+    /* Quarter tabs */
+    .sam-qtabs { display: flex; gap: 4px; margin-bottom: 14px; }
+    .sam-qtab { padding: 7px 20px; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); cursor: pointer; border: 1px solid var(--border-medium); border-radius: 6px; transition: all 0.2s; }
+    .sam-qtab:hover { color: var(--text-primary); border-color: #ec4899; }
+    .sam-qtab.active { background: #ec4899; color: #fff; border-color: #ec4899; }
+    .sam-qtab-year { margin-left: auto; padding: 7px 16px; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); cursor: pointer; border: 1px solid var(--border-medium); border-radius: 6px; transition: all 0.2s; }
+    .sam-qtab-year:hover { color: var(--text-primary); }
+    .sam-qtab-year.active { background: rgba(236,72,153,.12); color: #ec4899; border-color: #ec4899; }
+
+    /* Tabs (main module tabs) */
+    .sam-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border-medium); }
+    .sam-tab { padding: 10px 20px; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+    .sam-tab:hover { color: var(--text-primary); }
+    .sam-tab.active { color: #ec4899; border-bottom-color: #ec4899; }
+    .sam-panel { display: none; }
+    .sam-panel.active { display: block; }
+
+    /* Budget table */
+    .sam-table-wrap { overflow-x: auto; border: 1px solid var(--border-light); border-radius: 10px; }
+    table.sam-table { border-collapse: collapse; min-width: 100%; font-size: 0.8rem; }
+    table.sam-table th {
+        background: var(--surface-raised); padding: 8px 10px;
+        text-align: right; font-size: 0.68rem; font-weight: 700;
+        color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;
+        border-bottom: 2px solid var(--border-medium); white-space: nowrap;
+        position: sticky; top: 0; z-index: 10;
+    }
+    table.sam-table th.col-name { text-align: left; min-width: 260px; }
+    table.sam-table th.col-sep { background: #ec4899; width: 3px; padding: 0; }
+    table.sam-table th.col-qsep { background: rgba(236,72,153,.25); width: 3px; padding: 0; }
+
+    table.sam-table td { padding: 5px 10px; border-bottom: 1px solid var(--border-subtle); text-align: right; color: var(--text-primary); white-space: nowrap; }
+    table.sam-table td.col-name { text-align: left; }
+    table.sam-table td.col-sep, table.sam-table th.col-sep { background: rgba(236,72,153,.15); width: 3px; padding: 0; }
+    table.sam-table td.col-qsep { background: rgba(236,72,153,.08); width: 3px; padding: 0; }
+
+    /* Row types */
+    table.sam-table tr.row-total td { background: var(--hover-bg); font-weight: 700; border-bottom: 2px solid var(--border-medium); }
+    table.sam-table tr.row-total td.col-name { color: var(--text-primary); }
+    table.sam-table tr.row-detail:hover td { background: var(--hover-bg); }
+    table.sam-table tr.row-detail td.col-name { padding-left: 24px; color: var(--text-secondary); }
+
+    /* Budget cells (read-only) */
+    .cell-bud { color: var(--text-secondary); }
+
+    /* Editable new cells */
+    .cell-new { cursor: pointer; min-width: 70px; }
+    .cell-new:hover { background: rgba(236,72,153,.08) !important; }
+    .cell-new input {
+        width: 68px; text-align: right; background: var(--input-bg);
+        border: 1px solid #ec4899; color: var(--text-primary);
+        padding: 3px 6px; border-radius: 4px; font-size: 0.8rem;
+        font-family: inherit; outline: none;
+    }
+
+    /* Variance cells */
+    .cell-var-pos { color: #10b981; font-weight: 600; }
+    .cell-var-neg { color: #ef4444; font-weight: 600; }
+    .cell-var-zero { color: var(--text-secondary); }
+
+    /* Q summary columns */
+    td.col-q, th.col-q { background: rgba(236,72,153,.04); }
+    tr.row-total td.col-q { background: rgba(236,72,153,.1); }
+
+    /* Empty / loading states */
+    .sam-empty { text-align: center; padding: 60px 20px; color: var(--text-secondary); font-size: 0.9rem; }
+    .sam-loading { text-align: center; padding: 40px; color: var(--text-secondary); font-size: 0.85rem; }
+
+    /* Admins panel */
+    .admin-add { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; padding: 12px; background: var(--hover-bg); border: 1px solid var(--border-light); border-radius: 8px; }
+    .admin-add input { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; min-width: 300px; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .data-table th { text-align: left; padding: 9px 10px; background: var(--surface-raised); color: var(--text-secondary); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-medium); }
+    .data-table td { padding: 8px 10px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); }
+    .btn { padding: 8px 18px; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: #ec4899; color: #fff; }
+    .btn-primary:hover { background: #db2777; }
+    .btn-danger { background: rgba(244,67,54,.2); color: #e57373; border: none; padding: 5px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: 600; }
+    .btn-danger:hover { background: rgba(244,67,54,.4); }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 8px; font-size: 0.85rem; color: #fff; z-index: 9999; transition: opacity 0.3s; pointer-events: none; }
+    .toast-success { background: rgba(16,185,129,.9); }
+    .toast-error   { background: rgba(239,68,68,.9); }
+    .toast-warn    { background: rgba(236,72,153,.9); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sam-container">
+    <div class="sam-header">
+        <div class="sam-header-icon"><i class="fa-solid fa-rectangle-ad"></i></div>
+        <h1>SAM Ad Spend Planning</h1>
+    </div>
+
+    <div class="info-blurb" id="blurb-sam">
+        <div class="blurb-header" onclick="toggleBlurb('sam')">
+            <span class="blurb-title">About SAM Ad Spend Planning</span>
+            <span class="blurb-toggle" id="blurbToggle-sam">&#9660;</span>
+        </div>
+        <div class="blurb-body" id="blurbBody-sam">
+            View and update monthly ad spend budgets vs. planned actuals by property and GL code.
+            Select a property and fiscal year, then use the Q1-Q4 tabs to navigate by quarter.
+            Click any <strong>New</strong> cell to enter a revised figure -- changes save automatically.
+            Budget (grey) columns are read-only; grand-total rows recalculate instantly.
+            {% if not is_admin %}<em>You have read-only access to this module.</em>{% endif %}
+        </div>
+    </div>
+
+    <!-- Module tabs -->
+    <div class="sam-tabs">
+        <div class="sam-tab active" onclick="switchTab('planner')">Planner</div>
+        {% if is_admin %}
+        <div class="sam-tab" onclick="switchTab('admins')">Admins</div>
+        {% endif %}
+    </div>
+
+    <!-- ── PLANNER TAB ──────────────────────────────────────────────────────── -->
+    <div id="tab-planner" class="sam-panel active">
+
+        <!-- Controls -->
+        <div class="sam-controls">
+            <label>Property</label>
+            <select id="propSelect" onchange="onPropChange()">
+                <option value="">-- Select Property --</option>
+            </select>
+            <div class="ctrl-sep"></div>
+            <label>Year</label>
+            <select id="yearSelect" onchange="onYearChange()">
+                <option value="">-- Year --</option>
+            </select>
+            <div class="sam-save-indicator" id="saveIndicator">
+                <i class="fa-solid fa-circle-check"></i>
+                <span id="saveMsg">Ready</span>
+            </div>
+        </div>
+
+        <!-- Quarter tabs -->
+        <div class="sam-qtabs">
+            <div class="sam-qtab active" id="qtab-1" onclick="switchQuarter(1)">Q1 &nbsp;Jan-Mar</div>
+            <div class="sam-qtab" id="qtab-2" onclick="switchQuarter(2)">Q2 &nbsp;Apr-Jun</div>
+            <div class="sam-qtab" id="qtab-3" onclick="switchQuarter(3)">Q3 &nbsp;Jul-Sep</div>
+            <div class="sam-qtab" id="qtab-4" onclick="switchQuarter(4)">Q4 &nbsp;Oct-Dec</div>
+        </div>
+
+        <!-- Table -->
+        <div id="tableArea">
+            <div class="sam-empty">Select a property and year to load data.</div>
+        </div>
+
+    </div>
+
+    <!-- ── ADMINS TAB ──────────────────────────────────────────────────────── -->
+    {% if is_admin %}
+    <div id="tab-admins" class="sam-panel">
+        <div class="admin-add">
+            <input type="email" id="newAdminEmail" placeholder="email@peakmade.com">
+            <button class="btn btn-primary" onclick="addAdmin()"><i class="fa-solid fa-plus"></i> Add Admin</button>
+        </div>
+        <table class="data-table">
+            <thead><tr><th>ID</th><th>Email</th><th>Added</th><th></th></tr></thead>
+            <tbody id="adminTableBody"><tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-secondary);">Loading...</td></tr></tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+const IS_ADMIN = {{ 'true' if is_admin else 'false' }};
+const MONTH_NAMES = {{ month_names | tojson }};
+const QUARTER_MONTHS = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] };
+
+let allRows = [];
+let currentPropKey = null;
+let currentYear    = null;
+let currentQuarter = 1;
+let savePending    = false;
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(name) {
+    document.querySelectorAll('.sam-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.sam-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    const tabs = ['planner', 'admins'];
+    const idx = tabs.indexOf(name);
+    const tabEls = document.querySelectorAll('.sam-tab');
+    if (tabEls[idx]) tabEls[idx].classList.add('active');
+    if (name === 'admins') loadAdmins();
+}
+
+// ── Load property and year dropdowns ─────────────────────────────────────────
+fetch('/sam-ad-spend/api/properties')
+    .then(r => r.json())
+    .then(data => {
+        const sel = document.getElementById('propSelect');
+        data.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.key;
+            opt.textContent = p.name;
+            sel.appendChild(opt);
+        });
+    });
+
+fetch('/sam-ad-spend/api/years')
+    .then(r => r.json())
+    .then(data => {
+        const sel = document.getElementById('yearSelect');
+        data.forEach(y => {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = y;
+            sel.appendChild(opt);
+        });
+        // Auto-select current or most recent year
+        const now = new Date().getFullYear();
+        const match = data.find(y => y === now) || data[0];
+        if (match) { sel.value = match; currentYear = match; }
+    });
+
+// ── Property / year change ────────────────────────────────────────────────────
+function onPropChange() {
+    currentPropKey = parseInt(document.getElementById('propSelect').value) || null;
+    if (currentPropKey && currentYear) loadWorktable();
+}
+
+function onYearChange() {
+    currentYear = parseInt(document.getElementById('yearSelect').value) || null;
+    if (currentPropKey && currentYear) loadWorktable();
+}
+
+function loadWorktable() {
+    const area = document.getElementById('tableArea');
+    area.innerHTML = '<div class="sam-loading"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading...</div>';
+    fetch(`/sam-ad-spend/api/worktable?property_key=${currentPropKey}&year=${currentYear}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { area.innerHTML = `<div class="sam-empty">Error: ${esc(data.error)}</div>`; return; }
+            allRows = data;
+            renderTable();
+        })
+        .catch(() => { area.innerHTML = '<div class="sam-empty">Failed to load data.</div>'; });
+}
+
+// ── Quarter tab switching ─────────────────────────────────────────────────────
+function switchQuarter(q) {
+    currentQuarter = q;
+    document.querySelectorAll('.sam-qtab').forEach(t => t.classList.remove('active'));
+    document.getElementById('qtab-' + q).classList.add('active');
+    if (allRows.length) renderTable();
+}
+
+// ── Render the budget table ───────────────────────────────────────────────────
+function renderTable() {
+    const area   = document.getElementById('tableArea');
+    const months = QUARTER_MONTHS[currentQuarter];   // e.g. [4,5,6]
+    const qn     = currentQuarter;
+
+    if (!allRows.length) {
+        area.innerHTML = '<div class="sam-empty">No data found for this property / year.</div>';
+        return;
+    }
+
+    // Build column header
+    let th = '<tr>';
+    th += '<th class="col-name">GL Line Item</th>';
+    months.forEach(m => {
+        th += `<th class="cell-bud">${MONTH_NAMES[m-1]} Bud</th>`;
+        th += `<th>${MONTH_NAMES[m-1]} New</th>`;
+        th += `<th class="col-qsep"></th>`;
+    });
+    th += `<th class="col-q">Q${qn} Budget</th>`;
+    th += `<th class="col-q">Q${qn} New</th>`;
+    th += `<th class="col-q">Q${qn} Variance</th>`;
+    th += '</tr>';
+
+    // Build rows
+    let tbody = '';
+    allRows.forEach(row => {
+        const isTotal = row.ROW_HEADER_LEVEL === 0;
+        const cls     = isTotal ? 'row-total' : 'row-detail';
+        tbody += `<tr class="${cls}" data-gl-key="${esc(String(row.GL_KEY))}" data-gl-code="${esc(String(row.GL_CODE))}">`;
+        tbody += `<td class="col-name">${esc(row.ROW_HEADER_INDENTED || row.GL_NAME || '')}</td>`;
+
+        months.forEach(m => {
+            const bud = row[`BUD_${m}`] || 0;
+            const nw  = row[`NEW_${m}`] || 0;
+            tbody += `<td class="cell-bud">${fmt(bud)}</td>`;
+            if (isTotal || !IS_ADMIN) {
+                tbody += `<td class="cell-new-ro">${fmt(nw)}</td>`;
+            } else {
+                tbody += `<td class="cell-new" data-month="${m}" data-value="${nw}" onclick="startEdit(this)">${fmt(nw)}</td>`;
+            }
+            tbody += `<td class="col-qsep"></td>`;
+        });
+
+        const qBud = row[`Q_BUD_${qn}`] || 0;
+        const qNew = row[`Q_NEW_${qn}`] || 0;
+        const qVar = row[`Q_VARIANCE_${qn}`] || 0;
+        const varCls = qVar > 0 ? 'cell-var-pos' : qVar < 0 ? 'cell-var-neg' : 'cell-var-zero';
+        tbody += `<td class="col-q">${fmt(qBud)}</td>`;
+        tbody += `<td class="col-q">${fmt(qNew)}</td>`;
+        tbody += `<td class="col-q ${varCls}">${fmt(qVar)}</td>`;
+        tbody += '</tr>';
+    });
+
+    area.innerHTML = `
+        <div class="sam-table-wrap">
+            <table class="sam-table">
+                <thead>${th}</thead>
+                <tbody>${tbody}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+// ── Inline cell editing ───────────────────────────────────────────────────────
+function startEdit(td) {
+    if (td.querySelector('input')) return;
+    const val = parseFloat(td.dataset.value) || 0;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = val === 0 ? '' : String(val);
+    input.placeholder = '0';
+    td.innerHTML = '';
+    td.appendChild(input);
+    input.focus();
+    input.select();
+
+    input.addEventListener('blur', () => commitEdit(td, input));
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { input.blur(); }
+        if (e.key === 'Escape') { cancelEdit(td, val); }
+        if (e.key === 'Tab') { input.blur(); }
+    });
+}
+
+function cancelEdit(td, origVal) {
+    td.innerHTML = fmt(origVal);
+    td.dataset.value = origVal;
+}
+
+function commitEdit(td, input) {
+    const newVal = parseFloat(input.value) || 0;
+    const origVal = parseFloat(td.dataset.value) || 0;
+    td.innerHTML = fmt(newVal);
+    td.dataset.value = newVal;
+
+    if (Math.abs(newVal - origVal) < 0.001) return;  // no change
+
+    const tr     = td.closest('tr');
+    const glKey  = tr.dataset.glKey;
+    const glCode = tr.dataset.glCode;
+    const month  = parseInt(td.dataset.month);
+
+    // Optimistic: update allRows
+    const rowObj = allRows.find(r => String(r.GL_KEY) === glKey);
+    if (rowObj) rowObj[`NEW_${month}`] = newVal;
+
+    // Recalculate grand-total row client-side
+    recalcTotalRow(glCode, month);
+
+    // Persist to server
+    setSaveState('saving');
+    fetch('/sam-ad-spend/api/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gl_key: glKey, property_key: currentPropKey, year: currentYear, month, value: newVal })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.error) { setSaveState('error', d.error); }
+        else { setSaveState('saved'); }
+    })
+    .catch(() => setSaveState('error', 'Network error'));
+}
+
+function recalcTotalRow(glCode, month) {
+    const qn      = currentQuarter;
+    const qMonths = QUARTER_MONTHS[qn];
+
+    // Find detail rows for this GL_CODE
+    const detailRows = allRows.filter(r => String(r.GL_CODE) === String(glCode) && r.ROW_HEADER_LEVEL !== 0);
+    const totalRow   = allRows.find(r => String(r.GL_CODE) === String(glCode) && r.ROW_HEADER_LEVEL === 0);
+    if (!totalRow) return;
+
+    // Recalculate Q_NEW and Q_VARIANCE for affected quarter
+    const qNewSum = detailRows.reduce((s, r) => s + qMonths.reduce((qs, m) => qs + (r[`NEW_${m}`] || 0), 0), 0);
+    const qBud    = totalRow[`Q_BUD_${qn}`] || 0;
+    totalRow[`Q_NEW_${qn}`]      = qNewSum;
+    totalRow[`Q_VARIANCE_${qn}`] = qBud - qNewSum;
+
+    // Re-render to reflect updated totals
+    renderTable();
+}
+
+// ── Save state indicator ──────────────────────────────────────────────────────
+let saveTimer = null;
+function setSaveState(state, msg) {
+    const el  = document.getElementById('saveIndicator');
+    const txt = document.getElementById('saveMsg');
+    el.className = 'sam-save-indicator ' + state;
+    const icons = { saving: 'fa-circle-notch fa-spin', saved: 'fa-circle-check', error: 'fa-triangle-exclamation' };
+    const msgs  = { saving: 'Saving...', saved: 'Saved', error: msg || 'Save error' };
+    el.querySelector('i').className = `fa-solid ${icons[state]}`;
+    txt.textContent = msgs[state];
+    clearTimeout(saveTimer);
+    if (state === 'saved') saveTimer = setTimeout(() => setSaveState('ready'), 3000);
+}
+
+// ── Admins ────────────────────────────────────────────────────────────────────
+function loadAdmins() {
+    fetch('/sam-ad-spend/api/admins').then(r => r.json()).then(data => {
+        if (!data.length) {
+            document.getElementById('adminTableBody').innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-secondary);">No admins.</td></tr>';
+            return;
+        }
+        document.getElementById('adminTableBody').innerHTML = data.map(a => `
+            <tr>
+                <td>${a.id}</td>
+                <td>${esc(a.email)}</td>
+                <td>${fmtDate(a.created)}</td>
+                <td><button class="btn-danger" onclick="removeAdmin(${a.id})"><i class="fa-solid fa-trash"></i></button></td>
+            </tr>
+        `).join('');
+    });
+}
+
+function addAdmin() {
+    const email = document.getElementById('newAdminEmail').value.trim();
+    if (!email) return;
+    fetch('/sam-ad-spend/api/admins', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email}) })
+        .then(r => r.json()).then(d => {
+            if (d.success) { document.getElementById('newAdminEmail').value = ''; loadAdmins(); showToast('Admin added.','success'); }
+            else showToast(d.error || 'Error.','error');
+        });
+}
+
+function removeAdmin(id) {
+    if (!confirm('Remove this admin?')) return;
+    fetch('/sam-ad-spend/api/admins/' + id, { method:'DELETE' }).then(() => { loadAdmins(); showToast('Admin removed.','success'); });
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function fmt(v) {
+    const n = parseFloat(v) || 0;
+    if (n === 0) return '<span style="color:var(--text-muted,#6b7280)">--</span>';
+    return n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtDate(s) {
+    if (!s) return '';
+    try { return new Date(s).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}); }
+    catch { return s; }
+}
+
+function showToast(msg, type) {
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity='0'; setTimeout(() => t.remove(), 350); }, 3500);
+}
+</script>
+{% endblock %}

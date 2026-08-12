@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market Benchmark — AppHub 4.0 Redesign Mockup</title>
+<style>
+/* ===== APPHUB 4.0 DESIGN SYSTEM ===== */
+:root {
+    --nav-bg: #0f1729;
+    --nav-bg-dark: #0a0f1e;
+    --nav-text: #e2e8f0;
+    --nav-active-bg: rgba(59,130,246,0.15);
+    --nav-active-border: #3b82f6;
+    --nav-hover: #1a2744;
+    --accent-cyan: #67e8e0;
+    --accent-blue: #64b5f6;
+    --accent-gold: #fbbf24;
+    --content-bg: #111b2e;
+    --content-header: #162035;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --border-radius: 6px;
+    --nav-width: 220px;
+    --border: #1e3a5f;
+    --card-bg: #1c2d4a;
+    --surface-raised: #162035;
+    --input-bg: rgba(255,255,255,0.05);
+    --hover-bg: rgba(255,255,255,0.03);
+    --hover-bg-strong: rgba(255,255,255,0.08);
+    --border-subtle: rgba(255,255,255,0.04);
+    --border-light: rgba(255,255,255,0.06);
+    --border-medium: rgba(255,255,255,0.08);
+    --border-input: rgba(255,255,255,0.12);
+    --border-input-heavy: rgba(255,255,255,0.2);
+    --shadow-overlay: rgba(0,0,0,0.5);
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--content-bg); color: var(--text-primary); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+/* ===== DESIGN NOTES BANNER ===== */
+.design-notes-bar { background: linear-gradient(90deg, #7c3aed, #4f46e5); color: #fff; padding: 0; font-size: 0.78rem; flex-shrink: 0; }
+.design-notes-header { display: flex; align-items: center; padding: 7px 16px; gap: 12px; cursor: pointer; user-select: none; }
+.design-notes-header:hover { background: rgba(255,255,255,0.06); }
+.design-notes-header strong { font-size: 0.82rem; }
+.design-notes-header span.toggle-hint { opacity: 0.7; font-size: 0.72rem; margin-left: auto; }
+.design-notes-body { padding: 12px 20px 14px; border-top: 1px solid rgba(255,255,255,0.15); display: grid; grid-template-columns: repeat(3,1fr); gap: 10px 20px; background: rgba(0,0,0,0.25); }
+.design-notes-body.collapsed { display: none; }
+.note-card { background: rgba(255,255,255,0.06); border-radius: 6px; padding: 9px 12px; }
+.note-card h4 { margin: 0 0 5px; font-size: 0.75rem; color: #a5f3fc; text-transform: uppercase; letter-spacing: 0.5px; }
+.note-card p, .note-card ul { margin: 0; font-size: 0.72rem; line-height: 1.55; opacity: 0.9; }
+.note-card ul { padding-left: 14px; }
+
+/* ===== APP SHELL ===== */
+.apphub-shell { display: flex; flex: 1; min-height: 0; }
+
+/* ===== LEFT APP NAV ===== */
+.apphub-nav { width: var(--nav-width); background: var(--nav-bg); border-right: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+.nav-logo { padding: 14px 16px 10px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.nav-logo .logo-text { font-size: 0.95rem; font-weight: 800; color: var(--accent-cyan); letter-spacing: 0.5px; }
+.nav-logo .logo-sub { font-size: 0.65rem; color: var(--text-secondary); margin-top: 1px; }
+.nav-section-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.3); padding: 12px 16px 4px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer; border-left: 3px solid transparent; transition: all 0.15s; }
+.nav-item:hover { background: var(--nav-hover); color: var(--nav-text); }
+.nav-item.active { background: var(--nav-active-bg); color: var(--accent-cyan); border-left-color: var(--accent-cyan); font-weight: 600; }
+.nav-item .nav-dot { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; }
+.nav-spacer { flex: 1; }
+.nav-user { padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 0.75rem; color: var(--text-secondary); }
+
+/* ===== MAIN AREA ===== */
+.main-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+/* ===== MODULE HEADER ===== */
+.module-header { background: var(--content-header); border-bottom: 1px solid var(--border-medium); padding: 12px 20px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.module-header .module-icon { width: 36px; height: 36px; border-radius: 8px; background: rgba(103,232,224,0.15); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: var(--accent-cyan); }
+.module-header h1 { margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--text-primary); }
+.module-header .subject-pill { background: rgba(103,232,224,0.1); border: 1px solid rgba(103,232,224,0.25); border-radius: 20px; padding: 4px 12px; font-size: 0.78rem; font-weight: 600; color: var(--accent-cyan); display: flex; align-items: center; gap: 6px; }
+.module-header .subject-pill .pill-label { color: var(--text-secondary); font-weight: 400; }
+.module-header .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.btn { padding: 6px 14px; border: none; border-radius: 4px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-primary { background: var(--accent-cyan); color: #0f1729; }
+.btn-primary:hover { opacity: 0.85; }
+.btn-secondary { background: var(--hover-bg-strong); color: var(--text-secondary); border: 1px solid var(--border-input); }
+.btn-secondary:hover { color: var(--text-primary); }
+.btn-danger { background: rgba(244,67,54,0.15); color: #e57373; border: 1px solid rgba(244,67,54,0.25); }
+.btn-danger:hover { background: rgba(244,67,54,0.3); }
+.btn-sm { padding: 4px 10px; font-size: 0.7rem; }
+.btn-icon { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px 6px; border-radius: 4px; font-size: 0.9rem; transition: color 0.15s; }
+.btn-icon:hover { color: var(--accent-cyan); }
+
+/* ===== TAB BAR ===== */
+.tab-bar { display: flex; gap: 0; border-bottom: 2px solid var(--border-medium); flex-shrink: 0; padding: 0 20px; background: var(--content-header); }
+.tab { padding: 10px 18px; font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+.tab:hover { color: var(--text-primary); }
+.tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
+.tab .tab-count { background: rgba(255,255,255,0.08); color: var(--text-secondary); padding: 1px 6px; border-radius: 8px; font-size: 0.65rem; font-weight: 700; }
+.tab.active .tab-count { background: rgba(103,232,224,0.15); color: var(--accent-cyan); }
+
+/* ===== CONTENT BODY (three-column) ===== */
+.content-body { flex: 1; display: flex; min-height: 0; }
+
+/* ===== LEFT COMP PANEL ===== */
+.comp-panel { width: 230px; flex-shrink: 0; border-right: 1px solid var(--border-medium); background: var(--nav-bg); display: flex; flex-direction: column; }
+.comp-panel-header { padding: 10px 12px 6px; border-bottom: 1px solid var(--border-medium); }
+.comp-panel-header .cp-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); font-weight: 700; margin-bottom: 6px; }
+.comp-search { width: 100%; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 6px 10px; border-radius: 5px; font-size: 0.78rem; }
+.comp-search::placeholder { color: var(--text-secondary); }
+.comp-search:focus { border-color: var(--accent-cyan); outline: none; }
+.comp-list { flex: 1; overflow-y: auto; padding: 4px 0; }
+.comp-section-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.3); padding: 8px 12px 3px; }
+.comp-item { display: flex; align-items: center; gap: 8px; padding: 7px 12px; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer; border-left: 3px solid transparent; transition: all 0.15s; }
+.comp-item:hover { background: var(--hover-bg-strong); color: var(--text-primary); }
+.comp-item.active { background: rgba(103,232,224,0.07); color: var(--accent-cyan); border-left-color: var(--accent-cyan); font-weight: 600; }
+.comp-item .comp-rank { font-size: 0.65rem; color: rgba(255,255,255,0.25); min-width: 16px; font-weight: 700; flex-shrink: 0; }
+.comp-item.active .comp-rank { color: rgba(103,232,224,0.5); }
+.comp-item .comp-drag { color: rgba(255,255,255,0.15); font-size: 0.7rem; cursor: grab; flex-shrink: 0; }
+.comp-item:hover .comp-drag { color: rgba(255,255,255,0.35); }
+.comp-item .comp-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.comp-item .comp-badge { font-size: 0.58rem; font-weight: 700; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; }
+.comp-item .comp-badge.self { background: rgba(103,232,224,0.15); color: var(--accent-cyan); }
+.comp-add { padding: 8px 10px; border-top: 1px solid var(--border-medium); }
+.comp-add button { width: 100%; text-align: center; }
+
+/* ===== TAB PANELS ===== */
+.tab-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-width: 0; position: relative; }
+.tab-panel { display: none; flex: 1; flex-direction: column; overflow-y: auto; padding: 20px; }
+.tab-panel.active { display: flex; }
+
+/* ===== INFO BLURB ===== */
+.info-blurb { background: rgba(103,232,224,0.04); border: 1px solid rgba(103,232,224,0.12); border-radius: 8px; margin-bottom: 16px; font-size: 0.78rem; color: var(--text-secondary); line-height: 1.55; overflow: hidden; flex-shrink: 0; }
+.blurb-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 13px; cursor: pointer; user-select: none; }
+.blurb-header:hover { background: rgba(103,232,224,0.05); }
+.blurb-title { font-weight: 700; color: var(--text-primary); font-size: 0.8rem; display: flex; align-items: center; gap: 6px; }
+.blurb-title .blurb-icon { color: var(--accent-cyan); }
+.blurb-toggle { font-size: 0.65rem; color: var(--text-secondary); }
+.blurb-body { padding: 0 13px 10px; }
+.blurb-body.collapsed { display: none; }
+
+/* ===== FILTER BAR ===== */
+.filter-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; flex-shrink: 0; }
+.filter-bar input, .filter-bar select { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 7px 11px; border-radius: 5px; font-size: 0.8rem; font-family: inherit; }
+.filter-bar input { min-width: 200px; }
+.filter-bar input::placeholder { color: var(--text-secondary); }
+.filter-bar select option { background: #162035; color: var(--text-primary); }
+.filter-bar input:focus, .filter-bar select:focus { border-color: var(--accent-cyan); outline: none; }
+.count-label { font-size: 0.72rem; color: var(--text-secondary); margin-left: auto; }
+
+/* ===== DATA TABLE ===== */
+.table-scroll { flex: 1; overflow: auto; border: 1px solid var(--border-light); border-radius: 6px; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.data-table th { text-align: left; padding: 9px 12px; background: var(--surface-raised); color: var(--text-secondary); font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-medium); position: sticky; top: 0; z-index: 2; white-space: nowrap; cursor: pointer; }
+.data-table th:hover { color: var(--text-primary); }
+.data-table td { padding: 7px 12px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); white-space: nowrap; }
+.data-table tr:hover td { background: var(--hover-bg); }
+.data-table tr.selected td { background: rgba(103,232,224,0.06); border-left: 3px solid var(--accent-cyan); }
+.data-table tr { cursor: pointer; transition: background 0.1s; }
+
+/* ===== BADGES ===== */
+.badge { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.3px; }
+.badge-active { background: rgba(76,175,80,0.2); color: #81c784; border: 1px solid rgba(76,175,80,0.3); }
+.badge-inactive { background: rgba(148,163,184,0.12); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
+.badge-sold-out { background: rgba(244,67,54,0.15); color: #e57373; border: 1px solid rgba(244,67,54,0.25); }
+.badge-subject { background: rgba(103,232,224,0.15); color: var(--accent-cyan); border: 1px solid rgba(103,232,224,0.25); }
+.badge-comp { background: rgba(100,181,246,0.15); color: var(--accent-blue); border: 1px solid rgba(100,181,246,0.25); }
+
+/* ===== FORM FIELDS (Data Entry style) ===== */
+.form-section { margin-bottom: 20px; }
+.form-section-header { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--accent-cyan); font-weight: 700; padding-bottom: 6px; border-bottom: 1px solid var(--border-medium); margin-bottom: 10px; }
+.field-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px 16px; }
+.field-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+.field-label { width: 160px; flex-shrink: 0; font-size: 0.78rem; color: var(--text-secondary); font-weight: 600; }
+.field-val { flex: 1; }
+.field-val input, .field-val select, .field-val textarea { width: 100%; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 6px 10px; border-radius: 4px; font-size: 0.82rem; font-family: inherit; transition: border-color 0.15s; }
+.field-val input:focus, .field-val select:focus, .field-val textarea:focus { border-color: var(--accent-cyan); outline: none; }
+.field-val select option { background: #162035; }
+.field-val .readonly { background: transparent; border-color: transparent; color: var(--text-secondary); cursor: default; padding: 6px 0; }
+
+/* ===== DETAIL SLIDE-OUT ===== */
+.detail-overlay { display: none; position: absolute; top: 0; right: 0; bottom: 0; width: 520px; max-width: 85%; background: var(--surface-raised); border-left: 2px solid var(--accent-cyan); z-index: 20; flex-direction: column; box-shadow: -4px 0 24px rgba(0,0,0,0.5); }
+.detail-overlay.open { display: flex; }
+.detail-resize-handle { position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; cursor: ew-resize; background: transparent; z-index: 21; }
+.detail-resize-handle:hover { background: rgba(103,232,224,0.3); }
+.detail-sticky-head { position: sticky; top: 0; z-index: 10; background: var(--surface-raised); border-bottom: 2px solid var(--border-medium); padding: 12px 14px 10px; flex-shrink: 0; }
+.detail-prop-name { font-size: 0.72rem; color: var(--accent-cyan); font-weight: 600; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.4px; }
+.detail-fp-name { font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
+.detail-meta-row { display: flex; align-items: center; gap: 10px; }
+.detail-close { position: absolute; top: 10px; right: 12px; background: none; border: none; color: var(--text-secondary); font-size: 1.4rem; cursor: pointer; padding: 2px 6px; border-radius: 4px; line-height: 1; }
+.detail-close:hover { color: var(--text-primary); background: var(--hover-bg-strong); }
+.detail-body { flex: 1; overflow-y: auto; padding: 6px 0; }
+.detail-section { border-bottom: 1px solid var(--border-medium); }
+.detail-section-head { display: flex; align-items: center; gap: 8px; padding: 9px 14px; cursor: pointer; user-select: none; background: rgba(255,255,255,0.02); }
+.detail-section-head:hover { background: var(--hover-bg); }
+.detail-section-head h3 { margin: 0; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-cyan); flex: 1; font-weight: 700; }
+.detail-section-head .chevron { font-size: 0.65rem; color: var(--text-secondary); transition: transform 0.2s; }
+.detail-section-head.collapsed .chevron { transform: rotate(-90deg); }
+.detail-section-body { padding: 6px 14px 10px; }
+.detail-section-body.collapsed { display: none; }
+.detail-field { display: flex; align-items: center; padding: 4px 0; font-size: 0.82rem; }
+.detail-field-label { width: 180px; flex-shrink: 0; color: var(--text-secondary); font-weight: 600; font-size: 0.78rem; }
+.detail-field-val { flex: 1; }
+.detail-field-val input, .detail-field-val select, .detail-field-val textarea { width: 100%; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 5px 8px; border-radius: 4px; font-size: 0.82rem; font-family: inherit; }
+.detail-field-val input:focus, .detail-field-val select:focus { border-color: var(--accent-cyan); outline: none; }
+.detail-field-val select option { background: #162035; }
+.detail-activate-row { padding: 12px 14px; border-top: 1px solid var(--border-medium); flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.modified-by { font-size: 0.7rem; color: var(--text-secondary); }
+
+/* ===== DRAG REORDER LIST (Assign Comps) ===== */
+.reorder-list { display: flex; flex-direction: column; gap: 3px; }
+.reorder-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface-raised); border: 1px solid var(--border-light); border-radius: 5px; font-size: 0.82rem; cursor: grab; transition: border-color 0.15s; }
+.reorder-item:hover { border-color: var(--border-input); }
+.reorder-item.dragging { opacity: 0.4; border-color: var(--accent-cyan); }
+.reorder-item .drag-grip { color: rgba(255,255,255,0.25); font-size: 0.85rem; cursor: grab; flex-shrink: 0; }
+.reorder-item .order-num { font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); width: 20px; text-align: right; flex-shrink: 0; }
+.reorder-item .item-name { flex: 1; font-weight: 600; color: var(--text-primary); }
+.reorder-item .item-market { font-size: 0.72rem; color: var(--text-secondary); }
+.reorder-item .item-actions { display: flex; gap: 4px; margin-left: auto; }
+
+/* ===== EMPTY STATE ===== */
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; color: var(--text-secondary); font-size: 0.85rem; gap: 8px; padding: 40px; text-align: center; }
+.empty-state .empty-icon { font-size: 2rem; opacity: 0.3; }
+
+/* ===== KPI CARDS (Markets tab) ===== */
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-bottom: 18px; flex-shrink: 0; }
+.kpi-card { background: var(--surface-raised); border: 1px solid var(--border-light); border-radius: 8px; padding: 12px 16px; }
+.kpi-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); font-weight: 700; margin-bottom: 4px; }
+.kpi-val { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); line-height: 1.1; }
+.kpi-sub { font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px; }
+.kpi-delta { font-size: 0.72rem; font-weight: 700; margin-top: 3px; }
+.kpi-delta.up { color: #81c784; }
+.kpi-delta.down { color: #e57373; }
+
+/* ===== QUICK-ADD FORM ===== */
+.quick-add { background: var(--surface-raised); border: 1px solid var(--border-light); border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; flex-shrink: 0; }
+.quick-add .qa-field { display: flex; flex-direction: column; gap: 3px; }
+.quick-add .qa-field label { font-size: 0.68rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+.quick-add .qa-field input, .quick-add .qa-field select { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 6px 10px; border-radius: 4px; font-size: 0.8rem; font-family: inherit; }
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* ===== ANNOTATION TOOLTIPS ===== */
+.annotation { position: relative; cursor: help; }
+.annotation::before { content: "●"; color: #a78bfa; font-size: 0.6rem; margin-right: 3px; }
+.annotation-tip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #2d1b69; border: 1px solid #7c3aed; color: #e9d5ff; padding: 8px 12px; border-radius: 6px; font-size: 0.72rem; line-height: 1.5; white-space: nowrap; z-index: 999; box-shadow: 0 4px 16px rgba(0,0,0,0.5); pointer-events: none; max-width: 280px; white-space: normal; }
+.annotation:hover .annotation-tip { display: block; }
+
+/* ===== INLINE TOGGLES ===== */
+.toggle-wrap { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--text-secondary); }
+input[type="checkbox"].toggle { width: 16px; height: 16px; accent-color: var(--accent-cyan); cursor: pointer; }
+</style>
+</head>
+<body>
+
+<!-- ===== DESIGN NOTES BANNER ===== -->
+<div class="design-notes-bar">
+    <div class="design-notes-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+        <strong>🎨 Redesign Mockup — Market Benchmark for AppHub 4.0</strong>
+        <span style="font-size:0.72rem; opacity:0.8;">This is a static HTML prototype. Hover purple ● dots for design annotations.</span>
+        <span class="toggle-hint">Click to expand/collapse notes ▼</span>
+    </div>
+    <div class="design-notes-body">
+        <div class="note-card">
+            <h4>Left Comp Panel</h4>
+            <p>The comp list is promoted from a flat list to a <strong>persistent left panel</strong> — always visible regardless of which tab is active. Clicking a comp name changes the subject for all tabs simultaneously. The current subject property appears in the module header pill.</p>
+        </div>
+        <div class="note-card">
+            <h4>Tab Bar + Header</h4>
+            <p>Tabs match AppHub's standard pattern (cyan underline, uppercase labels). The <strong>subject property pill</strong> in the header always shows what you're viewing. Switching subjects from the comp panel auto-updates all tabs — no dropdown hunting.</p>
+        </div>
+        <div class="note-card">
+            <h4>Floor Plans → Data Table</h4>
+            <p>Floor plans use the AppHub <strong>data-table</strong> pattern instead of a custom grid. Column widths are uniform. Clicking a row opens the slide-out (matching PDM's detail overlay). Auto-save on blur. Collapsible sections.</p>
+        </div>
+        <div class="note-card">
+            <h4>Assign Comps → Drag List</h4>
+            <p>Comps are shown as a <strong>drag-to-reorder list</strong> with explicit ⠿ grip handles — same pattern as AppHub maintenance module registry. Add via inline search typeahead. Remove via trash button on hover.</p>
+        </div>
+        <div class="note-card">
+            <h4>Markets Tab → KPI Cards</h4>
+            <p>Aggregated market data is displayed as <strong>KPI summary cards</strong> at the top (occupancy, rent, prelease, concessions) with a detailed comparison table below — matching AppHub's usage log analytics pattern.</p>
+        </div>
+        <div class="note-card">
+            <h4>Quick-Add + Filter Bar</h4>
+            <p>Each tab has a <strong>Quick Add</strong> form and filter bar matching AppHub standards. "Show inactive" checkbox is consistent across tabs. Column selector gear on tables follows PDM pattern.</p>
+        </div>
+    </div>
+</div>
+
+<!-- ===== APP SHELL ===== -->
+<div class="apphub-shell">
+
+    <!-- Left AppHub Nav -->
+    <nav class="apphub-nav">
+        <div class="nav-logo">
+            <div class="logo-text">⬡ Peak AppHub</div>
+            <div class="logo-sub">v4.0 — Development</div>
+        </div>
+        <div class="nav-section-label">Tools</div>
+        <div class="nav-item"><div class="nav-dot" style="background:#1a2744">⊞</div> Dashboard</div>
+        <div class="nav-item"><div class="nav-dot" style="background:#1a3a2a">📊</div> Property Data Mgr</div>
+        <div class="nav-item active"><div class="nav-dot" style="background:#1a2e44; color:var(--accent-cyan);">🏢</div> Market Benchmark</div>
+        <div class="nav-item"><div class="nav-dot" style="background:#2a1a3a">👤</div> Employee Data Mgr</div>
+        <div class="nav-item"><div class="nav-dot" style="background:#2a2a1a">⚙️</div> App Maintenance</div>
+        <div class="nav-item"><div class="nav-dot" style="background:#1a1a3a">🔗</div> PeakLink</div>
+        <div class="nav-item"><div class="nav-dot" style="background:#2a1a1a">📅</div> Rent Forecast</div>
+        <div class="nav-spacer"></div>
+        <div class="nav-user">👤 Craig Pellegrino</div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-area">
+
+        <!-- Module Header -->
+        <div class="module-header">
+            <div class="module-icon">🏢</div>
+            <h1>Market Benchmark</h1>
+            <div class="subject-pill annotation">
+                <span class="pill-label">Subject:</span>
+                48 West
+                <span class="annotation-tip">The subject property drives all data in every tab. Change it by clicking a property in the left nav or searching from the comp panel.</span>
+            </div>
+            <div class="header-right">
+                <span style="font-size:0.72rem; color:var(--text-secondary);">Market: Tallahassee, FL</span>
+                <button class="btn btn-secondary btn-sm">⚙ Settings</button>
+                <button class="btn btn-primary btn-sm">+ New Benchmark</button>
+            </div>
+        </div>
+
+        <!-- Tab Bar -->
+        <div class="tab-bar">
+            <div class="tab active" onclick="switchTab('data-entry',this)">Data Entry</div>
+            <div class="tab" onclick="switchTab('schools',this)">Schools <span class="tab-count">3</span></div>
+            <div class="tab" onclick="switchTab('markets',this)">Markets</div>
+            <div class="tab" onclick="switchTab('comps',this)">Comps <span class="tab-count">8</span></div>
+            <div class="tab" onclick="switchTab('assign-comps',this)">Assign Comps <span class="tab-count">8</span></div>
+            <div class="tab" onclick="switchTab('floor-plans',this)">Floor Plans <span class="tab-count">12</span></div>
+        </div>
+
+        <!-- Three-column body: comp panel + tab content -->
+        <div class="content-body">
+
+            <!-- LEFT: Comp Panel -->
+            <div class="comp-panel">
+                <div class="comp-panel-header">
+                    <div class="cp-title annotation">Comp Properties
+                        <span class="annotation-tip">The comp panel is always visible. Click any comp to load its data in the active tab. Drag to reorder — order here reflects the Assign Comps ranking.</span>
+                    </div>
+                    <input class="comp-search" type="text" placeholder="Search comps...">
+                </div>
+                <div class="comp-list">
+                    <div class="comp-section-label">Subject</div>
+                    <div class="comp-item active">
+                        <span class="comp-rank">—</span>
+                        <span class="comp-drag">⠿</span>
+                        <span class="comp-name">48 West</span>
+                        <span class="comp-badge self">Self</span>
+                    </div>
+                    <div class="comp-section-label">Assigned Comps</div>
+                    <div class="comp-item" onclick="selectComp(this)">
+                        <span class="comp-rank">#1</span>
+                        <span class="comp-drag">⠿</span>
+                        <span class="comp-name">Seminole Pointe</span>
+                    </div>
+                    <div class="comp-item" onclick="selectComp(this)">
+                        <span class="comp-rank">#2</span>
+                        <span class="comp-drag">⠿</span>
+                        <span class="comp-name">Legacy at FSU</span>
+                    </div>
+                    <div class="comp-item" onclick="selectComp(this)">
+                        <span class="comp-rank">#3</span>
+                        <span class="comp-drag">⠿</span>
+                        <span class="comp-name">University House</span>
+                    </div>
+                    <div class="comp-item" onclick="selectComp(this)">
+                        <span class="comp-rank">#4</span>
+                        <span class="comp-drag">⠿</span>
+                        <span class="comp-name">The Hub Tallahassee</span>
+                    </div>
+                    <div class="comp-item" onclick="selectComp(this)">
+                        <span class="comp-rank">#5</span>
+                        <span class="comp-drag">⠿</span>
+                        <span class="comp-name">Collegiate Village</span>
+                    </div>
+                    <div class="comp-item" onclick="selectComp(this)">
+                        <span class="comp-rank">#6</span>
+                        <span class="comp-drag">⠿</span>
+                        <span class="comp-name">Palmetto Place</span>
+                    </div>
+                    <div class="comp-item" onclick="selectComp(this)">
+                        <span class="comp-rank">#7</span>
+                        <span class="comp-drag">⠿</span>
+                        <span class="comp-name">Stadium Centre</span>
+                    </div>
+                    <div class="comp-item" onclick="selectComp(this)">
+                        <span class="comp-rank">#8</span>
+                        <span class="comp-drag">⠿</span>
+                        <span class="comp-name">The Standard at Tallahassee</span>
+                    </div>
+                </div>
+                <div class="comp-add">
+                    <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="alert('Design: Opens a typeahead search for any active comp property.')">+ Add Comp</button>
+                </div>
+            </div>
+
+            <!-- RIGHT: Tab Content -->
+            <div class="tab-content">
+
+                <!-- ===== DATA ENTRY TAB ===== -->
+                <div class="tab-panel active" id="panel-data-entry">
+                    <div class="info-blurb">
+                        <div class="blurb-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+                            <span class="blurb-title"><span class="blurb-icon">ℹ</span> About Data Entry</span>
+                            <span class="blurb-toggle">▲</span>
+                        </div>
+                        <div class="blurb-body">
+                            Core property attributes for the <strong>selected comp</strong> (shown in the left panel). All fields auto-save on blur. Fields highlighted in orange are sourced externally and require an override to edit.
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <div class="form-section-header">Property Identity</div>
+                        <div class="field-grid">
+                            <div class="field-row">
+                                <span class="field-label">Property Name</span>
+                                <div class="field-val"><input type="text" value="48 West"></div>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-label">Short Name</span>
+                                <div class="field-val"><input type="text" value="48W"></div>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-label">Address</span>
+                                <div class="field-val"><input type="text" value="48 West Jefferson St"></div>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-label">City / State</span>
+                                <div class="field-val"><input type="text" value="Tallahassee, FL"></div>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-label">Year Built</span>
+                                <div class="field-val"><input type="number" value="2018"></div>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-label">Total Units</span>
+                                <div class="field-val"><input type="number" value="256"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <div class="form-section-header">Market Classification</div>
+                        <div class="field-grid">
+                            <div class="field-row">
+                                <span class="field-label">Market</span>
+                                <div class="field-val">
+                                    <select>
+                                        <option selected>Tallahassee, FL</option>
+                                        <option>Gainesville, FL</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-label">University</span>
+                                <div class="field-val"><input type="text" value="Florida State University"></div>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-label">Walk Score</span>
+                                <div class="field-val"><input type="number" value="82"></div>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-label">Distance to Campus</span>
+                                <div class="field-val"><input type="text" value="0.3 mi"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <div class="form-section-header">Flags</div>
+                        <div class="field-grid">
+                            <div class="field-row">
+                                <span class="field-label">Active Comp</span>
+                                <div class="field-val"><label class="toggle-wrap"><input type="checkbox" class="toggle" checked> Yes</label></div>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-label">Has Shuttle</span>
+                                <div class="field-val"><label class="toggle-wrap"><input type="checkbox" class="toggle"> No</label></div>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-label">Furnished Option</span>
+                                <div class="field-val"><label class="toggle-wrap"><input type="checkbox" class="toggle" checked> Yes</label></div>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-label">Short-Term Available</span>
+                                <div class="field-val"><label class="toggle-wrap"><input type="checkbox" class="toggle"> No</label></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== SCHOOLS TAB ===== -->
+                <div class="tab-panel" id="panel-schools">
+                    <div class="info-blurb">
+                        <div class="blurb-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+                            <span class="blurb-title"><span class="blurb-icon">ℹ</span> About Schools</span>
+                            <span class="blurb-toggle">▲</span>
+                        </div>
+                        <div class="blurb-body">
+                            School proximity ratings for the selected comp. Drives the university affinity segment in reports. Click a row to edit distance, rating, and shuttle availability.
+                        </div>
+                    </div>
+                    <div class="filter-bar">
+                        <input type="text" placeholder="Search schools...">
+                        <span class="count-label annotation">3 schools
+                            <span class="annotation-tip">Count shows schools linked to this comp. Schools are per-comp — switching the comp panel selection updates this list.</span>
+                        </span>
+                        <button class="btn btn-primary btn-sm" onclick="alert('Design: Opens inline add row at top of table.')">+ Add School</button>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="data-table">
+                            <thead><tr>
+                                <th>School Name ↕</th>
+                                <th>Type</th>
+                                <th>Distance</th>
+                                <th>Rating</th>
+                                <th>Shuttle</th>
+                                <th></th>
+                            </tr></thead>
+                            <tbody>
+                                <tr onclick="alert('Design: Click row → inline edit or slide-out (configurable)')">
+                                    <td>Florida State University</td>
+                                    <td><span class="badge badge-subject">University</span></td>
+                                    <td>0.3 mi</td>
+                                    <td>★★★★★</td>
+                                    <td><span class="badge badge-inactive">No</span></td>
+                                    <td><button class="btn-icon">🗑</button></td>
+                                </tr>
+                                <tr>
+                                    <td>FAMU</td>
+                                    <td><span class="badge badge-comp">University</span></td>
+                                    <td>1.2 mi</td>
+                                    <td>★★★☆☆</td>
+                                    <td><span class="badge badge-inactive">No</span></td>
+                                    <td><button class="btn-icon">🗑</button></td>
+                                </tr>
+                                <tr>
+                                    <td>Tallahassee Community College</td>
+                                    <td><span class="badge badge-inactive">Community</span></td>
+                                    <td>3.5 mi</td>
+                                    <td>★★☆☆☆</td>
+                                    <td><span class="badge badge-inactive">No</span></td>
+                                    <td><button class="btn-icon">🗑</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ===== MARKETS TAB ===== -->
+                <div class="tab-panel" id="panel-markets">
+                    <div class="info-blurb">
+                        <div class="blurb-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+                            <span class="blurb-title"><span class="blurb-icon">ℹ</span> About Markets</span>
+                            <span class="blurb-toggle">▲</span>
+                        </div>
+                        <div class="blurb-body">
+                            Aggregated market performance snapshot across all assigned comps for the current leasing cycle. KPI cards show averages; the table below shows per-comp breakdowns.
+                        </div>
+                    </div>
+                    <div class="kpi-row">
+                        <div class="kpi-card annotation">
+                            <div class="kpi-label">Avg Occupancy</div>
+                            <div class="kpi-val">94.2%</div>
+                            <div class="kpi-delta up">▲ +1.3% vs last yr</div>
+                            <span class="annotation-tip">Design: Derived by averaging the occupancy % from all active comps including subject. Click to drill into comp breakdown.</span>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Avg Effective Rent</div>
+                            <div class="kpi-val">$1,247</div>
+                            <div class="kpi-delta down">▼ −$12 vs last yr</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Avg Prelease</div>
+                            <div class="kpi-val">78.4%</div>
+                            <div class="kpi-delta up">▲ +4.1% vs last yr</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Concession Rate</div>
+                            <div class="kpi-val">12.1%</div>
+                            <div class="kpi-delta down">▼ −0.8% vs last yr</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Comps Tracked</div>
+                            <div class="kpi-val">8</div>
+                            <div class="kpi-sub">in Tallahassee, FL</div>
+                        </div>
+                    </div>
+                    <div class="filter-bar">
+                        <select><option>All Floor Types</option><option>2x1</option><option>4x4</option></select>
+                        <select><option>Current AY</option><option>Prior AY</option></select>
+                        <button class="btn btn-secondary btn-sm">⤓ Export</button>
+                        <span class="count-label">8 comps</span>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="data-table">
+                            <thead><tr>
+                                <th>Property ↕</th>
+                                <th>Units</th>
+                                <th>Occupancy</th>
+                                <th>Eff. Rent</th>
+                                <th>Prelease</th>
+                                <th>Concession</th>
+                                <th>Type</th>
+                            </tr></thead>
+                            <tbody>
+                                <tr class="selected">
+                                    <td><strong>48 West</strong> <span class="badge badge-subject" style="margin-left:6px;">Subject</span></td>
+                                    <td>256</td><td>95.3%</td><td>$1,310</td><td>81.2%</td><td>10.0%</td>
+                                    <td><span class="badge badge-subject">Subject</span></td>
+                                </tr>
+                                <tr><td>Seminole Pointe</td><td>312</td><td>93.1%</td><td>$1,198</td><td>76.5%</td><td>13.2%</td><td><span class="badge badge-comp">Comp</span></td></tr>
+                                <tr><td>Legacy at FSU</td><td>280</td><td>94.8%</td><td>$1,255</td><td>79.0%</td><td>11.5%</td><td><span class="badge badge-comp">Comp</span></td></tr>
+                                <tr><td>University House</td><td>198</td><td>92.4%</td><td>$1,175</td><td>73.2%</td><td>15.8%</td><td><span class="badge badge-comp">Comp</span></td></tr>
+                                <tr><td>The Hub Tallahassee</td><td>420</td><td>96.1%</td><td>$1,342</td><td>83.7%</td><td>8.5%</td><td><span class="badge badge-comp">Comp</span></td></tr>
+                                <tr><td>Collegiate Village</td><td>245</td><td>91.8%</td><td>$1,120</td><td>70.1%</td><td>17.0%</td><td><span class="badge badge-comp">Comp</span></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ===== COMPS TAB ===== -->
+                <div class="tab-panel" id="panel-comps">
+                    <div class="info-blurb">
+                        <div class="blurb-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+                            <span class="blurb-title"><span class="blurb-icon">ℹ</span> About Comps</span>
+                            <span class="blurb-toggle">▲</span>
+                        </div>
+                        <div class="blurb-body">
+                            Detailed comp data for the property selected in the left panel. Click any row for the full edit slide-out. Use the column selector (⚙) to customize visible fields.
+                        </div>
+                    </div>
+                    <div class="filter-bar">
+                        <input type="text" placeholder="Filter floor plans...">
+                        <select><option>All Types</option><option>2x1</option><option>4x4</option></select>
+                        <label class="toggle-wrap"><input type="checkbox" class="toggle"> Show inactive</label>
+                        <span class="count-label">12 floor plans</span>
+                        <button class="btn-icon annotation" onclick="alert('Design: Column selector dropdown — matches PDM gear pattern.')">⚙
+                            <span class="annotation-tip">Opens column selector — same gear pattern as PDM. User can show/hide/reorder columns, preference saved to localStorage.</span>
+                        </button>
+                        <button class="btn btn-primary btn-sm">+ Add Floor Plan</button>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="data-table">
+                            <thead><tr>
+                                <th>Floor Plan ↕</th>
+                                <th>Type</th>
+                                <th>Compare As</th>
+                                <th>Units</th>
+                                <th>Beds</th>
+                                <th>Prelease %</th>
+                                <th>Eff. Rent</th>
+                                <th>Status</th>
+                            </tr></thead>
+                            <tbody id="comps-tbody">
+                                <tr class="selected" onclick="openDetail()">
+                                    <td>2 Bed Standard</td><td>2x1</td><td>2x1</td>
+                                    <td>30</td><td>60</td><td>81.2%</td><td>$1,310</td>
+                                    <td><span class="badge badge-active">Active</span></td>
+                                </tr>
+                                <tr onclick="openDetail()">
+                                    <td>4 Bed Premium</td><td>4x4</td><td>4x4</td>
+                                    <td>48</td><td>192</td><td>75.0%</td><td>$795</td>
+                                    <td><span class="badge badge-active">Active</span></td>
+                                </tr>
+                                <tr onclick="openDetail()">
+                                    <td>Studio Plus</td><td>Studio</td><td>Studio</td>
+                                    <td>12</td><td>12</td><td>90.0%</td><td>$1,550</td>
+                                    <td><span class="badge badge-active">Active</span></td>
+                                </tr>
+                                <tr onclick="openDetail()" style="opacity:0.45;">
+                                    <td>3 Bed Legacy</td><td>3x2</td><td>3x2</td>
+                                    <td>18</td><td>54</td><td>—</td><td>—</td>
+                                    <td><span class="badge badge-inactive">Inactive</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- DETAIL SLIDE-OUT (Floor Plan / Comp detail) -->
+                    <div class="detail-overlay open" id="detail-overlay">
+                        <div class="detail-resize-handle"></div>
+                        <button class="detail-close" onclick="document.getElementById('detail-overlay').classList.remove('open')">×</button>
+                        <div class="detail-sticky-head">
+                            <div class="detail-prop-name">48 West — Comps</div>
+                            <div class="detail-fp-name">2 Bed Standard</div>
+                            <div class="detail-meta-row">
+                                <span class="badge badge-active">Active</span>
+                                <span style="font-size:0.7rem; color:var(--text-secondary);">Key: 4417</span>
+                            </div>
+                        </div>
+                        <div class="detail-body">
+                            <!-- Section: Identity -->
+                            <div class="detail-section">
+                                <div class="detail-section-head" onclick="toggleSection(this)">
+                                    <h3>Identity</h3><span class="chevron">▼</span>
+                                </div>
+                                <div class="detail-section-body">
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Floor Plan Name</span>
+                                        <div class="detail-field-val"><input type="text" value="2 Bed Standard"></div>
+                                    </div>
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Type</span>
+                                        <div class="detail-field-val">
+                                            <select><option>2x1</option><option>2x2</option><option>4x4</option></select>
+                                        </div>
+                                    </div>
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Compare As</span>
+                                        <div class="detail-field-val">
+                                            <select><option>2x1</option><option>2x2</option><option>4x4</option></select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Section: Counts -->
+                            <div class="detail-section">
+                                <div class="detail-section-head" onclick="toggleSection(this)">
+                                    <h3>Counts</h3><span class="chevron">▼</span>
+                                </div>
+                                <div class="detail-section-body">
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Apartment Count</span>
+                                        <div class="detail-field-val"><input type="number" value="30"></div>
+                                    </div>
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Bed Count</span>
+                                        <div class="detail-field-val"><input type="number" value="60"></div>
+                                    </div>
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Prelease %</span>
+                                        <div class="detail-field-val"><input type="number" step="0.1" value="81.2"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Section: Flags -->
+                            <div class="detail-section">
+                                <div class="detail-section-head collapsed" onclick="toggleSection(this)">
+                                    <h3>Flags</h3><span class="chevron">▼</span>
+                                </div>
+                                <div class="detail-section-body collapsed">
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Sold Out</span>
+                                        <div class="detail-field-val"><label class="toggle-wrap"><input type="checkbox" class="toggle"> No</label></div>
+                                    </div>
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Waive Premiums</span>
+                                        <div class="detail-field-val"><label class="toggle-wrap"><input type="checkbox" class="toggle"> No</label></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Section: Financials -->
+                            <div class="detail-section">
+                                <div class="detail-section-head collapsed" onclick="toggleSection(this)">
+                                    <h3>Financials</h3><span class="chevron">▼</span>
+                                </div>
+                                <div class="detail-section-body collapsed">
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Base Rent / Bed</span>
+                                        <div class="detail-field-val"><input type="number" step="1" value="655"></div>
+                                    </div>
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Effective Rent / Bed</span>
+                                        <div class="detail-field-val"><input type="number" step="1" value="645"></div>
+                                    </div>
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Concession $</span>
+                                        <div class="detail-field-val"><input type="number" step="1" value="50"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Section: Notes -->
+                            <div class="detail-section">
+                                <div class="detail-section-head collapsed" onclick="toggleSection(this)">
+                                    <h3>Notes</h3><span class="chevron">▼</span>
+                                </div>
+                                <div class="detail-section-body collapsed">
+                                    <div class="detail-field" style="align-items:flex-start;">
+                                        <span class="detail-field-label" style="padding-top:6px;">Notes</span>
+                                        <div class="detail-field-val"><textarea rows="4" style="resize:vertical;"></textarea></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="detail-activate-row">
+                            <span class="modified-by">Last edited by cpellegrino (2026-07-15)</span>
+                            <button class="btn btn-danger btn-sm" onclick="alert('Design: Deactivate sets FLAG_ACTIVE=0, grays out row in table, preserves data.')">Deactivate</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== ASSIGN COMPS TAB ===== -->
+                <div class="tab-panel" id="panel-assign-comps">
+                    <div class="info-blurb">
+                        <div class="blurb-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+                            <span class="blurb-title"><span class="blurb-icon">ℹ</span> About Assign Comps</span>
+                            <span class="blurb-toggle">▲</span>
+                        </div>
+                        <div class="blurb-body">
+                            Manage which properties are assigned as comps to the <strong>subject property</strong> (48 West). Drag the ⠿ grip to reorder. Order determines the rank shown in the comp panel and all reports. Add via the search box below. Removing a comp soft-deletes it (sets an end date).
+                        </div>
+                    </div>
+                    <div class="quick-add annotation">
+                        <div class="qa-field">
+                            <label>Add Comp Property</label>
+                            <input type="text" style="min-width:280px;" placeholder="Search by property name...">
+                        </div>
+                        <button class="btn btn-primary" style="align-self:flex-end;" onclick="alert('Design: Typeahead searches all active comp properties, inserts new row at bottom of list.')">Add</button>
+                        <span class="annotation-tip">Design: The add form uses a typeahead dropdown exactly like the comp search in the current app — but it lives inline here rather than in the floor plans tab toolbar.</span>
+                    </div>
+                    <div class="reorder-list">
+                        <div class="reorder-item">
+                            <span class="drag-grip">⠿</span>
+                            <span class="order-num">#1</span>
+                            <span class="item-name">Seminole Pointe</span>
+                            <span class="item-market">Tallahassee, FL</span>
+                            <div class="item-actions">
+                                <button class="btn btn-danger btn-sm" onclick="alert('Design: Removes comp (soft-delete). Grays out immediately, saves with endCompDate = yesterday.')">✕ Remove</button>
+                            </div>
+                        </div>
+                        <div class="reorder-item">
+                            <span class="drag-grip">⠿</span>
+                            <span class="order-num">#2</span>
+                            <span class="item-name">Legacy at FSU</span>
+                            <span class="item-market">Tallahassee, FL</span>
+                            <div class="item-actions">
+                                <button class="btn btn-danger btn-sm">✕ Remove</button>
+                            </div>
+                        </div>
+                        <div class="reorder-item">
+                            <span class="drag-grip">⠿</span>
+                            <span class="order-num">#3</span>
+                            <span class="item-name">University House</span>
+                            <span class="item-market">Tallahassee, FL</span>
+                            <div class="item-actions">
+                                <button class="btn btn-danger btn-sm">✕ Remove</button>
+                            </div>
+                        </div>
+                        <div class="reorder-item">
+                            <span class="drag-grip">⠿</span>
+                            <span class="order-num">#4</span>
+                            <span class="item-name">The Hub Tallahassee</span>
+                            <span class="item-market">Tallahassee, FL</span>
+                            <div class="item-actions">
+                                <button class="btn btn-danger btn-sm">✕ Remove</button>
+                            </div>
+                        </div>
+                        <div class="reorder-item">
+                            <span class="drag-grip">⠿</span>
+                            <span class="order-num">#5</span>
+                            <span class="item-name">Collegiate Village</span>
+                            <span class="item-market">Tallahassee, FL</span>
+                            <div class="item-actions">
+                                <button class="btn btn-danger btn-sm">✕ Remove</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== FLOOR PLANS TAB ===== -->
+                <div class="tab-panel" id="panel-floor-plans">
+                    <div class="info-blurb">
+                        <div class="blurb-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+                            <span class="blurb-title"><span class="blurb-icon">ℹ</span> About Floor Plans</span>
+                            <span class="blurb-toggle">▲</span>
+                        </div>
+                        <div class="blurb-body">
+                            Floor plan configurations for the <strong>selected comp</strong>. Click a row to open the detail slide-out for editing. All edits auto-save on blur. The comp selector has moved to the <strong>left panel</strong> — no toolbar search box needed here.
+                        </div>
+                    </div>
+                    <div class="filter-bar">
+                        <input type="text" placeholder="Filter floor plans...">
+                        <select><option>All Types</option><option>Studio</option><option>1x1</option><option>2x1</option><option>4x4</option></select>
+                        <label class="toggle-wrap"><input type="checkbox" class="toggle"> Show inactive</label>
+                        <span class="count-label">12 floor plans • <strong style="color:var(--accent-cyan)">48 West</strong></span>
+                        <button class="btn btn-primary btn-sm" onclick="alert('Design: + New Floor Plan opens a quick-create modal — same as current app.')">+ New Floor Plan</button>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="data-table">
+                            <thead><tr>
+                                <th>Floor Plan ↕</th>
+                                <th>Type</th>
+                                <th>Compare As</th>
+                                <th>Apts</th>
+                                <th>Beds</th>
+                                <th>Prelease %</th>
+                                <th>Status</th>
+                            </tr></thead>
+                            <tbody>
+                                <tr class="selected" onclick="openFpDetail()">
+                                    <td>2 Bed Standard</td><td>2x1</td><td>2x1</td>
+                                    <td>30</td><td>60</td><td>81.2%</td>
+                                    <td><span class="badge badge-active">Active</span></td>
+                                </tr>
+                                <tr onclick="openFpDetail()">
+                                    <td>4 Bed Premium</td><td>4x4</td><td>4x4</td>
+                                    <td>48</td><td>192</td><td>75.0%</td>
+                                    <td><span class="badge badge-active">Active</span></td>
+                                </tr>
+                                <tr onclick="openFpDetail()">
+                                    <td>Studio Plus</td><td>Studio</td><td>Studio</td>
+                                    <td>12</td><td>12</td><td>90.0%</td>
+                                    <td><span class="badge badge-active">Active</span></td>
+                                </tr>
+                                <tr onclick="openFpDetail()">
+                                    <td>2 Bed Standard XL</td><td>2x2</td><td>2x2</td>
+                                    <td>18</td><td>36</td><td>—</td>
+                                    <td><span class="badge badge-active">Active</span></td>
+                                </tr>
+                                <tr onclick="openFpDetail()" style="opacity:0.45;">
+                                    <td>3 Bed Legacy</td><td>3x2</td><td>3x2</td>
+                                    <td>—</td><td>—</td><td>—</td>
+                                    <td><span class="badge badge-inactive">Inactive</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- FLOOR PLAN SLIDE-OUT -->
+                    <div class="detail-overlay open" id="fp-detail-overlay">
+                        <div class="detail-resize-handle"></div>
+                        <button class="detail-close" onclick="document.getElementById('fp-detail-overlay').classList.remove('open')">×</button>
+                        <div class="detail-sticky-head">
+                            <div class="detail-prop-name">48 West — Floor Plans</div>
+                            <div class="detail-fp-name">2 Bed Standard</div>
+                            <div class="detail-meta-row">
+                                <span class="badge badge-active">Active</span>
+                                <span style="font-size:0.7rem;color:var(--text-secondary);">Key: 8812</span>
+                            </div>
+                        </div>
+                        <div class="detail-body">
+                            <div class="detail-section">
+                                <div class="detail-section-head" onclick="toggleSection(this)">
+                                    <h3>Identity</h3><span class="chevron">▼</span>
+                                </div>
+                                <div class="detail-section-body">
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Floor Plan Name</span>
+                                        <div class="detail-field-val"><input type="text" value="2 Bed Standard"></div>
+                                    </div>
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Type</span>
+                                        <div class="detail-field-val"><select><option selected>2x1</option><option>2x2</option><option>4x4</option></select></div>
+                                    </div>
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Compare As</span>
+                                        <div class="detail-field-val"><select><option selected>2x1</option><option>2x2</option></select></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="detail-section">
+                                <div class="detail-section-head" onclick="toggleSection(this)">
+                                    <h3>Counts</h3><span class="chevron">▼</span>
+                                </div>
+                                <div class="detail-section-body">
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Apartment Count</span>
+                                        <div class="detail-field-val"><input type="number" value="30"></div>
+                                    </div>
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Bed Count</span>
+                                        <div class="detail-field-val"><input type="number" value="60"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="detail-section">
+                                <div class="detail-section-head collapsed" onclick="toggleSection(this)">
+                                    <h3>Financials</h3><span class="chevron">▼</span>
+                                </div>
+                                <div class="detail-section-body collapsed">
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Base Rent / Bed</span>
+                                        <div class="detail-field-val"><input type="number" value="655"></div>
+                                    </div>
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Effective Rent / Bed</span>
+                                        <div class="detail-field-val"><input type="number" value="645"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="detail-section">
+                                <div class="detail-section-head collapsed" onclick="toggleSection(this)">
+                                    <h3>Flags</h3><span class="chevron">▼</span>
+                                </div>
+                                <div class="detail-section-body collapsed">
+                                    <div class="detail-field">
+                                        <span class="detail-field-label">Sold Out</span>
+                                        <div class="detail-field-val"><label class="toggle-wrap"><input type="checkbox" class="toggle"> No</label></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="detail-section">
+                                <div class="detail-section-head collapsed" onclick="toggleSection(this)">
+                                    <h3>Notes</h3><span class="chevron">▼</span>
+                                </div>
+                                <div class="detail-section-body collapsed">
+                                    <div class="detail-field" style="align-items:flex-start;">
+                                        <span class="detail-field-label" style="padding-top:6px;">Notes</span>
+                                        <div class="detail-field-val"><textarea rows="4" style="resize:vertical;"></textarea></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="detail-activate-row">
+                            <span class="modified-by">Last edited by cpellegrino (2026-07-15)</span>
+                            <button class="btn btn-danger btn-sm">Deactivate</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- end tab-content -->
+        </div><!-- end content-body -->
+    </div><!-- end main-area -->
+</div><!-- end apphub-shell -->
+
+<script>
+function switchTab(id, el) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    const panel = document.getElementById('panel-' + id);
+    if (panel) panel.classList.add('active');
+}
+
+function selectComp(el) {
+    document.querySelectorAll('.comp-item').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    const name = el.querySelector('.comp-name').textContent;
+    document.querySelector('.subject-pill').innerHTML =
+        '<span class="pill-label">Viewing comp:</span> ' + name;
+}
+
+function toggleSection(header) {
+    header.classList.toggle('collapsed');
+    header.nextElementSibling.classList.toggle('collapsed');
+}
+
+function openDetail() {
+    document.getElementById('detail-overlay').classList.add('open');
+}
+function openFpDetail() {
+    document.getElementById('fp-detail-overlay').classList.add('open');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1165 @@
+{% extends "shell.html" %}
+{% block head %}
+    <style>
+        .edm-container { padding: 24px; max-width: 1400px; }
+        .edm-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+        .edm-header h1 { font-size: 1.4rem; color: var(--text-primary); margin: 0; }
+        .edm-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border-medium); }
+        .edm-tab { padding: 10px 20px; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+        .edm-tab:hover { color: var(--text-primary); }
+        .edm-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
+        .edm-panel { display: none; }
+        .edm-panel.active { display: block; }
+
+        /* Search */
+        .search-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
+        .search-bar input { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 10px 14px; border-radius: 6px; font-size: 0.9rem; min-width: 350px; }
+        .search-bar input::placeholder { color: var(--text-secondary); }
+        .search-hint { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 12px; }
+
+        /* Data table */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; table-layout: auto; }
+        .data-table th { text-align: left; padding: 10px 12px; background: var(--surface-raised); color: var(--text-secondary); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-medium); position: sticky; top: 0; z-index: 1; white-space: nowrap; }
+        .data-table th.sortable { cursor: pointer; user-select: none; }
+        .data-table th.sortable:hover { color: var(--accent-cyan); }
+        .data-table th .sort-arrow { font-size: 0.7rem; color: var(--accent-cyan); }
+        .data-table td { padding: 8px 12px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); white-space: nowrap; }
+        .data-table tr:hover td { background: var(--hover-bg); }
+        .data-table .status-active { color: #81c784; }
+        .data-table .status-terminated { color: #e57373; }
+
+        /* Editable cell */
+        .editable { cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background 0.2s; }
+        .editable:hover { background: var(--hover-bg-strong); }
+        .editable input, .editable select { background: var(--input-bg); border: 1px solid var(--accent-cyan); color: var(--text-primary); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; width: 100%; outline: none; }
+        .editable select option { background: var(--surface-raised); color: var(--text-primary); }
+
+        /* Buttons */
+        .btn { padding: 6px 14px; border: none; border-radius: 4px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: var(--accent-cyan); color: #fff; }
+        .btn-primary:hover { opacity: 0.85; }
+        .btn-danger { background: rgba(244,67,54,0.2); color: #e57373; }
+        .btn-danger:hover { background: rgba(244,67,54,0.4); }
+        .btn-sm { padding: 4px 10px; font-size: 0.7rem; }
+        .btn-success { background: rgba(76,175,80,0.2); color: #81c784; }
+        .btn-success:hover { background: rgba(76,175,80,0.4); }
+        .btn-warn { background: rgba(255,180,50,0.15); color: var(--accent-gold); }
+        .btn-warn:hover { background: rgba(255,180,50,0.3); }
+
+        /* Add form */
+        .add-form { display: flex; gap: 8px; align-items: center; padding: 12px; background: var(--hover-bg); border: 1px solid var(--border-light); border-radius: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+        .add-form input, .add-form select { background: var(--surface-raised); border: 1px solid var(--border-input-heavy); color: var(--text-primary); padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; }
+        .add-form select option { background: var(--surface-raised); color: var(--text-primary); }
+        .add-form input::placeholder { color: var(--text-secondary); }
+        .add-form label { font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; }
+
+        /* Badge */
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; }
+        .badge-active { background: rgba(76,175,80,0.2); color: #81c784; }
+        .badge-inactive { background: rgba(244,67,54,0.2); color: #e57373; }
+        .badge-expired { background: rgba(255,180,50,0.15); color: var(--accent-gold); }
+
+        /* Scrollable table container */
+        .table-scroll { max-height: calc(100vh - 280px); overflow-y: auto; overflow-x: auto; border: 1px solid var(--border-light); border-radius: 8px; }
+
+        /* Soft term card */
+        .st-card { background: var(--hover-bg); border: 1px solid var(--border-medium); border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 16px; }
+        .st-card.inactive { opacity: 0.5; }
+        .st-name { font-weight: 600; color: var(--text-primary); min-width: 180px; }
+        .st-code { font-size: 0.8rem; color: var(--text-secondary); min-width: 60px; }
+        .st-reason { flex: 1; font-size: 0.8rem; color: var(--text-secondary); }
+        .st-meta { font-size: 0.7rem; color: var(--text-secondary); text-align: right; min-width: 140px; }
+        .st-actions { display: flex; gap: 6px; }
+
+        /* Toast */
+        .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 8px; font-size: 0.85rem; color: #fff; z-index: 9999; transition: opacity 0.3s; }
+        .toast-success { background: rgba(76,175,80,0.9); }
+        .toast-error { background: rgba(244,67,54,0.9); }
+
+        /* Filter bar */
+        .filter-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+        .filter-bar input { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 6px 12px; border-radius: 4px; font-size: 0.8rem; min-width: 200px; }
+        .filter-bar input::placeholder { color: var(--text-secondary); }
+        .count-label { font-size: 0.75rem; color: var(--text-secondary); margin-left: auto; }
+
+        /* Employee filters */
+        .emp-filters { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+        .emp-filter-search { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; min-width: 220px; }
+        .emp-filter-search::placeholder { color: var(--text-secondary); }
+        .emp-filter-select { background: var(--surface-raised); border: 1px solid var(--border-input-heavy); color: var(--text-primary); padding: 7px 10px; border-radius: 4px; font-size: 0.8rem; min-width: 150px; cursor: pointer; }
+        .emp-filter-select option { background: var(--surface-raised); color: var(--text-primary); }
+
+        /* Column selector dropdown */
+        .col-selector-wrap { position: relative; display: inline-block; }
+        .col-selector-btn { background: var(--input-bg); border: 1px solid var(--border-input-heavy); color: var(--text-secondary); padding: 7px 12px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; white-space: nowrap; }
+        .col-selector-btn:hover { border-color: var(--accent-cyan); color: var(--text-primary); }
+        .col-selector-panel { display: none; position: absolute; top: 100%; left: 0; z-index: 100; background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 6px; padding: 8px 0; min-width: 240px; max-height: 400px; overflow-y: auto; box-shadow: 0 8px 24px var(--shadow-overlay); }
+        .col-selector-panel.open { display: block; }
+        .col-selector-panel .col-search { width: calc(100% - 28px); margin: 4px 14px 8px; padding: 6px 10px; background: var(--input-bg); border: 1px solid var(--border-input); border-radius: 4px; color: var(--text-primary); font-size: 0.78rem; outline: none; }
+        .col-selector-panel .col-search::placeholder { color: var(--text-secondary); }
+        .col-selector-panel .col-list { max-height: 300px; overflow-y: auto; }
+        .col-selector-panel label { display: flex; align-items: center; gap: 8px; padding: 5px 14px; font-size: 0.78rem; color: var(--text-primary); cursor: pointer; }
+        .col-selector-panel label:hover { background: var(--input-bg); }
+        .col-selector-panel label input { accent-color: var(--accent-cyan); }
+        .col-selector-panel .col-reset { display: block; margin: 6px 14px 4px; padding: 5px 10px; font-size: 0.75rem; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-secondary); border-radius: 4px; cursor: pointer; text-align: center; }
+        .col-selector-panel .col-reset:hover { color: var(--accent-cyan); border-color: var(--accent-cyan); }
+
+        /* Employee detail panel */
+        .emp-detail-overlay { display: none; position: fixed; top: 0; right: 0; bottom: 0; width: 420px; background: var(--surface-raised); border-left: 2px solid var(--accent-cyan); z-index: 200; overflow-y: auto; padding: 20px 24px; box-shadow: -8px 0 32px var(--shadow-overlay); }
+        .emp-detail-overlay.open { display: block; }
+        .emp-detail-overlay h3 { margin: 0 0 16px; color: var(--text-primary); font-size: 1.1rem; }
+        .emp-detail-overlay .detail-close { position: absolute; top: 12px; right: 16px; background: none; border: none; color: var(--text-secondary); font-size: 1.2rem; cursor: pointer; }
+        .emp-detail-overlay .detail-close:hover { color: var(--accent-cyan); }
+        .emp-detail-table { width: 100%; font-size: 0.78rem; }
+        .emp-detail-table td { padding: 4px 8px; border-bottom: 1px solid var(--border-subtle); vertical-align: top; }
+        .emp-detail-table td:first-child { color: var(--text-secondary); font-weight: 600; white-space: nowrap; width: 40%; }
+        .emp-detail-table td:last-child { color: var(--text-primary); word-break: break-word; }
+
+        /* Bulk assign bar */
+        .bulk-bar { display: none; background: rgba(0,188,212,0.08); border: 1px solid rgba(0,188,212,0.2); border-radius: 6px; padding: 8px 14px; margin-bottom: 10px; align-items: center; gap: 10px; font-size: 0.8rem; color: var(--text-primary); }
+        .bulk-bar.visible { display: flex; }
+        .bulk-bar select, .bulk-bar input { background: var(--surface-raised); border: 1px solid var(--border-input-heavy); color: var(--text-primary); padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; }
+
+        /* Validation warnings */
+        .validation-warnings { background: rgba(255,152,0,0.08); border: 1px solid rgba(255,152,0,0.25); border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; font-size: 0.78rem; color: #ffb74d; }
+        .validation-warnings strong { color: #ffa726; }
+        .validation-warnings ul { margin: 6px 0 0 16px; padding: 0; }
+        .validation-warnings li { margin-bottom: 3px; }
+
+        /* Info blurb - collapsible */
+        .info-blurb { background: rgba(0,188,212,0.05); border: 1px solid rgba(0,188,212,0.15); border-radius: 8px; margin-bottom: 16px; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; }
+        .info-blurb .blurb-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; cursor: pointer; user-select: none; }
+        .info-blurb .blurb-header:hover { background: rgba(0,188,212,0.08); border-radius: 8px; }
+        .info-blurb .blurb-title { font-weight: 600; color: var(--text-primary); font-size: 0.82rem; }
+        .info-blurb .blurb-toggle { color: var(--text-secondary); font-size: 0.7rem; transition: transform 0.2s; }
+        .info-blurb .blurb-body { padding: 0 16px 12px; }
+        .info-blurb .blurb-body.collapsed { display: none; }
+        .info-blurb strong { color: var(--text-primary); }
+        .info-blurb code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-size: 0.75rem; color: var(--accent-cyan); }
+
+        /* Unassigned highlight */
+        .row-unassigned { background: rgba(255,180,50,0.08); }
+        .row-unassigned td:first-child { border-left: 3px solid var(--accent-gold); }
+        .unassigned-badge { display: inline-block; font-size: 0.65rem; background: rgba(255,180,50,0.2); color: var(--accent-gold); padding: 2px 6px; border-radius: 3px; font-weight: 600; }
+
+        /* Mid/Light theme overrides — orange areas need richer contrast on light backgrounds */
+        [data-theme="medium"] .validation-warnings,
+        [data-theme="light"] .validation-warnings {
+            background: rgba(234,88,12,0.10);
+            border-color: rgba(234,88,12,0.40);
+            color: #92400e;
+        }
+        [data-theme="medium"] .validation-warnings strong,
+        [data-theme="light"] .validation-warnings strong { color: #c2410c; }
+        [data-theme="medium"] .unassigned-badge,
+        [data-theme="light"] .unassigned-badge { background: rgba(217,119,6,0.18); color: #92400e; }
+        [data-theme="medium"] .row-unassigned,
+        [data-theme="light"] .row-unassigned { background: rgba(217,119,6,0.10); }
+        [data-theme="medium"] .row-unassigned td:first-child,
+        [data-theme="light"] .row-unassigned td:first-child { border-left-color: #d97706; }
+    </style>
+{% endblock %}
+{% block content %}
+    <div class="edm-container">
+        <div class="edm-header">
+            <i class="fa-solid fa-users-gear" style="font-size: 1.5rem; color: var(--accent-cyan);"></i>
+            <h1>Employee Data Manager</h1>
+        </div>
+
+        <div class="edm-tabs">
+            <div class="edm-tab active" data-panel="employees">Employees</div>
+            <div class="edm-tab" data-panel="titles">Title Assignments</div>
+            <div class="edm-tab" data-panel="entrata">Entrata Mapping</div>
+            <div class="edm-tab" data-panel="softterm">Soft Terminations</div>
+        </div>
+
+        <!-- EMPLOYEES PANEL -->
+        <div class="edm-panel active" id="panel-employees">
+            <div class="info-blurb" id="blurb-employees">
+                <div class="blurb-header" onclick="toggleBlurb('employees')">
+                    <span class="blurb-title">Employee Directory</span>
+                    <span class="blurb-toggle" id="blurbToggle-employees">&#9660;</span>
+                </div>
+                <div class="blurb-body" id="blurbBody-employees">
+                    Read-only view of <code>EMPLOYEE_F</code> — the unified employee fact table rebuilt hourly from Paycom, AD, and Entrata sources. Returns up to 1,000 results.
+                    <br><br>
+                    <strong>How to use:</strong>
+                    <ul style="margin:4px 0 0 16px;padding:0">
+                        <li><strong>Search</strong> — Type a name, email, or employee code in the search box. Results filter as you type.</li>
+                        <li><strong>Filters</strong> — Use the Status, Title Group, and Property dropdowns to narrow results. Default shows Active/On Leave employees.</li>
+                        <li><strong>Sort</strong> — Click any column header to sort ascending/descending (▲/▼). Click again to reverse.</li>
+                        <li><strong>⚙ Columns</strong> — Add or remove any of 106 available columns (all EMPLOYEE_F fields + LEO data). Type in the search box to find columns quickly. Click "Reset to Default" to restore the original 7 columns.</li>
+                        <li><strong>💾 Export</strong> — Download the current filtered view as a CSV file with your selected columns.</li>
+                        <li><strong>Detail View</strong> — Click any employee row to open a side panel showing ALL fields for that person. Press Escape or × to close.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="emp-filters">
+                <input type="text" id="empSearch" placeholder="Search name, email, or code..." class="emp-filter-search">
+                <select id="filterStatus" class="emp-filter-select" onchange="loadEmployees()"><option value="_ACTIVE">Active / On Leave</option><option value="">All Statuses</option></select>
+                <select id="filterTitleGroup" class="emp-filter-select" onchange="loadEmployees()"><option value="">All Title Groups</option></select>
+                <select id="filterProperty" class="emp-filter-select" onchange="loadEmployees()"><option value="">All Properties</option></select>
+                <div class="col-selector-wrap">
+                    <button class="col-selector-btn" onclick="toggleColSelector()">&#9881; Columns</button>
+                    <div class="col-selector-panel" id="colSelectorPanel"></div>
+                </div>
+                <button class="btn btn-sm" onclick="exportEmpCSV()" style="color:var(--text-secondary)" title="Export current view to CSV">&#128190; Export</button>
+                <button class="btn btn-sm" onclick="clearEmpFilters()" style="margin-left:2px;color:var(--text-secondary)">Clear</button>
+                <span class="count-label" id="empCount" style="margin-left:auto"></span>
+            </div>
+            <div class="table-scroll" style="overflow-x:auto">
+                <table class="data-table" id="empTable" style="width:100%">
+                    <thead><tr id="empTableHead"></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Employee Detail Side Panel -->
+        <div class="emp-detail-overlay" id="empDetailPanel">
+            <button class="detail-close" onclick="closeEmpDetail()">&times;</button>
+            <h3 id="empDetailName"></h3>
+            <table class="emp-detail-table"><tbody id="empDetailBody"></tbody></table>
+        </div>
+
+        <!-- TITLE ASSIGNMENTS PANEL -->
+        <div class="edm-panel" id="panel-titles">
+            <div class="info-blurb" id="blurb-titles">
+                <div class="blurb-header" onclick="toggleBlurb('titles')">
+                    <span class="blurb-title">Title Assignments</span>
+                    <span class="blurb-toggle" id="blurbToggle-titles">&#9660;</span>
+                </div>
+                <div class="blurb-body" id="blurbBody-titles">
+                    Maps each Paycom <code>Title</code> to a <code>Title Group</code> used across the BI platform (security, Entrata provisioning, AD exports, reporting).
+                    When a new title appears in Paycom that doesn't exist here, employees with that title fall into <code>_UNASSIGNED</code> until mapped.
+                    <br><br>
+                    <strong>How to use:</strong>
+                    <ul style="margin:4px 0 0 16px;padding:0">
+                        <li><strong>Add a title</strong> — Enter the exact Paycom title, select or type a Title Group, optionally set Type (PROPERTY/CORPORATE), then click Add.</li>
+                        <li><strong>Edit inline</strong> — Click any Title Group or Type cell to change it. Title Group shows a dropdown of existing groups + "Enter custom" for new ones. Type is a dropdown (PROPERTY/CORPORATE/None).</li>
+                        <li><strong>Bulk assign</strong> — Use the checkboxes to select multiple unassigned titles. The header checkbox selects ALL unassigned rows. A blue bar appears where you pick a group + type and click Apply.</li>
+                        <li><strong>Sort</strong> — Click column headers. _UNASSIGNED rows always stay pinned at the top.</li>
+                        <li><strong>Filter</strong> — Type in the filter box to find specific titles or groups.</li>
+                        <li><strong>Validation warnings</strong> — Orange alerts show Title Groups missing Entrata mappings, or orphaned Entrata entries.</li>
+                    </ul>
+                    <br>
+                    <strong>Rules:</strong> Each Title must be unique (one mapping per title). Multiple titles can share the same Title Group. Changes take effect on the next Employee Update cycle (hourly).
+                </div>
+            </div>
+            <div class="add-form" id="addTitleForm">
+                <label>New:</label>
+                <input type="text" id="newTitle" placeholder="Title" style="min-width:200px">
+                <input type="text" id="newTitleGroup" placeholder="Title Group" list="titleGroupList" style="min-width:180px">
+                <select id="newTitleType" style="min-width:120px" class="emp-filter-select">
+                    <option value="">Type (optional)</option>
+                    <option value="PROPERTY">PROPERTY</option>
+                    <option value="CORPORATE">CORPORATE</option>
+                </select>
+                <button class="btn btn-primary" onclick="addTitleAssignment()">Add</button>
+                <datalist id="titleGroupList"></datalist>
+            </div>
+            <div class="bulk-bar" id="bulkAssignBar">
+                <span id="bulkCount">0 selected</span>
+                <label>Assign to:</label>
+                <input type="text" id="bulkTitleGroup" placeholder="Title Group" list="titleGroupList" style="min-width:160px">
+                <select id="bulkTitleType" class="emp-filter-select" style="min-width:100px">
+                    <option value="">Type</option>
+                    <option value="PROPERTY">PROPERTY</option>
+                    <option value="CORPORATE">CORPORATE</option>
+                </select>
+                <button class="btn btn-primary btn-sm" onclick="applyBulkAssign()">Apply</button>
+                <button class="btn btn-sm" onclick="clearBulkSelection()" style="color:var(--text-secondary)">Cancel</button>
+            </div>
+            <div class="validation-warnings" id="titleValidationWarnings" style="display:none"></div>
+            <div class="filter-bar">
+                <input type="text" id="titleFilter" placeholder="Filter titles...">
+                <span class="count-label" id="titleCount"></span>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table" id="titleTable">
+                    <thead>
+                        <tr>
+                            <th style="width:30px"><input type="checkbox" id="titleSelectAll" onchange="toggleAllTitleSelect(this.checked)" title="Select all unassigned"></th>
+                            <th class="sortable" data-sort="title" onclick="sortTitleCol('title')">Title <span class="sort-arrow"></span></th>
+                            <th class="sortable" data-sort="title_group" onclick="sortTitleCol('title_group')">Title Group <span class="sort-arrow"></span></th>
+                            <th class="sortable" data-sort="title_type" onclick="sortTitleCol('title_type')">Type <span class="sort-arrow"></span></th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ENTRATA MAPPING PANEL -->
+        <div class="edm-panel" id="panel-entrata">
+            <div class="info-blurb" id="blurb-entrata">
+                <div class="blurb-header" onclick="toggleBlurb('entrata')">
+                    <span class="blurb-title">Entrata Mapping</span>
+                    <span class="blurb-toggle" id="blurbToggle-entrata">&#9660;</span>
+                </div>
+                <div class="blurb-body" id="blurbBody-entrata">
+                    Maps each <code>Title Group</code> to an Entrata <code>Department</code> and <code>Permission Group</code>.
+                    The Employee Update uses this mapping to provision Entrata access for each employee.
+                    <br><br>
+                    <strong>How to use:</strong>
+                    <ul style="margin:4px 0 0 16px;padding:0">
+                        <li><strong>Add a mapping</strong> — Enter a Title Group (autocomplete available), an Entrata Department, and an Entrata Permission Group, then click Add.</li>
+                        <li><strong>Edit inline</strong> — Click any Department or Permission Group cell to change it directly.</li>
+                        <li><strong>Sort</strong> — Click column headers to sort by Title Group, Department, or Permission Group.</li>
+                        <li><strong>Filter</strong> — Type in the filter box to search across all columns.</li>
+                        <li><strong>Delete</strong> — Click Delete to remove a mapping. Employees in that group will lose Entrata provisioning on the next cycle.</li>
+                    </ul>
+                    <br>
+                    <strong>Rule:</strong> Each Title Group should have exactly one row. If a Title Group has no mapping here, employees in that group won't receive Entrata assignments.
+                </div>
+            </div>
+            <div class="add-form" id="addEntrataForm">
+                <label>New:</label>
+                <input type="text" id="newEntrataGroup" placeholder="Title Group" list="titleGroupList2" style="min-width:180px">
+                <input type="text" id="newEntrataDept" placeholder="Entrata Department" style="min-width:180px">
+                <input type="text" id="newEntrataPerm" placeholder="Entrata Permission Group" style="min-width:200px">
+                <button class="btn btn-primary" onclick="addEntrataMapping()">Add</button>
+                <datalist id="titleGroupList2"></datalist>
+            </div>
+            <div class="filter-bar">
+                <input type="text" id="entrataFilter" placeholder="Filter...">
+                <span class="count-label" id="entrataCount"></span>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table" id="entrataTable">
+                    <thead>
+                        <tr>
+                            <th class="sortable" onclick="sortEntrataCol('title_group')">Title Group <span class="sort-arrow" id="entrataArrow_title_group"></span></th>
+                            <th class="sortable" onclick="sortEntrataCol('entrata_department')">Entrata Department <span class="sort-arrow" id="entrataArrow_entrata_department"></span></th>
+                            <th class="sortable" onclick="sortEntrataCol('entrata_permission_group')">Entrata Permission Group <span class="sort-arrow" id="entrataArrow_entrata_permission_group"></span></th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- SOFT TERMINATIONS PANEL -->
+        <div class="edm-panel" id="panel-softterm">
+            <div class="info-blurb" id="blurb-softterm">
+                <div class="blurb-header" onclick="toggleBlurb('softterm')">
+                    <span class="blurb-title">Soft Termination Overrides</span>
+                    <span class="blurb-toggle" id="blurbToggle-softterm">&#9660;</span>
+                </div>
+                <div class="blurb-body" id="blurbBody-softterm">
+                    Keeps terminated employees' AD accounts active beyond the normal 20-day window. Use for consulting arrangements, transitions, or special projects.
+                    <br><br>
+                    <strong>How to use:</strong>
+                    <ul style="margin:4px 0 0 16px;padding:0">
+                        <li><strong>Add an override</strong> — Enter the Employee Code, a Reason for the override, and optionally an Expires date. Click Add.</li>
+                        <li><strong>Expires date</strong> — If set, the override automatically stops applying after that date. Leave blank for indefinite overrides.</li>
+                        <li><strong>Deactivate</strong> (pause icon) — Temporarily disables the override without deleting it. The employee will be moved to "Terminated" on the next AD sync.</li>
+                        <li><strong>Reactivate</strong> (play icon) — Re-enables a previously deactivated override.</li>
+                        <li><strong>Delete</strong> (trash icon) — Permanently removes the override record.</li>
+                        <li><strong>Sort</strong> — Click any column header to sort the table.</li>
+                        <li><strong>Show Inactive</strong> — Check the box to reveal deactivated overrides (shown at 50% opacity).</li>
+                    </ul>
+                    <br>
+                    <strong>How it works:</strong> The Active Employees for AD export checks this list. Anyone flagged here stays in the "Active" AD export instead of being moved to "Terminated."
+                </div>
+            </div>
+            <div class="add-form" id="addSoftTermForm">
+                <label>Add Override:</label>
+                <input type="text" id="stEmpCode" placeholder="Employee Code" style="min-width:120px">
+                <input type="text" id="stReason" placeholder="Reason" style="min-width:250px">
+                <label style="font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:4px;">Expires: <input type="date" id="stExpires" style="min-width:140px"></label>
+                <button class="btn btn-primary" onclick="addSoftTermination()">Add</button>
+            </div>
+            <div class="filter-bar">
+                <label style="font-size:0.75rem; color:var(--text-secondary);">
+                    <input type="checkbox" id="stShowInactive"> Show Inactive
+                </label>
+                <span class="count-label" id="stCount"></span>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table" id="softTermTable">
+                    <thead>
+                        <tr>
+                            <th class="sortable" onclick="sortStCol('employee_code')">Code <span class="sort-arrow" id="stArrow_employee_code"></span></th>
+                            <th class="sortable" onclick="sortStCol('name')">Name <span class="sort-arrow" id="stArrow_name"></span></th>
+                            <th class="sortable" onclick="sortStCol('reason')">Reason <span class="sort-arrow" id="stArrow_reason"></span></th>
+                            <th class="sortable" onclick="sortStCol('expires_on')">Expires <span class="sort-arrow" id="stArrow_expires_on"></span></th>
+                            <th class="sortable" onclick="sortStCol('is_active')">Status <span class="sort-arrow" id="stArrow_is_active"></span></th>
+                            <th class="sortable" onclick="sortStCol('added_by')">Added By <span class="sort-arrow" id="stArrow_added_by"></span></th>
+                            <th class="sortable" onclick="sortStCol('added_on')">Added On <span class="sort-arrow" id="stArrow_added_on"></span></th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ─── Collapsible blurbs ────────────────────────────────────────────────────
+    function toggleBlurb(id) {
+        const body = document.getElementById('blurbBody-' + id);
+        const toggle = document.getElementById('blurbToggle-' + id);
+        const collapsed = body.classList.toggle('collapsed');
+        toggle.innerHTML = collapsed ? '&#9654;' : '&#9660;';
+        localStorage.setItem('edm_blurb_' + id, collapsed ? '1' : '0');
+    }
+    ['employees','titles','entrata','softterm'].forEach(id => {
+        const state = localStorage.getItem('edm_blurb_' + id);
+        if (state === '1') {
+            const body = document.getElementById('blurbBody-' + id);
+            const toggle = document.getElementById('blurbToggle-' + id);
+            if (body) { body.classList.add('collapsed'); toggle.innerHTML = '&#9654;'; }
+        }
+    });
+
+    // ─── Tab navigation ────────────────────────────────────────────────────────
+    document.querySelectorAll('.edm-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.edm-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.edm-panel').forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+            // Load data on first visit
+            if (tab.dataset.panel === 'titles' && !titlesLoaded) loadTitleAssignments();
+            if (tab.dataset.panel === 'entrata' && !entrataLoaded) loadEntrataMapping();
+            if (tab.dataset.panel === 'softterm' && !softTermLoaded) loadSoftTerminations();
+        });
+    });
+
+    function toast(msg, type='success') {
+        const el = document.createElement('div');
+        el.className = 'toast toast-' + type;
+        el.textContent = msg;
+        document.body.appendChild(el);
+        setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 2500);
+    }
+
+    // ─── EMPLOYEES TAB ─────────────────────────────────────────────────────────
+    let empDebounce = null;
+    document.getElementById('empSearch').addEventListener('input', e => {
+        clearTimeout(empDebounce);
+        empDebounce = setTimeout(() => loadEmployees(), 400);
+    });
+    document.getElementById('empSearch').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { clearTimeout(empDebounce); loadEmployees(); }
+    });
+
+    // ─── EMPLOYEE COLUMNS CONFIG ────────────────────────────────────────────────
+    // Default visible columns (by key)
+    const EMP_DEFAULT_COLS = ['employee_code', 'name', 'title', 'title_group', 'property_name', 'status', 'email'];
+    // Hidden/internal columns not shown in the selector
+    const EMP_HIDDEN_KEYS = ['employee_key', 'date_key', 'date_id', 'title_key', 'title_group_key', 'property_key',
+        'source_file_date', 'source_file_name', 'dateid_added', 'dateid_hired', 'dateid_rehired', 'dateid_terminated',
+        'load_type', 'flag_not_hired', 'flag_pre_hire'];
+
+    // Special renderers for known columns
+    const EMP_RENDERERS = {
+        'employee_code': v => `<span style="font-family:monospace;font-size:0.8rem">${esc(v)}</span>`,
+        'name': (v, r) => esc((r.name_first||'') + ' ' + (r.name_last||'')),
+        'status': v => `<span class="${v==='ACTIVE'||v==='ON LEAVE'?'status-active':'status-terminated'}">${esc(v)}</span>`,
+        'email': v => `<span style="font-size:0.8rem">${esc(v)}</span>`,
+        'email_ad': v => `<span style="font-size:0.8rem">${esc(v)}</span>`,
+        'email_paycom': v => `<span style="font-size:0.8rem">${esc(v)}</span>`,
+        'supervisor_email': v => `<span style="font-size:0.8rem">${esc(v)}</span>`,
+    };
+    // Date integer columns (YYYYMMDD format)
+    const EMP_DATE_KEYS = ['date_hired', 'date_terminated', 'date_rehired', 'date_added'];
+    // Flag columns (render as Yes/No)
+    const EMP_FLAG_PREFIX = 'flag_';
+
+    let EMP_COLUMNS = []; // Built dynamically on first data load
+    let empVisibleCols = [...EMP_DEFAULT_COLS];
+    let empSortCol = 'name';
+    let empSortDir = 1;
+    let empData = [];
+    let empColsBuilt = false;
+
+    function prettyLabel(key) {
+        // LEO_ prefix stays visible
+        return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function buildEmpColumns(sampleRow) {
+        if (empColsBuilt) return;
+        empColsBuilt = true;
+        const keys = Object.keys(sampleRow);
+        // Add synthetic 'name' column first
+        EMP_COLUMNS = [{ key: 'name', label: 'Name', default: true }];
+        keys.forEach(key => {
+            if (key === 'name_first' || key === 'name_last') return; // covered by 'name'
+            if (EMP_HIDDEN_KEYS.includes(key)) return;
+            EMP_COLUMNS.push({
+                key: key,
+                label: prettyLabel(key),
+                default: EMP_DEFAULT_COLS.includes(key)
+            });
+        });
+        buildColSelector();
+    }
+
+    function renderCellValue(key, val, row) {
+        if (EMP_RENDERERS[key]) return EMP_RENDERERS[key](val, row);
+        if (EMP_DATE_KEYS.includes(key)) return fmtDateInt(val);
+        if (key.startsWith(EMP_FLAG_PREFIX)) return val ? 'Yes' : (val === 0 ? 'No' : '');
+        if (key.startsWith('datetime_') && val) return val.slice(0, 10);
+        return esc(val);
+    }
+
+    function buildColSelector() {
+        const panel = document.getElementById('colSelectorPanel');
+        panel.innerHTML = '<input type="text" class="col-search" id="colSearchInput" placeholder="Search columns..." oninput="filterColSelector()">' +
+            '<div class="col-list" id="colListContainer">' +
+            EMP_COLUMNS.map(c => `
+                <label data-label="${c.label.toLowerCase()}"><input type="checkbox" value="${c.key}" ${empVisibleCols.includes(c.key)?'checked':''} onchange="toggleEmpCol('${c.key}', this.checked)"> ${c.label}</label>
+            `).join('') +
+            '</div><button class="col-reset" onclick="resetEmpCols()">Reset to Default</button>';
+    }
+
+    function filterColSelector() {
+        const q = (document.getElementById('colSearchInput').value || '').toLowerCase();
+        document.querySelectorAll('#colListContainer label').forEach(lbl => {
+            lbl.style.display = lbl.dataset.label.includes(q) ? '' : 'none';
+        });
+    }
+
+    function toggleColSelector() {
+        const panel = document.getElementById('colSelectorPanel');
+        panel.classList.toggle('open');
+    }
+    document.addEventListener('click', e => {
+        const wrap = document.querySelector('.col-selector-wrap');
+        if (wrap && !wrap.contains(e.target)) {
+            document.getElementById('colSelectorPanel').classList.remove('open');
+        }
+    });
+
+    function toggleEmpCol(key, checked) {
+        if (checked && !empVisibleCols.includes(key)) {
+            // Insert right after 'name' column
+            const nameIdx = empVisibleCols.indexOf('name');
+            empVisibleCols.splice(nameIdx + 1, 0, key);
+        } else if (!checked) {
+            empVisibleCols = empVisibleCols.filter(k => k !== key);
+        }
+        renderEmployees();
+    }
+
+    function resetEmpCols() {
+        empVisibleCols = [...EMP_DEFAULT_COLS];
+        empSortCol = 'name'; empSortDir = 1;
+        buildColSelector();
+        renderEmployees();
+    }
+
+    function sortEmpCol(col) {
+        if (empSortCol === col) { empSortDir *= -1; }
+        else { empSortCol = col; empSortDir = 1; }
+        renderEmployees();
+    }
+
+    let empSorted = []; // reference for detail panel
+
+    function renderEmployees() {
+        empSorted = [...empData].sort((a, b) => {
+            let aVal, bVal;
+            if (empSortCol === 'name') {
+                aVal = ((a.name_first||'') + ' ' + (a.name_last||'')).toLowerCase();
+                bVal = ((b.name_first||'') + ' ' + (b.name_last||'')).toLowerCase();
+            } else {
+                aVal = (a[empSortCol]||'').toString().toLowerCase();
+                bVal = (b[empSortCol]||'').toString().toLowerCase();
+            }
+            return aVal.localeCompare(bVal) * empSortDir;
+        });
+        const headRow = document.getElementById('empTableHead');
+        headRow.innerHTML = empVisibleCols.map(key => {
+            const col = EMP_COLUMNS.find(c => c.key === key);
+            const label = col ? col.label : prettyLabel(key);
+            const arrow = empSortCol === key ? (empSortDir === 1 ? ' \u25B2' : ' \u25BC') : '';
+            return `<th class="sortable" onclick="sortEmpCol('${key}')">${label}<span class="sort-arrow">${arrow}</span></th>`;
+        }).join('');
+        const tbody = document.querySelector('#empTable tbody');
+        tbody.innerHTML = empSorted.map((r, idx) => {
+            const cells = empVisibleCols.map(key => `<td>${renderCellValue(key, r[key], r)}</td>`).join('');
+            return `<tr style="cursor:pointer" onclick="showEmpDetail(${idx})">${cells}</tr>`;
+        }).join('');
+    }
+
+    buildColSelector();
+
+    async function loadEmployees() {
+        const q = document.getElementById('empSearch').value.trim();
+        const status = document.getElementById('filterStatus').value;
+        const title_group = document.getElementById('filterTitleGroup').value;
+        const property = document.getElementById('filterProperty').value;
+        const params = new URLSearchParams();
+        if (q) params.set('q', q);
+        if (status) params.set('status', status);
+        if (title_group) params.set('title_group', title_group);
+        if (property) params.set('property', property);
+        const res = await fetch('/edm/api/employees/search?' + params.toString());
+        empData = await res.json();
+        if (empData.length > 0) buildEmpColumns(empData[0]);
+        document.getElementById('empCount').textContent = empData.length + (empData.length === 1000 ? '+ results' : ' results');
+        renderEmployees();
+    }
+
+    function clearEmpFilters() {
+        document.getElementById('empSearch').value = '';
+        document.getElementById('filterStatus').value = '_ACTIVE';
+        document.getElementById('filterTitleGroup').value = '';
+        document.getElementById('filterProperty').value = '';
+        loadEmployees();
+    }
+
+    async function loadFilterOptions() {
+        const res = await fetch('/edm/api/employees/filter-options');
+        const opts = await res.json();
+        const statusSel = document.getElementById('filterStatus');
+        opts.statuses.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; statusSel.appendChild(o); });
+        const tgSel = document.getElementById('filterTitleGroup');
+        opts.title_groups.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; tgSel.appendChild(o); });
+        const propSel = document.getElementById('filterProperty');
+        opts.properties.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; propSel.appendChild(o); });
+    }
+
+    // Load initial data
+    loadFilterOptions();
+    loadEmployees();
+    // Pre-load titles & entrata for validation warnings
+    setTimeout(() => { if (!titlesLoaded) loadTitleAssignments(); }, 500);
+    setTimeout(() => { if (!entrataLoaded) loadEntrataMapping(); }, 800);
+
+    // ─── TITLE ASSIGNMENTS TAB ─────────────────────────────────────────────────
+    let titlesLoaded = false;
+    let titleData = [];
+
+    async function loadTitleAssignments() {
+        const res = await fetch('/edm/api/title-assignments');
+        titleData = await res.json();
+        titlesLoaded = true;
+        renderTitles();
+        loadTitleGroupOptions();
+        if (entrataLoaded) checkValidationWarnings();
+    }
+
+    let titleSortCol = 'title_group'; // default sort column
+    let titleSortDir = 1; // 1=asc, -1=desc
+
+    function sortTitleCol(col) {
+        if (titleSortCol === col) { titleSortDir *= -1; }
+        else { titleSortCol = col; titleSortDir = 1; }
+        renderTitles();
+    }
+
+    function renderTitles() {
+        const filter = (document.getElementById('titleFilter').value || '').toUpperCase();
+        const filtered = filter ? titleData.filter(r =>
+            r.title.includes(filter) || (r.title_group||'').includes(filter) || (r.title_type||'').includes(filter)
+        ) : titleData;
+        // Sort _UNASSIGNED to top, then by selected column
+        filtered.sort((a, b) => {
+            const aUn = (a.title_group||'') === '_UNASSIGNED' ? 0 : 1;
+            const bUn = (b.title_group||'') === '_UNASSIGNED' ? 0 : 1;
+            if (aUn !== bUn) return aUn - bUn;
+            const aVal = (a[titleSortCol]||'').toLowerCase();
+            const bVal = (b[titleSortCol]||'').toLowerCase();
+            return aVal.localeCompare(bVal) * titleSortDir;
+        });
+        // Update sort arrows
+        document.querySelectorAll('#titleTable th.sortable .sort-arrow').forEach(el => {
+            const col = el.parentElement.dataset.sort;
+            el.textContent = col === titleSortCol ? (titleSortDir === 1 ? ' ▲' : ' ▼') : '';
+        });
+        const unassignedCount = titleData.filter(r => (r.title_group||'') === '_UNASSIGNED').length;
+        document.getElementById('titleCount').textContent = `${filtered.length} of ${titleData.length}` + (unassignedCount ? ` (${unassignedCount} unassigned)` : '');
+        const tbody = document.querySelector('#titleTable tbody');
+        tbody.innerHTML = filtered.map(r => {
+            const isUn = (r.title_group||'') === '_UNASSIGNED';
+            return `
+            <tr class="${isUn ? 'row-unassigned' : ''}">
+                <td><input type="checkbox" ${bulkSelectedTitles.has(r.title)?'checked':''} onchange="toggleTitleSelect('${esc(r.title)}', this.checked)"></td>
+                <td>${esc(r.title)}${isUn ? ' <span class="unassigned-badge">NEEDS ASSIGNMENT</span>' : ''}</td>
+                <td class="editable" onclick="editTitleCell(this,'${esc(r.title)}','title_group','${esc(r.title_group||'')}')">${esc(r.title_group||'')}</td>
+                <td class="editable" onclick="editTitleCell(this,'${esc(r.title)}','title_type','${esc(r.title_type||'')}')">${esc(r.title_type||'—')}</td>
+                <td><button class="btn btn-danger btn-sm" onclick="deleteTitleAssignment('${esc(r.title)}')">Delete</button></td>
+            </tr>`;
+        }).join('');
+    }
+
+    document.getElementById('titleFilter').addEventListener('input', renderTitles);
+
+    function editTitleCell(td, title, field, current) {
+        if (td.querySelector('input,select')) return;
+        if (field === 'title_group') {
+            // Show a combo select + free-text option
+            const dl = document.getElementById('titleGroupList');
+            const opts = Array.from(dl.options).map(o => o.value);
+            // _UNASSIGNED first, then "Enter custom", then the rest
+            const allGroups = ['_UNASSIGNED', ...opts.filter(g => g !== '_UNASSIGNED')];
+            const sel = document.createElement('select');
+            sel.style.cssText = 'width:100%;padding:4px;font-size:0.85rem;';
+            // _UNASSIGNED
+            const unOpt = document.createElement('option');
+            unOpt.value = '_UNASSIGNED'; unOpt.textContent = '_UNASSIGNED';
+            if (current === '_UNASSIGNED') unOpt.selected = true;
+            sel.appendChild(unOpt);
+            // Custom option in 2nd place
+            const customOpt = document.createElement('option');
+            customOpt.value = '__CUSTOM__'; customOpt.textContent = '— Enter custom —';
+            sel.appendChild(customOpt);
+            // Remaining groups
+            allGroups.filter(g => g !== '_UNASSIGNED').forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g; opt.textContent = g;
+                if (g === current) opt.selected = true;
+                sel.appendChild(opt);
+            });
+            sel.onchange = function() {
+                if (this.value === '__CUSTOM__') {
+                    td.innerHTML = `<input type="text" value="" placeholder="Type new group..." onblur="saveTitleCell(this,'${esc(title)}','${field}')" onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.dataset.cancel='1';this.blur();}">`;
+                    td.querySelector('input').focus();
+                } else {
+                    saveTitleCellDirect(title, field, this.value);
+                }
+            };
+            sel.onkeydown = function(e) { if(e.key==='Escape'){loadTitleAssignments();} };
+            td.textContent = '';
+            td.appendChild(sel);
+            sel.focus();
+        } else if (field === 'title_type') {
+            // Type dropdown: PROPERTY, CORPORATE, or blank
+            const typeOptions = ['', 'PROPERTY', 'CORPORATE'];
+            const sel = document.createElement('select');
+            sel.style.cssText = 'width:100%;padding:4px;font-size:0.85rem;';
+            typeOptions.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t; opt.textContent = t || '— None —';
+                if (t === current) opt.selected = true;
+                sel.appendChild(opt);
+            });
+            sel.onchange = function() { saveTitleCellDirect(title, field, this.value); };
+            sel.onkeydown = function(e) { if(e.key==='Escape'){loadTitleAssignments();} };
+            td.textContent = '';
+            td.appendChild(sel);
+            sel.focus();
+        } else {
+            const orig = td.textContent;
+            td.innerHTML = `<input type="text" value="${esc(current)}" onblur="saveTitleCell(this,'${esc(title)}','${field}')" onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.dataset.cancel='1';this.blur();}">`;
+            td.querySelector('input').focus();
+        }
+    }
+
+    async function saveTitleCellDirect(title, field, value) {
+        const res = await fetch('/edm/api/title-assignments', {
+            method: 'PATCH', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({title, field, value})
+        });
+        if (res.ok) { toast('Updated'); loadTitleAssignments(); }
+        else { const e = await res.json(); toast(e.error||'Error','error'); loadTitleAssignments(); }
+    }
+
+    async function saveTitleCell(input, title, field) {
+        if (input.dataset.cancel) { loadTitleAssignments(); return; }
+        const value = input.value.trim();
+        const res = await fetch('/edm/api/title-assignments', {
+            method: 'PATCH', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({title, field, value})
+        });
+        if (res.ok) { toast('Updated'); loadTitleAssignments(); }
+        else { const e = await res.json(); toast(e.error||'Error','error'); loadTitleAssignments(); }
+    }
+
+    async function addTitleAssignment() {
+        const title = document.getElementById('newTitle').value.trim();
+        const title_group = document.getElementById('newTitleGroup').value.trim();
+        const title_type = document.getElementById('newTitleType').value.trim();
+        if (!title || !title_group) { toast('Title and Title Group required','error'); return; }
+        const res = await fetch('/edm/api/title-assignments', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({title, title_group, title_type})
+        });
+        if (res.ok) {
+            toast('Added'); document.getElementById('newTitle').value='';
+            document.getElementById('newTitleGroup').value=''; document.getElementById('newTitleType').value='';
+            loadTitleAssignments();
+        } else { const e = await res.json(); toast(e.error||'Error','error'); }
+    }
+
+    async function deleteTitleAssignment(title) {
+        if (!confirm(`Delete title assignment for "${title}"?`)) return;
+        const res = await fetch('/edm/api/title-assignments', {
+            method: 'DELETE', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({title})
+        });
+        if (res.ok) { toast('Deleted'); loadTitleAssignments(); }
+        else { const e = await res.json(); toast(e.error||'Error','error'); }
+    }
+
+    async function loadTitleGroupOptions() {
+        const res = await fetch('/edm/api/title-groups');
+        const groups = await res.json();
+        // Ensure _UNASSIGNED is first in datalist
+        const sorted = ['_UNASSIGNED', ...groups.filter(g => g !== '_UNASSIGNED')];
+        const html = sorted.map(g => `<option value="${esc(g)}">`).join('');
+        document.getElementById('titleGroupList').innerHTML = html;
+        document.getElementById('titleGroupList2').innerHTML = html;
+    }
+
+    // ─── ENTRATA MAPPING TAB ───────────────────────────────────────────────────
+    let entrataLoaded = false;
+    let entrataData = [];
+    let entrataSortCol = 'title_group';
+    let entrataSortDir = 1;
+
+    function sortEntrataCol(col) {
+        if (entrataSortCol === col) { entrataSortDir *= -1; }
+        else { entrataSortCol = col; entrataSortDir = 1; }
+        renderEntrata();
+    }
+
+    async function loadEntrataMapping() {
+        const res = await fetch('/edm/api/entrata-mapping');
+        entrataData = await res.json();
+        entrataLoaded = true;
+        renderEntrata();
+        if (titlesLoaded) checkValidationWarnings();
+    }
+
+    function renderEntrata() {
+        const filter = (document.getElementById('entrataFilter').value || '').toUpperCase();
+        let filtered = filter ? entrataData.filter(r =>
+            (r.title_group||'').includes(filter) || (r.entrata_department||'').toUpperCase().includes(filter) ||
+            (r.entrata_permission_group||'').toUpperCase().includes(filter)
+        ) : [...entrataData];
+        filtered.sort((a, b) => {
+            const aVal = (a[entrataSortCol]||'').toLowerCase();
+            const bVal = (b[entrataSortCol]||'').toLowerCase();
+            return aVal.localeCompare(bVal) * entrataSortDir;
+        });
+        ['title_group','entrata_department','entrata_permission_group'].forEach(col => {
+            const el = document.getElementById('entrataArrow_' + col);
+            if (el) el.textContent = col === entrataSortCol ? (entrataSortDir === 1 ? ' \u25B2' : ' \u25BC') : '';
+        });
+        document.getElementById('entrataCount').textContent = `${filtered.length} of ${entrataData.length}`;
+        const tbody = document.querySelector('#entrataTable tbody');
+        tbody.innerHTML = filtered.map(r => `
+            <tr>
+                <td>${esc(r.title_group)}</td>
+                <td class="editable" onclick="editEntrataCell(this,'${esc(r.title_group)}','entrata_department','${esc(r.entrata_department||'')}')">${esc(r.entrata_department||'—')}</td>
+                <td class="editable" onclick="editEntrataCell(this,'${esc(r.title_group)}','entrata_permission_group','${esc(r.entrata_permission_group||'')}')">${esc(r.entrata_permission_group||'—')}</td>
+                <td><button class="btn btn-danger btn-sm" onclick="deleteEntrataMapping('${esc(r.title_group)}')">Delete</button></td>
+            </tr>
+        `).join('');
+    }
+
+    document.getElementById('entrataFilter').addEventListener('input', renderEntrata);
+
+    function editEntrataCell(td, tg, field, current) {
+        if (td.querySelector('input')) return;
+        td.innerHTML = `<input type="text" value="${esc(current)}" onblur="saveEntrataCell(this,'${esc(tg)}','${field}')" onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.dataset.cancel='1';this.blur();}">`;
+        td.querySelector('input').focus();
+    }
+
+    async function saveEntrataCell(input, tg, field) {
+        if (input.dataset.cancel) { loadEntrataMapping(); return; }
+        const value = input.value.trim();
+        const res = await fetch('/edm/api/entrata-mapping', {
+            method: 'PATCH', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({title_group: tg, field, value})
+        });
+        if (res.ok) { toast('Updated'); loadEntrataMapping(); }
+        else { const e = await res.json(); toast(e.error||'Error','error'); loadEntrataMapping(); }
+    }
+
+    async function addEntrataMapping() {
+        const title_group = document.getElementById('newEntrataGroup').value.trim();
+        const entrata_department = document.getElementById('newEntrataDept').value.trim();
+        const entrata_permission_group = document.getElementById('newEntrataPerm').value.trim();
+        if (!title_group) { toast('Title Group required','error'); return; }
+        const res = await fetch('/edm/api/entrata-mapping', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({title_group, entrata_department, entrata_permission_group})
+        });
+        if (res.ok) {
+            toast('Added'); document.getElementById('newEntrataGroup').value='';
+            document.getElementById('newEntrataDept').value=''; document.getElementById('newEntrataPerm').value='';
+            loadEntrataMapping();
+        } else { const e = await res.json(); toast(e.error||'Error','error'); }
+    }
+
+    async function deleteEntrataMapping(tg) {
+        if (!confirm(`Delete entrata mapping for "${tg}"?`)) return;
+        const res = await fetch('/edm/api/entrata-mapping', {
+            method: 'DELETE', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({title_group: tg})
+        });
+        if (res.ok) { toast('Deleted'); loadEntrataMapping(); }
+        else { const e = await res.json(); toast(e.error||'Error','error'); }
+    }
+
+    // ─── SOFT TERMINATIONS TAB ─────────────────────────────────────────────────
+    let softTermLoaded = false;
+    let softTermData = [];
+    let stSortCol = 'name';
+    let stSortDir = 1;
+
+    function sortStCol(col) {
+        if (stSortCol === col) { stSortDir *= -1; }
+        else { stSortCol = col; stSortDir = 1; }
+        renderSoftTerminations();
+    }
+
+    async function loadSoftTerminations() {
+        const res = await fetch('/edm/api/soft-terminations');
+        softTermData = await res.json();
+        softTermLoaded = true;
+        renderSoftTerminations();
+    }
+
+    function renderSoftTerminations() {
+        const showInactive = document.getElementById('stShowInactive').checked;
+        let filtered = showInactive ? [...softTermData] : softTermData.filter(r => r.is_active);
+        document.getElementById('stCount').textContent = `${filtered.length} override${filtered.length !== 1 ? 's' : ''}` +
+            (softTermData.length !== filtered.length ? ` (${softTermData.length - filtered.length} inactive hidden)` : '');
+        // Sort
+        filtered.sort((a, b) => {
+            let aVal, bVal;
+            if (stSortCol === 'name') {
+                aVal = ((a.name_first||'') + ' ' + (a.name_last||'')).toLowerCase();
+                bVal = ((b.name_first||'') + ' ' + (b.name_last||'')).toLowerCase();
+            } else if (stSortCol === 'is_active') {
+                aVal = a.is_active ? '1' : '0';
+                bVal = b.is_active ? '1' : '0';
+            } else {
+                aVal = (a[stSortCol]||'').toString().toLowerCase();
+                bVal = (b[stSortCol]||'').toString().toLowerCase();
+            }
+            return aVal.localeCompare(bVal) * stSortDir;
+        });
+        // Update arrows
+        ['employee_code','name','reason','expires_on','is_active','added_by','added_on'].forEach(col => {
+            const el = document.getElementById('stArrow_' + col);
+            if (el) el.textContent = col === stSortCol ? (stSortDir === 1 ? ' \u25B2' : ' \u25BC') : '';
+        });
+        const tbody = document.querySelector('#softTermTable tbody');
+        tbody.innerHTML = filtered.map(r => {
+            const isExpired = r.expires_on && new Date(r.expires_on) < new Date();
+            const statusBadge = !r.is_active ? '<span class="badge badge-inactive">Inactive</span>' :
+                                isExpired ? '<span class="badge badge-expired">Expired</span>' :
+                                '<span class="badge badge-active">Active</span>';
+            return `
+            <tr style="${!r.is_active ? 'opacity:0.5' : ''}">
+                <td style="font-family:monospace;font-size:0.8rem">${esc(r.employee_code)}</td>
+                <td>${esc(r.name_first||'')} ${esc(r.name_last||'')}</td>
+                <td style="font-size:0.8rem">${esc(r.reason||'')}</td>
+                <td style="font-size:0.8rem">${r.expires_on||'—'}</td>
+                <td>${statusBadge}</td>
+                <td style="font-size:0.8rem">${r.added_by ? r.added_by.split('@')[0] : ''}</td>
+                <td style="font-size:0.8rem">${r.added_on ? r.added_on.split('T')[0] : ''}</td>
+                <td>
+                    ${r.is_active ?
+                        `<button class="btn btn-warn btn-sm" onclick="deactivateSoftTerm('${r.employee_code}')" title="Deactivate"><i class="fa-solid fa-pause"></i></button>` :
+                        `<button class="btn btn-success btn-sm" onclick="reactivateSoftTerm('${r.employee_code}')" title="Reactivate"><i class="fa-solid fa-play"></i></button>`
+                    }
+                    <button class="btn btn-danger btn-sm" onclick="deleteSoftTerm('${r.employee_code}')" title="Delete permanently"><i class="fa-solid fa-trash"></i></button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    document.getElementById('stShowInactive').addEventListener('change', renderSoftTerminations);
+
+    async function addSoftTermination() {
+        const employee_code = document.getElementById('stEmpCode').value.trim();
+        const reason = document.getElementById('stReason').value.trim();
+        const expires_on = document.getElementById('stExpires').value || null;
+        if (!employee_code || !reason) { toast('Employee code and reason required','error'); return; }
+        const res = await fetch('/edm/api/soft-terminations', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({employee_code, reason, expires_on})
+        });
+        if (res.ok) {
+            toast('Override added');
+            document.getElementById('stEmpCode').value='';
+            document.getElementById('stReason').value='';
+            document.getElementById('stExpires').value='';
+            loadSoftTerminations();
+        } else { const e = await res.json(); toast(e.error||'Error','error'); }
+    }
+
+    async function deactivateSoftTerm(code) {
+        const res = await fetch('/edm/api/soft-terminations/' + code, {
+            method: 'PATCH', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({is_active: false})
+        });
+        if (res.ok) { toast('Deactivated'); loadSoftTerminations(); }
+        else { const e = await res.json(); toast(e.error||'Error','error'); }
+    }
+
+    async function reactivateSoftTerm(code) {
+        const res = await fetch('/edm/api/soft-terminations/' + code, {
+            method: 'PATCH', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({is_active: true})
+        });
+        if (res.ok) { toast('Reactivated'); loadSoftTerminations(); }
+        else { const e = await res.json(); toast(e.error||'Error','error'); }
+    }
+
+    async function deleteSoftTerm(code) {
+        if (!confirm(`Permanently delete soft termination override for ${code}?`)) return;
+        const res = await fetch('/edm/api/soft-terminations/' + code, { method: 'DELETE' });
+        if (res.ok) { toast('Deleted'); loadSoftTerminations(); }
+        else { const e = await res.json(); toast(e.error||'Error','error'); }
+    }
+
+    // ─── Utility ───────────────────────────────────────────────────────────────
+    function esc(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+    function fmtDateInt(v) { if (!v || v === 0) return ''; const s = String(v); if (s.length === 8) return s.slice(4,6)+'/'+s.slice(6,8)+'/'+s.slice(0,4); return esc(s); }
+
+    // ─── CSV EXPORT ────────────────────────────────────────────────────────────
+    function exportEmpCSV() {
+        if (!empSorted.length) { toast('No data to export','error'); return; }
+        const cols = empVisibleCols;
+        const headers = cols.map(key => {
+            const col = EMP_COLUMNS.find(c => c.key === key);
+            return col ? col.label : prettyLabel(key);
+        });
+        const csvRows = [headers.join(',')];
+        empSorted.forEach(r => {
+            const row = cols.map(key => {
+                let val;
+                if (key === 'name') val = (r.name_first||'') + ' ' + (r.name_last||'');
+                else if (EMP_DATE_KEYS.includes(key)) val = fmtDateInt(r[key]);
+                else if (key.startsWith(EMP_FLAG_PREFIX)) val = r[key] ? 'Yes' : 'No';
+                else val = r[key] != null ? String(r[key]) : '';
+                // Escape CSV
+                if (val.includes(',') || val.includes('"') || val.includes('\n')) val = '"' + val.replace(/"/g, '""') + '"';
+                return val;
+            });
+            csvRows.push(row.join(','));
+        });
+        const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'employees_export.csv';
+        a.click(); URL.revokeObjectURL(url);
+        toast('Exported ' + empSorted.length + ' rows');
+    }
+
+    // ─── EMPLOYEE DETAIL PANEL ─────────────────────────────────────────────────
+    function showEmpDetail(idx) {
+        const r = empSorted[idx];
+        if (!r) return;
+        document.getElementById('empDetailName').textContent = (r.name_first||'') + ' ' + (r.name_last||'');
+        const tbody = document.getElementById('empDetailBody');
+        const allKeys = Object.keys(r).filter(k => !EMP_HIDDEN_KEYS.includes(k) && k !== 'name_first' && k !== 'name_last');
+        tbody.innerHTML = allKeys.map(key => {
+            let val = r[key];
+            if (EMP_DATE_KEYS.includes(key)) val = fmtDateInt(val);
+            else if (key.startsWith(EMP_FLAG_PREFIX)) val = val ? 'Yes' : (val === 0 ? 'No' : '');
+            else if (key.startsWith('datetime_') && val) val = val.slice(0, 19).replace('T', ' ');
+            else val = val != null ? String(val) : '—';
+            return `<tr><td>${prettyLabel(key)}</td><td>${esc(val)}</td></tr>`;
+        }).join('');
+        document.getElementById('empDetailPanel').classList.add('open');
+    }
+
+    function closeEmpDetail() {
+        document.getElementById('empDetailPanel').classList.remove('open');
+    }
+    // Close on Escape
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEmpDetail(); });
+
+    // ─── BULK ASSIGN (Title Assignments) ───────────────────────────────────────
+    let bulkSelectedTitles = new Set();
+
+    function toggleTitleSelect(title, checked) {
+        if (checked) bulkSelectedTitles.add(title); else bulkSelectedTitles.delete(title);
+        updateBulkBar();
+    }
+
+    function toggleAllTitleSelect(checked) {
+        const unassigned = titleData.filter(r => (r.title_group||'') === '_UNASSIGNED');
+        if (checked) unassigned.forEach(r => bulkSelectedTitles.add(r.title));
+        else bulkSelectedTitles.clear();
+        renderTitles();
+        updateBulkBar();
+    }
+
+    function updateBulkBar() {
+        const bar = document.getElementById('bulkAssignBar');
+        if (bulkSelectedTitles.size > 0) {
+            bar.classList.add('visible');
+            document.getElementById('bulkCount').textContent = bulkSelectedTitles.size + ' selected';
+        } else {
+            bar.classList.remove('visible');
+        }
+    }
+
+    function clearBulkSelection() {
+        bulkSelectedTitles.clear();
+        document.getElementById('titleSelectAll').checked = false;
+        updateBulkBar();
+        renderTitles();
+    }
+
+    async function applyBulkAssign() {
+        const group = document.getElementById('bulkTitleGroup').value.trim();
+        const type = document.getElementById('bulkTitleType').value;
+        if (!group) { toast('Select a Title Group','error'); return; }
+        if (!confirm(`Assign ${bulkSelectedTitles.size} title(s) to "${group}"?`)) return;
+        let success = 0, fail = 0;
+        for (const title of bulkSelectedTitles) {
+            const res = await fetch('/edm/api/title-assignments', {
+                method: 'PATCH', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({title, field: 'title_group', value: group})
+            });
+            if (res.ok) {
+                success++;
+                if (type) {
+                    await fetch('/edm/api/title-assignments', {
+                        method: 'PATCH', headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({title, field: 'title_type', value: type})
+                    });
+                }
+            } else { fail++; }
+        }
+        toast(`Assigned ${success} title(s)` + (fail ? `, ${fail} failed` : ''));
+        bulkSelectedTitles.clear();
+        document.getElementById('bulkTitleGroup').value = '';
+        document.getElementById('bulkTitleType').value = '';
+        document.getElementById('titleSelectAll').checked = false;
+        updateBulkBar();
+        loadTitleAssignments();
+    }
+
+    // ─── VALIDATION WARNINGS ───────────────────────────────────────────────────
+    function checkValidationWarnings() {
+        const warnings = [];
+        // Title groups in Title Assignments that have no Entrata mapping
+        const titleGroups = [...new Set(titleData.map(r => r.title_group).filter(g => g && g !== '_UNASSIGNED'))];
+        const entrataGroups = new Set(entrataData.map(r => r.title_group));
+        const missingEntrata = titleGroups.filter(g => !entrataGroups.has(g));
+        if (missingEntrata.length) {
+            warnings.push(`<strong>${missingEntrata.length} Title Group(s) have no Entrata Mapping:</strong><ul>${missingEntrata.map(g => `<li>${esc(g)}</li>`).join('')}</ul>`);
+        }
+        // Entrata mappings for groups that don't exist in Title Assignments
+        const titleGroupSet = new Set(titleData.map(r => r.title_group));
+        const orphanedEntrata = entrataData.filter(r => !titleGroupSet.has(r.title_group)).map(r => r.title_group);
+        if (orphanedEntrata.length) {
+            warnings.push(`<strong>${orphanedEntrata.length} Entrata Mapping(s) reference non-existent Title Groups:</strong><ul>${orphanedEntrata.map(g => `<li>${esc(g)}</li>`).join('')}</ul>`);
+        }
+        const el = document.getElementById('titleValidationWarnings');
+        if (warnings.length) {
+            el.innerHTML = warnings.join('');
+            el.style.display = 'block';
+        } else {
+            el.style.display = 'none';
+        }
+    }
+    </script>
+{% endblock %}

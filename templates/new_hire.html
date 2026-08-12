@@ -1,0 +1,595 @@
+{% extends "shell.html" %}
+{% block head %}
+    <style>
+        .nh-container { padding: 24px; max-width: 1200px; }
+        .nh-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+        .nh-header h1 { font-size: 1.4rem; color: var(--text-primary); margin: 0; }
+        .nh-header-icon { width: 40px; height: 40px; border-radius: 10px; background: #ef4444; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.1rem; }
+        .nh-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border-medium); }
+        .nh-tab { padding: 10px 20px; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+        .nh-tab:hover { color: var(--text-primary); }
+        .nh-tab.active { color: #ef4444; border-bottom-color: #ef4444; }
+        .nh-panel { display: none; }
+        .nh-panel.active { display: block; }
+
+        .nh-form { max-width: 900px; }
+        .form-section { margin-bottom: 28px; padding: 20px; background: var(--surface-raised); border: 1px solid var(--border-light); border-radius: 10px; }
+        .form-section-title { font-size: 0.8rem; font-weight: 700; color: #ef4444; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border-subtle); }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 9px 12px; border-radius: 6px; font-size: 0.85rem; font-family: inherit; }
+        .form-group input::placeholder, .form-group textarea::placeholder { color: var(--text-secondary); }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        .form-group input:disabled { opacity: 0.6; cursor: not-allowed; }
+        .form-group select { appearance: none; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px; }
+        .form-group select option { background: var(--surface-raised); color: var(--text-primary); }
+        .form-row { display: flex; gap: 14px; flex-wrap: wrap; }
+        .form-row .form-group { flex: 1; min-width: 180px; }
+
+        .checkbox-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+        .checkbox-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--input-bg); border: 1px solid var(--border-input); border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+        .checkbox-item:hover { border-color: #ef4444; }
+        .checkbox-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: #ef4444; cursor: pointer; }
+        .checkbox-item label { font-size: 0.8rem; color: var(--text-primary); cursor: pointer; margin: 0; text-transform: none; letter-spacing: 0; }
+
+        .conditional-field { margin-top: 8px; padding-left: 24px; display: none; }
+        .conditional-field.show { display: block; }
+
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: #ef4444; color: #fff; }
+        .btn-primary:hover { background: #dc2626; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-danger { background: rgba(244,67,54,0.2); color: #e57373; border: none; padding: 6px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+        .btn-danger:hover { background: rgba(244,67,54,0.4); }
+        .btn-sm { padding: 6px 14px; font-size: 0.75rem; }
+
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        .data-table th { text-align: left; padding: 10px 10px; background: var(--surface-raised); color: var(--text-secondary); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-medium); position: sticky; top: 0; z-index: 1; white-space: nowrap; }
+        .data-table th[data-col] { cursor: pointer; user-select: none; }
+        .data-table th[data-col]:hover { color: var(--text-primary); }
+        .data-table th[data-col]::after { content: ' \2195'; opacity: 0.3; font-size: 0.65rem; }
+        .data-table th[data-col].sort-asc::after  { content: ' \2191'; opacity: 1; }
+        .data-table th[data-col].sort-desc::after { content: ' \2193'; opacity: 1; }
+        .data-table td { padding: 7px 10px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); }
+        .data-table tr:hover td { background: var(--hover-bg); }
+        .table-scroll { max-height: calc(100vh - 300px); overflow-y: auto; border: 1px solid var(--border-light); border-radius: 8px; }
+
+        .detail-row { display: none; }
+        .detail-row.show { display: table-row; }
+        .detail-row td { background: var(--hover-bg); padding: 14px 20px; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; font-size: 0.8rem; }
+        .detail-grid .dg-item { }
+        .detail-grid .dg-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 2px; }
+        .detail-grid .dg-value { color: var(--text-primary); }
+        .detail-section { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-subtle); }
+        .detail-section-title { font-size: 0.7rem; font-weight: 700; color: #ef4444; text-transform: uppercase; margin-bottom: 8px; }
+        .badge-yes { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.65rem; font-weight: 600; background: rgba(16,185,129,0.15); color: #10b981; margin: 2px; }
+        .badge-no { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.65rem; font-weight: 600; background: rgba(100,116,139,0.15); color: #64748b; margin: 2px; }
+
+        .admin-add { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; padding: 12px; background: var(--hover-bg); border: 1px solid var(--border-light); border-radius: 8px; }
+        .admin-add input { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; min-width: 300px; }
+        .admin-add input::placeholder { color: var(--text-secondary); }
+
+        .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 8px; font-size: 0.85rem; color: #fff; z-index: 9999; transition: opacity 0.3s; }
+        .toast-success { background: rgba(76,175,80,0.9); }
+        .toast-error { background: rgba(244,67,54,0.9); }
+        .empty-state { text-align: center; padding: 40px; color: var(--text-secondary); font-size: 0.9rem; }
+        .success-msg { padding: 16px; background: rgba(76,175,80,0.1); border: 1px solid rgba(76,175,80,0.3); border-radius: 8px; color: #81c784; text-align: center; display: none; }
+
+        .search-bar { margin-bottom: 16px; }
+        .search-bar input { width: 300px; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="nh-container">
+    <div class="nh-header">
+        <div class="nh-header-icon"><i class="fa-solid fa-user-plus"></i></div>
+        <h1>New Hire Alert</h1>
+    </div>
+    <div class="info-blurb" id="blurb-new-hire">
+        <div class="blurb-header" onclick="toggleBlurb('new-hire')">
+            <span class="blurb-title">About New Hire Alert</span>
+            <span class="blurb-toggle" id="blurbToggle-new-hire">&#9660;</span>
+        </div>
+        <div class="blurb-body" id="blurbBody-new-hire">
+            Submit a new hire notification so the appropriate teams are alerted and onboarding actions can be initiated. Include compensation details, start date, and any special conditions.
+        </div>
+    </div>
+
+    <div class="nh-tabs">
+        <div class="nh-tab active" data-tab="submit">Submit New Hire</div>
+        {% if is_admin %}
+        <div class="nh-tab" data-tab="alerts">All Alerts</div>
+        <div class="nh-tab" data-tab="admins">Manage Admins</div>
+        {% endif %}
+    </div>
+
+    <!-- SUBMIT TAB -->
+    <div class="nh-panel active" id="panel-submit">
+        <div class="nh-form">
+            <div class="success-msg" id="submitSuccess">
+                <i class="fa-solid fa-check-circle"></i> New hire alert submitted successfully!
+            </div>
+            <form id="nhForm">
+                <!-- EMPLOYEE INFO -->
+                <div class="form-section">
+                    <div class="form-section-title"><i class="fa-solid fa-user"></i> Employee Information</div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Legal First Name *</label><input type="text" id="fFirstName" required></div>
+                        <div class="form-group"><label>Legal Middle Name</label><input type="text" id="fMiddleName"></div>
+                        <div class="form-group"><label>Legal Last Name *</label><input type="text" id="fLastName" required></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Preferred First Name</label><input type="text" id="fPreferredName" placeholder="If different from legal name"></div>
+                        <div class="form-group"><label>Employee ID</label><input type="text" id="fEmployeeId" placeholder="e.g. A4ZM"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Start Date *</label><input type="date" id="fStartDate" required></div>
+                        <div class="form-group"><label>Employment Status</label>
+                            <select id="fStatus"><option value="Full-Time">Full-Time</option><option value="Part-Time">Part-Time</option><option value="Temporary">Temporary</option></select>
+                        </div>
+                        <div class="form-group"><label>Department</label><input type="text" id="fDepartment"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Position Title *</label><input type="text" id="fPosition" required></div>
+                        <div class="form-group"><label>Manager Name</label><input type="text" id="fManager"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Location Type</label>
+                            <select id="fLocationType" onchange="updateLocationFields()"><option value="Property">Property</option><option value="Home Office">Home Office</option><option value="Corporate">Corporate</option></select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" id="grpPropertyLocation">
+                            <label>Property Location *</label>
+                            <select id="fPropertyLocation"><option value="">-- Select Property --</option></select>
+                        </div>
+                        <div class="form-group" id="grpOfficeLocation" style="display:none;">
+                            <label>Office Location</label>
+                            <select id="fOfficeLocation">
+                                <option value="">-- Select --</option>
+                                <option value="Corporate - Atlanta">Corporate - Atlanta</option>
+                                <option value="Corporate - Remote">Corporate - Remote</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="grpHomeOffice" style="display:none;">
+                            <label>Home Office Location</label>
+                            <input type="text" id="fHomeOfficeLocation" placeholder="City, State">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COMPENSATION -->
+                <div class="form-section">
+                    <div class="form-section-title"><i class="fa-solid fa-dollar-sign"></i> Compensation</div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Pay Type</label>
+                            <select id="fPayType" onchange="togglePayFields()"><option value="Hourly">Hourly</option><option value="Salary">Salary</option></select>
+                        </div>
+                        <div class="form-group" id="hourlyGroup"><label>Base Hourly Rate ($)</label><input type="number" step="0.01" id="fHourlyRate"></div>
+                        <div class="form-group" id="salaryGroup" style="display:none;"><label>Annual Salary ($)</label><input type="number" step="0.01" id="fAnnualSalary"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Payroll Entity Name</label>
+                            <select id="fPayrollEntity"><option value="">-- Select --</option></select>
+                        </div>
+                        <div class="form-group"><label>Peak Entity Name</label>
+                            <select id="fPeakEntity"><option value="">-- Select --</option></select>
+                        </div>
+                    </div>
+                    <div class="checkbox-item" style="width:fit-content; margin-bottom:8px;">
+                        <input type="checkbox" id="fCellPhone" onchange="toggleCond('cellCond', this.checked)">
+                        <label for="fCellPhone">Cell Phone Reimbursement</label>
+                    </div>
+                    <div class="conditional-field" id="cellCond">
+                        <div class="form-group" style="max-width:200px;"><label>Amount ($)</label><input type="number" step="0.01" id="fCellAmount"></div>
+                    </div>
+                </div>
+
+                <!-- SYSTEM ACCESS -->
+                <div class="form-section">
+                    <div class="form-section-title"><i class="fa-solid fa-key"></i> System Access</div>
+                    <div class="checkbox-grid">
+                        <div class="checkbox-item"><input type="checkbox" id="fEntrata"><label for="fEntrata">Entrata</label></div>
+                        <div class="checkbox-item"><input type="checkbox" id="fGraceHill"><label for="fGraceHill">Grace Hill</label></div>
+                        <div class="checkbox-item"><input type="checkbox" id="fCertify"><label for="fCertify">Certify</label></div>
+                        <div class="checkbox-item"><input type="checkbox" id="fConcur"><label for="fConcur">Concur</label></div>
+                        <div class="checkbox-item"><input type="checkbox" id="fAmex"><label for="fAmex">AMEX</label></div>
+                        <div class="checkbox-item"><input type="checkbox" id="fAvidXchange"><label for="fAvidXchange">AvidXchange</label></div>
+                        <div class="checkbox-item"><input type="checkbox" id="fAdaptive"><label for="fAdaptive">Adaptive Insights</label></div>
+                        <div class="checkbox-item"><input type="checkbox" id="fPaycom"><label for="fPaycom">Paycom Client Account</label></div>
+                        <div class="checkbox-item"><input type="checkbox" id="fNewComputer"><label for="fNewComputer">New Computer Order</label></div>
+                    </div>
+                </div>
+
+                <!-- HOUSING/BENEFITS -->
+                <div class="form-section">
+                    <div class="form-section-title"><i class="fa-solid fa-house"></i> Housing & Benefits</div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:0 0 auto;">
+                            <div class="checkbox-item"><input type="checkbox" id="fRentDiscount" onchange="toggleCond('rentCond', this.checked)"><label for="fRentDiscount">Rent Discount</label></div>
+                        </div>
+                        <div class="conditional-field" id="rentCond" style="padding-left:0; display:flex; gap:12px; align-items:end;">
+                            <div class="form-group" style="margin:0; min-width:120px;"><label>Discount %</label><input type="number" step="0.01" id="fRentPct"></div>
+                            <div class="form-group" style="margin:0; min-width:120px;"><label>Base Rent ($)</label><input type="number" step="0.01" id="fBaseRent"></div>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:12px;">
+                        <div class="form-group" style="flex:0 0 auto;">
+                            <div class="checkbox-item"><input type="checkbox" id="fRelocation" onchange="toggleCond('reloCond', this.checked)"><label for="fRelocation">Relocation Assistance</label></div>
+                        </div>
+                        <div class="conditional-field" id="reloCond" style="padding-left:0;">
+                            <div class="form-group" style="margin:0; min-width:150px;"><label>Amount ($)</label><input type="number" step="0.01" id="fReloAmount"></div>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:12px;">
+                        <div class="checkbox-item" style="width:fit-content;"><input type="checkbox" id="fRehire"><label for="fRehire">Rehire / Former Employee</label></div>
+                        <div class="checkbox-item" style="width:fit-content;"><input type="checkbox" id="fAllocated"><label for="fAllocated">Allocated Employee</label></div>
+                    </div>
+                </div>
+
+                <!-- OTHER -->
+                <div class="form-section">
+                    <div class="form-section-title"><i class="fa-solid fa-circle-info"></i> Additional Information</div>
+                    <div class="form-group"><label>Special Payment Requests</label><input type="text" id="fSpecialPayments" placeholder="Any special payment arrangements..."></div>
+                    <div class="form-group"><label>Other Information</label><textarea id="fOtherInfo" placeholder="Any other notes or instructions..."></textarea></div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="submitBtn">Submit New Hire Alert</button>
+            </form>
+        </div>
+    </div>
+
+    {% if is_admin %}
+    <!-- ALL ALERTS TAB -->
+    <div class="nh-panel" id="panel-alerts">
+        <div class="search-bar"><input type="text" id="alertSearch" placeholder="Search by name, property, position..."></div>
+        <div class="table-scroll">
+            <table class="data-table" id="alertTable">
+                <thead>
+                    <tr>
+                        <th data-col="id" onclick="sortAlerts(this)">#</th>
+                        <th data-col="last_name" onclick="sortAlerts(this)" class="sort-asc">Name</th>
+                        <th data-col="position" onclick="sortAlerts(this)">Position</th>
+                        <th data-col="property" onclick="sortAlerts(this)">Property</th>
+                        <th data-col="start_date" onclick="sortAlerts(this)">Start Date</th>
+                        <th data-col="submitted_by" onclick="sortAlerts(this)">Submitted By</th>
+                        <th data-col="date_submitted" onclick="sortAlerts(this)">Date</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="alertBody"></tbody>
+            </table>
+        </div>
+        <div class="empty-state" id="alertEmpty" style="display:none;">No alerts found.</div>
+    </div>
+
+    <!-- MANAGE ADMINS TAB -->
+    <div class="nh-panel" id="panel-admins">
+        <div class="admin-add">
+            <input type="email" id="adminEmail" placeholder="Enter email address...">
+            <button class="btn btn-primary btn-sm" id="addAdminBtn">Add Admin</button>
+        </div>
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead><tr>
+                  <th data-col="email" onclick="sortNhAdmins(this)" class="sort-asc">Email</th>
+                  <th data-col="date_created" onclick="sortNhAdmins(this)">Added</th>
+                  <th></th>
+                </tr></thead>
+                <tbody id="adminBody"></tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+(function() {
+    var tabs = document.querySelectorAll('.nh-tab');
+    var panels = document.querySelectorAll('.nh-panel');
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            tabs.forEach(function(t) { t.classList.remove('active'); });
+            panels.forEach(function(p) { p.classList.remove('active'); });
+            tab.classList.add('active');
+            document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+            if (tab.dataset.tab === 'alerts') loadAlerts();
+            if (tab.dataset.tab === 'admins') loadAdmins();
+        });
+    });
+
+    window.togglePayFields = function() {
+        var pt = document.getElementById('fPayType').value;
+        document.getElementById('hourlyGroup').style.display = pt === 'Hourly' ? '' : 'none';
+        document.getElementById('salaryGroup').style.display = pt === 'Salary' ? '' : 'none';
+    };
+
+    window.updateLocationFields = function() {
+        var lt = document.getElementById('fLocationType').value;
+        document.getElementById('grpPropertyLocation').style.display = lt === 'Property' ? '' : 'none';
+        document.getElementById('grpOfficeLocation').style.display = lt === 'Corporate' ? '' : 'none';
+        document.getElementById('grpHomeOffice').style.display = lt === 'Home Office' ? '' : 'none';
+    };
+
+    async function loadDropdowns() {
+        // Properties
+        var propSel = document.getElementById('fPropertyLocation');
+        try {
+            var props = await fetch('/new-hire/api/properties').then(function(r) { return r.json(); });
+            props.forEach(function(p) {
+                var o = document.createElement('option');
+                o.value = p; o.textContent = p;
+                propSel.appendChild(o);
+            });
+        } catch(e) { console.warn('Failed to load properties', e); }
+
+        // Entities
+        try {
+            var ent = await fetch('/new-hire/api/entities').then(function(r) { return r.json(); });
+            var payrollSel = document.getElementById('fPayrollEntity');
+            ent.payroll.forEach(function(v) {
+                var o = document.createElement('option');
+                o.value = v; o.textContent = v;
+                payrollSel.appendChild(o);
+            });
+            var peakSel = document.getElementById('fPeakEntity');
+            ent.peak.forEach(function(v) {
+                var o = document.createElement('option');
+                o.value = v; o.textContent = v;
+                peakSel.appendChild(o);
+            });
+        } catch(e) { console.warn('Failed to load entities', e); }
+    }
+
+    window.toggleCond = function(id, show) {
+        var el = document.getElementById(id);
+        if (el) el.classList.toggle('show', show);
+    };
+
+    var form = document.getElementById('nhForm');
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var btn = document.getElementById('submitBtn');
+        btn.disabled = true; btn.textContent = 'Submitting...';
+
+        var payload = {
+            legal_first_name: document.getElementById('fFirstName').value,
+            legal_middle_name: document.getElementById('fMiddleName').value,
+            legal_last_name: document.getElementById('fLastName').value,
+            preferred_first_name: document.getElementById('fPreferredName').value,
+            employee_id: document.getElementById('fEmployeeId').value,
+            start_date: document.getElementById('fStartDate').value,
+            employee_status: document.getElementById('fStatus').value,
+            department: document.getElementById('fDepartment').value,
+            position_title: document.getElementById('fPosition').value,
+            manager_name: document.getElementById('fManager').value,
+            location_type: document.getElementById('fLocationType').value,
+            property_location: document.getElementById('fPropertyLocation').value,
+            office_location: document.getElementById('fOfficeLocation').value,
+            home_office_location: document.getElementById('fHomeOfficeLocation').value,
+            pay_type: document.getElementById('fPayType').value,
+            base_hourly_rate: document.getElementById('fHourlyRate').value || null,
+            annual_salary: document.getElementById('fAnnualSalary').value || null,
+            payroll_entity_name: document.getElementById('fPayrollEntity').value,
+            peak_entity_name: document.getElementById('fPeakEntity').value,
+            cell_phone_reimbursement: document.getElementById('fCellPhone').checked,
+            cell_phone_amount: document.getElementById('fCellAmount').value || null,
+            entrata: document.getElementById('fEntrata').checked,
+            grace_hill: document.getElementById('fGraceHill').checked,
+            certify: document.getElementById('fCertify').checked,
+            concur: document.getElementById('fConcur').checked,
+            amex: document.getElementById('fAmex').checked,
+            avidxchange: document.getElementById('fAvidXchange').checked,
+            adaptive_insights: document.getElementById('fAdaptive').checked,
+            paycom_client_account: document.getElementById('fPaycom').checked,
+            new_computer_order: document.getElementById('fNewComputer').checked,
+            rent_discount: document.getElementById('fRentDiscount').checked,
+            rent_discount_pct: document.getElementById('fRentPct').value || null,
+            base_rent: document.getElementById('fBaseRent').value || null,
+            relocation_assistance: document.getElementById('fRelocation').checked,
+            relocation_amount: document.getElementById('fReloAmount').value || null,
+            rehire: document.getElementById('fRehire').checked,
+            allocated_employee: document.getElementById('fAllocated').checked,
+            special_payment_requests: document.getElementById('fSpecialPayments').value,
+            other_information: document.getElementById('fOtherInfo').value,
+        };
+
+        fetch('/new-hire/api/alerts', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            btn.disabled = false; btn.textContent = 'Submit New Hire Alert';
+            if (data.success) {
+                document.getElementById('submitSuccess').style.display = 'block';
+                form.reset();
+                window.togglePayFields();
+                window.updateLocationFields();
+                setTimeout(function() { document.getElementById('submitSuccess').style.display = 'none'; }, 4000);
+            } else { showToast(data.error || 'Submission failed.', 'error'); }
+        })
+        .catch(function() { btn.disabled = false; btn.textContent = 'Submit New Hire Alert'; showToast('Network error.', 'error'); });
+    });
+
+    var allAlerts = [];
+    var _alertSortCol = 'last_name', _alertSortDir = 'asc';
+    var _allNhAdmins = [], _nhAdminSortCol = 'email', _nhAdminSortDir = 'asc';
+
+    function _applyAlertSort(arr) {
+        return arr.slice().sort(function(a, b) {
+            var va = String(a[_alertSortCol] || '').toLowerCase();
+            var vb = String(b[_alertSortCol] || '').toLowerCase();
+            return _alertSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+        });
+    }
+    function sortAlerts(th) {
+        var col = th.dataset.col;
+        if (_alertSortCol === col) { _alertSortDir = _alertSortDir === 'asc' ? 'desc' : 'asc'; }
+        else { _alertSortCol = col; _alertSortDir = 'asc'; }
+        document.querySelectorAll('#alertTable th[data-col]').forEach(function(h) { h.classList.remove('sort-asc','sort-desc'); });
+        th.classList.add(_alertSortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+        applyAlertFilter();
+    }
+    function applyAlertFilter() {
+        var q = (document.getElementById('alertSearch') || {}).value || '';
+        q = q.toLowerCase().trim();
+        var filtered = !q ? allAlerts : allAlerts.filter(function(a) {
+            return (a.first_name + ' ' + a.last_name).toLowerCase().indexOf(q) >= 0 ||
+                   (a.property || '').toLowerCase().indexOf(q) >= 0 ||
+                   (a.position || '').toLowerCase().indexOf(q) >= 0 ||
+                   (a.submitted_by || '').toLowerCase().indexOf(q) >= 0;
+        });
+        renderAlerts(_applyAlertSort(filtered));
+    }
+    function _applyNhAdminSort(arr) {
+        return arr.slice().sort(function(a, b) {
+            var va = String(a[_nhAdminSortCol] || '').toLowerCase();
+            var vb = String(b[_nhAdminSortCol] || '').toLowerCase();
+            return _nhAdminSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+        });
+    }
+    function sortNhAdmins(th) {
+        var col = th.dataset.col;
+        if (_nhAdminSortCol === col) { _nhAdminSortDir = _nhAdminSortDir === 'asc' ? 'desc' : 'asc'; }
+        else { _nhAdminSortCol = col; _nhAdminSortDir = 'asc'; }
+        document.querySelectorAll('#alertTable').length; // (scope guard)
+        document.querySelectorAll('table.data-table:last-of-type th[data-col]').forEach(function(h) { h.classList.remove('sort-asc','sort-desc'); });
+        th.classList.add(_nhAdminSortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+        renderNhAdmins(_applyNhAdminSort(_allNhAdmins));
+    }
+    function renderNhAdmins(data) {
+        var body = document.getElementById('adminBody');
+        if (!body) return;
+        var html = '';
+        for (var i = 0; i < data.length; i++) {
+            var a = data[i];
+            html += '<tr><td>' + a.email + '</td><td>' + (a.date_created || '') + '</td>';
+            html += '<td><button class="btn-danger" onclick="removeNhAdmin(' + a.id + ')">Remove</button></td></tr>';
+        }
+        body.innerHTML = html;
+    }
+
+    function loadAlerts() {
+        fetch('/new-hire/api/alerts')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                allAlerts = data;
+                applyAlertFilter();
+            });
+    }
+
+    var searchInput = document.getElementById('alertSearch');
+    if (searchInput) { searchInput.addEventListener('input', applyAlertFilter); }
+
+    function renderAlerts(data) {
+        var body = document.getElementById('alertBody');
+        var empty = document.getElementById('alertEmpty');
+        if (!data || !data.length) { body.innerHTML = ''; if (empty) empty.style.display = 'block'; return; }
+        empty.style.display = 'none';
+        var html = '';
+        for (var i = 0; i < data.length; i++) {
+            var a = data[i];
+            var fullName = (a.preferred_name || a.first_name) + ' ' + a.last_name;
+            html += '<tr class="alert-row" data-idx="' + i + '" style="cursor:pointer;">';
+            html += '<td>' + a.id + '</td><td>' + fullName + '</td><td>' + a.position + '</td>';
+            html += '<td>' + a.property + '</td><td>' + a.start_date + '</td>';
+            html += '<td>' + a.submitted_by + '</td><td>' + a.date_submitted + '</td>';
+            html += '<td><i class="fa-solid fa-chevron-down" style="color:var(--text-secondary);font-size:0.7rem;"></i></td></tr>';
+            // Detail row
+            var systems = [];
+            if (a.entrata) systems.push('Entrata');
+            if (a.grace_hill) systems.push('Grace Hill');
+            if (a.certify) systems.push('Certify');
+            if (a.concur) systems.push('Concur');
+            if (a.amex) systems.push('AMEX');
+            if (a.avidxchange) systems.push('AvidXchange');
+            if (a.adaptive_insights) systems.push('Adaptive Insights');
+            if (a.paycom) systems.push('Paycom');
+            if (a.new_computer) systems.push('New Computer');
+            var sysBadges = systems.length ? systems.map(function(s) { return '<span class="badge-yes">' + s + '</span>'; }).join('') : '<span class="badge-no">None</span>';
+
+            html += '<tr class="detail-row" id="detail-' + i + '"><td colspan="8"><div class="detail-grid">';
+            html += '<div class="dg-item"><div class="dg-label">Legal Name</div><div class="dg-value">' + a.first_name + ' ' + a.last_name + '</div></div>';
+            html += '<div class="dg-item"><div class="dg-label">Employee ID</div><div class="dg-value">' + (a.employee_id || 'N/A') + '</div></div>';
+            html += '<div class="dg-item"><div class="dg-label">Status</div><div class="dg-value">' + a.status + '</div></div>';
+            html += '<div class="dg-item"><div class="dg-label">Pay</div><div class="dg-value">' + a.pay_type + (a.hourly_rate ? ' $' + a.hourly_rate + '/hr' : '') + (a.annual_salary ? ' $' + a.annual_salary.toLocaleString() : '') + '</div></div>';
+            html += '<div class="dg-item"><div class="dg-label">Manager</div><div class="dg-value">' + (a.manager || 'N/A') + '</div></div>';
+            html += '<div class="dg-item"><div class="dg-label">Location</div><div class="dg-value">' + a.location_type + '</div></div>';
+            html += '</div>';
+            html += '<div class="detail-section"><div class="detail-section-title">System Access</div>' + sysBadges + '</div>';
+            if (a.rent_discount || a.relocation || a.cell_reimburse) {
+                html += '<div class="detail-section"><div class="detail-section-title">Benefits</div><div class="detail-grid">';
+                if (a.rent_discount) html += '<div class="dg-item"><div class="dg-label">Rent Discount</div><div class="dg-value">' + (a.rent_discount_pct ? (a.rent_discount_pct*100)+'%' : 'Yes') + (a.base_rent ? ' (Base: $'+a.base_rent+')' : '') + '</div></div>';
+                if (a.relocation) html += '<div class="dg-item"><div class="dg-label">Relocation</div><div class="dg-value">' + (a.relocation_amount ? '$'+a.relocation_amount : 'Yes') + '</div></div>';
+                if (a.cell_reimburse) html += '<div class="dg-item"><div class="dg-label">Cell Reimburse</div><div class="dg-value">' + (a.cell_amount ? '$'+a.cell_amount : 'Yes') + '</div></div>';
+                html += '</div></div>';
+            }
+            if (a.other_info) html += '<div class="detail-section"><div class="detail-section-title">Other Info</div><div style="font-size:0.8rem;color:var(--text-primary);white-space:pre-wrap;">' + a.other_info + '</div></div>';
+            html += '</td></tr>';
+        }
+        body.innerHTML = html;
+        body.querySelectorAll('.alert-row').forEach(function(row) {
+            row.addEventListener('click', function() {
+                document.getElementById('detail-' + this.dataset.idx).classList.toggle('show');
+            });
+        });
+    }
+
+    function loadAdmins() {
+        fetch('/new-hire/api/admins')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                _allNhAdmins = data;
+                renderNhAdmins(_applyNhAdminSort(_allNhAdmins));
+            });
+    }
+
+    window.removeNhAdmin = function(id) {
+        if (!confirm('Remove this admin?')) return;
+        fetch('/new-hire/api/admins/' + id, { method: 'DELETE' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) { loadAdmins(); showToast('Admin removed.', 'success'); }
+                else showToast(data.error || 'Failed.', 'error');
+            });
+    };
+
+    var addBtn = document.getElementById('addAdminBtn');
+    if (addBtn) {
+        addBtn.addEventListener('click', function() {
+            var email = document.getElementById('adminEmail').value.trim();
+            if (!email) { showToast('Enter an email.', 'error'); return; }
+            fetch('/new-hire/api/admins', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ email: email })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) { document.getElementById('adminEmail').value = ''; loadAdmins(); showToast('Admin added.', 'success'); }
+                else showToast(data.error || 'Failed.', 'error');
+            });
+        });
+    }
+
+    function showToast(msg, type) {
+        var toast = document.createElement('div');
+        toast.className = 'toast toast-' + type;
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(function() { toast.style.opacity = '0'; }, 3000);
+        setTimeout(function() { toast.remove(); }, 3500);
+    }
+
+    window.sortAlerts = sortAlerts;
+    window.sortNhAdmins = sortNhAdmins;
+    window.togglePayFields();
+    window.updateLocationFields();
+    loadDropdowns();
+})();
+</script>
+{% endblock %}

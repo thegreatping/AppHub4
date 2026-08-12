@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>PDM Field Configuration</title>
+<style>
+body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;margin:0;padding:20px;}
+h1{color:#89b4fa;margin-bottom:5px;}
+p.sub{color:#a6adc8;margin-top:0;font-size:0.9rem;}
+table{border-collapse:collapse;width:100%;font-size:0.85rem;}
+th{background:#313244;color:#cba6f7;padding:8px 6px;position:sticky;top:0;text-align:left;border-bottom:2px solid #45475a;z-index:1;}
+td{padding:5px 6px;border-bottom:1px solid #313244;}
+tr:hover{background:#313244;}
+td:nth-child(1){width:30px;text-align:right;color:#6c7086;}
+td:nth-child(3){color:#fab387;font-size:0.8rem;}
+input[type=checkbox]{width:18px;height:18px;cursor:pointer;}
+.col-ro input{accent-color:#f38ba8;}
+.col-override input{accent-color:#f9e2af;}
+.col-text input{accent-color:#89dceb;}
+.col-dropdown input{accent-color:#cba6f7;}
+.col-list input{accent-color:#a6e3a1;}
+select.tied{font-size:0.75rem;background:#1e1e2e;color:#cdd6f4;border:1px solid #45475a;border-radius:3px;padding:2px;max-width:220px;}
+#output{margin-top:20px;background:#313244;padding:15px;border-radius:8px;display:none;white-space:pre-wrap;font-family:monospace;font-size:0.8rem;max-height:400px;overflow:auto;}
+button{background:#89b4fa;color:#1e1e2e;border:none;padding:10px 20px;border-radius:6px;font-size:1rem;cursor:pointer;margin-top:15px;font-weight:bold;margin-right:10px;}
+button:hover{background:#b4d0fb;}
+#copyBtn{background:#a6e3a1;}
+#copyBtn:hover{background:#c6f3c1;}
+.legend{display:flex;gap:20px;margin:10px 0 15px;flex-wrap:wrap;}
+.legend span{display:flex;align-items:center;gap:5px;font-size:0.85rem;}
+.dot{width:12px;height:12px;border-radius:3px;display:inline-block;}
+</style></head><body>
+<h1>PDM Field Configuration — All 221 PROPERTY_0 Fields</h1>
+<p class="sub">Check boxes and set "Tied To" links. Click "Generate Config" when done, then "Copy to Clipboard" and paste back to me.</p>
+<div class="legend">
+<span><span class="dot" style="background:#f38ba8"></span> Read-only = no user editing</span>
+<span><span class="dot" style="background:#f9e2af"></span> Override = system-managed, user can lock</span>
+<span><span class="dot" style="background:#89dceb"></span> Text Entry = free text input</span>
+<span><span class="dot" style="background:#cba6f7"></span> Dropdown = select from list</span>
+<span><span class="dot" style="background:#a6e3a1"></span> List Maint = needs list management UI</span>
+</div>
+<table><thead><tr><th>#</th><th>Field Name</th><th>Source</th><th class="col-ro">Read-only</th><th class="col-override">Override</th><th class="col-text">Text Entry</th><th class="col-dropdown">Dropdown</th><th class="col-list">List Maint</th><th>Tied To</th></tr></thead><tbody id="tbody"></tbody></table>
+<button onclick="generate()">Generate Config</button>
+<button id="copyBtn" onclick="copyOutput()">Copy to Clipboard</button>
+<pre id="output"></pre>
+<script>
+const fields = [
+["ACCOUNTANT","Paycom"],["ACCOUNTANT_EMP_CODE","Paycom"],["ACCOUNTING_MGR","Paycom"],["ACCOUNTING_MGR_EMP_CODE","Paycom"],
+["ADDRESS_1","SP Sync"],["ADDRESS_2","SP Sync"],["ADDRESS_CITY","SP Sync"],["ADDRESS_COUNTRY","SP Sync"],["ADDRESS_COUNTY","SP Sync"],["ADDRESS_STATE","SP Sync"],["ADDRESS_ZIP","SP Sync"],
+["ALTERNATE_ID_1","Manual"],["ALTERNATE_ID_2","Manual"],["ALTERNATE_ID_3","Manual"],
+["AM_EMAIL","Paycom"],["AM_EMP_CODE","Paycom"],["AM_NAME","Paycom"],
+["APARTMENT_COUNT","Entrata"],["APARTMENT_COUNT_BILLING","Manual"],
+["ASSET_MGR_EMAIL","Paycom"],["ASSET_MGR_NAME","Paycom"],
+["ASSISTANT_CONTROLLER","Manual"],["ASSISTANT_CONTROLLER_EMP_CODE","Manual"],
+["AutoIDField","System"],
+["BED_COUNT_BILLING","Manual"],["BED_COUNT_COMPILED","Calculated"],["BED_COUNT_CUSTOM","Notebook"],["BED_COUNT_STATIC","Calculated"],["BED_COUNT_STATIC_PY","Calculated"],
+["BILLING_ALLOCATION_PARTNERS","Manual"],["BILLING_ALLOCATION_PCT","Manual"],
+["BUILD_YEAR","SP Sync"],["BUILDING_COUNT","SP Sync"],
+["COMPANY","Manual"],
+["CONTROLLER","Paycom"],["CONTROLLER_EMP_CODE","Paycom"],
+["COUNT","Calculated"],
+["CURRENT_PHASE","Manual"],
+["DATE_ADDED_TO_DW","System"],["DATE_ANTICIPATED_TAKEOVER","Manual"],["DATE_CREATED","System"],["DATE_DATA_FREEZE","Manual"],["DATE_DISPOSITIONED","SP Sync"],["DATE_LAST_UPDATED","System"],["DATE_LIFECYCLE","System"],["DATE_MGMT_TAKEOVER","Manual"],["DATE_MIGRATED","System"],["DATE_STABILIZED","Manual"],["DATE_STATUS","System"],
+["EMAIL","SP Sync"],["ENTITY_NAME","Manual"],["ENTITY_NUMBER","SP Sync"],
+["EXEC_DIR_EMAIL","Paycom"],["EXEC_DIR_EMP_CODE","Paycom"],["EXEC_DIR_NAME","Paycom"],
+["FINANCIAL_PUBLICATION_DAY","Manual"],
+["FLAG_ACTIVE","Manual"],["FLAG_CONVENTIONAL_ONLY","Manual"],["FLAG_CORPORATE_LOCATION","Manual"],["FLAG_DATA_FREEZE","Manual"],["FLAG_DISPOSITIONED","Manual"],["FLAG_FANNIE_FREDDIE_MORTGAGE","Manual"],["FLAG_LEASEUP","Manual"],["FLAG_MANAGED","Manual"],["FLAG_MIGRATED","Manual"],["FLAG_MIXED_USE","Manual"],["FLAG_NON_PROPERTY","Manual"],["FLAG_PENDING","Manual"],
+["FLAG_PHASE_0","Manual"],["FLAG_PHASE_1","Manual"],["FLAG_PHASE_10","Manual"],["FLAG_PHASE_2","Manual"],["FLAG_PHASE_3","Manual"],["FLAG_PHASE_4","Manual"],["FLAG_PHASE_5","Manual"],["FLAG_PHASE_6","Manual"],["FLAG_PHASE_7","Manual"],["FLAG_PHASE_8","Manual"],["FLAG_PHASE_9","Manual"],
+["FLAG_REPORTABLE","Manual"],["FLAG_RETAIL","Manual"],["FLAG_STABILIZED","Manual"],["FLAG_STUDENT_ONLY","Manual"],["FLAG_SUBPROPERTY","Manual"],["FLAG_TENTATIVE","Manual"],["FLAG_USE_TEMP_ADDRESS","Manual"],
+["GOAL_GOOGLE_RATING","Manual"],["GOAL_ORA","Manual"],["GOAL_REPUTATION","Manual"],
+["GOOGLE_PROPERTY_LINK","Manual"],["GOOGLE_PROPERTY_TYPE","Manual"],
+["GROSS_SQFT","Manual"],
+["HEADCOUNT","Calculated"],
+["IMAGE_KEY_FLAG","System"],["IMAGE_KEY_PROPERTY","System"],
+["LATITUDE","SP Sync"],
+["LEGACY_ENTRATA_ID","Entrata"],["LEGACY_NAME_1","Legacy"],["LEGACY_NAME_2","Legacy"],["LEGACY_NAME_3","Legacy"],["LEGACY_NAME_4","Legacy"],["LEGACY_NAME_5","Legacy"],["LEGACY_NAME_6","Legacy"],["LEGACY_ONESITE_ID","OneSite"],["LEGACY_SUBPROPERTY_ID_ENTRATA","Entrata"],["LEGACY_SUBPROPERTY_ID_ONESITE","OneSite"],["LEGACY_SUBPROPERTY_NAME_1","Legacy"],["LEGACY_SUBPROPERTY_NAME_2","Legacy"],["LEGACY_SUBPROPERTY_NUMBER","Legacy"],
+["LEGAL_ENTITY","SP Sync"],["LENDER_NAME","Manual"],
+["LIFECYCLE_KEY","System"],["LIFECYCLE_STATUS","Manual"],["LIFECYCLE_STEP","Manual"],
+["LIST_MANAGED","Notebook"],["LIST_STATUS","Notebook"],["LIST_TRANSITIONTYPE","Notebook"],["LIST_TYPE","Notebook"],
+["LM_EMAIL","Paycom"],["LM_EMP_CODE","Paycom"],["LM_NAME","Paycom"],
+["LONGITUDE","SP Sync"],
+["MAINT_SUPV_EMAIL","Paycom"],["MAINT_SUPV_EMP_CODE","Paycom"],["MAINT_SUPV_NAME","Paycom"],
+["MANAGEMENT_TYPE","Manual"],["MANAGEMENT_TYPE_KEY","Manual"],
+["MARKET_CITY","Manual"],["MARKET_CITY_STATE","Manual"],["MARKET_KEY","Manual"],["MARKET_STATE","Manual"],
+["MGMT_ENTITY","Manual"],["MSA","Manual"],
+["NOTES","Manual"],
+["OFFICE_HOURS_1","SP Sync"],["OFFICE_HOURS_2","SP Sync"],["OFFICE_HOURS_3","SP Sync"],["OFFICE_HOURS_4","Manual"],["OFFICE_HOURS_5","Manual"],
+["OWNER","SP Sync"],["OWNER_GROUP","SP Sync"],["OWNER_GROUP_SHORT","Manual"],["OWNER_SHORT","Manual"],
+["PAYROLL_ENTITY","Manual"],
+["PHONE_1","SP Sync"],["PHONE_2","SP Sync"],["PHONE_FAX","SP Sync"],
+["PM_EMAIL","Paycom"],["PM_EMP_CODE","Paycom"],["PM_NAME","Paycom"],
+["PREVIOUS_MGMT_COMPANY","Manual"],["PREVIOUS_MGMT_CONTACT","Manual"],["PREVIOUS_NAA","Manual"],["PREVIOUS_PMS","Manual"],
+["PROPERTY_AR_CODE","Manual"],["PROPERTY_GROUP","SP Sync"],["PROPERTY_GROUP_KEY","Manual"],["PROPERTY_KEY","System"],["PROPERTY_LIST_CODE","System"],["PROPERTY_NAME","SP Sync"],["PROPERTY_TYPE","Manual"],["PROPERTY_TYPE_KEY","Manual"],
+["RAM_EMP_CODE","Paycom"],["RAM_NAME","Paycom"],
+["RENTABLE_SQFT","SP Sync"],
+["RESIDENT_DIR_EMAIL","Paycom"],["RESIDENT_DIR_EMP_CODE","Paycom"],["RESIDENT_DIR_NAME","Paycom"],
+["RM_EMAIL","Paycom"],["RM_EMP_CODE","Paycom"],["RM_NAME","Paycom"],
+["RMLS_EMAIL","Paycom"],["RMLS_EMP_CODE","Paycom"],["RMLS_NAME","Paycom"],
+["RowVer","System"],
+["RVP_EMAIL","Paycom"],["RVP_EMP_CODE","Paycom"],["RVP_NAME","Paycom"],
+["SAME_STORE_YEAR","Manual"],["SAME_STORE_YEAR_REVERSE_ID","Calculated"],
+["SCHOOL_ACRONYM","Manual"],["SCHOOL_INITIALS","Manual"],["SCHOOL_MASCOT","Manual"],["SCHOOL_NAME","Manual"],
+["SOURCE_SYSTEM","System"],["SOURCE_SYSTEM_ID","Entrata"],["SOURCE_SYSTEM_SUB_ID","Entrata"],
+["STABILIZED_YEAR","Manual"],
+["STATUS","SP Sync"],
+["SUBPROPERTY_NAME","Manual"],
+["TAX_ID","Manual"],
+["TEMP_CITY","Manual"],["TEMP_STATE","Manual"],["TEMP_STREET","Manual"],["TEMP_ZIP","Manual"],
+["TIME_ZONE","Manual"],
+["TRANSITION_TYPE","Manual"],["TRANSITION_TYPE_KEY","Manual"],
+["URL_FACEBOOK","Manual"],["URL_INSTAGRAM","Manual"],["URL_SHARED_FOLDER","Manual"],["URL_TRANSITION_CHECKLIST","Manual"],["URL_TWITTER","Manual"],["URL_WEBSITE","SP Sync"],
+["VENDOR_01","Manual"],["VENDOR_02","Manual"],["VENDOR_03","Manual"],["VENDOR_04","Manual"],["VENDOR_05","Manual"],["VENDOR_06","Manual"],["VENDOR_07","Manual"],["VENDOR_08","Manual"],["VENDOR_09","Manual"],["VENDOR_10","Manual"],["VENDOR_11","Manual"],["VENDOR_12","Manual"],["VENDOR_13","Manual"],["VENDOR_14","Manual"],["VENDOR_15","Manual"],
+["VENDOR_COMMENTS_01","Manual"],["VENDOR_COMMENTS_02","Manual"]
+];
+
+const tiedTo = {
+    'ACCOUNTANT_EMP_CODE':'ACCOUNTANT',
+    'ACCOUNTING_MGR_EMP_CODE':'ACCOUNTING_MGR',
+    'AM_EMAIL':'AM_NAME','AM_EMP_CODE':'AM_NAME',
+    'ASSET_MGR_EMAIL':'ASSET_MGR_NAME',
+    'ASSISTANT_CONTROLLER_EMP_CODE':'ASSISTANT_CONTROLLER',
+    'CONTROLLER_EMP_CODE':'CONTROLLER',
+    'EXEC_DIR_EMAIL':'EXEC_DIR_NAME','EXEC_DIR_EMP_CODE':'EXEC_DIR_NAME',
+    'LM_EMAIL':'LM_NAME','LM_EMP_CODE':'LM_NAME',
+    'MAINT_SUPV_EMAIL':'MAINT_SUPV_NAME','MAINT_SUPV_EMP_CODE':'MAINT_SUPV_NAME',
+    'PM_EMAIL':'PM_NAME','PM_EMP_CODE':'PM_NAME',
+    'RAM_EMP_CODE':'RAM_NAME',
+    'RESIDENT_DIR_EMAIL':'RESIDENT_DIR_NAME','RESIDENT_DIR_EMP_CODE':'RESIDENT_DIR_NAME',
+    'RM_EMAIL':'RM_NAME','RM_EMP_CODE':'RM_NAME',
+    'RMLS_EMAIL':'RMLS_NAME','RMLS_EMP_CODE':'RMLS_NAME',
+    'RVP_EMAIL':'RVP_NAME','RVP_EMP_CODE':'RVP_NAME',
+    'ADDRESS_2':'ADDRESS_1','ADDRESS_CITY':'ADDRESS_1','ADDRESS_STATE':'ADDRESS_1','ADDRESS_ZIP':'ADDRESS_1','ADDRESS_COUNTY':'ADDRESS_1','ADDRESS_COUNTRY':'ADDRESS_1',
+    'TEMP_CITY':'TEMP_STREET','TEMP_STATE':'TEMP_STREET','TEMP_ZIP':'TEMP_STREET',
+    'OWNER_SHORT':'OWNER','OWNER_GROUP_SHORT':'OWNER_GROUP',
+    'MANAGEMENT_TYPE_KEY':'MANAGEMENT_TYPE',
+    'PROPERTY_TYPE_KEY':'PROPERTY_TYPE','PROPERTY_GROUP_KEY':'PROPERTY_GROUP',
+    'TRANSITION_TYPE_KEY':'TRANSITION_TYPE',
+    'MARKET_KEY':'MARKET_CITY','MARKET_CITY_STATE':'MARKET_CITY','MARKET_STATE':'MARKET_CITY',
+    'LIFECYCLE_KEY':'LIFECYCLE_STATUS','LIFECYCLE_STEP':'LIFECYCLE_STATUS',
+    'SOURCE_SYSTEM_SUB_ID':'SOURCE_SYSTEM_ID',
+    'LEGACY_SUBPROPERTY_ID_ENTRATA':'LEGACY_ENTRATA_ID',
+    'LEGACY_SUBPROPERTY_ID_ONESITE':'LEGACY_ONESITE_ID',
+    'LEGACY_SUBPROPERTY_NAME_1':'LEGACY_NAME_1','LEGACY_SUBPROPERTY_NAME_2':'LEGACY_NAME_2',
+    'LEGACY_SUBPROPERTY_NUMBER':'LEGACY_ONESITE_ID',
+    'BED_COUNT_STATIC':'BED_COUNT_COMPILED','BED_COUNT_STATIC_PY':'BED_COUNT_COMPILED',
+    'SAME_STORE_YEAR_REVERSE_ID':'SAME_STORE_YEAR',
+    'BILLING_ALLOCATION_PCT':'BILLING_ALLOCATION_PARTNERS',
+    'VENDOR_COMMENTS_01':'VENDOR_01','VENDOR_COMMENTS_02':'VENDOR_02',
+    'APARTMENT_COUNT_BILLING':'APARTMENT_COUNT','BED_COUNT_BILLING':'BED_COUNT_COMPILED',
+    'SCHOOL_INITIALS':'SCHOOL_NAME','SCHOOL_ACRONYM':'SCHOOL_NAME','SCHOOL_MASCOT':'SCHOOL_NAME',
+    'LIST_STATUS':'STATUS','LIST_MANAGED':'FLAG_MANAGED','LIST_TRANSITIONTYPE':'TRANSITION_TYPE','LIST_TYPE':'PROPERTY_TYPE',
+    'ENTITY_NUMBER':'ENTITY_NAME',
+    'IMAGE_KEY_PROPERTY':'PROPERTY_KEY','IMAGE_KEY_FLAG':'PROPERTY_KEY',
+    'DATE_STATUS':'STATUS','FLAG_DISPOSITIONED':'DATE_DISPOSITIONED',
+};
+
+const fieldNames = fields.map(f => f[0]);
+const tbody = document.getElementById('tbody');
+fields.forEach((f,i) => {
+    const tr = document.createElement('tr');
+    const tied = tiedTo[f[0]] || '';
+    let optionsHtml = '<option value="">—</option>';
+    fieldNames.forEach(fn => {
+        const sel = fn === tied ? ' selected' : '';
+        optionsHtml += `<option value="${fn}"${sel}>${fn}</option>`;
+    });
+    tr.innerHTML = `<td>${i+1}</td><td>${f[0]}</td><td>${f[1]}</td>
+        <td class="col-ro"><input type="checkbox" data-field="${f[0]}" data-col="readonly"></td>
+        <td class="col-override"><input type="checkbox" data-field="${f[0]}" data-col="override"></td>
+        <td class="col-text"><input type="checkbox" data-field="${f[0]}" data-col="text"></td>
+        <td class="col-dropdown"><input type="checkbox" data-field="${f[0]}" data-col="dropdown"></td>
+        <td class="col-list"><input type="checkbox" data-field="${f[0]}" data-col="list"></td>
+        <td><select class="tied" data-field="${f[0]}">${optionsHtml}</select></td>`;
+    tbody.appendChild(tr);
+});
+
+function generate() {
+    const result = {readonly:[],override:[],text:[],dropdown:[],list:[],tiedTo:{}};
+    document.querySelectorAll('input[type=checkbox]:checked').forEach(cb => {
+        result[cb.dataset.col].push(cb.dataset.field);
+    });
+    document.querySelectorAll('select.tied').forEach(sel => {
+        if (sel.value) result.tiedTo[sel.dataset.field] = sel.value;
+    });
+    const out = document.getElementById('output');
+    out.style.display = 'block';
+    out.textContent = JSON.stringify(result, null, 2);
+}
+function copyOutput() {
+    const out = document.getElementById('output');
+    navigator.clipboard.writeText(out.textContent);
+    document.getElementById('copyBtn').textContent = '\u2713 Copied!';
+    setTimeout(() => document.getElementById('copyBtn').textContent = 'Copy to Clipboard', 2000);
+}
+</script></body></html>

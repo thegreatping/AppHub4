@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Environment / secrets — copy .env.example and fill in locally
+.env
+.env.local
+.env.production
+
+# Flask session storage
+flask_session/
+instance/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+
+# Large binaries
+*.msapp
+
+# Backup snapshots — recursive nesting causes path-length issues
+_backups/
+
+# Extracted msapp source (reference only, not app code)
+msapp_extracted/
+msapp_extract/

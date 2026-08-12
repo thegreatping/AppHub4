@@ -1,0 +1,1097 @@
+{% extends "shell.html" %}
+{% block head %}
+    <style>
+        .maint-container { padding: 24px; max-width: 1400px; }
+        .maint-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+        .maint-header h1 { font-size: 1.4rem; color: var(--text-primary); margin: 0; }
+        .maint-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border-medium); }
+        .maint-tab { padding: 10px 20px; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+        .maint-tab:hover { color: var(--text-primary); }
+        .maint-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
+        .maint-panel { display: none; }
+        .maint-panel.active { display: block; }
+
+        /* Data table */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+        .data-table th { text-align: left; padding: 10px 12px; background: var(--input-bg); color: var(--text-secondary); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-medium); }
+        .data-table td { padding: 8px 12px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); }
+        .data-table tr:hover td { background: var(--hover-bg); }
+        .data-table th[data-col] { cursor: pointer; user-select: none; }
+        .data-table th[data-col]:hover { color: var(--text-primary); }
+        .data-table th[data-col]::after { content: ' \2195'; opacity: 0.3; font-size: 0.65rem; }
+        .data-table th[data-col].sort-asc::after  { content: ' \2191'; opacity: 1; }
+        .data-table th[data-col].sort-desc::after { content: ' \2193'; opacity: 1; }
+        .section-header { padding: 12px 12px 6px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-cyan); border-bottom: 1px solid var(--border-medium); }
+        .section-header.inactive { color: var(--text-secondary); }
+
+        /* Toggle switch for active */
+        .toggle-active { cursor: pointer; }
+        .toggle-active .badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
+        .toggle-active .badge.on { background: rgba(76,175,80,0.2); color: #81c784; }
+        .toggle-active .badge.off { background: rgba(244,67,54,0.2); color: #e57373; }
+
+        /* Editable cell */
+        .editable { cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background 0.2s; }
+        .editable:hover { background: var(--hover-bg-strong); }
+        .editable input { background: var(--input-bg); border: 1px solid var(--accent-cyan); color: var(--text-primary); padding: 4px 8px; border-radius: 4px; font-size: 0.95rem; width: 100%; outline: none; }
+
+        /* Audience panel - split layout */
+        .audience-layout { display: flex; gap: 0; height: calc(100vh - 200px); min-height: 400px; }
+        .audience-nav { width: 240px; min-width: 240px; background: var(--hover-bg); border-right: 1px solid var(--border-medium); overflow-y: auto; }
+        .audience-nav-item { padding: 10px 16px; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; border-left: 3px solid transparent; transition: all 0.15s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .audience-nav-item:hover { background: var(--hover-bg-strong); color: var(--text-primary); }
+        .audience-nav-item.active { background: rgba(0,188,212,0.08); color: var(--accent-cyan); border-left-color: var(--accent-cyan); font-weight: 600; }
+        .audience-content { flex: 1; padding: 0 24px; overflow-y: auto; }
+        .audience-empty { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-secondary); font-size: 0.9rem; }
+        .audience-module-title { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+        .grant-count { font-size: 0.8rem; color: var(--text-secondary); font-weight: 400; }
+
+        /* Add grant form */
+        .add-grant { display: flex; gap: 8px; align-items: center; padding: 12px; background: var(--hover-bg); border: 1px solid var(--border-light); border-radius: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+        .add-grant select, .add-grant input { background: var(--surface-raised); border: 1px solid var(--border-input-heavy); color: var(--text-primary); padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; }
+        .add-grant select { cursor: pointer; min-width: 160px; }
+        .add-grant select option { background: var(--surface-raised); color: var(--text-primary); padding: 4px 8px; }
+        .add-grant input { min-width: 220px; }
+        .add-grant input::placeholder { color: var(--text-secondary); }
+
+        /* Buttons */
+        .btn { padding: 6px 14px; border: none; border-radius: 4px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: var(--accent-cyan); color: #fff; }
+        .btn-primary:hover { opacity: 0.85; }
+        .btn-danger { background: rgba(244,67,54,0.2); color: #e57373; }
+        .btn-danger:hover { background: rgba(244,67,54,0.4); }
+        .btn-sm { padding: 4px 10px; font-size: 0.7rem; }
+
+        /* User lookup */
+        .lookup-form { display: flex; gap: 8px; align-items: center; margin-bottom: 20px; }
+        .lookup-form input { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; min-width: 300px; }
+        .lookup-form input::placeholder { color: var(--text-secondary); }
+        .lookup-result { margin-top: 12px; }
+        .lookup-card { background: var(--hover-bg); border: 1px solid var(--border-medium); border-radius: 8px; padding: 16px; }
+        .lookup-card h3 { margin: 0 0 8px; font-size: 1rem; color: var(--text-primary); }
+        .lookup-card .meta { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 12px; }
+
+        /* Module checklist */
+        .module-checklist { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 16px; }
+        .module-check-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 4px; cursor: pointer; transition: background 0.15s; border: 1px solid var(--border-light); }
+        .module-check-row:hover { background: var(--hover-bg-strong); }
+        .check-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 0.85rem; font-weight: 700; border: 2px solid var(--border-input-heavy); flex-shrink: 0; }
+        .module-check-row.has-access .check-icon { background: rgba(76,175,80,0.3); color: #81c784; border-color: rgba(76,175,80,0.6); }
+        .module-check-row.excluded .check-icon { background: rgba(244,67,54,0.25); color: #e57373; border-color: rgba(244,67,54,0.6); }
+        .module-check-row:not(.has-access):not(.excluded) .check-icon { background: var(--hover-bg-strong); border-color: var(--border-input-heavy); }
+        .check-name { font-size: 0.85rem; color: var(--text-primary); }
+        .module-check-row:not(.has-access):not(.excluded) .check-name { color: var(--text-secondary); }
+        .module-check-row.excluded .check-name { color: var(--text-secondary); text-decoration: line-through; }
+        .check-admin { font-size: 0.65rem; background: rgba(255,180,50,0.15); color: var(--accent-gold); padding: 2px 6px; border-radius: 3px; margin-left: auto; }
+        .check-tag { font-size: 0.6rem; padding: 2px 5px; border-radius: 3px; margin-left: auto; }
+        .check-tag.individual { background: rgba(0,188,212,0.1); color: var(--accent-cyan); }
+        .check-tag.excluded { background: rgba(244,67,54,0.15); color: #e57373; }
+
+        /* Collapsible blurbs */
+        .info-blurb { background: rgba(0,188,212,0.04); border: 1px solid rgba(0,188,212,0.15); border-radius: 8px; padding: 0; margin-bottom: 16px; font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; overflow: hidden; }
+        .blurb-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; cursor: pointer; user-select: none; }
+        .blurb-header:hover { background: rgba(0,188,212,0.06); }
+        .blurb-title { font-weight: 700; color: var(--text-primary); font-size: 0.85rem; }
+        .blurb-toggle { font-size: 0.7rem; color: var(--text-secondary); transition: transform 0.2s; }
+        .blurb-body { padding: 0 14px 12px; }
+        .blurb-body.collapsed { display: none; }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .add-grant { flex-direction: column; align-items: stretch; }
+        }
+
+        /* Usage Log — CS App style analytics */
+        .ul-filters { display: flex; gap: 8px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+        .ul-filters select, .ul-filters input { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 7px 12px; border-radius: 6px; font-size: 0.85rem; font-family: inherit; }
+        .ul-filters select option { background: var(--surface-raised); color: var(--text-primary); }
+        .ul-filters input { min-width: 220px; }
+        .ul-filters input::placeholder { color: var(--text-secondary); }
+        /* KPI cards */
+        .ul-kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+        @media (max-width: 900px) { .ul-kpi-row { grid-template-columns: repeat(2, 1fr); } }
+        .ul-kpi { background: var(--surface-raised); border: 1px solid var(--border-light); border-radius: 10px; padding: 14px 18px; display: flex; align-items: center; gap: 14px; }
+        .ul-kpi-icon { width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; background: rgba(255,255,255,0.06); }
+        .ul-kpi-val { font-size: 1.6rem; font-weight: 700; color: var(--text-primary); line-height: 1; }
+        .ul-kpi-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-top: 3px; }
+        .ul-kpi-sub { font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; }
+        /* Charts grid */
+        .ul-chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+        @media (max-width: 860px) { .ul-chart-grid { grid-template-columns: 1fr; } }
+        .ul-box { background: var(--surface-raised); border: 1px solid var(--border-light); border-radius: 10px; padding: 16px 18px; }
+        .ul-box-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 14px; }
+        /* CSS bar chart (daily activity) */
+        .ul-daily-wrap { display: flex; align-items: flex-end; gap: 3px; height: 100px; }
+        .ul-daily-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+        .ul-daily-bar { width: 100%; border-radius: 3px 3px 0 0; background: #3b82f6; opacity: 0.85; cursor: default; min-height: 4px; }
+        .ul-daily-lbl { font-size: 0.55rem; color: var(--text-secondary); writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; }
+        /* Module breakdown bars */
+        .ul-mod-row { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; margin-bottom: 8px; }
+        .ul-mod-name { width: 160px; color: var(--text-secondary); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+        .ul-mod-track { flex: 1; background: var(--hover-bg); border-radius: 3px; height: 14px; overflow: hidden; }
+        .ul-mod-fill { height: 100%; border-radius: 3px; opacity: 0.85; }
+        .ul-mod-count { width: 30px; text-align: right; color: var(--text-secondary); flex-shrink: 0; }
+        /* Bottom grid */
+        .ul-bottom-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; margin-bottom: 18px; }
+        @media (max-width: 860px) { .ul-bottom-grid { grid-template-columns: 1fr; } }
+        /* Shared */
+        .ul-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; background: rgba(59,130,246,0.15); color: #60a5fa; }
+        .ul-status { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; }
+        .ul-ok  { background: rgba(16,185,129,0.2); color: #34d399; }
+        .ul-warn { background: rgba(245,158,11,0.2); color: #fbbf24; }
+        .ul-err { background: rgba(239,68,68,0.2); color: #f87171; }
+    </style>
+{% endblock %}
+{% block content %}
+    <div class="maint-container">
+        <div class="maint-header">
+            <i class="fa-solid fa-gears" style="font-size: 1.5rem; color: var(--accent-cyan);"></i>
+            <h1>AppHub Maintenance</h1>
+        </div>
+
+        <div class="maint-tabs">
+            <div class="maint-tab active" data-panel="modules">Module Registry</div>
+            <div class="maint-tab" data-panel="audience">Audience Manager</div>
+            <div class="maint-tab" data-panel="lookup">User Lookup</div>
+            <div class="maint-tab" data-panel="usagelog">Usage Log</div>
+            <div class="maint-tab" data-panel="diagnostics" style="margin-left:auto;color:var(--accent-gold);">Diagnostics</div>
+        </div>
+
+        <!-- MODULE REGISTRY PANEL -->
+        <div class="maint-panel active" id="panel-modules">
+            <div class="info-blurb" id="blurb-modules">
+                <div class="blurb-header" onclick="toggleBlurb('modules')">
+                    <span class="blurb-title">Module Registry</span>
+                    <span class="blurb-toggle" id="blurbToggle-modules">&#9660;</span>
+                </div>
+                <div class="blurb-body" id="blurbBody-modules">
+                    Central registry of all AppHub modules (applets). Each module has a name, ID, and active/inactive status.
+                    <br><br>
+                    <strong>How to use:</strong>
+                    <ul style="margin:4px 0 0 16px;padding:0">
+                        <li><strong>Toggle status</strong> — Click the Active/Inactive badge to enable or disable a module site-wide.</li>
+                        <li><strong>Edit name</strong> — Click a module name to rename it inline.</li>
+                    </ul>
+                    <br>
+                    <strong>Note:</strong> Disabling a module hides it from the sidebar for ALL users, regardless of audience grants.
+                </div>
+            </div>
+            <table class="data-table" id="modulesTable">
+                <thead>
+                    <tr>
+                        <th style="width:50px" data-col="id" onclick="sortModules(this)">ID</th>
+                        <th style="width:60%" data-col="name" onclick="sortModules(this)" class="sort-asc">Module Name</th>
+                        <th style="width:100px">Status</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- AUDIENCE MANAGER PANEL -->
+        <div class="maint-panel" id="panel-audience">
+            <div class="info-blurb" id="blurb-audience">
+                <div class="blurb-header" onclick="toggleBlurb('audience')">
+                    <span class="blurb-title">Audience Manager</span>
+                    <span class="blurb-toggle" id="blurbToggle-audience">&#9660;</span>
+                </div>
+                <div class="blurb-body" id="blurbBody-audience">
+                    Controls which users and groups can access each module. Grants are checked at page load — users without a grant won't see the module in the sidebar.
+                    <br><br>
+                    <strong>How to use:</strong>
+                    <ul style="margin:4px 0 0 16px;padding:0">
+                        <li><strong>Select a module</strong> — Click a module in the left nav to view its grants.</li>
+                        <li><strong>Add a grant</strong> — Choose a grant type (Title Group, Email, Property), enter the value, and click Grant.</li>
+                        <li><strong>Remove a grant</strong> — Click the × button next to any grant to revoke it immediately.</li>
+                    </ul>
+                    <br>
+                    <strong>Grant types:</strong> Title Group (all employees in that group), Email (individual user), Property (all employees at that property). "Admin" grants give elevated permissions within the module.
+                </div>
+            </div>
+            <div class="audience-layout">
+                <div class="audience-nav" id="audienceNav"></div>
+                <div class="audience-content" id="audienceContent">
+                    <div class="audience-empty">Select a module from the list</div>
+                </div>
+            </div>
+            <datalist id="grantSuggestions"></datalist>
+        </div>
+
+        <!-- USER LOOKUP PANEL -->
+        <div class="maint-panel" id="panel-lookup">
+            <div class="info-blurb" id="blurb-lookup">
+                <div class="blurb-header" onclick="toggleBlurb('lookup')">
+                    <span class="blurb-title">User Lookup</span>
+                    <span class="blurb-toggle" id="blurbToggle-lookup">&#9660;</span>
+                </div>
+                <div class="blurb-body" id="blurbBody-lookup">
+                    Look up any employee to see which AppHub modules they can access — and why. Useful for troubleshooting "I can't see module X" requests.
+                    <br><br>
+                    <strong>How to use:</strong>
+                    <ul style="margin:4px 0 0 16px;padding:0">
+                        <li><strong>Search</strong> — Start typing an employee name. Autocomplete suggestions appear after 2 characters.</li>
+                        <li><strong>Module grid</strong> — Shows all modules with access status: <span style="color:#81c784">✓</span> has access, <span style="color:#e57373">✗</span> excluded, ☐ no access.</li>
+                        <li><strong>Toggle access</strong> — Click any module box to grant or revoke individual access for that user. Changes take effect immediately.</li>
+                    </ul>
+                </div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                <div class="lookup-form" style="margin-bottom:0;">
+                    <input type="text" id="lookupName" placeholder="Start typing employee name..." autocomplete="off">
+                    <button class="btn btn-primary" id="lookupBtn" disabled>Look Up</button>
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-secondary); text-align:right; line-height:1.6; padding:4px 0;">
+                    <span style="color:#81c784; font-weight:700;">✓</span> = has access &nbsp;
+                    <span style="color:#e57373; font-weight:700;">✗</span> = excluded &nbsp;
+                    <span style="border:1px solid var(--border-input-heavy); display:inline-block; width:12px; height:12px; border-radius:2px; vertical-align:middle;"></span> = no access<br>
+                    Click any box to toggle. Changes take effect immediately.
+                </div>
+            </div>
+            <div class="lookup-matches" id="lookupMatches" style="margin-bottom:16px;"></div>
+            <div class="lookup-result" id="lookupResult"></div>
+        </div>
+
+        <!-- USAGE LOG PANEL -->
+        <div class="maint-panel" id="panel-usagelog">
+
+            <!-- Filter bar -->
+            <div class="ul-filters">
+                <select id="ulDays">
+                    <option value="1">Last 24 hours</option>
+                    <option value="7" selected>Last 7 days</option>
+                    <option value="30">Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                </select>
+                <select id="ulModule">
+                    <option value="">All modules</option>
+                    <option value="dashboard">dashboard</option>
+                    <option value="pdm">pdm</option>
+                    <option value="edm">edm</option>
+                    <option value="maintenance">maintenance</option>
+                    <option value="cultivate">cultivate</option>
+                    <option value="fasttrack">fasttrack</option>
+                    <option value="peak-link">peak-link</option>
+                    <option value="mentor-cert">mentor-cert</option>
+                    <option value="mindset">mindset</option>
+                    <option value="new-hire">new-hire</option>
+                </select>
+                <select id="ulUser" style="min-width:200px;">
+                    <option value="">All users</option>
+                </select>
+                <button class="btn btn-primary btn-sm" id="ulApply">Apply</button>
+            </div>
+
+            <!-- KPI cards -->
+            <div class="ul-kpi-row" id="ulKpiRow" style="display:none;">
+                <div class="ul-kpi">
+                    <div class="ul-kpi-icon" style="color:#3b82f6;"><i class="fa-solid fa-arrow-pointer"></i></div>
+                    <div><div class="ul-kpi-val" id="ulKpiTotal">0</div><div class="ul-kpi-label">Total Requests</div></div>
+                </div>
+                <div class="ul-kpi">
+                    <div class="ul-kpi-icon" style="color:#10b981;"><i class="fa-solid fa-users"></i></div>
+                    <div><div class="ul-kpi-val" id="ulKpiUsers">0</div><div class="ul-kpi-label">Unique Users</div></div>
+                </div>
+                <div class="ul-kpi">
+                    <div class="ul-kpi-icon" style="color:#f59e0b;"><i class="fa-solid fa-puzzle-piece"></i></div>
+                    <div><div class="ul-kpi-val" id="ulKpiModules">0</div><div class="ul-kpi-label">Modules Used</div></div>
+                </div>
+                <div class="ul-kpi">
+                    <div class="ul-kpi-icon" style="color:#8b5cf6;"><i class="fa-solid fa-trophy"></i></div>
+                    <div><div class="ul-kpi-val" id="ulKpiTopMod" style="font-size:1.1rem;">—</div><div class="ul-kpi-label">Most Used Module</div><div class="ul-kpi-sub" id="ulKpiTopModHits"></div></div>
+                </div>
+            </div>
+
+            <!-- Charts grid: daily activity | hits by module -->
+            <div class="ul-chart-grid" id="ulChartGrid" style="display:none;">
+                <div class="ul-box">
+                    <div class="ul-box-title">Daily Activity <span id="ulChartDays" style="font-weight:400;text-transform:none;letter-spacing:0;"></span></div>
+                    <div class="ul-daily-wrap" id="ulDailyBars"></div>
+                    <div id="ulNoChart" style="display:none;color:var(--text-secondary);font-size:0.82rem;padding:16px 0;">Not enough data for a chart — revisit tomorrow.</div>
+                </div>
+                <div class="ul-box">
+                    <div class="ul-box-title">Hits by Module</div>
+                    <div id="ulModBars"></div>
+                </div>
+            </div>
+
+            <!-- Bottom grid: top users | recent requests -->
+            <div class="ul-bottom-grid" id="ulBottomGrid" style="display:none;">
+                <div class="ul-box">
+                    <div class="ul-box-title">Top Users</div>
+                    <table class="data-table" id="ulUsersTable">
+                        <thead><tr>
+                            <th data-col="name" onclick="sortTopUsers(this)" class="sort-asc">User</th>
+                            <th data-col="hits" onclick="sortTopUsers(this)" style="text-align:right;">Hits</th>
+                        </tr></thead>
+                        <tbody id="ulUsersBody"></tbody>
+                    </table>
+                </div>
+                <div class="ul-box">
+                    <div class="ul-box-title">Recent Requests <span style="font-weight:400;text-transform:none;letter-spacing:0;">(last 50)</span></div>
+                    <div style="max-height:320px;overflow-y:auto;">
+                        <table class="data-table" id="ulRecentTable">
+                            <thead><tr>
+                                <th data-col="logged_et" onclick="sortRecent(this)" class="sort-desc">Time (ET)</th>
+                                <th data-col="user_name" onclick="sortRecent(this)">User</th>
+                                <th data-col="module_id" onclick="sortRecent(this)">Module</th>
+                                <th data-col="route" onclick="sortRecent(this)">Route</th>
+                                <th data-col="status_code" onclick="sortRecent(this)">Status</th>
+                            </tr></thead>
+                            <tbody id="ulRecentBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="empty-state" id="ulEmpty" style="display:none;">No log entries found for this filter.</div>
+        </div>
+    </div>
+
+    <!-- DIAGNOSTICS PANEL -->
+    <div class="maint-panel" id="panel-diagnostics">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <div>
+                <div style="font-size:0.95rem;font-weight:700;color:var(--text-primary);margin-bottom:4px;">Connection &amp; Data Source Diagnostics</div>
+                <div style="font-size:0.8rem;color:var(--text-secondary);">On-demand only. Click Run to probe all data sources and measure latency.</div>
+            </div>
+            <button onclick="runDiagnostics()" id="diagBtn"
+                style="background:var(--accent-gold);color:#000;border:none;padding:9px 18px;border-radius:6px;font-size:0.85rem;font-weight:700;cursor:pointer;">
+                <i class="fa-solid fa-bolt"></i> Run Diagnostics
+            </button>
+        </div>
+        <div id="diagResults"
+            style="display:none;">
+
+            <!-- Runtime info -->
+            <div id="diagRuntime"
+                style="font-size:0.78rem;color:var(--text-secondary);padding:8px 12px;background:var(--hover-bg);border-radius:6px;margin-bottom:16px;display:flex;gap:20px;flex-wrap:wrap;">
+            </div>
+
+            <!-- Data source cards -->
+            <div id="diagCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px;"></div>
+        </div>
+        <div id="diagLoading" style="display:none;text-align:center;padding:40px;color:var(--text-secondary);font-size:0.9rem;">
+            <i class="fa-solid fa-circle-notch fa-spin"></i>&nbsp; Running diagnostics...
+        </div>
+        <div id="diagError" style="display:none;padding:12px 16px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;color:#ef4444;font-size:0.85rem;"></div>
+    </div>
+
+    <script>
+    // ─── DIAGNOSTICS ────────────────────────────────────────────────────────────
+    async function runDiagnostics() {
+        const btn = document.getElementById('diagBtn');
+        const loading = document.getElementById('diagLoading');
+        const results = document.getElementById('diagResults');
+        const errDiv  = document.getElementById('diagError');
+        const cards   = document.getElementById('diagCards');
+        const runtime = document.getElementById('diagRuntime');
+        btn.disabled = true;
+        loading.style.display = 'block';
+        results.style.display = 'none';
+        errDiv.style.display  = 'none';
+        const ts = new Date().toLocaleTimeString();
+        try {
+            const resp = await fetch('/maintenance/api/diagnostics');
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const data = await resp.json();
+
+            // Runtime bar
+            const rt = data.runtime || {};
+            runtime.innerHTML = [
+                '<span><strong>Python</strong> ' + (rt.python_version||'?') + '</span>',
+                '<span><strong>PID</strong> '    + (rt.pid||'?')            + '</span>',
+                '<span><strong>Modules loaded</strong> ' + (rt.module_count||'?') + '</span>',
+                '<span style="margin-left:auto;opacity:.6;">Ran at ' + ts + '</span>'
+            ].join('');
+
+            // Source cards
+            cards.innerHTML = (data.sources || []).map(function(src) {
+                const ok = src.status === 'ok';
+                const badgeColor = ok ? '#22c55e' : '#ef4444';
+                const latency = src.latency_ms != null ? src.latency_ms + ' ms' : '---';
+                let metricsHtml = '';
+                if (src.metrics && Object.keys(src.metrics).length) {
+                    metricsHtml = '<table style="width:100%;border-collapse:collapse;margin-top:8px;">' +
+                        Object.entries(src.metrics).map(function([k,v]) {
+                            const label = k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+                            return '<tr><td style="padding:3px 8px 3px 0;font-size:0.78rem;color:var(--text-secondary);">' + label + '</td>' +
+                                   '<td style="padding:3px 0;font-size:0.78rem;color:var(--text-primary);font-weight:600;">' + (v != null ? v.toLocaleString() : '---') + '</td></tr>';
+                        }).join('') + '</table>';
+                }
+                const errorHtml = (!ok && src.error) ?
+                    '<div style="margin-top:8px;padding:6px 10px;background:rgba(239,68,68,.1);border-radius:5px;font-size:0.77rem;color:#ef4444;word-break:break-all;">' + _esc(src.error) + '</div>' : '';
+                return '<div style="background:var(--surface-raised);border:1px solid var(--border-medium);border-radius:8px;padding:16px;">' +
+                    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">' +
+                    '  <span style="width:10px;height:10px;border-radius:50%;background:' + badgeColor + ';display:inline-block;flex-shrink:0;"></span>' +
+                    '  <span style="font-weight:700;font-size:0.9rem;color:var(--text-primary);">' + _esc(src.label) + '</span>' +
+                    '  <span style="margin-left:auto;font-size:0.78rem;color:var(--text-secondary);">' + latency + '</span>' +
+                    '</div>' +
+                    (src.probe_label && src.probe_value != null ?
+                        '<div style="font-size:0.8rem;color:var(--text-secondary);">' +
+                        _esc(src.probe_label) + ': <strong style="color:var(--text-primary);">' + Number(src.probe_value).toLocaleString() + '</strong></div>' : '') +
+                    metricsHtml + errorHtml +
+                    '</div>';
+            }).join('');
+
+            results.style.display = 'block';
+        } catch(e) {
+            errDiv.textContent = 'Diagnostics failed: ' + e.message;
+            errDiv.style.display = 'block';
+        } finally {
+            loading.style.display = 'none';
+            btn.disabled = false;
+        }
+    }
+    function _esc(s) { const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+
+    // ─── Collapsible blurbs ────────────────────────────────────────────────────
+    function toggleBlurb(id) {
+        const body = document.getElementById('blurbBody-' + id);
+        const toggle = document.getElementById('blurbToggle-' + id);
+        const collapsed = body.classList.toggle('collapsed');
+        toggle.innerHTML = collapsed ? '&#9654;' : '&#9660;';
+        localStorage.setItem('maint_blurb_' + id, collapsed ? '1' : '0');
+    }
+    ['modules','audience','lookup','usagelog'].forEach(id => {
+        const state = localStorage.getItem('maint_blurb_' + id);
+        if (state === '1') {
+            const body = document.getElementById('blurbBody-' + id);
+            const toggle = document.getElementById('blurbToggle-' + id);
+            if (body) { body.classList.add('collapsed'); toggle.innerHTML = '&#9654;'; }
+        }
+    });
+
+    // ─── TAB SWITCHING ──────────────────────────────────────────────────────────
+    document.querySelectorAll('.maint-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.maint-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.maint-panel').forEach(p => p.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById('panel-' + this.dataset.panel).classList.add('active');
+        });
+    });
+
+    // ─── MODULE REGISTRY ────────────────────────────────────────────────────────
+    let modulesCache = [];
+    let _modSortCol = 'name', _modSortDir = 'asc';
+    function _sortMods(arr) {
+        return arr.slice().sort(function(a, b) {
+            var cmp = _modSortCol === 'id' ? (a.id - b.id) : a.name.localeCompare(b.name);
+            return _modSortDir === 'asc' ? cmp : -cmp;
+        });
+    }
+    function sortModules(th) {
+        var col = th.dataset.col;
+        if (_modSortCol === col) _modSortDir = _modSortDir === 'asc' ? 'desc' : 'asc';
+        else { _modSortCol = col; _modSortDir = 'asc'; }
+        document.querySelectorAll('#modulesTable th[data-col]').forEach(function(h) { h.classList.remove('sort-asc','sort-desc'); });
+        th.classList.add(_modSortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+        renderModules();
+    }
+
+    async function loadModules() {
+        const resp = await fetch('/maintenance/api/modules');
+        modulesCache = await resp.json();
+        renderModules();
+        populateAudienceDropdown();
+    }
+
+    function renderModules() {
+        const tbody = document.querySelector('#modulesTable tbody');
+        const active = _sortMods(modulesCache.filter(m => m.active));
+        const inactive = _sortMods(modulesCache.filter(m => !m.active));
+
+        let html = `<tr><td colspan="3" class="section-header">Active (${active.length})</td></tr>`;
+        html += active.map(m => `
+            <tr data-id="${m.id}">
+                <td style="color: var(--text-secondary)">${m.id}</td>
+                <td>
+                    <span class="editable" data-field="name" data-id="${m.id}">${m.name}</span>
+                </td>
+                <td>
+                    <span class="toggle-active" data-id="${m.id}">
+                        <span class="badge on">Active</span>
+                    </span>
+                </td>
+            </tr>
+        `).join('');
+
+        if (inactive.length) {
+            html += `<tr><td colspan="3" class="section-header inactive" style="padding-top:24px">Inactive (${inactive.length})</td></tr>`;
+            html += inactive.map(m => `
+                <tr data-id="${m.id}">
+                    <td style="color: var(--text-secondary)">${m.id}</td>
+                    <td>
+                        <span class="editable" data-field="name" data-id="${m.id}">${m.name}</span>
+                    </td>
+                    <td>
+                        <span class="toggle-active" data-id="${m.id}">
+                            <span class="badge off">Inactive</span>
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        tbody.innerHTML = html;
+
+        // Bind inline edit
+        tbody.querySelectorAll('.editable').forEach(el => {
+            el.addEventListener('dblclick', startEdit);
+        });
+        // Bind toggle
+        tbody.querySelectorAll('.toggle-active').forEach(el => {
+            el.addEventListener('click', toggleActive);
+        });
+    }
+
+    function startEdit(e) {
+        const span = e.currentTarget;
+        const current = span.textContent;
+        const id = span.dataset.id;
+        span.innerHTML = `<input type="text" value="${current}">`;
+        const input = span.querySelector('input');
+        input.focus();
+        input.select();
+
+        async function save() {
+            const newVal = input.value.trim();
+            if (newVal && newVal !== current) {
+                await fetch(`/maintenance/api/modules/${id}`, {
+                    method: 'PATCH',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name: newVal})
+                });
+                span.textContent = newVal;
+                // Update cache
+                const mod = modulesCache.find(m => m.id == id);
+                if (mod) mod.name = newVal;
+                populateAudienceDropdown();
+            } else {
+                span.textContent = current;
+            }
+        }
+        input.addEventListener('blur', save);
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') { input.value = current; input.blur(); } });
+    }
+
+    async function toggleActive(e) {
+        const el = e.currentTarget;
+        const id = el.dataset.id;
+        const mod = modulesCache.find(m => m.id == id);
+        if (!mod) return;
+        const newVal = mod.active ? 0 : 1;
+        await fetch(`/maintenance/api/modules/${id}`, {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({active: newVal})
+        });
+        mod.active = newVal;
+        renderModules();
+    }
+
+    // ─── AUDIENCE MANAGER ───────────────────────────────────────────────────────
+    let titleGroupsCache = null;
+    let selectedAudienceModule = null;
+
+    function populateAudienceNav() {
+        const nav = document.getElementById('audienceNav');
+        const modules = modulesCache.filter(m => m.active).sort((a,b) => a.name.localeCompare(b.name));
+        nav.innerHTML = modules.map(m =>
+            `<div class="audience-nav-item${selectedAudienceModule == m.id ? ' active' : ''}" data-id="${m.id}">${m.name}</div>`
+        ).join('');
+        nav.querySelectorAll('.audience-nav-item').forEach(item => {
+            item.addEventListener('click', () => selectAudienceModule(item.dataset.id));
+        });
+    }
+
+    // Alias for backward compat with module registry rename callback
+    function populateAudienceDropdown() { populateAudienceNav(); }
+
+    async function selectAudienceModule(moduleId) {
+        selectedAudienceModule = moduleId;
+        // Highlight active nav item
+        document.querySelectorAll('.audience-nav-item').forEach(el => el.classList.toggle('active', el.dataset.id == moduleId));
+        // Load title groups once
+        if (!titleGroupsCache) {
+            const resp = await fetch('/maintenance/api/title-groups');
+            titleGroupsCache = await resp.json();
+        }
+        await loadAudience(moduleId);
+    }
+
+    let _audGrants = [], _audSortCol = 'grant_type', _audSortDir = 'asc';
+    function _applyAudSort(arr) {
+        return arr.slice().sort((a, b) => {
+            const va = String(a[_audSortCol] || '').toLowerCase();
+            const vb = String(b[_audSortCol] || '').toLowerCase();
+            return _audSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+        });
+    }
+    function sortAudience(th) {
+        const col = th.dataset.col;
+        if (_audSortCol === col) _audSortDir = _audSortDir === 'asc' ? 'desc' : 'asc';
+        else { _audSortCol = col; _audSortDir = 'asc'; }
+        const tbl = document.getElementById('audienceTable');
+        if (tbl) tbl.querySelectorAll('th[data-col]').forEach(h => h.classList.remove('sort-asc','sort-desc'));
+        th.classList.add(_audSortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+        _renderAudienceRows(_applyAudSort(_audGrants));
+    }
+    function _renderAudienceRows(grants) {
+        const tbody = document.getElementById('audienceTbody');
+        if (!tbody) return;
+        tbody.innerHTML = grants.map(g =>
+            '<tr>'+
+            '<td><span class="badge" style="background:var(--input-bg); padding:3px 8px; border-radius:4px; font-size:0.8rem;">'+g.grant_type+'</span></td>'+
+            '<td>'+(g.display_name ? '<strong>'+g.display_name+'</strong> <span style="font-size:0.75rem; color:var(--text-secondary);">'+g.grant_value+'</span>' : g.grant_value)+'</td>'+
+            '<td><select class="access-select" data-id="'+g.id+'" style="background:var(--surface-raised); border:1px solid var(--border-input-heavy); color:var(--text-primary); padding:4px 8px; border-radius:4px; font-size:0.85rem;">'+
+            '<option value="user" '+(g.access_level === 'user' ? 'selected' : '')+'>User</option>'+
+            '<option value="admin" '+(g.access_level === 'admin' ? 'selected' : '')+'>Admin</option>'+
+            '</select></td>'+
+            '<td><button class="btn btn-danger btn-sm delete-grant" data-id="'+g.id+'">Remove</button></td>'+
+            '</tr>'
+        ).join('');
+        tbody.querySelectorAll('.access-select').forEach(sel => {
+            sel.addEventListener('change', async function() {
+                await fetch(`/maintenance/api/audience/${this.dataset.id}`, {
+                    method: 'PATCH',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({access_level: this.value})
+                });
+            });
+        });
+        tbody.querySelectorAll('.delete-grant').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                if (!confirm('Remove this grant?')) return;
+                await fetch(`/maintenance/api/audience/${this.dataset.id}`, { method: 'DELETE' });
+                await loadAudience(selectedAudienceModule);
+            });
+        });
+    }
+
+    async function loadAudience(moduleId) {
+        const resp = await fetch(`/maintenance/api/audience/${moduleId}`);
+        const grants = await resp.json();
+        _audGrants = grants;
+        const mod = modulesCache.find(m => m.id == moduleId);
+        const modName = mod ? mod.name : `Module ${moduleId}`;
+        const content = document.getElementById('audienceContent');
+
+        content.innerHTML = `
+            <div class="audience-module-title">${modName} <span class="grant-count">${grants.length} grant${grants.length !== 1 ? 's' : ''}</span></div>
+            <div class="add-grant">
+                <label style="font-size:0.8rem; color:var(--text-secondary); font-weight:600;">New Access Rule:</label>
+                <select id="grantType">
+                    <option value="title_group">Title Group</option>
+                    <option value="title_prefix">Title Prefix</option>
+                </select>
+                <select id="grantValue"><option value="">— select value —</option></select>
+                <select id="grantAccess">
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                </select>
+                <button class="btn btn-primary" id="addGrantBtn">+ Add</button>
+            </div>
+            <table class="data-table" id="audienceTable">
+                <thead>
+                    <tr>
+                        <th data-col="grant_type" onclick="sortAudience(this)" class="sort-asc">Grant Type</th>
+                        <th data-col="grant_value" onclick="sortAudience(this)">Grant Value</th>
+                        <th data-col="access_level" onclick="sortAudience(this)">Access Level</th>
+                        <th style="width:80px">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="audienceTbody"></tbody>
+            </table>
+        `;
+
+        // Update datalist suggestions
+        updateGrantSuggestions();
+        _renderAudienceRows(_applyAudSort(_audGrants));
+
+        // Bind grant type change
+        document.getElementById('grantType').addEventListener('change', updateGrantSuggestions);
+
+        // Bind add grant
+        document.getElementById('addGrantBtn').addEventListener('click', async function() {
+            const grantType = document.getElementById('grantType').value;
+            const grantValue = document.getElementById('grantValue').value.trim();
+            const accessLevel = document.getElementById('grantAccess').value;
+            if (!grantValue) { alert('Enter a grant value'); return; }
+            const resp = await fetch('/maintenance/api/audience', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({module_id: parseInt(moduleId), grant_type: grantType, grant_value: grantValue, access_level: accessLevel})
+            });
+            const result = await resp.json();
+            if (resp.ok) {
+                await loadAudience(moduleId);
+            } else {
+                alert(result.error || 'Failed to add grant');
+            }
+        });
+    }
+
+    function updateGrantSuggestions() {
+        const typeEl = document.getElementById('grantType');
+        let valEl = document.getElementById('grantValue');
+        if (!typeEl || !valEl) return;
+
+        if (typeEl.value === 'title_group') {
+            // Ensure it's a select
+            if (valEl.tagName !== 'SELECT') {
+                const sel = document.createElement('select');
+                sel.id = 'grantValue';
+                valEl.replaceWith(sel);
+                valEl = sel;
+            }
+            valEl.innerHTML = '<option value="">— select title group —</option>' +
+                (titleGroupsCache || []).map(tg => `<option value="${tg}">${tg}</option>`).join('');
+        } else {
+            // For individual/prefix, use a text input
+            if (valEl.tagName !== 'INPUT') {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.id = 'grantValue';
+                input.style.minWidth = '220px';
+                valEl.replaceWith(input);
+                valEl = input;
+            }
+            valEl.placeholder = typeEl.value === 'individual' ? 'user@peakmade.com' : 'e.g. TECHNOLOGY';
+            valEl.value = '';
+        }
+    }
+
+    // ─── USER LOOKUP ────────────────────────────────────────────────────────────
+    let lookupSelectedEmail = null;
+    let searchTimeout = null;
+
+    async function performLookup(email) {
+        const btn = document.getElementById('lookupBtn');
+        btn.disabled = true;
+        btn.textContent = '...';
+        const resp = await fetch(`/maintenance/api/user-lookup?email=${encodeURIComponent(email)}`);
+        btn.disabled = false;
+        btn.textContent = 'Look Up';
+        const container = document.getElementById('lookupResult');
+        if (!resp.ok) {
+            const err = await resp.json();
+            container.innerHTML = `<div class="lookup-card"><p style="color:#e57373">${err.error}</p></div>`;
+            return;
+        }
+        const data = await resp.json();
+        const accessMap = {};
+        data.modules.forEach(m => { accessMap[m.id] = m.access; });
+        const individualSet = new Set(data.individual_grants || []);
+        const excludedSet = new Set(data.excluded_modules || []);
+        const allMods = modulesCache.filter(m => m.active).sort((a,b) => a.name.localeCompare(b.name));
+
+        container.innerHTML = `
+            <div class="lookup-card">
+                <h3>${data.employee.name}</h3>
+                <div class="meta">
+                    ${data.employee.email} &bull; ${data.employee.title_group} &bull; ${data.employee.property}
+                    ${data.is_developer ? ' &bull; <span style="color:var(--accent-gold)">Developer</span>' : ''}
+                </div>
+                <div class="lookup-count" style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:12px;">
+                    ${data.module_count} of ${allMods.length} modules accessible
+                </div>
+                <div class="module-checklist">
+                    ${allMods.map(m => {
+                        const hasAccess = accessMap[m.id] !== undefined;
+                        const isIndividual = individualSet.has(m.id);
+                        const isExcluded = excludedSet.has(m.id);
+                        const level = accessMap[m.id] || '';
+                        const stateClass = isExcluded ? 'excluded' : (hasAccess ? 'has-access' : '');
+                        const icon = isExcluded ? '&#10007;' : (hasAccess ? '&#10003;' : '');
+                        const tag = isExcluded ? '<span class="check-tag excluded">excluded</span>'
+                                   : (isIndividual ? '<span class="check-tag individual">individual</span>' : '');
+                        return `
+                            <div class="module-check-row ${stateClass}" data-module-id="${m.id}" data-email="${data.employee.email}" data-individual="${isIndividual ? '1' : '0'}" data-excluded="${isExcluded ? '1' : '0'}">
+                                <span class="check-icon">${icon}</span>
+                                <span class="check-name">${m.name}</span>
+                                ${level === 'admin' ? '<span class="check-admin">admin</span>' : ''}
+                                ${tag}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+
+        // Bind click on ALL rows for toggle behavior
+        container.querySelectorAll('.module-check-row').forEach(row => {
+            row.addEventListener('click', async function() {
+                const moduleId = parseInt(this.dataset.moduleId);
+                const userEmail = this.dataset.email;
+                const hasAccess = this.classList.contains('has-access');
+                const isIndividual = this.dataset.individual === '1';
+                const isExcluded = this.classList.contains('excluded');
+
+                if (isExcluded) {
+                    // REMOVE exclusion → restores group access
+                    await fetch('/maintenance/api/user-grant', {
+                        method: 'DELETE',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({email: userEmail, module_id: moduleId, action: 'exclude'})
+                    });
+                    performLookup(userEmail);
+                } else if (!hasAccess) {
+                    // No access → ADD individual grant
+                    const r = await fetch('/maintenance/api/user-grant', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({email: userEmail, module_id: moduleId, action: 'grant'})
+                    });
+                    if (r.ok) {
+                        performLookup(userEmail);
+                    } else {
+                        const err = await r.json();
+                        alert(err.error || 'Failed to add access');
+                    }
+                } else if (isIndividual) {
+                    // Has individual grant → REMOVE it
+                    await fetch('/maintenance/api/user-grant', {
+                        method: 'DELETE',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({email: userEmail, module_id: moduleId, action: 'grant'})
+                    });
+                    performLookup(userEmail);
+                } else {
+                    // Has group access (not individual) → ADD exclusion
+                    const r = await fetch('/maintenance/api/user-grant', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({email: userEmail, module_id: moduleId, action: 'exclude'})
+                    });
+                    if (r.ok) {
+                        performLookup(userEmail);
+                    }
+                }
+            });
+        });
+    }
+
+    document.getElementById('lookupName').addEventListener('input', function() {
+        const q = this.value.trim();
+        lookupSelectedEmail = null;
+        document.getElementById('lookupBtn').disabled = true;
+        document.getElementById('lookupResult').innerHTML = '';
+        if (q.length < 2) {
+            document.getElementById('lookupMatches').innerHTML = '';
+            return;
+        }
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(async () => {
+            const resp = await fetch(`/maintenance/api/user-search?q=${encodeURIComponent(q)}`);
+            const matches = await resp.json();
+            const container = document.getElementById('lookupMatches');
+            if (!matches.length) {
+                container.innerHTML = '<div style="font-size:0.85rem; color:var(--text-secondary); padding:8px;">No matches found</div>';
+                return;
+            }
+            container.innerHTML = matches.map(m => `
+                <div class="lookup-match-item" data-email="${m.email}" style="padding:10px 12px; cursor:pointer; border-bottom:1px solid var(--border-subtle); display:flex; gap:12px; align-items:center; border-radius:4px;">
+                    <span style="font-weight:600; color:var(--text-primary); min-width:180px;">${m.name}</span>
+                    <span style="font-size:0.8rem; color:var(--text-secondary);">${m.title_group}</span>
+                    <span style="font-size:0.75rem; color:var(--text-secondary); margin-left:auto;">${m.property}</span>
+                </div>
+            `).join('');
+            container.querySelectorAll('.lookup-match-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    container.querySelectorAll('.lookup-match-item').forEach(i => i.style.background = '');
+                    this.style.background = 'rgba(0,188,212,0.1)';
+                    lookupSelectedEmail = this.dataset.email;
+                    document.getElementById('lookupBtn').disabled = false;
+                    // Immediately perform the lookup
+                    performLookup(lookupSelectedEmail);
+                });
+            });
+        }, 300);
+    });
+
+    document.getElementById('lookupBtn').addEventListener('click', function() {
+        if (lookupSelectedEmail) performLookup(lookupSelectedEmail);
+    });
+
+    document.getElementById('lookupName').addEventListener('keydown', e => {
+        if (e.key === 'Enter' && lookupSelectedEmail) document.getElementById('lookupBtn').click();
+    });
+
+    // ─── USAGE LOG ──────────────────────────────────────────────────────────────
+    let _ulLoaded = false;
+    let _ulTopUsers = [], _tuSortCol = 'hits', _tuSortDir = 'desc';
+    let _ulRecentRows = [], _rrSortCol = 'logged_et', _rrSortDir = 'desc';
+
+    function _applyTuSort(arr) {
+        return arr.slice().sort(function(a, b) {
+            var cmp = _tuSortCol === 'hits' ? ((a.hits||0) - (b.hits||0)) : String(a.name||'').localeCompare(String(b.name||''));
+            return _tuSortDir === 'asc' ? cmp : -cmp;
+        });
+    }
+    function sortTopUsers(th) {
+        var col = th.dataset.col;
+        if (_tuSortCol === col) _tuSortDir = _tuSortDir === 'asc' ? 'desc' : 'asc';
+        else { _tuSortCol = col; _tuSortDir = col === 'hits' ? 'desc' : 'asc'; }
+        document.querySelectorAll('#ulUsersTable th[data-col]').forEach(function(h) { h.classList.remove('sort-asc','sort-desc'); });
+        th.classList.add(_tuSortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+        renderTopUsers(_applyTuSort(_ulTopUsers));
+    }
+    function renderTopUsers(arr) {
+        document.getElementById('ulUsersBody').innerHTML = arr.length
+            ? arr.map(function(u) {
+                return '<tr><td><div style="font-size:.85rem;">'+(u.name||'')+'</div>'+
+                    '<div style="font-size:.72rem;color:var(--text-secondary);">'+(u.email||'')+'</div></td>'+
+                    '<td style="text-align:right;font-weight:600;color:#3b82f6;">'+u.hits+'</td></tr>';
+              }).join('')
+            : '<tr><td colspan="2" style="text-align:center;color:var(--text-secondary);">No data</td></tr>';
+    }
+    function _applyRrSort(arr) {
+        return arr.slice().sort(function(a, b) {
+            var cmp = _rrSortCol === 'status_code' ? ((a.status_code||0) - (b.status_code||0)) : String(a[_rrSortCol]||'').localeCompare(String(b[_rrSortCol]||''));
+            return _rrSortDir === 'asc' ? cmp : -cmp;
+        });
+    }
+    function sortRecent(th) {
+        var col = th.dataset.col;
+        if (_rrSortCol === col) _rrSortDir = _rrSortDir === 'asc' ? 'desc' : 'asc';
+        else { _rrSortCol = col; _rrSortDir = 'asc'; }
+        document.querySelectorAll('#ulRecentTable th[data-col]').forEach(function(h) { h.classList.remove('sort-asc','sort-desc'); });
+        th.classList.add(_rrSortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+        renderRecent(_applyRrSort(_ulRecentRows));
+    }
+    function renderRecent(rows) {
+        document.getElementById('ulRecentBody').innerHTML = rows.slice(0, 50).map(function(r) {
+            var sc = r.status_code;
+            var cls = sc < 300 ? 'ul-ok' : sc < 500 ? 'ul-warn' : 'ul-err';
+            return '<tr>'+
+                '<td style="font-size:.75rem;white-space:nowrap;">'+(r.logged_et||'')+'</td>'+
+                '<td style="font-size:.8rem;">'+(r.user_name||'')+'</td>'+
+                '<td><span class="ul-badge">'+modName(r.module_id||'dashboard')+'</span></td>'+
+                '<td style="font-size:.75rem;color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(r.route||'')+'">'+(r.route||'')+'</td>'+
+                '<td><span class="ul-status '+cls+'">'+sc+'</span></td>'+
+                '</tr>';
+        }).join('');
+    }
+    const MOD_COLORS = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#ec4899','#84cc16','#f97316','#a78bfa'];
+    const MODULE_NAMES = {
+        'dashboard':    'Dashboard',
+        'maintenance':  'AppHub Maintenance',
+        'cultivate':    'Cultivate Nomination',
+        'edm':          'Employee Data Manager',
+        'fasttrack':    'FastTrack Recommendation',
+        'mentor-cert':  'Mentor Certification',
+        'mindset':      'Mindset Award Nomination',
+        'new-hire':     'New Hire Alert',
+        'peak-link':    'Peak Link',
+        'pdm':          'Property Data Manager',
+        'rfs':          'Rent Forecasting System',
+    };
+    function modName(slug) { return MODULE_NAMES[slug] || slug; }
+
+    async function loadUsageLog() {
+        const days   = document.getElementById('ulDays').value;
+        const module = document.getElementById('ulModule').value;
+        const email  = document.getElementById('ulUser').value;
+
+        // Hide everything while loading
+        ['ulKpiRow','ulChartGrid','ulBottomGrid'].forEach(id => document.getElementById(id).style.display = 'none');
+        document.getElementById('ulEmpty').style.display = 'none';
+
+        const params = new URLSearchParams({ days });
+        if (module) params.set('module', module);
+        if (email)  params.set('email', email);
+
+        const data = await fetch('/maintenance/api/usage-log?' + params).then(r => r.json());
+
+        if (!data.rows || !data.rows.length) {
+            document.getElementById('ulEmpty').style.display = 'block';
+            return;
+        }
+
+        // ── KPI cards ─────────────────────────────────────────────────────────
+        const uniqueUsers = new Set(data.rows.map(r => r.user_email)).size;
+        document.getElementById('ulKpiTotal').textContent   = data.total.toLocaleString();
+        document.getElementById('ulKpiUsers').textContent   = uniqueUsers;
+        document.getElementById('ulKpiModules').textContent = (data.summary || []).length;
+        const top = (data.summary || [])[0];
+        document.getElementById('ulKpiTopMod').textContent      = top ? modName(top.module || 'dashboard') : '—';
+        document.getElementById('ulKpiTopModHits').textContent  = top ? top.hits + ' hits' : '';
+        document.getElementById('ulKpiRow').style.display = '';
+
+        // ── Daily activity bars (pure HTML/CSS) ─────────────────────────────────
+        const daily = data.daily || [];
+        const dailyWrap = document.getElementById('ulDailyBars');
+        const noChart   = document.getElementById('ulNoChart');
+        document.getElementById('ulChartDays').textContent = `(last ${days} day${days==1?'':'s'})`;
+        if (daily.length > 1) {
+            const maxH = Math.max(...daily.map(d => d.hits), 1);
+            // Show every Nth label
+            const n = daily.length;
+            const showEvery = n <= 14 ? 1 : n <= 31 ? 3 : 7;
+            dailyWrap.innerHTML = daily.map((d, i) => {
+                const pct = Math.max(4, Math.round(d.hits / maxH * 90));
+                const lbl = (i % showEvery === 0 || i === n-1) ? d.day.slice(5) : '';
+                return `<div class="ul-daily-col">`+
+                    `<div class="ul-daily-bar" style="height:${pct}px;" title="${d.day}: ${d.hits} hits"></div>`+
+                    `<span class="ul-daily-lbl">${lbl}</span>`+
+                    `</div>`;
+            }).join('');
+            dailyWrap.style.display = 'flex';
+            noChart.style.display   = 'none';
+        } else {
+            dailyWrap.style.display = 'none';
+            noChart.style.display   = '';
+        }
+
+        // ── Module breakdown bars ───────────────────────────────────────────────
+        const summary = data.summary || [];
+        const maxMod = summary.length ? summary[0].hits : 1;
+        document.getElementById('ulModBars').innerHTML = summary.slice(0, 8).map((s, i) => {
+            const pct = Math.round(s.hits / maxMod * 100);
+            const color = MOD_COLORS[i % MOD_COLORS.length];
+            const slug = s.module || 'dashboard';
+            return `<div class="ul-mod-row">`+
+                `<span class="ul-mod-name" title="${modName(slug)}">${modName(slug)}</span>`+
+                `<div class="ul-mod-track"><div class="ul-mod-fill" style="width:${pct}%;background:${color};"></div></div>`+
+                `<span class="ul-mod-count">${s.hits}</span>`+
+                `</div>`;
+        }).join('');
+        document.getElementById('ulChartGrid').style.display = '';
+
+        // ── Top users table ────────────────────────────────────────────────────
+        _ulTopUsers = data.top_users || [];
+        renderTopUsers(_applyTuSort(_ulTopUsers));
+
+        // ── Recent requests table (last 50) ─────────────────────────────────
+        _ulRecentRows = data.rows;
+        renderRecent(_applyRrSort(_ulRecentRows));
+        document.getElementById('ulBottomGrid').style.display = '';
+
+        // ── Repopulate user dropdown ──────────────────────────────────────────
+        const ulUserSel = document.getElementById('ulUser');
+        const curUser   = ulUserSel.value;
+        const seen      = new Map();
+        data.rows.forEach(r => { if (r.user_email && !seen.has(r.user_email)) seen.set(r.user_email, r.user_name || r.user_email); });
+        // Sort by display name
+        const sorted = [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+        ulUserSel.innerHTML = '<option value="">All users</option>' +
+            sorted.map(([em, nm]) =>
+                `<option value="${em}"${em===curUser?' selected':''}>${nm}${nm!==em?' ('+em+')':''}</option>`
+            ).join('');
+
+        _ulLoaded = true;
+    }
+
+    document.querySelectorAll('.maint-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            if (this.dataset.panel === 'usagelog' && !_ulLoaded) loadUsageLog();
+        });
+    });
+    document.getElementById('ulApply').addEventListener('click', () => { _ulLoaded = false; loadUsageLog(); });
+    document.getElementById('ulUser').addEventListener('change', () => { _ulLoaded = false; loadUsageLog(); });
+
+    // ─── INIT ───────────────────────────────────────────────────────────────────
+    loadModules();
+    </script>
+{% endblock %}

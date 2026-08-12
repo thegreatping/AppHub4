@@ -1,0 +1,309 @@
+{% extends "shell.html" %}
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/market_benchmark.css') }}?v=14">
+{% endblock %}
+{% block content %}
+<div class="mrb-wrapper">
+
+    <!-- Module Header -->
+    <div class="mrb-header">
+        <i class="fa-solid fa-chart-line" style="font-size: 1.5rem; color: var(--accent-cyan);"></i>
+        <h1>Market Benchmark</h1>
+    </div>
+
+    <!-- Tab Bar -->
+    <nav class="mrb-tab-bar">
+        <button class="mrb-tab active" data-tab="data-entry">Data Entry</button>
+        <button class="mrb-tab" data-tab="schools">Schools</button>
+        <button class="mrb-tab" data-tab="markets">Markets</button>
+        <button class="mrb-tab" data-tab="comps">Comps</button>
+        <button class="mrb-tab" data-tab="assign-comps">Assign Comps</button>
+        <button class="mrb-tab" data-tab="floorplans">Floor Plans</button>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="mrb-main">
+        <!-- Left Panel (selectors) -->
+        <aside class="left-panel">
+            <div class="selector-group">
+                <label>Parent Property</label>
+                <select id="ddParentProperty">
+                    <option value="">Loading...</option>
+                </select>
+            </div>
+            <div class="selector-group">
+                <label>Week</label>
+                <select id="ddWeeks">
+                    <option value="">Loading...</option>
+                </select>
+            </div>
+            <div class="selector-group">
+                <label>AY</label>
+                <select id="ddAY">
+                    <option value="2026" selected>2026</option>
+                    <option value="2025">2025</option>
+                    <option value="2024">2024</option>
+                </select>
+            </div>
+            <div class="selector-group">
+                <label>Comp Properties</label>
+                <div id="compList" class="comp-list"></div>
+            </div>
+        </aside>
+
+        <!-- Right Panel (tab content) -->
+        <section class="right-panel">
+            <div class="readonly-banner">&#9888; Read-only -- this survey date is more than 6 days old.</div>
+
+            <!-- Data Entry Tab -->
+            <div class="mrb-tab-panel active" id="panel-data-entry">
+                <div class="info-blurb" id="blurb-data-entry">
+                    <div class="blurb-header" onclick="toggleBlurb('data-entry')">
+                        <span class="blurb-title">Data Entry</span>
+                        <span class="blurb-toggle" id="blurbToggle-data-entry">&#9660;</span>
+                    </div>
+                    <div class="blurb-body" id="blurbBody-data-entry">
+                        Enter weekly rent and occupancy data for comp properties. Select a parent property and survey week from the left panel to load the entry grid.
+                        <br><br>
+                        <strong>How to use:</strong>
+                        <ul style="margin:4px 0 0 16px;padding:0">
+                            <li><strong>Comp Summary</strong> &mdash; Edit property-level occupancy, effective rate, and concession fields.</li>
+                            <li><strong>Floorplans</strong> &mdash; Enter per-floor-plan rent and availability data for each comp.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div id="compFactSection" class="section comp-section">
+                    <div id="compSummaryPeek" class="comp-summary-peek comp-section-toggle"></div>
+                    <div id="compFactGrid" class="data-grid"></div>
+                </div>
+                <div id="floorplanSection" class="section floorplan-section">
+                    <h3>Floorplans</h3>
+                    <div id="floorplanGrid" class="data-grid"></div>
+                </div>
+            </div>
+
+            <!-- Schools Tab -->
+            <div class="mrb-tab-panel" id="panel-schools">
+                <div class="info-blurb" id="blurb-schools">
+                    <div class="blurb-header" onclick="toggleBlurb('schools')">
+                        <span class="blurb-title">Schools</span>
+                        <span class="blurb-toggle" id="blurbToggle-schools">&#9660;</span>
+                    </div>
+                    <div class="blurb-body" id="blurbBody-schools">
+                        Manage school markets and view aggregated market data by school. Each school card shows its market columns and linked comp properties.
+                        <br><br>
+                        <strong>How to use:</strong>
+                        <ul style="margin:4px 0 0 16px;padding:0">
+                            <li><strong>Search</strong> &mdash; Filter schools by name.</li>
+                            <li><strong>Show inactive</strong> &mdash; Toggle to include deactivated schools.</li>
+                            <li><strong>+ Add School</strong> &mdash; Create a new school market entry.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="schools-toolbar">
+                    <input type="text" id="schoolSearch" placeholder="Search schools..." class="school-search-input">
+                    <label class="school-toggle"><input type="checkbox" id="schoolShowInactive"> Show inactive</label>
+                    <button id="btnSchoolViewToggle" class="btn-view-toggle" data-view="info">&#128202; Numbers View</button>
+                    <button id="btnAddSchool" class="btn-add-school">+ Add School</button>
+                </div>
+                <div id="schoolsGrid" class="schools-grid"></div>
+            </div>
+
+            <!-- Markets Tab -->
+            <div class="mrb-tab-panel" id="panel-markets">
+                <div class="info-blurb" id="blurb-markets">
+                    <div class="blurb-header" onclick="toggleBlurb('markets')">
+                        <span class="blurb-title">Markets</span>
+                        <span class="blurb-toggle" id="blurbToggle-markets">&#9660;</span>
+                    </div>
+                    <div class="blurb-body" id="blurbBody-markets">
+                        Create and manage market categories used to group schools for regional comparisons.
+                        <br><br>
+                        <strong>How to use:</strong>
+                        <ul style="margin:4px 0 0 16px;padding:0">
+                            <li><strong>Search</strong> &mdash; Filter markets by name.</li>
+                            <li><strong>+ Add Market</strong> &mdash; Create a new market grouping.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="schools-toolbar">
+                    <input type="text" id="marketSearch" placeholder="Search markets..." class="school-search-input">
+                    <button id="btnAddMarket" class="btn-add-school">+ Add Market</button>
+                </div>
+                <div id="marketsGrid" class="schools-grid"></div>
+            </div>
+
+            <!-- Comps Tab -->
+            <div class="mrb-tab-panel" id="panel-comps">
+                <div class="info-blurb" id="blurb-comps">
+                    <div class="blurb-header" onclick="toggleBlurb('comps')">
+                        <span class="blurb-title">Comps</span>
+                        <span class="blurb-toggle" id="blurbToggle-comps">&#9660;</span>
+                    </div>
+                    <div class="blurb-body" id="blurbBody-comps">
+                        Manage competitor properties. Click any comp row to open the detail panel with all fields grouped by category.
+                        <br><br>
+                        <strong>How to use:</strong>
+                        <ul style="margin:4px 0 0 16px;padding:0">
+                            <li><strong>Search</strong> &mdash; Filter comp properties by name.</li>
+                            <li><strong>Show inactive</strong> &mdash; Toggle to include deactivated comps.</li>
+                            <li><strong>+ Add Comp</strong> &mdash; Register a new competitor property.</li>
+                            <li><strong>Detail panel</strong> &mdash; Click a comp to edit rent, occupancy, amenities, and more.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="schools-toolbar">
+                    <input type="text" id="compSearch" placeholder="Search comp properties..." class="school-search-input">
+                    <label class="school-toggle"><input type="checkbox" id="compShowInactive"> Show inactive</label>
+                    <button id="btnCompsShowAll" class="btn-view-toggle">Show All</button>
+                    <button id="btnAddComp" class="btn-add-school">+ Add Comp</button>
+                </div>
+                <div id="compsGrid" class="schools-grid"></div>
+            </div>
+
+            <!-- Comp Detail Slide-out -->
+            <div class="comp-detail-overlay" id="compDetailOverlay">
+                <div class="comp-resize-handle" id="compResizeHandle"></div>
+                <button class="comp-detail-close" id="compDetailClose">&times;</button>
+                <div class="comp-detail-sticky-header">
+                    <div class="comp-detail-name" id="compDetailName"></div>
+                    <div class="comp-detail-key" id="compDetailKey"></div>
+                    <div class="comp-detail-controls">
+                        <div class="comp-jump-bar">
+                            <input type="text" id="compJumpSearch" placeholder="Jump to field...">
+                        </div>
+                        <div class="comp-sort-toggle">
+                            <button class="active" data-sort="category">Category</button>
+                            <button data-sort="az">A-Z</button>
+                        </div>
+                        <button class="comp-gear-btn" id="compGearBtn" title="Customize fields">&#9881;</button>
+                    </div>
+                </div>
+                <div class="comp-detail-body" id="compDetailBody"></div>
+            </div>
+
+            <!-- Comp Settings Modal -->
+            <div class="comp-settings-overlay" id="compSettingsOverlay"></div>
+            <div class="comp-settings-modal" id="compSettingsModal">
+                <div class="comp-settings-header">
+                    <h3>Customize Comp Detail</h3>
+                    <button class="comp-detail-close" id="compSettingsClose">&times;</button>
+                </div>
+                <div class="comp-settings-body" id="compSettingsBody">
+                    <p class="comp-settings-hint">Drag categories to reorder. Click &#128065; to show/hide sections or fields.</p>
+                    <div id="compSettingsList" class="comp-settings-list"></div>
+                </div>
+            </div>
+
+            <!-- Assign Comps Tab -->
+            <div class="mrb-tab-panel" id="panel-assign-comps">
+                <div class="info-blurb" id="blurb-assign-comps">
+                    <div class="blurb-header" onclick="toggleBlurb('assign-comps')">
+                        <span class="blurb-title">Assign Comps</span>
+                        <span class="blurb-toggle" id="blurbToggle-assign-comps">&#9660;</span>
+                    </div>
+                    <div class="blurb-body" id="blurbBody-assign-comps">
+                        Link comp properties to a parent property for a specific survey week. Only assigned comps appear in the Data Entry grid.
+                        <br><br>
+                        <strong>How to use:</strong>
+                        <ul style="margin:4px 0 0 16px;padding:0">
+                            <li>Select a <strong>parent property</strong> and <strong>week</strong> from the left panel.</li>
+                            <li>Drag or click comps in <strong>Available</strong> to move them to <strong>Assigned</strong>.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="assign-comps-header">
+                    <span id="assignCompsTitle">Select a parent property and week to manage comp assignments.</span>
+                </div>
+                <div class="assign-comps-body">
+                    <div class="assign-available-panel">
+                        <div class="assign-panel-header">Available Comps</div>
+                        <input type="text" id="assignAvailSearch" placeholder="Search available comps..." class="assign-panel-search" autocomplete="off">
+                        <div id="assignAvailList" class="assign-avail-list">
+                            <p class="placeholder">Select a parent property and week.</p>
+                        </div>
+                    </div>
+                    <div class="assign-assigned-panel">
+                        <div class="assign-panel-header">Assigned Comps <span id="assignCountBadge" class="assign-count-badge"></span></div>
+                        <div id="assignCompsList" class="assign-comps-list">
+                            <p class="placeholder">Select a parent property and week.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Floor Plans Tab -->
+            <div class="mrb-tab-panel" id="panel-floorplans">
+                <div class="info-blurb" id="blurb-floorplans">
+                    <div class="blurb-header" onclick="toggleBlurb('floorplans')">
+                        <span class="blurb-title">Floor Plans</span>
+                        <span class="blurb-toggle" id="blurbToggle-floorplans">&#9660;</span>
+                    </div>
+                    <div class="blurb-body" id="blurbBody-floorplans">
+                        Benchmark floor plan pricing by comp property. Add, edit, or deactivate floor plan types and their associated pricing.
+                        <br><br>
+                        <strong>How to use:</strong>
+                        <ul style="margin:4px 0 0 16px;padding:0">
+                            <li><strong>Comp Property</strong> &mdash; Search and select a comp property to load its floor plans.</li>
+                            <li><strong>Show inactive</strong> &mdash; Toggle to include deactivated floor plans.</li>
+                            <li><strong>+ New Floor Plan</strong> &mdash; Add a new floor plan type to the selected comp.</li>
+                            <li>Click any floor plan row to expand and edit its details.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="fp-toolbar">
+                    <div class="fp-comp-selector">
+                        <span class="fp-comp-label">Comp Property:</span>
+                        <div class="fp-comp-search-wrap">
+                            <input type="text" id="fpCompSearch" placeholder="Search all comp properties..." autocomplete="off" class="fp-comp-search-input">
+                            <div id="fpCompDropdown" class="fp-comp-dropdown" style="display:none;"></div>
+                        </div>
+                        <span id="fpTitle" class="fp-title"></span>
+                    </div>
+                    <div class="fp-toolbar-right">
+                        <label class="fp-toggle-label"><input type="checkbox" id="fpShowInactive"> Show inactive</label>
+                        <button id="btnAddFloorplan" class="btn-add-school" disabled>+ New Floor Plan</button>
+                    </div>
+                </div>
+                <div class="fp-body">
+                    <div id="fpGrid" class="fp-grid"></div>
+                </div>
+            </div>
+
+            <!-- Floor Plan Detail Slide-out -->
+            <div class="fp-detail-overlay" id="fpDetailOverlay">
+                <div class="fp-resize-handle" id="fpResizeHandle"></div>
+                <button class="fp-detail-close" id="fpDetailClose">&times;</button>
+                <div class="fp-detail-sticky-header">
+                    <div class="fp-detail-comp-name" id="fpDetailCompName"></div>
+                    <div class="fp-detail-name" id="fpDetailName"></div>
+                    <div class="fp-detail-controls">
+                        <span class="fp-modified-by" id="fpModifiedBy"></span>
+                        <button class="fp-activate-btn" id="fpActivateBtn"></button>
+                    </div>
+                </div>
+                <div class="fp-detail-body" id="fpDetailBody"></div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/market_benchmark.js') }}?v=15"></script>
+<script>
+function toggleBlurb(id) {
+    const body = document.getElementById('blurbBody-' + id);
+    const toggle = document.getElementById('blurbToggle-' + id);
+    const collapsed = body.classList.toggle('collapsed');
+    toggle.innerHTML = collapsed ? '&#9654;' : '&#9660;';
+    localStorage.setItem('mrb_blurb_' + id, collapsed ? '1' : '0');
+}
+['data-entry','schools','markets','comps','assign-comps','floorplans'].forEach(id => {
+    if (localStorage.getItem('mrb_blurb_' + id) === '1') {
+        const body = document.getElementById('blurbBody-' + id);
+        const toggle = document.getElementById('blurbToggle-' + id);
+        if (body) body.classList.add('collapsed');
+        if (toggle) toggle.innerHTML = '&#9654;';
+    }
+});
+</script>
+{% endblock %}

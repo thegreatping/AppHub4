@@ -1,0 +1,979 @@
+{% extends "shell.html" %}
+{% block head %}
+<style>
+/* ═══ RFS — Power App Replica ═══ */
+.rfs-container { padding: 0; max-width: 100%; min-height: calc(100vh - 60px); background: #5fb8c2; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+/* ── Title Bar ── */
+.rfs-title-bar { background: #353d3f; color: #fff; text-align: center; font-size: 1.6rem; font-weight: 700; padding: 10px 0; }
+
+/* ── Top Row: Selectors + Summary + Inducements ── */
+.rfs-top-row { display: flex; gap: 4px; padding: 6px 8px; align-items: stretch; }
+
+/* Vertical sidebar labels */
+.rfs-vlabel { font-size: 0.75rem; font-weight: 700; color: #fff; background: #479eff; padding: 6px 5px; text-align: center; line-height: 1.3; border-radius: 3px; min-width: 22px; display: flex; align-items: center; justify-content: center; }
+
+/* Selector Panel */
+.rfs-sel-panel { background: #e8f0f2; border: 2px solid #888; border-radius: 4px; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; min-width: 240px; }
+.rfs-sel-row { display: flex; align-items: center; gap: 6px; }
+.rfs-sel-row label { font-size: 0.85rem; font-weight: 600; color: #333; min-width: 60px; }
+.rfs-sel-row select { font-size: 0.95rem; padding: 3px 6px; border: 1px solid #999; border-radius: 3px; min-width: 180px; background: #fff; }
+.rfs-sel-row input[type="text"], .rfs-sel-row input[type="number"] { font-size: 0.95rem; padding: 3px 6px; border: 1px solid #999; border-radius: 3px; width: 60px; text-align: center; background: #fff; }
+.rfs-sel-row .btn-add { background: #36b04b; color: #fff; border: none; padding: 4px 10px; border-radius: 3px; font-weight: 700; cursor: pointer; font-size: 0.85rem; }
+.rfs-sel-row .btn-add:hover { background: #2d9640; }
+.rfs-approve-inline { display: flex; align-items: center; gap: 4px; }
+.rfs-approve-inline input[type="checkbox"] { width: 16px; height: 16px; }
+.rfs-approve-inline label { font-size: 0.85rem; font-weight: 600; }
+
+/* Summary Table */
+.rfs-summary-panel { background: #e8f0f2; border: 2px solid #888; border-radius: 4px; padding: 0; flex: 1; }
+.rfs-summary-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.rfs-summary-table th { background: #d6dde0; padding: 5px 10px; text-align: center; font-weight: 700; color: #333; border: 1px solid #bbb; font-size: 0.85rem; }
+.rfs-summary-table td { padding: 4px 10px; text-align: center; border: 1px solid #ccc; font-weight: 600; }
+.rfs-summary-table .row-label { text-align: right; font-weight: 700; color: #333; padding-right: 12px; background: #d6dde0; }
+.rfs-summary-table .val-budget { background: #fff; }
+.rfs-summary-table .val-actual { background: #fff; }
+.rfs-summary-table .val-forecast { background: #fff; }
+.rfs-summary-table .warn-cell { background: #1a237e !important; color: #fff !important; }
+
+/* Inducements Panel */
+.rfs-ind-panel { background: #e8f0f2; border: 2px solid #888; border-radius: 4px; padding: 0; min-width: 320px; }
+.rfs-ind-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.rfs-ind-table th { background: #d6dde0; padding: 4px 8px; text-align: center; font-weight: 700; color: #333; border: 1px solid #bbb; font-size: 0.8rem; }
+.rfs-ind-table td { padding: 4px 8px; text-align: right; border: 1px solid #ccc; font-weight: 600; background: #fff; }
+.rfs-ind-table .ind-label { text-align: right; font-weight: 700; color: #333; padding-right: 8px; background: #d6dde0; }
+.rfs-ind-table .ind-negative { color: #e53935; }
+.rfs-ind-planned-input { font-size: 0.95rem; padding: 3px 6px; border: 1px solid #999; border-radius: 3px; width: 90px; text-align: right; font-weight: 700; }
+.rfs-planned-cell { background: #fff; text-align: center; }
+
+/* ── Main Content: Floorplans + Dashboard + Tiers ── */
+.rfs-main-row { display: flex; gap: 4px; padding: 6px 8px; align-items: flex-start; }
+
+/* Floorplan List */
+.rfs-fp-panel { background: #e8f0f2; border: 2px solid #888; border-radius: 4px; min-width: 200px; max-width: 220px; }
+.rfs-fp-header { background: #d6dde0; padding: 6px 10px; font-weight: 700; font-size: 0.9rem; color: #333; border-bottom: 1px solid #bbb; }
+.rfs-fp-list { max-height: 500px; overflow-y: auto; }
+.rfs-fp-item { padding: 6px 12px; font-size: 0.9rem; cursor: pointer; border-bottom: 1px solid #ddd; color: #333; }
+.rfs-fp-item:hover { background: #d0e8f0; }
+.rfs-fp-item.active { background: #b0d8e8; font-weight: 700; }
+
+/* Dashboard Panel */
+.rfs-dash-panel { background: #e8f0f2; border: 2px solid #888; border-radius: 4px; flex: 1; padding: 0; }
+.rfs-dash-header { background: #d6dde0; padding: 6px 12px; font-weight: 700; font-size: 1rem; color: #333; border-bottom: 1px solid #bbb; }
+.rfs-dash-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.rfs-dash-table th { background: #d6dde0; padding: 4px 8px; text-align: center; font-weight: 700; font-size: 0.8rem; border: 1px solid #bbb; color: #555; }
+.rfs-dash-table td { padding: 4px 8px; text-align: center; border: 1px solid #ccc; font-weight: 600; background: #fff; }
+.rfs-dash-table td.dash-strip { width: 8px; padding: 0; border: none; }
+.rfs-dash-table tr.row-renewal td.dash-strip { background: #e67e22; }
+.rfs-dash-table tr.row-new td.dash-strip { background: #27ae60; }
+.rfs-dash-table tr.row-total td.dash-strip { background: #7b5ea7; }
+.rfs-dash-table tr.dash-sep td { padding: 2px 0; background: #cdd6da; border: none; height: 3px; }
+.rfs-dash-table .dash-label { text-align: right; padding-right: 10px; background: #eef3f5; font-weight: 600; color: #555; }
+.rfs-dash-table .dash-forecast { background: #e8d0ff; }
+.rfs-dash-table .dash-forecast-warn { background: #1a237e; color: #fff; }
+/* Row-section tints */
+.rfs-dash-table tr.row-renewal td { background: #fde8d0; }
+.rfs-dash-table tr.row-renewal td.dash-label { background: #f8dfc0; }
+.rfs-dash-table tr.row-renewal td.dash-forecast { background: #e8d0ff; }
+.rfs-dash-table tr.row-renewal td.dash-forecast-warn { background: #1a237e; color: #fff; }
+.rfs-dash-table tr.row-new td { background: #d4edda; }
+.rfs-dash-table tr.row-new td.dash-label { background: #c3e6cb; }
+.rfs-dash-table tr.row-new td.dash-forecast { background: #e8d0ff; }
+.rfs-dash-table tr.row-new td.dash-forecast-warn { background: #1a237e; color: #fff; }
+.rfs-dash-table tr.row-total td { background: #e8e0f0; }
+.rfs-dash-table tr.row-total td.dash-label { background: #ddd0e8; }
+.rfs-dash-table tr.row-total td.dash-forecast { background: #e8d0ff; }
+.rfs-dash-table tr.row-total td.dash-forecast-warn { background: #1a237e; color: #fff; }
+
+/* Inducements Detail */
+.rfs-ind-detail { margin-top: 8px; background: #e8f0f2; border: 2px solid #888; border-radius: 4px; padding: 0; }
+.rfs-ind-detail-header { background: #d6dde0; padding: 6px 12px; font-weight: 700; font-size: 0.95rem; border-bottom: 1px solid #bbb; }
+.rfs-ind-detail-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.rfs-ind-detail-table th { background: #d6dde0; padding: 4px 8px; text-align: center; font-weight: 700; font-size: 0.8rem; border: 1px solid #bbb; }
+.rfs-ind-detail-table td { padding: 4px 8px; text-align: center; border: 1px solid #ccc; font-weight: 600; background: #fff; }
+.rfs-ind-detail-table .ind-d-label { text-align: right; padding-right: 10px; background: #eef3f5; }
+
+/* Reforecast Tiers Panel */
+.rfs-tiers-panel { background: #e8f0f2; border: 2px solid #888; border-radius: 4px; min-width: 440px; flex: 1; }
+.rfs-tiers-header { background: #d6dde0; padding: 6px 12px; font-weight: 700; font-size: 1rem; color: #333; border-bottom: 1px solid #bbb; display: flex; justify-content: space-between; align-items: center; }
+.rfs-tiers-info { font-size: 0.8rem; color: #555; }
+
+/* Lease type toggle buttons */
+.rfs-lease-toggle { display: flex; gap: 0; margin: 8px 12px; }
+.rfs-lease-btn { padding: 6px 18px; font-size: 0.9rem; font-weight: 700; border: 2px solid #28a090; background: #fff; color: #28a090; cursor: pointer; }
+.rfs-lease-btn:first-child { border-radius: 4px 0 0 4px; }
+.rfs-lease-btn:last-child { border-radius: 0 4px 4px 0; }
+.rfs-lease-btn.active { background: #28a090; color: #fff; }
+
+/* Section label inside tiers */
+.rfs-tier-section-label { background: #ffdab9; text-align: center; font-weight: 700; font-size: 0.95rem; padding: 5px; color: #333; border: 1px solid #ccc; }
+
+/* Tier Tables */
+.rfs-tier-grid { display: flex; gap: 4px; padding: 8px; }
+.rfs-tier-col { flex: 1; }
+.rfs-tier-col-header { background: #d6dde0; text-align: center; font-weight: 700; font-size: 0.85rem; padding: 5px; border: 1px solid #bbb; }
+.rfs-tier-col-header.budget-hdr { background: #d6dde0; }
+.rfs-tier-col-header.actual-hdr { background: #ffdab9; }
+.rfs-tier-col-header.forecast-hdr { background: #d6dde0; }
+
+.rfs-tier-tbl { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.rfs-tier-tbl th { background: #e8eef2; padding: 3px 6px; text-align: center; font-weight: 700; font-size: 0.78rem; border: 1px solid #ccc; color: #555; }
+.rfs-tier-tbl td { padding: 3px 6px; text-align: center; border: 1px solid #ccc; font-weight: 600; background: #fff; }
+.rfs-tier-tbl .actual-cell { background: #fde0cc; }
+.rfs-tier-tbl .tier-input { border: 1px solid #999; padding: 2px 4px; font-size: 0.85rem; width: 50px; text-align: center; font-weight: 600; border-radius: 2px; }
+.rfs-tier-tbl .tier-input:focus { border-color: #28a090; outline: none; }
+.rfs-tier-tbl .tier-computed { background: #eee; color: #555; }
+
+/* Tier totals */
+.rfs-tier-totals-row { display: flex; justify-content: space-around; padding: 6px 8px; background: #fde0cc; border: 1px solid #ccc; font-size: 0.85rem; }
+.rfs-tier-totals-row.budget-tot { background: #e8eef2; }
+.rfs-tier-totals-row.forecast-tot { background: #e8eef2; }
+
+/* New Leases green overrides */
+.lease-new .rfs-tier-section-label { background: #c8e6c9; }
+.lease-new .rfs-tier-col-header.actual-hdr { background: #c8e6c9; }
+.lease-new .rfs-tier-tbl .actual-cell { background: #e8f5e9; }
+.lease-new .rfs-tier-totals-row:not(.budget-tot):not(.forecast-tot) { background: #e8f5e9; }
+.rfs-tier-tot-item { text-align: center; }
+.rfs-tier-tot-item .t-label { font-size: 0.72rem; color: #555; }
+.rfs-tier-tot-item .t-value { font-weight: 700; font-size: 0.95rem; }
+
+/* Action buttons */
+.rfs-tier-actions { display: flex; gap: 6px; padding: 6px 8px; justify-content: flex-end; align-items: center; }
+.rfs-btn { padding: 4px 10px; border: none; border-radius: 3px; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
+.rfs-btn-add { background: #36b04b; color: #fff; border: 2px solid #2d9640; }
+.rfs-btn-add:hover { background: #2d9640; }
+.rfs-btn-save { background: #479eff; color: #fff; }
+.rfs-btn-save:hover { background: #3580d0; }
+.rfs-btn-delete { background: #e8e8e8; color: #c62828; font-size: 0.8rem; padding: 2px 6px; border: 1px solid #ccc; }
+.rfs-btn-delete:hover { background: #ffcdd2; }
+
+/* Empty/loading */
+.rfs-empty { text-align: center; padding: 20px; color: #888; font-size: 0.9rem; font-style: italic; }
+
+/* Market Comps */
+.rfs-comps-panel { margin-top: 8px; background: #e8f0f2; border: 2px solid #888; border-radius: 4px; display: flex; flex-direction: column; }
+.rfs-comps-header { background: #d6dde0; padding: 6px 12px; font-weight: 700; font-size: 0.95rem; border-bottom: 1px solid #bbb; flex-shrink: 0; }
+.rfs-comps-scroll { overflow-y: auto; max-height: 180px; flex-shrink: 1; }
+.rfs-comps-totals { border-top: 2px solid #9bb; flex-shrink: 0; background: #dde8ec; }
+.rfs-comps-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; table-layout: fixed; }
+.rfs-comps-table .cc-name { width: 38%; }
+.rfs-comps-table .cc-type { width: 24%; }
+.rfs-comps-table .cc-ner  { width: 16%; }
+.rfs-comps-table .cc-sold { width: 12%; }
+.rfs-comps-table .cc-inc  { width: 10%; }
+.rfs-comps-table thead th { background: #c8d4d8; padding: 3px 8px; text-align: center; font-weight: 700; font-size: 0.78rem; border: 1px solid #bbb; color: #444; }
+.rfs-comps-table tbody td { padding: 3px 8px; border: 1px solid #ddd; background: #fff; }
+.rfs-comps-table td.comp-name { font-weight: 600; background: #f0f5f7; }
+.rfs-comps-table td.comp-type { text-align: center; color: #555; }
+.rfs-comps-table td.comp-ner  { text-align: right; font-weight: 600; }
+.rfs-comps-table tr.comp-row-excluded td { color: #aaa; background: #f8f8f8; }
+.comp-flag { font-size: 0.8rem; }
+.comp-sold-out { color: #c0392b; font-weight: 700; }
+.comp-included { color: #27ae60; font-weight: 700; font-size: 1rem; }
+.comp-excluded { color: #bbb; }
+.comp-toggle { border: none; border-radius: 3px; cursor: pointer; font-size: 1rem; font-weight: 700; width: 28px; height: 22px; line-height: 1; padding: 0; }
+.comp-toggle-on  { background: #27ae60; color: #fff; }
+.comp-toggle-off { background: #c0392b; color: #fff; }
+.comp-toggle:disabled { opacity: 0.5; cursor: wait; }
+.comp-total-row td { background: #dde8ec; font-weight: 700; border-top: 2px solid #aaa; padding: 3px 8px; border: 1px solid #ccc; }
+
+/* Responsive */
+@media (max-width: 1400px) {
+    .rfs-top-row { flex-wrap: wrap; }
+    .rfs-main-row { flex-wrap: wrap; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rfs-container">
+    <!-- Title Bar -->
+    <div class="rfs-title-bar">Rent Forecasting System</div>
+
+    <!-- ═══ TOP ROW: Selectors + Summary + Inducements ═══ -->
+    <div class="rfs-top-row">
+        <!-- Property Selectors -->
+        <div class="rfs-vlabel">P<br>R<br>O<br>P<br>E<br>R<br>T<br>Y</div>
+        <div class="rfs-sel-panel">
+            <div class="rfs-sel-row">
+                <label>Property</label>
+                <select id="selProperty"><option value="">Choose a Property</option></select>
+            </div>
+            <div class="rfs-sel-row">
+                <label>Plan</label>
+                <select id="selForecast"><option value="">Choose a Reforecast Plan</option></select>
+                <button class="btn-add" id="btnNewForecast" title="Add new plan"><i class="fa-solid fa-plus"></i> Add</button>
+            </div>
+            <div class="rfs-sel-row">
+                <label>AY</label>
+                <select id="selAY" style="min-width:70px;">
+                    <option value="2026" selected>2026</option>
+                    <option value="2025">2025</option>
+                    <option value="2027">2027</option>
+                </select>
+                <span style="margin-left:8px;">Beds</span>
+                <input type="text" id="txtBeds" value="0" readonly style="width:50px;">
+                <div class="rfs-approve-inline" style="margin-left:12px;">
+                    <input type="checkbox" id="chkApproved">
+                    <label for="chkApproved">Approved</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Banner -->
+        <div class="rfs-vlabel">P<br>R<br>O<br>P<br>E<br>R<br>T<br>Y</div>
+        <div class="rfs-summary-panel" id="summaryBanner">
+            <table class="rfs-summary-table">
+                <thead>
+                    <tr><th></th><th>Prelease %</th><th>Avg Rate</th><th>NER</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="row-label">Budgeted</td>
+                        <td class="val-budget" id="metBudgetPL">—</td>
+                        <td class="val-budget" id="metBudgetRate">—</td>
+                        <td class="val-budget" id="metBudgetNER">—</td>
+                    </tr>
+                    <tr>
+                        <td class="row-label">Actual</td>
+                        <td class="val-actual" id="metActualPL">—</td>
+                        <td class="val-actual" id="metActualRate">—</td>
+                        <td class="val-actual" id="metActualNER">—</td>
+                    </tr>
+                    <tr>
+                        <td class="row-label">Forecasted</td>
+                        <td class="val-forecast" id="metForecastPL">—</td>
+                        <td class="val-forecast" id="metForecastRate">—</td>
+                        <td class="val-forecast" id="metForecastNER">—</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Inducements -->
+        <div class="rfs-vlabel">P<br>R<br>O<br>P<br>E<br>R<br>T<br>Y</div>
+        <div class="rfs-ind-panel" id="inducePanel">
+            <table class="rfs-ind-table">
+                <thead>
+                    <tr><th></th><th>Budget</th><th>Used</th><th>with Forecast</th><th>Remaining</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="ind-label">Concession</td>
+                        <td id="indConcBudget">—</td>
+                        <td id="indConcUsed">—</td>
+                        <td id="indConcForecast">—</td>
+                        <td id="indConcRemain">—</td>
+                    </tr>
+                    <tr>
+                        <td class="ind-label">Gift Incentive</td>
+                        <td id="indGiftBudget">—</td>
+                        <td id="indGiftUsed">—</td>
+                        <td id="indGiftForecast">—</td>
+                        <td id="indGiftRemain">—</td>
+                    </tr>
+                    <tr>
+                        <td class="ind-label">Total Inducements</td>
+                        <td id="indTotBudget">—</td>
+                        <td id="indTotUsed">—</td>
+                        <td id="indTotForecast">—</td>
+                        <td id="indTotRemain">—</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Planned Use -->
+        <div style="display:flex; flex-direction:column; gap:4px; align-self:center; margin-left:4px;">
+            <div style="font-size:0.8rem; font-weight:700; color:#333; text-align:center;">Planned Use</div>
+            <input type="number" class="rfs-ind-planned-input" id="txtPlannedUse" value="0">
+        </div>
+    </div>
+
+    <!-- ═══ MAIN ROW: Floorplans + Dashboard + Tiers ═══ -->
+    <div class="rfs-main-row">
+        <!-- Floorplan List -->
+        <div style="display:flex; gap:0;">
+            <div class="rfs-vlabel">F<br>L<br>O<br>O<br>R<br><br>P<br>L<br>A<br>N</div>
+            <div class="rfs-fp-panel">
+                <div class="rfs-fp-header">Choose a Floor Plan</div>
+                <div class="rfs-fp-list" id="fpBar"></div>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div class="rfs-dash-panel">
+            <div class="rfs-dash-header">Dashboard for <span id="dashPropName"></span></div>
+            <table class="rfs-dash-table" id="dashTable">
+                <thead>
+                    <tr><th></th><th></th><th>Budget</th><th>Actual</th><th>Reforecast</th><th>Forecasted</th></tr>
+                </thead>
+                <tbody id="dashBody">
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+
+            <!-- Inducements Detail -->
+            <div class="rfs-ind-detail">
+                <div class="rfs-ind-detail-header">Inducements for <span id="indDetailPropName"></span></div>
+                <table class="rfs-ind-detail-table">
+                    <thead>
+                        <tr><th></th><th>Used YTD</th><th>Forecasted</th><th>Total</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="ind-d-label">Concession</td>
+                            <td id="indDConcUsed">$0</td>
+                            <td id="indDConcFc">$0</td>
+                            <td id="indDConcTot">$0</td>
+                        </tr>
+                        <tr>
+                            <td class="ind-d-label">Gift Incentive</td>
+                            <td id="indDGiftUsed">$0</td>
+                            <td id="indDGiftFc">$0</td>
+                            <td id="indDGiftTot">$0</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Market Comps -->
+            <div class="rfs-comps-panel">
+                <div class="rfs-comps-header">Market Comps for <span id="compsPropName"></span></div>
+                <div class="rfs-comps-scroll">
+                    <table class="rfs-comps-table">
+                        <thead>
+                            <tr><th class="cc-name">Competitor</th><th class="cc-type" id="compsTypeHeader">Compare As:</th><th class="cc-ner">NER</th><th class="cc-sold">Sold Out</th><th class="cc-inc">Include</th></tr>
+                        </thead>
+                        <tbody id="compsBody">
+                            <tr><td colspan="5" class="rfs-empty" style="padding:30px;">—</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <table class="rfs-comps-table rfs-comps-totals">
+                    <colgroup>
+                        <col class="cc-name"><col class="cc-type"><col class="cc-ner"><col class="cc-sold"><col class="cc-inc">
+                    </colgroup>
+                    <tbody id="compsTotals"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Reforecast Tiers Panel -->
+        <div class="rfs-tiers-panel">
+            <div class="rfs-tiers-header">
+                <span>Reforecast Tiers for <span id="tiersPropName"></span></span>
+                <div class="rfs-tiers-info">
+                    Floor Plan Beds: <span id="fpBedsCount">0</span> &nbsp;|&nbsp;
+                    Left to Budget: <span id="fpBedsLeft">0</span>
+                </div>
+            </div>
+
+            <!-- Lease Type Toggle -->
+            <div class="rfs-lease-toggle">
+                <button class="rfs-lease-btn active" data-type="RENEWAL">Renewals</button>
+                <button class="rfs-lease-btn" data-type="NEW">New</button>
+            </div>
+
+            <!-- Section Label -->
+            <div class="rfs-tier-section-label" id="tierSectionLabel">Renewals</div>
+
+            <!-- Three columns: Budget | Actuals | Forecast -->
+            <div class="rfs-tier-grid">
+                <div class="rfs-tier-col">
+                    <div class="rfs-tier-col-header budget-hdr">Budgeted Tiers</div>
+                    <div id="budgetTierBody"><div class="rfs-empty">—</div></div>
+                </div>
+                <div class="rfs-tier-col">
+                    <div class="rfs-tier-col-header actual-hdr">Actuals YTD</div>
+                    <div id="actualsTierBody"><div class="rfs-empty">—</div></div>
+                </div>
+                <div class="rfs-tier-col">
+                    <div class="rfs-tier-col-header forecast-hdr" style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="flex:1;text-align:center;padding-left:56px;">Reforecasted Tiers</span>
+                        <span>
+                            <button class="rfs-btn rfs-btn-add" id="btnAddTier" style="padding:2px 8px;"><i class="fa-solid fa-plus"></i></button>
+                            <button class="rfs-btn rfs-btn-save" id="btnSaveAll" style="padding:2px 8px;"><i class="fa-solid fa-floppy-disk"></i></button>
+                        </span>
+                    </div>
+                    <div id="forecastTierBody"><div class="rfs-empty">—</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function(){
+    const API = '/rfs/api';
+    let state = { properties: [], forecasts: [], floorplans: [], selectedProperty: null, selectedForecast: null, selectedFloorplan: null, leaseType: 'RENEWAL', summary: null, forecastTiers: [] };
+
+    const $ = s => document.querySelector(s);
+    const $$ = s => document.querySelectorAll(s);
+    const fmt = (v, dec=0) => v != null ? '$' + Number(v).toFixed(dec).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '—';
+    const fmtPct = v => v != null ? Number(v).toFixed(2) + '%' : '—';
+
+    async function apiFetch(url) {
+        const r = await fetch(url);
+        if (!r.ok) { console.error('API error:', url, r.status); throw new Error(r.statusText); }
+        return r.json();
+    }
+    async function apiPost(url, body) {
+        const r = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        if (!r.ok) throw new Error(r.statusText);
+        return r.json();
+    }
+
+    // ── Load Properties ──
+    async function loadProperties() {
+        state.properties = await apiFetch(`${API}/properties`);
+        const sel = $('#selProperty');
+        sel.innerHTML = '<option value="">Choose a Property</option>';
+        state.properties.forEach(p => {
+            sel.innerHTML += `<option value="${p.PROPERTY_KEY}">${p.PROPERTY_NAME}</option>`;
+        });
+    }
+
+    // ── Property Change ──
+    async function onPropertyChange() {
+        const pk = parseInt($('#selProperty').value);
+        if (!pk) { state.selectedProperty = null; return; }
+        state.selectedProperty = state.properties.find(p => p.PROPERTY_KEY === pk);
+        updatePropLabels();
+
+        try {
+            const [forecasts, floorplans] = await Promise.all([
+                apiFetch(`${API}/forecasts?property_key=${pk}`),
+                apiFetch(`${API}/floorplans?property_key=${pk}&ay=${$('#selAY').value}`)
+            ]);
+            state.forecasts = forecasts;
+            state.floorplans = floorplans;
+
+            // Total beds from PROPERTY_0
+            const prop = state.properties.find(p => p.PROPERTY_KEY === pk);
+            $('#txtBeds').value = prop?.BED_COUNT_COMPILED || 0;
+
+            const fsel = $('#selForecast');
+            fsel.innerHTML = '<option value="">Choose a Reforecast Plan</option>';
+            forecasts.forEach(f => {
+                fsel.innerHTML += `<option value="${f.FORECAST_KEY}">${f.FORECAST_NAME}</option>`;
+            });
+
+            renderFloorplanList();
+            loadSummary();
+        } catch(e) { console.error('onPropertyChange error:', e); }
+    }
+
+    function updatePropLabels() {
+        const propName = state.selectedProperty?.PROPERTY_NAME || '';
+        const fpName = state.selectedFloorplan?.FLOORPLAN || propName;
+        $('#indDetailPropName').textContent = fpName;
+        const compsName = $('#compsPropName'); if (compsName) compsName.textContent = fpName;
+        const compsType = $('#compsTypeHeader');
+        if (compsType) {
+            const ct = state.selectedFloorplan?.COMPARE_AS_FLOORPLAN_TYPE || '';
+            compsType.textContent = ct ? `Compare As: ${ct}` : 'Compare As:';
+        }
+        ['#tiersPropName'].forEach(s => {
+            const el = $(s); if (el) el.textContent = propName;
+        });
+    }
+
+    // ── Forecast Change ──
+    function onForecastChange() {
+        const fk = parseInt($('#selForecast').value);
+        state.selectedForecast = state.forecasts.find(f => f.FORECAST_KEY === fk) || null;
+        if (state.selectedForecast) {
+            $('#chkApproved').checked = !!state.selectedForecast.FLAG_APPROVED;
+            $('#txtPlannedUse').value = state.selectedForecast.INDUCEMENT_PLANNED_USE || 0;
+        }
+        loadSummary();
+        loadTiers();
+        loadComps();
+    }
+    function renderFloorplanList() {
+        const bar = $('#fpBar');
+        bar.innerHTML = '';
+        state.floorplans.forEach((fp, i) => {
+            const div = document.createElement('div');
+            div.className = 'rfs-fp-item' + (i === 0 ? ' active' : '');
+            div.textContent = fp.FLOORPLAN || fp.FLOORPLAN_CODE || fp.FLOORPLAN_KEY;
+            div.dataset.key = fp.FLOORPLAN_KEY;
+            div.onclick = () => selectFloorplan(fp, div);
+            bar.appendChild(div);
+        });
+        if (state.floorplans.length > 0) selectFloorplan(state.floorplans[0], bar.firstChild);
+    }
+
+    function selectFloorplan(fp, el) {
+        $$('.rfs-fp-item').forEach(b => b.classList.remove('active'));
+        if (el) el.classList.add('active');
+        state.selectedFloorplan = fp;
+        $('#fpBedsCount').textContent = fp.BEDS || 0;
+        // Dashboard and tiers headers show floorplan name
+        const fpName = fp.FLOORPLAN || fp.FLOORPLAN_CODE || '';
+        const dashName = $('#dashPropName');
+        if (dashName) dashName.textContent = fpName;
+        const tiersName = $('#tiersPropName');
+        if (tiersName) tiersName.textContent = fpName;
+        updatePropLabels();
+        loadTiers();
+        loadSummary();
+        loadComps();
+    }
+
+    // ── Lease Type Toggle ──
+    $$('.rfs-lease-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            $$('.rfs-lease-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            state.leaseType = btn.dataset.type;
+            $('#tierSectionLabel').textContent = btn.dataset.type === 'RENEWAL' ? 'Renewals' : 'New Leases';
+            const tiersParent = $('#tierSectionLabel').parentElement;
+            tiersParent.classList.toggle('lease-new', btn.dataset.type === 'NEW');
+            loadTiers();
+        });
+    });
+
+    // ── Load Summary ──
+    async function loadSummary() {
+        const pk = state.selectedProperty?.PROPERTY_KEY;
+        const fpk = state.selectedFloorplan?.FLOORPLAN_KEY;
+        if (!pk || !fpk) return;
+        const ay = $('#selAY').value;
+        const fk = state.selectedForecast?.FORECAST_KEY || '';
+        try {
+            const s = await apiFetch(`${API}/property-summary?property_key=${pk}&floorplan_key=${fpk}&ay=${ay}&forecast_key=${fk}`);
+            state.summary = s;
+
+            $('#metBudgetPL').textContent = fmtPct(s.budget_occ);
+            $('#metActualPL').textContent = fmtPct(s.actual_prelease);
+            setWarn('#metForecastPL', fmtPct(s.forecast_prelease), s.forecast_prelease < s.budget_occ);
+
+            $('#metBudgetRate').textContent = fmt(s.budget_avg_rate, 2);
+            $('#metActualRate').textContent = fmt(s.actual_avg_rate, 2);
+            setWarn('#metForecastRate', fmt(s.forecast_avg_rate, 2), s.forecast_avg_rate < s.budget_avg_rate);
+
+            $('#metBudgetNER').textContent = fmt(s.budget_ner, 2);
+            $('#metActualNER').textContent = fmt(s.actual_ner, 2);
+            setWarn('#metForecastNER', fmt(s.forecast_ner, 2), s.forecast_ner < s.budget_avg_rate);
+
+            // Inducements
+            const pu = parseFloat($('#txtPlannedUse').value) || 0;
+            const concWF = s.concession_used + s.forecast_concession_ext + pu;
+            const indWF = s.inducement_used + s.forecast_concession_ext + pu;
+
+            $('#indConcBudget').textContent = fmt(s.concession_budget);
+            $('#indConcUsed').textContent = fmt(s.concession_used);
+            $('#indConcForecast').textContent = fmt(concWF);
+            setRemain('#indConcRemain', s.concession_budget - concWF);
+
+            $('#indGiftBudget').textContent = fmt(s.gift_card_budget);
+            $('#indGiftUsed').textContent = fmt(s.gift_card_used);
+            $('#indGiftForecast').textContent = fmt(s.gift_card_used);
+            setRemain('#indGiftRemain', s.gift_card_budget - s.gift_card_used);
+
+            $('#indTotBudget').textContent = fmt(s.inducement_budget);
+            $('#indTotUsed').textContent = fmt(s.inducement_used);
+            $('#indTotForecast').textContent = fmt(indWF);
+            setRemain('#indTotRemain', s.inducement_budget - indWF);
+
+            // Detail inducements — Total = Used YTD + Forecasted (no planned use)
+            $('#indDConcUsed').textContent = fmt(s.concession_used);
+            $('#indDConcFc').textContent = fmt(s.forecast_concession_ext);
+            $('#indDConcTot').textContent = fmt(s.concession_used + s.forecast_concession_ext);
+            $('#indDGiftUsed').textContent = fmt(s.gift_card_used);
+            $('#indDGiftFc').textContent = '$0';
+            $('#indDGiftTot').textContent = fmt(s.gift_card_used);
+
+            // Dashboard table
+            renderDashboard(s);
+        } catch(e) { console.error('loadSummary error:', e); }
+    }
+
+    function setWarn(sel, text, isWarn) {
+        const el = $(sel);
+        el.textContent = text;
+        el.className = isWarn ? 'val-forecast warn-cell' : 'val-forecast';
+    }
+    function setRemain(sel, val) {
+        const el = $(sel);
+        el.textContent = fmt(val);
+        if (val <= 0) el.classList.add('ind-negative');
+        else el.classList.remove('ind-negative');
+    }
+
+    // ── Dashboard Table ──
+    function renderDashboard(s) {
+        const body = $('#dashBody');
+        const Z = v => (v && v !== 0) ? fmt(v, 2) : '0';
+        const N = v => v || 0;
+
+        // Reforecast: what's in FORECAST_FORECAST_TIERS for current forecast
+        const fcr = s.fc_r || {}; const fcn = s.fc_n || {};
+        // Forecasted = actuals + forecast tiers
+        const fdr = s.fcd_r || {}; const fdn = s.fcd_n || {};
+        // Total weighted avg helpers.
+        // Budget: Power App rounds each section avg to nearest dollar FIRST (budget tiers store per-tier rates).
+        // All other columns: raw weighted average (no rounding).
+        const wtdAvgRnd = (rCnt, rAvg, nCnt, nAvg) => {
+            const tot = rCnt + nCnt;
+            if (!tot) return 0;
+            return (Math.round(rAvg) * rCnt + Math.round(nAvg) * nCnt) / tot;
+        };
+        const wtdAvgRaw = (rCnt, rAvg, nCnt, nAvg) => {
+            const tot = rCnt + nCnt;
+            if (!tot) return 0;
+            return (rAvg * rCnt + nAvg * nCnt) / tot;
+        };
+
+        // Total forecasted
+        const fdTotCnt = N(fdr.count) + N(fdn.count);
+        const fdTotAvgRate = wtdAvgRaw(N(fdr.count), N(fdr.avg_rate), N(fdn.count), N(fdn.avg_rate));
+        const fdTotAvgNer  = wtdAvgRaw(N(fdr.count), N(fdr.avg_ner),  N(fdn.count), N(fdn.avg_ner));
+        // Total reforecast
+        const fcTotCnt = N(fcr.count) + N(fcn.count);
+        const fcTotAvgRate = wtdAvgRaw(N(fcr.count), N(fcr.avg_rate), N(fcn.count), N(fcn.avg_rate));
+        const fcTotAvgNer  = wtdAvgRaw(N(fcr.count), N(fcr.avg_ner),  N(fcn.count), N(fcn.avg_ner));
+        // Total budget (round-first to match Power App)
+        const budR = s.bud_r || {}; const budN = s.bud_n || {};
+        const budTotCnt = N(budR.count) + N(budN.count);
+        const budTotAvgRate = wtdAvgRnd(N(budR.count), N(budR.avg_rate), N(budN.count), N(budN.avg_rate));
+        const budTotAvgNer  = budTotAvgRate;  // budget NER = budget avg rate
+        // Total actual
+        const actR = s.act_r || {}; const actN = s.act_n || {};
+        const actTotCnt = N(actR.count) + N(actN.count);
+        const actTotAvgRate = wtdAvgRaw(N(actR.count), N(actR.avg_rate), N(actN.count), N(actN.avg_rate));
+        const actTotAvgNer  = wtdAvgRaw(N(actR.count), N(actR.avg_ner),  N(actN.count), N(actN.avg_ner));
+
+        const SEP = `<tr class="dash-sep"><td colspan="6"></td></tr>`;
+        function row(label, bv, av, rv, fv, rwarn=false, fwarn=false, rowClass='') {
+            return `<tr class="${rowClass}"><td class="dash-strip"></td><td class="dash-label">${label}</td>
+                <td>${bv}</td>
+                <td>${av}</td>
+                <td class="${rwarn?'dash-forecast-warn':'dash-forecast'}">${rv}</td>
+                <td class="${fwarn?'dash-forecast-warn':'dash-forecast'}">${fv}</td></tr>`;
+        }
+
+        body.innerHTML =
+            row('Count', N(budR.count), N(actR.count), N(fcr.count), N(fdr.count), false, false, 'row-renewal') +
+            row('Weighted Avg', Z(budR.avg_rate), Z(actR.avg_rate), Z(fcr.avg_rate), Z(fdr.avg_rate),
+                fcr.avg_rate > 0 && fcr.avg_rate < budR.avg_rate, fdr.avg_rate > 0 && fdr.avg_rate < budR.avg_rate, 'row-renewal') +
+            row('Weighted NER', Z(budR.avg_ner), Z(actR.avg_ner), Z(fcr.avg_ner), Z(fdr.avg_ner),
+                fcr.avg_ner > 0 && fcr.avg_ner < budR.avg_ner, fdr.avg_ner > 0 && fdr.avg_ner < budR.avg_ner, 'row-renewal') +
+            SEP +
+            row('Count', N(budN.count), N(actN.count), N(fcn.count), N(fdn.count), false, false, 'row-new') +
+            row('Weighted Avg', Z(budN.avg_rate), Z(actN.avg_rate), Z(fcn.avg_rate), Z(fdn.avg_rate),
+                fcn.avg_rate > 0 && fcn.avg_rate < budN.avg_rate, fdn.avg_rate > 0 && fdn.avg_rate < budN.avg_rate, 'row-new') +
+            row('Weighted NER', Z(budN.avg_ner), Z(actN.avg_ner), Z(fcn.avg_ner), Z(fdn.avg_ner),
+                fcn.avg_ner > 0 && fcn.avg_ner < budN.avg_ner, fdn.avg_ner > 0 && fdn.avg_ner < budN.avg_ner, 'row-new') +
+            SEP +
+            row('Count', budTotCnt, actTotCnt, fcTotCnt, fdTotCnt, false, false, 'row-total') +
+            row('Weighted Avg', Z(budTotAvgRate), Z(actTotAvgRate), Z(fcTotAvgRate), Z(fdTotAvgRate),
+                fcTotAvgRate > 0 && fcTotAvgRate < budTotAvgRate, fdTotAvgRate > 0 && fdTotAvgRate < budTotAvgRate, 'row-total') +
+            row('Weighted NER', Z(budTotAvgNer), Z(actTotAvgNer), Z(fcTotAvgNer), Z(fdTotAvgNer),
+                fcTotAvgNer > 0 && fcTotAvgNer < budTotAvgNer, fdTotAvgNer > 0 && fdTotAvgNer < budTotAvgNer, 'row-total');
+    }
+
+    // ── Market Comps ──
+    let _compsData = [];  // current comp rows for live total recompute
+
+    function _renderCompsRows() {
+        const body = $('#compsBody');
+        const fk = state.selectedForecast?.FORECAST_KEY;
+        let html = '';
+        _compsData.forEach(r => {
+            const ner = r.NER ? fmt(r.NER) : '—';
+            const soldOut = r.FLAG_SOLD_OUT
+                ? '<span class="comp-flag comp-sold-out">Yes</span>'
+                : '<span class="comp-flag">No</span>';
+            const incBtn = r.FLAG_INCLUDE
+                ? `<button class="comp-toggle comp-toggle-on" data-fak="${r.FLOORPLAN_ASSIGNMENT_KEY}" data-fk="${fk}">&#10003;</button>`
+                : `<button class="comp-toggle comp-toggle-off" data-fak="${r.FLOORPLAN_ASSIGNMENT_KEY}" data-fk="${fk}">&#10007;</button>`;
+            html += `<tr class="${r.FLAG_INCLUDE ? '' : 'comp-row-excluded'}" data-fak="${r.FLOORPLAN_ASSIGNMENT_KEY}">`
+                + `<td class="comp-name">${r.COMP_PROPERTY_NAME}</td>`
+                + `<td class="comp-type">${r.FLOORPLAN_NAME || r.COMPARE_AS_FLOORPLAN_TYPE}</td>`
+                + `<td class="comp-ner">${ner}</td>`
+                + `<td style="text-align:center">${soldOut}</td>`
+                + `<td style="text-align:center">${incBtn}</td></tr>`;
+        });
+        body.innerHTML = html;
+
+        // Totals into fixed section
+        const allInc   = _compsData.filter(r => r.FLAG_INCLUDE);
+        const leaseInc = allInc.filter(r => !r.FLAG_SOLD_OUT);
+        function avgNer(arr) {
+            const valid = arr.filter(r => r.NER > 0);
+            if (!valid.length) return null;
+            return valid.reduce((s, r) => s + r.NER, 0) / valid.length;
+        }
+        function totRow(label, arr) {
+            const avg = avgNer(arr);
+            return `<tr class="comp-total-row">`
+                + `<td class="comp-name cc-name" colspan="2" style="text-align:right;">${label}</td>`
+                + `<td class="comp-ner cc-ner">${avg != null ? fmt(avg) : '—'}</td>`
+                + `<td class="cc-sold"></td>`
+                + `<td class="cc-inc" style="text-align:center;font-weight:700;">${arr.length}</td></tr>`;
+        }
+        $('#compsTotals').innerHTML = totRow('All Competitors', allInc) + totRow('Leasing Comps', leaseInc);
+
+        // Wire toggle buttons
+        body.querySelectorAll('.comp-toggle').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const fak = parseInt(btn.dataset.fak);
+                const fk2 = parseInt(btn.dataset.fk);
+                btn.disabled = true;
+                try {
+                    const res = await apiPost(`${API}/comps/toggle`,
+                        {floorplan_assignment_key: fak, forecast_key: fk2});
+                    const row = _compsData.find(r => r.FLOORPLAN_ASSIGNMENT_KEY === fak);
+                    if (row) { row.FLAG_INCLUDE = res.FLAG_INCLUDE; }
+                    _renderCompsRows();
+                } catch(e) { console.error('toggle error:', e); btn.disabled = false; }
+            });
+        });
+    }
+
+    async function loadComps() {
+        const pk = state.selectedProperty?.PROPERTY_KEY;
+        const fp = state.selectedFloorplan;
+        const fk = state.selectedForecast?.FORECAST_KEY;
+        const body = $('#compsBody');
+        if (!pk || !fp || !fk) {
+            _compsData = [];
+            body.innerHTML = '<tr><td colspan="5" class="rfs-empty" style="padding:16px;">Select a Reforecast Plan to view comps</td></tr>';
+            $('#compsTotals').innerHTML = '';
+            return;
+        }
+        const compareType = fp.COMPARE_AS_FLOORPLAN_TYPE || '';
+        body.innerHTML = '<tr><td colspan="5" class="rfs-empty">Loading…</td></tr>';
+        try {
+            _compsData = await apiFetch(`${API}/comps?forecast_key=${fk}&property_key=${pk}&compare_type=${encodeURIComponent(compareType)}`);
+            if (!_compsData.length) {
+                body.innerHTML = '<tr><td colspan="5" class="rfs-empty" style="padding:16px;">No comps found for ' + (compareType || 'this floorplan') + '</td></tr>';
+                $('#compsTotals').innerHTML = '';
+                return;
+            }
+            _renderCompsRows();
+        } catch(e) { console.error('loadComps error:', e); body.innerHTML = '<tr><td colspan="5" class="rfs-empty">Error loading comps</td></tr>'; }
+    }
+
+    async function loadTiers() {
+        const pk = state.selectedProperty?.PROPERTY_KEY;
+        const fp = state.selectedFloorplan;
+        const fk = state.selectedForecast?.FORECAST_KEY;
+        const ay = $('#selAY').value;
+        if (!pk || !fp) return;
+
+        apiFetch(`${API}/budget-tiers?property_key=${pk}&floorplan_key=${fp.FLOORPLAN_KEY}&ay=${ay}&lease_type=${state.leaseType}`)
+            .then(renderBudgetTiers).catch(e => console.error(e));
+
+        apiFetch(`${API}/actuals?property_key=${pk}&floorplan_key=${fp.FLOORPLAN_KEY}&ay=${ay}&lease_type=${state.leaseType}`)
+            .then(renderActuals).catch(e => console.error(e));
+
+        if (fk) {
+            apiFetch(`${API}/forecast-tiers?forecast_key=${fk}&floorplan_key=${fp.FLOORPLAN_KEY}&lease_type=${state.leaseType}`)
+                .then(renderForecastTiers).catch(e => console.error(e));
+        } else {
+            $('#forecastTierBody').innerHTML = '<div class="rfs-empty">Select a plan</div>';
+        }
+
+        // Left to Budget — uses both lease types combined
+        apiFetch(`${API}/left-to-budget?property_key=${pk}&floorplan_key=${fp.FLOORPLAN_KEY}&ay=${ay}${fk ? '&forecast_key='+fk : ''}`)
+            .then(d => { $('#fpBedsLeft').textContent = d.left_to_budget; }).catch(e => console.error(e));
+    }
+
+    function renderBudgetTiers(rows) {
+        if (!rows.length) { $('#budgetTierBody').innerHTML = '<div class="rfs-empty">—</div>'; return; }
+        let totBeds = 0, totRateExt = 0;
+        let html = '<table class="rfs-tier-tbl"><thead><tr><th>Tier</th><th>Lease</th><th>Rate</th></tr></thead><tbody>';
+        rows.forEach(r => {
+            totBeds += (r.BEDS||0); totRateExt += (r.RATE_EXTENDED1||0);
+            html += `<tr><td>${r.TIER_NUMBER}</td><td>${r.BEDS||0}</td><td>${fmt(r.RATE)}</td></tr>`;
+        });
+        html += '</tbody></table>';
+        html += `<div class="rfs-tier-totals-row budget-tot"><div class="rfs-tier-tot-item"><div class="t-value">${totBeds}</div><div class="t-label">Total</div></div><div class="rfs-tier-tot-item"><div class="t-value">${totBeds > 0 ? fmt(totRateExt/totBeds,2) : '0'}</div><div class="t-label">Weighted Avg Rate</div></div></div>`;
+        $('#budgetTierBody').innerHTML = html;
+    }
+
+    function renderActuals(data) {
+        const rows = data.rent || [];
+        const nerRows = data.ner || [];
+        // Store actuals count for Left to Budget calc
+        state._lastActualsCount = rows.reduce((s,r) => s + (r.LEASED_COUNT_RENT||0), 0);
+        if (!rows.length && !nerRows.length) { $('#actualsTierBody').innerHTML = '<div class="rfs-empty">—</div>'; return; }
+
+        // Align rows: match NER to rent by RENT_PER_SPACE. 
+        // When multiple NER rows share a rent rate, show rent once then blank rent for extras.
+        let merged = [];
+        let nerIdx = 0;
+        for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
+            const rate = r.RENT_PER_SPACE;
+            // Find all NER rows matching this rent rate
+            let matched = [];
+            while (nerIdx < nerRows.length && nerRows[nerIdx].RENT_PER_SPACE === rate) {
+                matched.push(nerRows[nerIdx]);
+                nerIdx++;
+            }
+            if (matched.length === 0) {
+                merged.push({ rent: r, ner: null });
+            } else {
+                merged.push({ rent: r, ner: matched[0] });
+                for (let j = 1; j < matched.length; j++) {
+                    merged.push({ rent: null, ner: matched[j] });
+                }
+            }
+        }
+        // Remaining NER rows
+        while (nerIdx < nerRows.length) {
+            merged.push({ rent: null, ner: nerRows[nerIdx] });
+            nerIdx++;
+        }
+
+        let totCount = 0, totRentExt = 0, totNerCount = 0, totNerExt = 0;
+        let html = '<table class="rfs-tier-tbl"><thead><tr><th>Row</th><th>Lease</th><th>Rate</th><th>Row</th><th>Each</th><th>NER</th></tr></thead><tbody>';
+        let rentRowNum = 0;
+        for (const m of merged) {
+            const r = m.rent;
+            const n = m.ner;
+            if (r) { rentRowNum++; totCount += (r.LEASED_COUNT_RENT||0); totRentExt += (r.RENT_PER_SPACE_EXTENDED||0); }
+            if (n) { totNerCount += (n.LEASED_COUNT_NER||0); totNerExt += (n.NER_PER_SPACE_EXTENDED||0); }
+            html += `<tr>
+                <td class="actual-cell">${r ? rentRowNum : ''}</td>
+                <td class="actual-cell">${r ? r.LEASED_COUNT_RENT||0 : ''}</td>
+                <td class="actual-cell">${r ? fmt(r.RENT_PER_SPACE) : ''}</td>
+                <td class="actual-cell">${n ? n.ROW_NUMBER||'' : ''}</td>
+                <td class="actual-cell">${n ? n.LEASED_COUNT_NER||0 : ''}</td>
+                <td class="actual-cell">${n ? fmt(n.NER_PER_SPACE,2) : ''}</td>
+            </tr>`;
+        }
+        html += '</tbody></table>';
+        html += `<div class="rfs-tier-totals-row"><div class="rfs-tier-tot-item"><div class="t-value">${totCount}</div><div class="t-label">Total</div></div><div class="rfs-tier-tot-item"><div class="t-value">${totCount > 0 ? fmt(totRentExt/totCount,2) : '0'}</div><div class="t-label">Weighted Avg Rate</div></div><div class="rfs-tier-tot-item"><div class="t-value">${totNerCount > 0 ? fmt(totNerExt/totNerCount,2) : '0'}</div><div class="t-label">Weighted Avg NER</div></div></div>`;
+        $('#actualsTierBody').innerHTML = html;
+    }
+
+    function renderForecastTiers(rows) {
+        state.forecastTiers = rows;
+        if (!rows.length) { $('#forecastTierBody').innerHTML = '<div class="rfs-empty">No tiers — click +</div>'; return; }
+        let html = '<table class="rfs-tier-tbl"><thead><tr><th>Tier</th><th>Count</th><th>Rate</th><th>Annual Special</th><th>NER</th><th></th></tr></thead><tbody>';
+        rows.forEach((r, i) => {
+            const ner = (r.RATE||0) - ((r.CONCESSION_AMOUNT||0)/12);
+            html += `<tr data-key="${r.FORECAST_TIERS_KEY}">
+                <td><input class="tier-input" data-field="tier_order" value="${r.TIER_ORDER||''}"></td>
+                <td><input class="tier-input" data-field="lease_count" value="${r.LEASE_COUNT||0}"></td>
+                <td><input class="tier-input" data-field="rate" value="${r.RATE||0}"></td>
+                <td><input class="tier-input" data-field="concession_amount" value="${r.CONCESSION_AMOUNT||0}"></td>
+                <td class="tier-computed" data-ner>${fmt(ner,2)}</td>
+                <td><button class="rfs-btn rfs-btn-delete" onclick="RFS.deleteTier(${r.FORECAST_TIERS_KEY})"><i class="fa-solid fa-trash"></i></button></td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        let totC = rows.reduce((s,r) => s+(r.LEASE_COUNT||0), 0);
+        let totRE = rows.reduce((s,r) => s+(r.RATE_EXTENDED||0), 0);
+        let totNE = rows.reduce((s,r) => s+(r.NER_EXTENDED||0), 0);
+
+        html += `<div class="rfs-tier-totals-row forecast-tot"><div class="rfs-tier-tot-item"><div class="t-value">${totC > 0 ? fmt(totRE/totC,2) : '0'}</div><div class="t-label">Weighted Avg Rate</div></div><div class="rfs-tier-tot-item"><div class="t-value">${totC > 0 ? fmt(totNE/totC,2) : '0'}</div><div class="t-label">Remaining</div></div></div>`;
+        $('#forecastTierBody').innerHTML = html;
+
+        // Live NER update as user edits rate or concession
+        $$('#forecastTierBody tr[data-key]').forEach(tr => {
+            const rateInp = tr.querySelector('[data-field="rate"]');
+            const concInp = tr.querySelector('[data-field="concession_amount"]');
+            const nerCell = tr.querySelector('[data-ner]');
+            const update = () => {
+                const n = (parseFloat(rateInp.value)||0) - ((parseFloat(concInp.value)||0)/12);
+                nerCell.textContent = fmt(n, 2);
+            };
+            rateInp.addEventListener('input', update);
+            concInp.addEventListener('input', update);
+        });
+    }
+
+    // ── Save / Add / Delete ──
+    async function saveAllTiers() {
+        const trs = $$('#forecastTierBody tr[data-key]');
+        if (!trs.length) return;
+        const btn = $('#btnSaveAll');
+        btn.disabled = true;
+        try {
+            const promises = [];
+            trs.forEach(tr => {
+                const key = tr.dataset.key;
+                const vals = {};
+                tr.querySelectorAll('.tier-input').forEach(inp => { vals[inp.dataset.field] = inp.value; });
+                promises.push(apiPost(`${API}/forecast-tiers/save`, {
+                    forecast_tiers_key: key, tier_order: vals.tier_order,
+                    lease_count: vals.lease_count, rate: vals.rate, concession_amount: vals.concession_amount
+                }));
+            });
+            await Promise.all(promises);
+        } finally {
+            btn.disabled = false;
+        }
+        loadTiers(); loadSummary();
+    }
+
+    async function addTier() {
+        const fp = state.selectedFloorplan, fc = state.selectedForecast, prop = state.selectedProperty;
+        if (!fp || !fc || !prop) return;
+        const btn = $('#btnAddTier');
+        btn.disabled = true;
+        // Seed rate from last existing tier for this floorplan+lease_type
+        const lastTier = state.forecastTiers.length ? state.forecastTiers[state.forecastTiers.length - 1] : null;
+        const seedRate = lastTier ? (lastTier.RATE || 0) : 0;
+        try {
+            await apiPost(`${API}/forecast-tiers/add`, {
+                forecast_key: fc.FORECAST_KEY, floorplan_key: fp.FLOORPLAN_KEY,
+                floorplan_code: fp.FLOORPLAN_CODE || '', property_key: prop.PROPERTY_KEY,
+                property_name: prop.PROPERTY_NAME, lease_type: state.leaseType,
+                rate: seedRate
+            });
+        } finally {
+            btn.disabled = false;
+        }
+        loadTiers();
+    }
+
+    async function deleteTier(key) {
+        if (!confirm('Delete this tier?')) return;
+        await apiPost(`${API}/forecast-tiers/delete`, { forecast_tiers_key: key });
+        loadTiers(); loadSummary();
+    }
+
+    async function createNewForecast() {
+        const prop = state.selectedProperty;
+        if (!prop) { alert('Select a property first'); return; }
+        const name = prompt('Enter a name for the new forecast plan:');
+        if (!name) return;
+        await apiPost(`${API}/forecasts/create`, {
+            property_key: prop.PROPERTY_KEY, property_name: prop.PROPERTY_NAME,
+            forecast_name: name, ay: parseInt($('#selAY').value)
+        });
+        await onPropertyChange();
+    }
+
+    // ── Events ──
+    $('#chkApproved').addEventListener('change', async () => {
+        if (!state.selectedForecast) return;
+        await apiPost(`${API}/forecasts/approve`, { forecast_key: state.selectedForecast.FORECAST_KEY, approved: $('#chkApproved').checked });
+    });
+    $('#txtPlannedUse').addEventListener('change', async () => {
+        if (!state.selectedForecast) return;
+        await apiPost(`${API}/forecasts/planned-use`, { forecast_key: state.selectedForecast.FORECAST_KEY, planned_use: $('#txtPlannedUse').value });
+        loadSummary();
+    });
+
+    $('#selProperty').addEventListener('change', onPropertyChange);
+    $('#selForecast').addEventListener('change', onForecastChange);
+    $('#selAY').addEventListener('change', () => { loadSummary(); loadTiers(); });
+    $('#btnAddTier').addEventListener('click', addTier);
+    $('#btnSaveAll').addEventListener('click', saveAllTiers);
+    $('#btnNewForecast').addEventListener('click', createNewForecast);
+
+    window.RFS = { deleteTier };
+    loadProperties();
+})();
+</script>
+{% endblock %}

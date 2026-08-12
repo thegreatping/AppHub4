@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RFS Redesign Mockup — AppHub 4.0 Native</title>
+<style>
+/* ── AppHub 4.0 Theme Variables ── */
+:root, [data-theme="dark"] {
+    --nav-bg: #0f1729; --nav-bg-dark: #0a0f1e; --nav-text: #e2e8f0;
+    --accent-cyan: #67e8e0; --accent-blue: #64b5f6; --accent-gold: #fbbf24;
+    --accent-orange: #fb923c; --accent-green: #4ade80; --accent-red: #f87171;
+    --accent-purple: #c084fc;
+    --content-bg: #111b2e; --content-header: #162035;
+    --text-primary: #f1f5f9; --text-secondary: #94a3b8;
+    --border-radius: 6px; --nav-width: 220px; --border: #1e3a5f;
+    --card-bg: #1c2d4a; --surface-raised: #162035;
+    --input-bg: rgba(255,255,255,0.05); --hover-bg: rgba(255,255,255,0.03);
+    --hover-bg-strong: rgba(255,255,255,0.08);
+    --border-subtle: rgba(255,255,255,0.04); --border-light: rgba(255,255,255,0.06);
+    --border-medium: rgba(255,255,255,0.08); --border-input: rgba(255,255,255,0.12);
+    --shadow-overlay: rgba(0,0,0,0.5);
+}
+[data-theme="medium"] {
+    --nav-bg: #1e293b; --nav-bg-dark: #0f172a; --nav-text: #e2e8f0;
+    --accent-cyan: #2dd4bf; --accent-blue: #3b82f6; --accent-gold: #f59e0b;
+    --content-bg: #f1f5f9; --content-header: #e2e8f0;
+    --text-primary: #0f172a; --text-secondary: #475569;
+    --border: #cbd5e1; --card-bg: #ffffff; --surface-raised: #e2e8f0;
+    --input-bg: #f1f5f9; --hover-bg: rgba(0,0,0,0.02); --hover-bg-strong: rgba(0,0,0,0.05);
+    --border-subtle: rgba(0,0,0,0.04); --border-light: rgba(0,0,0,0.06);
+    --border-medium: rgba(0,0,0,0.08); --border-input: rgba(0,0,0,0.12);
+    --shadow-overlay: rgba(0,0,0,0.25);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--content-bg); color: var(--text-primary); height: 100vh; display: flex; overflow: hidden; }
+
+/* ── Shell Layout ── */
+.shell-nav { width: var(--nav-width); background: var(--nav-bg); border-right: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; flex-shrink: 0; }
+.nav-logo { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.nav-logo-text { font-size: 1rem; font-weight: 800; color: var(--accent-cyan); letter-spacing: 1px; }
+.nav-logo-sub { font-size: 0.7rem; color: var(--text-secondary); }
+.nav-modules { list-style: none; padding: 8px 0; flex: 1; overflow-y: auto; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: pointer; font-size: 0.82rem; color: var(--nav-text); opacity: 0.65; transition: all 0.15s; border-left: 3px solid transparent; }
+.nav-item:hover { opacity: 0.9; background: rgba(255,255,255,0.04); }
+.nav-item.active { opacity: 1; background: rgba(103,232,224,0.08); border-left-color: var(--accent-cyan); color: var(--accent-cyan); font-weight: 700; }
+.nav-dot { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; }
+.nav-user { padding: 12px 14px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 0.75rem; color: var(--text-secondary); }
+.theme-row { display: flex; gap: 6px; padding: 8px 14px; }
+.theme-btn { flex: 1; padding: 5px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); color: var(--text-secondary); border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+.theme-btn:hover, .theme-btn.active { background: rgba(103,232,224,0.15); color: var(--accent-cyan); border-color: rgba(103,232,224,0.3); }
+
+/* ── Main Content ── */
+.shell-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.shell-topbar { background: var(--content-header); border-bottom: 1px solid var(--border-medium); padding: 10px 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.page-title { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 10px; }
+.page-title .icon-dot { width: 32px; height: 32px; border-radius: 8px; background: #1e6b8a; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+.topbar-controls { display: flex; align-items: center; gap: 8px; margin-left: 20px; flex-wrap: wrap; }
+.ctrl-group { display: flex; align-items: center; gap: 6px; }
+.ctrl-label { font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
+.ctrl-select { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 5px 10px; border-radius: 5px; font-size: 0.82rem; cursor: pointer; min-width: 130px; }
+.ctrl-select option { background: #1c2d4a; }
+.ctrl-sep { width: 1px; height: 24px; background: var(--border-medium); }
+.lease-toggle { display: flex; border-radius: 5px; overflow: hidden; border: 1px solid var(--border-input); }
+.lease-btn { padding: 5px 14px; font-size: 0.78rem; font-weight: 700; cursor: pointer; background: var(--input-bg); color: var(--text-secondary); border: none; transition: all 0.15s; }
+.lease-btn.active-renewal { background: #b45309; color: #fff; }
+.lease-btn.active-new { background: #166534; color: #fff; }
+.lease-btn:first-child { border-right: 1px solid var(--border-input); }
+.approved-toggle { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); padding: 5px 10px; background: var(--input-bg); border: 1px solid var(--border-input); border-radius: 5px; cursor: pointer; }
+.approved-toggle.on { color: var(--accent-green); border-color: rgba(74,222,128,0.3); background: rgba(74,222,128,0.08); }
+.btn { padding: 5px 14px; border: none; border-radius: 5px; font-size: 0.78rem; font-weight: 700; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 5px; }
+.btn-primary { background: var(--accent-cyan); color: #0f1729; }
+.btn-primary:hover { opacity: 0.85; }
+.btn-ghost { background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--border-input); }
+.btn-ghost:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+.topbar-right { margin-left: auto; display: flex; gap: 8px; }
+
+/* ── Page Body ── */
+.page-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+/* ── Floorplan Pills ── */
+.fp-bar { background: var(--surface-raised); border-bottom: 1px solid var(--border-medium); padding: 8px 16px; display: flex; gap: 6px; overflow-x: auto; flex-shrink: 0; align-items: center; }
+.fp-bar-label { font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; margin-right: 4px; }
+.fp-pill { padding: 5px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border-medium); background: var(--input-bg); color: var(--text-secondary); white-space: nowrap; transition: all 0.15s; display: flex; align-items: center; gap: 5px; }
+.fp-pill:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(103,232,224,0.06); }
+.fp-pill.active { background: rgba(103,232,224,0.12); border-color: var(--accent-cyan); color: var(--accent-cyan); font-weight: 700; }
+.fp-pill .fp-beds { font-size: 0.65rem; background: rgba(255,255,255,0.1); border-radius: 10px; padding: 1px 5px; }
+.fp-pill.active .fp-beds { background: rgba(103,232,224,0.2); }
+
+/* ── Content Layout: Left panel + Right tabs ── */
+.content-layout { flex: 1; display: flex; gap: 0; overflow: hidden; }
+
+/* ── Left Panel: Summary + Inducements ── */
+.left-panel { width: 280px; flex-shrink: 0; border-right: 1px solid var(--border-medium); overflow-y: auto; background: var(--surface-raised); display: flex; flex-direction: column; gap: 0; }
+.panel-card { border-bottom: 1px solid var(--border-medium); }
+.panel-card-header { padding: 10px 14px; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+.panel-card-header:hover { background: var(--hover-bg); }
+.panel-card-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-cyan); flex: 1; }
+.panel-card-chevron { font-size: 0.65rem; color: var(--text-secondary); transition: transform 0.2s; }
+.panel-card-body { padding: 4px 0 10px; }
+.panel-card-body.collapsed { display: none; }
+
+/* Metric rows */
+.metric-row { display: flex; align-items: center; padding: 3px 14px; font-size: 0.8rem; }
+.metric-label { color: var(--text-secondary); flex: 1; }
+.metric-cols { display: flex; gap: 0; }
+.metric-val { min-width: 68px; text-align: right; font-weight: 600; font-size: 0.82rem; color: var(--text-primary); }
+.metric-val.warn { color: #f87171; }
+.metric-header { display: flex; padding: 4px 14px 2px; }
+.metric-header-label { flex: 1; }
+.metric-header-col { min-width: 68px; text-align: right; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.3px; }
+.metric-divider { margin: 4px 14px; border: none; border-top: 1px solid var(--border-medium); }
+
+/* Inducements */
+.ind-row { display: flex; align-items: center; padding: 3px 14px; font-size: 0.8rem; }
+.ind-label { color: var(--text-secondary); flex: 1; }
+.ind-val { font-weight: 600; color: var(--text-primary); min-width: 80px; text-align: right; }
+.ind-val.highlight { color: var(--accent-gold); }
+.ind-input { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; width: 80px; text-align: right; font-weight: 600; }
+.ind-detail-toggle { display: flex; align-items: center; gap: 6px; margin: 6px 14px 2px; font-size: 0.72rem; color: var(--accent-blue); cursor: pointer; }
+.ind-detail-toggle:hover { color: var(--accent-cyan); }
+
+/* Concession detail sub-table */
+.conc-detail { margin: 0 14px 4px; border: 1px solid var(--border-light); border-radius: 5px; overflow: hidden; font-size: 0.75rem; }
+.conc-detail-row { display: flex; padding: 3px 8px; border-bottom: 1px solid var(--border-subtle); }
+.conc-detail-row:last-child { border-bottom: none; }
+.conc-detail-row:hover { background: var(--hover-bg); }
+.conc-d-label { flex: 1; color: var(--text-secondary); }
+.conc-d-val { font-weight: 600; color: var(--text-primary); min-width: 70px; text-align: right; }
+
+/* ── Right Content: Tabs ── */
+.right-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.content-tabs { border-bottom: 1px solid var(--border-medium); padding: 0 16px; display: flex; gap: 0; background: var(--content-header); flex-shrink: 0; }
+.content-tab { padding: 11px 18px; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+.content-tab:hover { color: var(--text-primary); }
+.content-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
+.tab-badge { background: rgba(103,232,224,0.15); color: var(--accent-cyan); font-size: 0.65rem; padding: 1px 6px; border-radius: 10px; font-weight: 700; }
+.tab-panel { display: none; flex: 1; overflow: auto; padding: 16px; }
+.tab-panel.active { display: flex; flex-direction: column; gap: 12px; }
+
+/* ── Dashboard (3-col Tiers) ── */
+.dashboard-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.dashboard-title { font-size: 0.85rem; font-weight: 700; color: var(--text-primary); }
+.left-to-budget { font-size: 0.78rem; color: var(--text-secondary); }
+.left-to-budget span { color: var(--accent-gold); font-weight: 700; }
+.tiers-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.tier-col { display: flex; flex-direction: column; }
+.tier-col-hdr { padding: 7px 10px; border-radius: 5px 5px 0 0; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.tier-col-hdr.budget-hdr { background: rgba(100,181,246,0.15); color: var(--accent-blue); border: 1px solid rgba(100,181,246,0.2); border-bottom: none; }
+.tier-col-hdr.actual-hdr { background: rgba(74,222,128,0.12); color: var(--accent-green); border: 1px solid rgba(74,222,128,0.2); border-bottom: none; }
+.tier-col-hdr.forecast-hdr { background: rgba(250,204,21,0.1); color: var(--accent-gold); border: 1px solid rgba(250,204,21,0.2); border-bottom: none; }
+.tier-col-body { flex: 1; border: 1px solid var(--border-medium); border-top: none; border-radius: 0 0 5px 5px; overflow: hidden; }
+.tier-tbl { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+.tier-tbl thead th { background: var(--surface-raised); padding: 5px 8px; text-align: right; font-size: 0.68rem; color: var(--text-secondary); font-weight: 600; border-bottom: 1px solid var(--border-medium); }
+.tier-tbl thead th:first-child { text-align: left; }
+.tier-tbl tbody td { padding: 5px 8px; border-bottom: 1px solid var(--border-subtle); text-align: right; color: var(--text-primary); }
+.tier-tbl tbody td:first-child { text-align: left; color: var(--text-secondary); font-size: 0.72rem; }
+.tier-tbl tbody tr:hover td { background: var(--hover-bg); }
+.tier-tbl tbody tr:last-child td { border-bottom: none; }
+.tier-input { background: var(--input-bg); border: 1px solid transparent; color: var(--text-primary); padding: 3px 5px; border-radius: 3px; font-size: 0.78rem; width: 100%; text-align: right; }
+.tier-input:focus { border-color: var(--accent-cyan); outline: none; background: rgba(103,232,224,0.06); }
+.tier-tbl .tier-ner { color: var(--accent-cyan); font-weight: 600; }
+.tier-tbl tfoot td { background: var(--surface-raised); padding: 5px 8px; font-weight: 700; font-size: 0.75rem; border-top: 1px solid var(--border-medium); text-align: right; color: var(--text-primary); }
+.tier-tbl tfoot td:first-child { text-align: left; color: var(--text-secondary); font-size: 0.72rem; }
+.tier-add-row { display: flex; gap: 6px; padding: 6px; border-top: 1px solid var(--border-medium); background: var(--surface-raised); }
+.btn-icon { width: 26px; height: 26px; border-radius: 4px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-input); background: var(--input-bg); color: var(--text-secondary); cursor: pointer; font-size: 0.8rem; transition: all 0.15s; }
+.btn-icon:hover { color: var(--text-primary); background: var(--hover-bg-strong); }
+.btn-icon.add:hover { color: var(--accent-green); border-color: rgba(74,222,128,0.4); }
+.btn-icon.save:hover { color: var(--accent-cyan); border-color: rgba(103,232,224,0.4); }
+.btn-icon.del:hover { color: var(--accent-red); border-color: rgba(248,113,113,0.4); }
+.section-label { padding: 4px 8px; font-size: 0.7rem; font-weight: 700; border-radius: 10px; white-space: nowrap; }
+.section-label.renewals { background: rgba(251,146,60,0.15); color: var(--accent-orange); }
+.section-label.new { background: rgba(74,222,128,0.12); color: var(--accent-green); }
+.section-label.total { background: rgba(192,132,252,0.12); color: var(--accent-purple); }
+
+/* Dashboard Summary row (below tiers grid) */
+.dash-summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.dash-sum-card { border: 1px solid var(--border-medium); border-radius: 5px; padding: 10px 12px; background: var(--card-bg); }
+.dash-sum-card .dscard-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 4px; }
+.dash-sum-row { display: flex; justify-content: space-between; font-size: 0.78rem; padding: 2px 0; }
+.dash-sum-row .dl { color: var(--text-secondary); }
+.dash-sum-row .dv { font-weight: 600; color: var(--text-primary); }
+.dash-sum-row .dv.warn { color: #f87171; }
+.dash-sum-row .dv.ok { color: var(--accent-green); }
+
+/* ── Market Comps Tab ── */
+.comps-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.comps-type-badge { padding: 4px 12px; background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.25); color: var(--accent-gold); border-radius: 20px; font-size: 0.78rem; font-weight: 700; }
+.comps-count { font-size: 0.75rem; color: var(--text-secondary); }
+.comps-table-wrap { flex: 1; border: 1px solid var(--border-light); border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; }
+.comps-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.comps-table thead th { background: var(--surface-raised); padding: 7px 12px; text-align: left; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-secondary); border-bottom: 1px solid var(--border-medium); position: sticky; top: 0; }
+.comps-table thead th.right { text-align: right; }
+.comps-table thead th.center { text-align: center; }
+.comps-table tbody td { padding: 6px 12px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); }
+.comps-table tbody td.right { text-align: right; font-weight: 600; }
+.comps-table tbody td.center { text-align: center; }
+.comps-table tbody tr:hover td { background: var(--hover-bg); }
+.comps-table tbody tr.excluded td { opacity: 0.4; }
+.comps-scroll { flex: 1; overflow-y: auto; }
+.comps-footer { background: var(--surface-raised); border-top: 2px solid var(--border-medium); }
+.comps-footer td { padding: 7px 12px; font-weight: 700; font-size: 0.8rem; }
+.comps-footer td.right { text-align: right; }
+.toggle-btn { width: 28px; height: 22px; border-radius: 4px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 700; line-height: 1; }
+.toggle-on { background: rgba(74,222,128,0.2); color: var(--accent-green); border: 1px solid rgba(74,222,128,0.3); }
+.toggle-off { background: rgba(248,113,113,0.2); color: var(--accent-red); border: 1px solid rgba(248,113,113,0.3); }
+
+/* ── Overview Tab ── */
+.overview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; }
+.kpi-card { background: var(--card-bg); border: 1px solid var(--border-medium); border-radius: 8px; padding: 14px 16px; }
+.kpi-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 6px; }
+.kpi-value { font-size: 1.45rem; font-weight: 700; color: var(--text-primary); }
+.kpi-sub { font-size: 0.72rem; color: var(--text-secondary); margin-top: 3px; }
+.kpi-delta { font-size: 0.75rem; font-weight: 700; }
+.kpi-delta.up { color: var(--accent-green); }
+.kpi-delta.down { color: var(--accent-red); }
+.kpi-bar { height: 3px; border-radius: 2px; background: var(--border-medium); margin-top: 8px; }
+.kpi-bar-fill { height: 100%; border-radius: 2px; background: var(--accent-cyan); }
+
+/* Comparison grid in overview */
+.overview-compare { border: 1px solid var(--border-medium); border-radius: 6px; overflow: hidden; }
+.overview-compare-hdr { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; background: var(--surface-raised); }
+.oc-hdr-cell { padding: 8px 12px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-secondary); text-align: right; }
+.oc-hdr-cell:first-child { text-align: left; color: var(--text-primary); }
+.oc-hdr-cell.budget { color: var(--accent-blue); }
+.oc-hdr-cell.actual { color: var(--accent-green); }
+.oc-hdr-cell.forecast { color: var(--accent-gold); }
+.overview-compare-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; border-top: 1px solid var(--border-subtle); }
+.overview-compare-row:hover { background: var(--hover-bg); }
+.oc-cell { padding: 7px 12px; font-size: 0.8rem; color: var(--text-primary); text-align: right; font-weight: 600; }
+.oc-cell:first-child { text-align: left; color: var(--text-secondary); font-weight: 400; }
+.oc-cell.warn { color: #f87171; }
+
+/* ── Annotation callouts ── */
+.annotation { background: rgba(100,181,246,0.06); border: 1px solid rgba(100,181,246,0.2); border-left: 3px solid var(--accent-blue); border-radius: 0 6px 6px 0; padding: 10px 14px; font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5; margin-top: 4px; }
+.annotation strong { color: var(--accent-blue); }
+.annotation h4 { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-blue); margin-bottom: 5px; }
+.annotation ul { margin-left: 14px; margin-top: 4px; }
+.annotation li { margin-bottom: 2px; }
+
+/* ── Misc ── */
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.68rem; font-weight: 700; }
+.badge-green { background: rgba(74,222,128,0.15); color: var(--accent-green); border: 1px solid rgba(74,222,128,0.3); }
+.badge-gold { background: rgba(251,191,36,0.12); color: var(--accent-gold); border: 1px solid rgba(251,191,36,0.25); }
+.badge-red { background: rgba(248,113,113,0.15); color: var(--accent-red); border: 1px solid rgba(248,113,113,0.3); }
+.badge-blue { background: rgba(100,181,246,0.12); color: var(--accent-blue); border: 1px solid rgba(100,181,246,0.25); }
+.spacer { flex: 1; }
+hr.section-sep { border: none; border-top: 1px solid var(--border-medium); margin: 8px 0; }
+.mockup-banner { background: rgba(251,191,36,0.08); border-bottom: 1px solid rgba(251,191,36,0.2); padding: 6px 16px; font-size: 0.75rem; color: var(--accent-gold); display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.mockup-banner strong { font-weight: 700; }
+
+/* Medium theme tweaks */
+[data-theme="medium"] .nav-logo-text { color: var(--accent-cyan); }
+[data-theme="medium"] .ctrl-select option { background: #fff; color: #0f172a; }
+[data-theme="medium"] .tier-input { color: #0f172a; }
+[data-theme="medium"] .tier-input:focus { color: #0f172a; }
+</style>
+</head>
+<body>
+
+<!-- ── Simulated AppHub Shell ── -->
+<nav class="shell-nav">
+    <div class="nav-logo">
+        <div class="nav-logo-text">⬡ PEAK APPHUB</div>
+        <div class="nav-logo-sub">v4.0 &nbsp;·&nbsp; PeakMade Real Estate</div>
+    </div>
+    <ul class="nav-modules">
+        <li class="nav-item"><div class="nav-dot" style="background:#1e3a5f">🏠</div>Dashboard</li>
+        <li class="nav-item"><div class="nav-dot" style="background:#1a4040">📊</div>Employee Data Mgr</li>
+        <li class="nav-item"><div class="nav-dot" style="background:#1e3a5f">🏢</div>Property Data Mgr</li>
+        <li class="nav-item"><div class="nav-dot" style="background:#1e4a2e">🔧</div>App Maintenance</li>
+        <li class="nav-item active"><div class="nav-dot" style="background:#1a3a4a">💰</div>Rent Forecasting</li>
+        <li class="nav-item"><div class="nav-dot" style="background:#2a1f3a">📋</div>Field Manager</li>
+        <li class="nav-item"><div class="nav-dot" style="background:#2a2010">📅</div>Cultivate</li>
+    </ul>
+    <div class="theme-row">
+        <button class="theme-btn" onclick="setTheme('light')">☀️</button>
+        <button class="theme-btn active" onclick="setTheme('dark')">🌙</button>
+        <button class="theme-btn" onclick="setTheme('medium')">◑</button>
+    </div>
+    <div class="nav-user">👤 &nbsp;Craig Pell &nbsp;·&nbsp; Developer</div>
+</nav>
+
+<div class="shell-main">
+    <!-- Mockup Banner -->
+    <div class="mockup-banner">
+        ⚠️ <strong>MOCKUP / DESIGN PROTOTYPE</strong> — This is a read-only redesign preview. No data is being modified. Scroll down within each tab to see annotations about how each section would work.
+    </div>
+
+    <!-- Top Bar -->
+    <div class="shell-topbar">
+        <div class="page-title">
+            <div class="icon-dot">💰</div>
+            Rent Forecasting System
+        </div>
+        <div class="topbar-controls">
+            <div class="ctrl-group">
+                <span class="ctrl-label">Property</span>
+                <select class="ctrl-select" onchange="updateProperty(this)">
+                    <option>GEOCENTRAL</option>
+                    <option>48 WEST</option>
+                    <option>BRIX &amp; MORTAR</option>
+                    <option>FOUNDRY PRINCESS</option>
+                    <option>MURAL</option>
+                </select>
+            </div>
+            <div class="ctrl-sep"></div>
+            <div class="ctrl-group">
+                <span class="ctrl-label">AY</span>
+                <select class="ctrl-select" style="min-width:80px">
+                    <option>2026</option>
+                    <option>2025</option>
+                </select>
+            </div>
+            <div class="ctrl-sep"></div>
+            <div class="ctrl-group">
+                <span class="ctrl-label">Reforecast Plan</span>
+                <select class="ctrl-select" id="selForecast">
+                    <option>RF-284: June 2026 Reforecast</option>
+                    <option>RF-275: March 2026 Reforecast</option>
+                    <option>RF-261: January 2026 Reforecast</option>
+                </select>
+            </div>
+            <div class="ctrl-sep"></div>
+            <div class="approved-toggle on" id="approvedToggle" onclick="toggleApproved()">
+                ✓ Approved
+            </div>
+            <div class="ctrl-sep"></div>
+            <div class="lease-toggle">
+                <button class="lease-btn active-renewal" id="btnRenewal" onclick="setLease('renewal')">Renewals</button>
+                <button class="lease-btn" id="btnNew" onclick="setLease('new')">New Leases</button>
+            </div>
+        </div>
+        <div class="topbar-right">
+            <button class="btn btn-ghost" onclick="alert('Would open New Reforecast Plan dialog')">＋ New Plan</button>
+            <button class="btn btn-primary" onclick="alert('Save All — would commit all pending tier edits')">💾 Save All</button>
+        </div>
+    </div>
+
+    <div class="page-body">
+        <!-- Floorplan Pills -->
+        <div class="fp-bar">
+            <span class="fp-bar-label">Floorplan:</span>
+            <div class="fp-pill active" onclick="selectFP(this,'EMERALD','2x2',118)">EMERALD <span class="fp-beds">118 beds</span></div>
+            <div class="fp-pill" onclick="selectFP(this,'GRANITE','4x4',72)">GRANITE <span class="fp-beds">72 beds</span></div>
+            <div class="fp-pill" onclick="selectFP(this,'GRANITE PREMIUM','4x4',4)">GRANITE PREMIUM <span class="fp-beds">4 beds</span></div>
+            <div class="fp-pill" onclick="selectFP(this,'ONYX','3x3',48)">ONYX <span class="fp-beds">48 beds</span></div>
+            <div class="fp-pill" onclick="selectFP(this,'EMERALD LUXE','2x2',12)">EMERALD LUXE <span class="fp-beds">12 beds</span></div>
+            <div class="fp-pill" onclick="selectFP(this,'MARBEL ONE','2x2',60)">MARBEL ONE <span class="fp-beds">60 beds</span></div>
+            <div class="fp-pill" onclick="selectFP(this,'MARBEL TWO','2x2',36)">MARBEL TWO <span class="fp-beds">36 beds</span></div>
+        </div>
+
+        <div class="content-layout">
+            <!-- ── Left Panel ── -->
+            <div class="left-panel">
+
+                <!-- Property Summary Card -->
+                <div class="panel-card">
+                    <div class="panel-card-header" onclick="toggleCard(this)">
+                        <span class="panel-card-title">Property Summary</span>
+                        <span id="propTitle" style="font-size:0.75rem;color:var(--text-secondary);margin-right:8px">GEOCENTRAL</span>
+                        <span class="panel-card-chevron">▼</span>
+                    </div>
+                    <div class="panel-card-body" id="propSummaryBody">
+                        <div class="metric-header">
+                            <span class="metric-header-label"></span>
+                            <div class="metric-cols">
+                                <span class="metric-header-col" style="color:var(--accent-blue)">Budg</span>
+                                <span class="metric-header-col" style="color:var(--accent-green)">Act</span>
+                                <span class="metric-header-col" style="color:var(--accent-gold)">Fcst</span>
+                            </div>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Prelease %</span>
+                            <div class="metric-cols">
+                                <span class="metric-val" style="color:var(--accent-blue)">82%</span>
+                                <span class="metric-val" style="color:var(--accent-green)">79%</span>
+                                <span class="metric-val warn" style="color:var(--accent-gold)">79%</span>
+                            </div>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Avg Rate</span>
+                            <div class="metric-cols">
+                                <span class="metric-val" style="color:var(--accent-blue)">$1,877</span>
+                                <span class="metric-val" style="color:var(--accent-green)">$1,851</span>
+                                <span class="metric-val" style="color:var(--accent-gold)">$1,858</span>
+                            </div>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">NER</span>
+                            <div class="metric-cols">
+                                <span class="metric-val" style="color:var(--accent-blue)">$1,853</span>
+                                <span class="metric-val" style="color:var(--accent-green)">$1,829</span>
+                                <span class="metric-val" style="color:var(--accent-gold)">$1,840</span>
+                            </div>
+                        </div>
+                        <div class="metric-row" style="margin-top:4px">
+                            <span class="metric-label" style="font-size:0.72rem">Forecasted</span>
+                            <div class="metric-cols">
+                                <span class="metric-val" style="color:var(--text-secondary);font-size:0.75rem">—</span>
+                                <span class="metric-val" style="color:var(--text-secondary);font-size:0.75rem">—</span>
+                                <span class="metric-val" style="color:var(--accent-gold);font-size:0.75rem">$198K</span>
+                            </div>
+                        </div>
+                        <hr class="metric-divider">
+                        <div style="padding:2px 14px 4px;font-size:0.7rem;color:var(--text-secondary)">
+                            Floorplan: <strong style="color:var(--accent-cyan)" id="fpSummaryName">EMERALD</strong> &nbsp;·&nbsp; <span id="fpBeds">118 beds</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inducements Card -->
+                <div class="panel-card">
+                    <div class="panel-card-header" onclick="toggleCard(this)">
+                        <span class="panel-card-title">Inducements</span>
+                        <span style="font-size:0.72rem;color:var(--accent-gold);margin-right:8px">$14,750</span>
+                        <span class="panel-card-chevron">▼</span>
+                    </div>
+                    <div class="panel-card-body">
+                        <div class="ind-row">
+                            <span class="ind-label">Planned ($)</span>
+                            <input class="ind-input" value="30,000" title="Editable — enter planned inducement budget">
+                        </div>
+                        <div class="ind-row">
+                            <span class="ind-label">Used YTD</span>
+                            <span class="ind-val">$9,750</span>
+                        </div>
+                        <div class="ind-row">
+                            <span class="ind-label">Forecasted</span>
+                            <span class="ind-val">$5,000</span>
+                        </div>
+                        <div class="ind-row" style="margin-top:4px;border-top:1px solid var(--border-medium);padding-top:6px">
+                            <span class="ind-label" style="font-weight:700;color:var(--text-primary)">Total</span>
+                            <span class="ind-val highlight">$14,750</span>
+                        </div>
+                        <div class="ind-detail-toggle" onclick="toggleConc()">
+                            <span id="concArrow">▶</span> &nbsp;Concession Detail (EMERALD)
+                        </div>
+                        <div class="conc-detail" id="concDetail" style="display:none">
+                            <div class="conc-detail-row"><span class="conc-d-label">Budget Concession</span><span class="conc-d-val">$250/mo</span></div>
+                            <div class="conc-detail-row"><span class="conc-d-label">Actual Concession</span><span class="conc-d-val">$208/mo</span></div>
+                            <div class="conc-detail-row"><span class="conc-d-label">Gift Card (Budget)</span><span class="conc-d-val">$0</span></div>
+                            <div class="conc-detail-row"><span class="conc-d-label">Gift Card (YTD)</span><span class="conc-d-val">$500</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Left-to-Budget Card -->
+                <div class="panel-card">
+                    <div class="panel-card-header" onclick="toggleCard(this)">
+                        <span class="panel-card-title">Left to Budget</span>
+                        <span class="badge badge-gold" style="margin-right:8px">15 beds</span>
+                        <span class="panel-card-chevron">▼</span>
+                    </div>
+                    <div class="panel-card-body">
+                        <div class="ind-row"><span class="ind-label">Total Beds</span><span class="ind-val">118</span></div>
+                        <div class="ind-row"><span class="ind-label">Budgeted</span><span class="ind-val" style="color:var(--accent-blue)">103</span></div>
+                        <div class="ind-row"><span class="ind-label">Remaining</span><span class="ind-val" style="color:var(--accent-gold)">15</span></div>
+                        <hr class="metric-divider">
+                        <div class="ind-row"><span class="ind-label">New Leases Left</span><span class="ind-val" style="color:var(--accent-green)">8</span></div>
+                        <div class="ind-row"><span class="ind-label">Renewals Left</span><span class="ind-val" style="color:var(--accent-orange)">7</span></div>
+                    </div>
+                </div>
+
+            </div><!-- /left-panel -->
+
+            <!-- ── Right Content: Tabs ── -->
+            <div class="right-content">
+                <div class="content-tabs">
+                    <div class="content-tab active" onclick="switchTab(this,'tab-overview')">📊 Overview</div>
+                    <div class="content-tab" onclick="switchTab(this,'tab-tiers')">🎯 Reforecast Tiers <span class="tab-badge">3</span></div>
+                    <div class="content-tab" onclick="switchTab(this,'tab-comps')">🏘️ Market Comps <span class="tab-badge">23</span></div>
+                </div>
+
+                <!-- ══ TAB: OVERVIEW ══ -->
+                <div class="tab-panel active" id="tab-overview">
+
+                    <!-- KPI Cards -->
+                    <div class="overview-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-label">Prelease %</div>
+                            <div class="kpi-value">79%</div>
+                            <div class="kpi-sub" style="display:flex;align-items:center;gap:6px">
+                                <span>Budget: 82%</span>
+                                <span class="kpi-delta down">▼ 3pts</span>
+                            </div>
+                            <div class="kpi-bar"><div class="kpi-bar-fill" style="width:79%"></div></div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Avg Rate</div>
+                            <div class="kpi-value">$1,851</div>
+                            <div class="kpi-sub" style="display:flex;align-items:center;gap:6px">
+                                <span>Budget: $1,877</span>
+                                <span class="kpi-delta down">▼ $26</span>
+                            </div>
+                            <div class="kpi-bar"><div class="kpi-bar-fill" style="width:72%;background:var(--accent-blue)"></div></div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">NER (Actual)</div>
+                            <div class="kpi-value">$1,829</div>
+                            <div class="kpi-sub" style="display:flex;align-items:center;gap:6px">
+                                <span>Budget: $1,853</span>
+                                <span class="kpi-delta down">▼ $24</span>
+                            </div>
+                            <div class="kpi-bar"><div class="kpi-bar-fill" style="width:68%;background:var(--accent-orange)"></div></div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Forecasted NER Ext.</div>
+                            <div class="kpi-value">$198K</div>
+                            <div class="kpi-sub" style="display:flex;align-items:center;gap:6px">
+                                <span>15 beds remaining</span>
+                                <span class="kpi-delta up">✓</span>
+                            </div>
+                            <div class="kpi-bar"><div class="kpi-bar-fill" style="width:85%;background:var(--accent-gold)"></div></div>
+                        </div>
+                    </div>
+
+                    <!-- Budget vs Actual vs Forecast comparison -->
+                    <div style="font-size:0.8rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">
+                        Full Comparison — EMERALD (Renewals)
+                    </div>
+                    <div class="overview-compare">
+                        <div class="overview-compare-hdr">
+                            <div class="oc-hdr-cell">Metric</div>
+                            <div class="oc-hdr-cell budget">Budgeted</div>
+                            <div class="oc-hdr-cell actual">Actuals YTD</div>
+                            <div class="oc-hdr-cell forecast">Reforecast</div>
+                        </div>
+                        <div class="overview-compare-row">
+                            <div class="oc-cell">Prelease Count</div>
+                            <div class="oc-cell">86 beds</div>
+                            <div class="oc-cell">93 beds</div>
+                            <div class="oc-cell">93 beds</div>
+                        </div>
+                        <div class="overview-compare-row">
+                            <div class="oc-cell">Prelease %</div>
+                            <div class="oc-cell">73%</div>
+                            <div class="oc-cell">79%</div>
+                            <div class="oc-cell">79%</div>
+                        </div>
+                        <div class="overview-compare-row">
+                            <div class="oc-cell">Avg Rate</div>
+                            <div class="oc-cell">$1,877</div>
+                            <div class="oc-cell">$1,851</div>
+                            <div class="oc-cell warn">$1,858</div>
+                        </div>
+                        <div class="overview-compare-row">
+                            <div class="oc-cell">NER</div>
+                            <div class="oc-cell">$1,853</div>
+                            <div class="oc-cell">$1,829</div>
+                            <div class="oc-cell warn">$1,840</div>
+                        </div>
+                        <div class="overview-compare-row">
+                            <div class="oc-cell">Rate Extended</div>
+                            <div class="oc-cell">$161,422</div>
+                            <div class="oc-cell">$172,143</div>
+                            <div class="oc-cell">$197,982</div>
+                        </div>
+                        <div class="overview-compare-row">
+                            <div class="oc-cell">NER Extended</div>
+                            <div class="oc-cell">$159,358</div>
+                            <div class="oc-cell">$170,097</div>
+                            <div class="oc-cell warn">$195,820</div>
+                        </div>
+                    </div>
+
+                    <div class="annotation">
+                        <h4>How Overview Works</h4>
+                        The four KPI cards at the top always show the <strong>property-wide</strong> metrics (all floorplans combined) for quick health check. The table below scopes to the <strong>selected floorplan + lease type</strong> for the detailed comparison. Warn cells (red) appear when Reforecast falls below Budget. Clicking any KPI card jumps directly to the Tiers tab for that metric's drill-down.
+                    </div>
+                </div>
+
+                <!-- ══ TAB: REFORECAST TIERS ══ -->
+                <div class="tab-panel" id="tab-tiers">
+                    <div class="dashboard-header">
+                        <div>
+                            <div class="dashboard-title" id="tiersTitle">EMERALD — Renewals Tiers</div>
+                            <div style="font-size:0.72rem;color:var(--text-secondary);margin-top:2px">Floorplan: 118 beds &nbsp;·&nbsp; Forecast: RF-284 June 2026</div>
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center">
+                            <div class="left-to-budget">Left to Budget: <span>15 beds</span></div>
+                            <button class="btn btn-ghost" style="font-size:0.75rem" onclick="alert('Add new tier row')">＋ Add Tier</button>
+                            <button class="btn btn-primary" style="font-size:0.75rem" onclick="alert('Saves all edited tiers')">💾 Save Tiers</button>
+                        </div>
+                    </div>
+
+                    <div class="tiers-grid">
+                        <!-- Budget -->
+                        <div class="tier-col">
+                            <div class="tier-col-hdr budget-hdr">📋 Budgeted Tiers <span class="section-label renewals" id="dashLabelBudget">Renewals</span></div>
+                            <div class="tier-col-body">
+                                <table class="tier-tbl">
+                                    <thead><tr><th>Tier</th><th>Count</th><th>Rate</th><th>Conc.</th><th>NER</th></tr></thead>
+                                    <tbody>
+                                        <tr><td>1</td><td>40</td><td>$1,709</td><td>$0</td><td class="tier-ner">$1,709</td></tr>
+                                        <tr><td>2</td><td>30</td><td>$1,749</td><td>$0</td><td class="tier-ner">$1,749</td></tr>
+                                        <tr><td>3</td><td>33</td><td>$1,799</td><td>$0</td><td class="tier-ner">$1,799</td></tr>
+                                    </tbody>
+                                    <tfoot><tr><td>Weighted Avg</td><td>103</td><td>$1,748</td><td>—</td><td class="tier-ner">$1,748</td></tr></tfoot>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Actuals -->
+                        <div class="tier-col">
+                            <div class="tier-col-hdr actual-hdr">✅ Actuals YTD <span class="section-label renewals" id="dashLabelActual">Renewals</span></div>
+                            <div class="tier-col-body">
+                                <table class="tier-tbl">
+                                    <thead><tr><th>Tier</th><th>Count</th><th>Rate</th><th>Conc.</th><th>NER</th></tr></thead>
+                                    <tbody>
+                                        <tr><td>T1</td><td>45</td><td>$1,719</td><td>$0</td><td class="tier-ner">$1,719</td></tr>
+                                        <tr><td>T2</td><td>28</td><td>$1,760</td><td>$0</td><td class="tier-ner">$1,760</td></tr>
+                                        <tr><td>T3</td><td>20</td><td>$1,800</td><td>$0</td><td class="tier-ner">$1,800</td></tr>
+                                    </tbody>
+                                    <tfoot><tr><td>Weighted Avg</td><td>93</td><td>$1,751</td><td>—</td><td class="tier-ner">$1,751</td></tr></tfoot>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Reforecast (editable) -->
+                        <div class="tier-col">
+                            <div class="tier-col-hdr forecast-hdr">🎯 Reforecasted <span class="section-label renewals" id="dashLabelFc">Renewals</span></div>
+                            <div class="tier-col-body">
+                                <table class="tier-tbl">
+                                    <thead><tr><th>Tier</th><th>Count</th><th>Rate</th><th>Conc.</th><th>NER</th><th></th></tr></thead>
+                                    <tbody id="fcTiersBody">
+                                        <tr>
+                                            <td><input class="tier-input" value="1" style="width:32px"></td>
+                                            <td><input class="tier-input" value="15" style="width:40px" oninput="updateNer(this)"></td>
+                                            <td><input class="tier-input" value="1709" oninput="updateNer(this)"></td>
+                                            <td><input class="tier-input" value="0" oninput="updateNer(this)"></td>
+                                            <td class="tier-ner" id="ner0">$1,709</td>
+                                            <td><button class="btn-icon del" onclick="deleteRow(this)" title="Delete tier">🗑</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td><input class="tier-input" value="2" style="width:32px"></td>
+                                            <td><input class="tier-input" value="15" style="width:40px" oninput="updateNer(this)"></td>
+                                            <td><input class="tier-input" value="1760" oninput="updateNer(this)"></td>
+                                            <td><input class="tier-input" value="250" oninput="updateNer(this)"></td>
+                                            <td class="tier-ner" id="ner1">$1,739</td>
+                                            <td><button class="btn-icon del" onclick="deleteRow(this)" title="Delete tier">🗑</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td><input class="tier-input" value="3" style="width:32px"></td>
+                                            <td><input class="tier-input" value="15" style="width:40px" oninput="updateNer(this)"></td>
+                                            <td><input class="tier-input" value="1800" oninput="updateNer(this)"></td>
+                                            <td><input class="tier-input" value="0" oninput="updateNer(this)"></td>
+                                            <td class="tier-ner" id="ner2">$1,800</td>
+                                            <td><button class="btn-icon del" onclick="deleteRow(this)" title="Delete tier">🗑</button></td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot><tr><td>Wtd Avg</td><td id="fcTotCnt">45</td><td id="fcTotRate">$1,756</td><td>—</td><td class="tier-ner" id="fcTotNer">$1,749</td><td></td></tr></tfoot>
+                                </table>
+                                <div class="tier-add-row">
+                                    <button class="btn-icon add" onclick="addTier()" title="Add tier">＋</button>
+                                    <span style="font-size:0.7rem;color:var(--text-secondary)">Add tier row</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="annotation" style="margin-top:8px">
+                        <h4>How Tiers Work</h4>
+                        <ul>
+                            <li><strong>Add (＋)</strong>: Inserts a new row seeded with the last tier's rate. TIER_ORDER auto-increments.</li>
+                            <li><strong>NER column</strong>: Recalculates live as you type Rate or Annual Special (NER = Rate − Concession/12).</li>
+                            <li><strong>Save Tiers / 💾 Save All</strong>: Persists all edited rows to <em>FORECAST_FORECAST_TIERS</em> simultaneously. RATE_EXTENDED, NER_EXTENDED, MODIFIED_BY, DATE_MODIFIED all computed server-side.</li>
+                            <li><strong>Delete (🗑)</strong>: Confirms, then hard-deletes the row.</li>
+                            <li><strong>Lease toggle</strong> in the top bar controls which lease type is shown across all three columns simultaneously.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- ══ TAB: MARKET COMPS ══ -->
+                <div class="tab-panel" id="tab-comps">
+                    <div class="comps-toolbar">
+                        <span style="font-size:0.85rem;font-weight:700;color:var(--text-primary)">Market Comps for <strong style="color:var(--accent-cyan)" id="compsTitle">EMERALD</strong></span>
+                        <span class="comps-type-badge" id="compsTypeBadge">Compare As: 2x2</span>
+                        <span class="comps-count" id="compsCount">23 total · 21 included · 18 leasing comps</span>
+                        <div class="spacer"></div>
+                        <button class="btn btn-ghost" style="font-size:0.75rem" onclick="alert('Would filter to show only included comps')">Filter: Included Only</button>
+                    </div>
+                    <div class="comps-table-wrap">
+                        <div class="comps-scroll">
+                            <table class="comps-table">
+                                <thead>
+                                    <tr>
+                                        <th>Competitor</th>
+                                        <th>Floorplan Name</th>
+                                        <th class="right">NER</th>
+                                        <th class="center">Sold Out</th>
+                                        <th class="center">Include</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>E-LEVEN</td><td>2b2b</td><td class="right">—</td><td class="center"><span class="badge badge-blue">No</span></td><td class="center"><button class="toggle-btn toggle-on">✓</button></td></tr>
+                                    <tr><td>FOUNDRY PRINCESS</td><td>2 X 2</td><td class="right">$1,449</td><td class="center"><span class="badge badge-blue">No</span></td><td class="center"><button class="toggle-btn toggle-on">✓</button></td></tr>
+                                    <tr class="excluded"><td>UNITY PLACE</td><td>2X2-UNION KING</td><td class="right">$1,525</td><td class="center"><span class="badge badge-blue">No</span></td><td class="center"><button class="toggle-btn toggle-off" onclick="this.classList.toggle('toggle-on');this.classList.toggle('toggle-off');this.textContent=this.classList.contains('toggle-on')?'✓':'✗';this.closest('tr').classList.toggle('excluded')">✗</button></td></tr>
+                                    <tr><td>UNITY POINT</td><td>2X1 - ALFRED</td><td class="right">$1,499</td><td class="center"><span class="badge badge-red">Yes</span></td><td class="center"><button class="toggle-btn toggle-on">✓</button></td></tr>
+                                    <tr><td>UNITY POINT</td><td>2X2 - BROCK</td><td class="right">$1,609</td><td class="center"><span class="badge badge-blue">No</span></td><td class="center"><button class="toggle-btn toggle-on">✓</button></td></tr>
+                                    <tr><td>UNITY POINT</td><td>2X2 - UNION</td><td class="right">$1,699</td><td class="center"><span class="badge badge-blue">No</span></td><td class="center"><button class="toggle-btn toggle-on">✓</button></td></tr>
+                                    <tr><td>UNITY POINT</td><td>2X2 - UNION KING</td><td class="right">$1,550</td><td class="center"><span class="badge badge-blue">No</span></td><td class="center"><button class="toggle-btn toggle-on">✓</button></td></tr>
+                                    <tr><td>MURAL</td><td>2x2-STANDARD</td><td class="right">$1,435</td><td class="center"><span class="badge badge-blue">No</span></td><td class="center"><button class="toggle-btn toggle-on">✓</button></td></tr>
+                                    <tr><td>GEOPARK</td><td>Birch</td><td class="right">$1,675</td><td class="center"><span class="badge badge-blue">No</span></td><td class="center"><button class="toggle-btn toggle-on">✓</button></td></tr>
+                                    <tr><td>GEOPARK</td><td>Fir</td><td class="right">$1,700</td><td class="center"><span class="badge badge-red">Yes</span></td><td class="center"><button class="toggle-btn toggle-on">✓</button></td></tr>
+                                    <tr><td>GEOPARK</td><td>Maple</td><td class="right">$1,700</td><td class="center"><span class="badge badge-blue">No</span></td><td class="center"><button class="toggle-btn toggle-on">✓</button></td></tr>
+                                    <tr><td>GEOPARK</td><td>Poplar</td><td class="right">$1,825</td><td class="center"><span class="badge badge-blue">No</span></td><td class="center"><button class="toggle-btn toggle-on">✓</button></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <table class="comps-table" style="background:var(--surface-raised)">
+                            <tbody class="comps-footer">
+                                <tr style="border-top:2px solid var(--border-medium)">
+                                    <td colspan="2" style="text-align:right;color:var(--text-secondary);font-weight:700">All Competitors</td>
+                                    <td class="right">$1,621</td>
+                                    <td class="center" style="color:var(--text-secondary)">—</td>
+                                    <td class="center" style="font-weight:700;color:var(--text-primary)">21</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" style="text-align:right;color:var(--text-secondary);font-weight:700">Leasing Comps</td>
+                                    <td class="right">$1,621</td>
+                                    <td class="center" style="color:var(--text-secondary)">—</td>
+                                    <td class="center" style="font-weight:700;color:var(--accent-cyan)">18</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="annotation" style="margin-top:10px">
+                        <h4>How Market Comps Works</h4>
+                        <ul>
+                            <li>Comps are automatically filtered to the <strong>selected floorplan's Compare-As type</strong> (e.g. "2x2" for EMERALD). Switching floorplans reloads the list.</li>
+                            <li><strong>Include toggle (✓/✗)</strong>: Instantly persists FLAG_INCLUDE to <em>FORECAST_COMP_FLOORPLANS</em> and recalculates the totals without a page reload.</li>
+                            <li><strong>Excluded rows</strong>: Dimmed in the table, excluded from totals. Sold-Out comps count in "All Competitors" but not "Leasing Comps".</li>
+                            <li>NER = NER_PRELEASE_FURNISHED. Rows with no data yet show "—".</li>
+                            <li><strong>Parent property's own floorplans are filtered out</strong> from the list (COMP_PROPERTY_KEY ≠ PARENT_PROPERTY_KEY).</li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div><!-- /right-content -->
+        </div><!-- /content-layout -->
+    </div><!-- /page-body -->
+</div><!-- /shell-main -->
+
+<script>
+// ── Theme Toggle ──
+function setTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+}
+
+// ── Tab Switching ──
+function switchTab(el, id) {
+    document.querySelectorAll('.content-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById(id).classList.add('active');
+}
+
+// ── Floorplan Pills ──
+function selectFP(el, name, type, beds) {
+    document.querySelectorAll('.fp-pill').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('fpSummaryName').textContent = name;
+    document.getElementById('fpBeds').textContent = beds + ' beds';
+    document.getElementById('tiersTitle').textContent = name + ' — Renewals Tiers';
+    document.getElementById('compsTitle').textContent = name;
+    document.getElementById('compsTypeBadge').textContent = 'Compare As: ' + type;
+    document.querySelectorAll('#dashLabelBudget,#dashLabelActual,#dashLabelFc').forEach(l => {
+        l.textContent = document.getElementById('btnRenewal').classList.contains('active-renewal') ? 'Renewals' : 'New Leases';
+    });
+}
+
+// ── Lease Toggle ──
+function setLease(type) {
+    const r = document.getElementById('btnRenewal'), n = document.getElementById('btnNew');
+    if (type === 'renewal') {
+        r.classList.add('active-renewal'); r.classList.remove('active-new');
+        n.classList.remove('active-renewal', 'active-new');
+        document.querySelectorAll('#dashLabelBudget,#dashLabelActual,#dashLabelFc').forEach(l => l.textContent = 'Renewals');
+        document.querySelectorAll('#dashLabelBudget').forEach(l => l.className = 'section-label renewals');
+        document.querySelectorAll('#dashLabelActual,#dashLabelFc').forEach(l => l.className = 'section-label renewals');
+    } else {
+        n.classList.add('active-new'); n.classList.remove('active-renewal');
+        r.classList.remove('active-renewal', 'active-new');
+        document.querySelectorAll('#dashLabelBudget,#dashLabelActual,#dashLabelFc').forEach(l => { l.textContent = 'New Leases'; l.className = 'section-label new'; });
+    }
+    // Update tiers title
+    const fp = document.querySelector('.fp-pill.active').childNodes[0].textContent.trim();
+    document.getElementById('tiersTitle').textContent = fp + ' — ' + (type === 'renewal' ? 'Renewals' : 'New Leases') + ' Tiers';
+}
+
+// ── Approved Toggle ──
+function toggleApproved() {
+    const el = document.getElementById('approvedToggle');
+    el.classList.toggle('on');
+    el.textContent = el.classList.contains('on') ? '✓ Approved' : '○ Not Approved';
+}
+
+// ── Collapsible Panel Cards ──
+function toggleCard(hdr) {
+    const body = hdr.nextElementSibling;
+    const chev = hdr.querySelector('.panel-card-chevron');
+    body.classList.toggle('collapsed');
+    chev.textContent = body.classList.contains('collapsed') ? '▶' : '▼';
+}
+
+// ── Concession Detail ──
+function toggleConc() {
+    const d = document.getElementById('concDetail');
+    const a = document.getElementById('concArrow');
+    const shown = d.style.display !== 'none';
+    d.style.display = shown ? 'none' : 'block';
+    a.textContent = shown ? '▶' : '▼';
+}
+
+// ── Live NER Update ──
+function updateNer(inp) {
+    const tr = inp.closest('tr');
+    const inputs = tr.querySelectorAll('.tier-input');
+    const rate = parseFloat(inputs[2].value) || 0;
+    const conc = parseFloat(inputs[3].value) || 0;
+    const ner = rate - conc / 12;
+    tr.querySelector('.tier-ner').textContent = '$' + ner.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    recalcTotals();
+}
+
+function recalcTotals() {
+    const rows = document.querySelectorAll('#fcTiersBody tr');
+    let totCnt = 0, totRate = 0, totNer = 0;
+    rows.forEach(tr => {
+        const inputs = tr.querySelectorAll('.tier-input');
+        const cnt = parseFloat(inputs[1]?.value) || 0;
+        const rate = parseFloat(inputs[2]?.value) || 0;
+        const conc = parseFloat(inputs[3]?.value) || 0;
+        const ner = rate - conc / 12;
+        totCnt += cnt; totRate += rate * cnt; totNer += ner * cnt;
+    });
+    const fmt = v => '$' + v.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    document.getElementById('fcTotCnt').textContent = totCnt;
+    document.getElementById('fcTotRate').textContent = totCnt > 0 ? fmt(totRate / totCnt) : '—';
+    document.getElementById('fcTotNer').textContent = totCnt > 0 ? fmt(totNer / totCnt) : '—';
+}
+
+// ── Add / Delete Tier ──
+let tierCount = 3;
+function addTier() {
+    const tbody = document.getElementById('fcTiersBody');
+    const lastRow = tbody.lastElementChild;
+    const lastRate = lastRow ? lastRow.querySelectorAll('.tier-input')[2].value : '0';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><input class="tier-input" value="${++tierCount}" style="width:32px"></td>
+        <td><input class="tier-input" value="0" style="width:40px" oninput="updateNer(this)"></td>
+        <td><input class="tier-input" value="${lastRate}" oninput="updateNer(this)"></td>
+        <td><input class="tier-input" value="0" oninput="updateNer(this)"></td>
+        <td class="tier-ner">$${parseInt(lastRate).toLocaleString()}</td>
+        <td><button class="btn-icon del" onclick="deleteRow(this)" title="Delete tier">🗑</button></td>`;
+    tbody.appendChild(tr);
+    tr.querySelector('input').focus();
+    recalcTotals();
+}
+function deleteRow(btn) {
+    if (!confirm('Delete this tier?')) return;
+    btn.closest('tr').remove();
+    recalcTotals();
+}
+
+// ── Comps Include Toggle ──
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const isOn = this.classList.contains('toggle-on');
+        this.classList.toggle('toggle-on', !isOn);
+        this.classList.toggle('toggle-off', isOn);
+        this.textContent = isOn ? '✗' : '✓';
+        this.closest('tr').classList.toggle('excluded', isOn);
+    });
+});
+</script>
+</body>
+</html>

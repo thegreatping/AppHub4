@@ -1,0 +1,99 @@
+{% extends "shell.html" %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/milestones.css') }}?v=5">
+{% endblock %}
+
+{% block content %}
+<div class="ms-outer">
+
+  <!-- Full-width header (matches Cultivate pattern) -->
+  <div class="ms-page-header">
+    <div class="ms-header-icon"><i class="fa-solid fa-trophy"></i></div>
+    <h1>Milestones</h1>
+  </div>
+
+  <!-- Collapsible info blurb -->
+  <div class="info-blurb" id="blurb-milestones">
+    <div class="blurb-header" onclick="toggleBlurb('milestones')">
+      <span class="blurb-title">Entry Instructions</span>
+      <span class="blurb-toggle" id="blurbToggle-milestones">&#9660;</span>
+    </div>
+    <div class="blurb-body" id="blurbBody-milestones">
+      Managers award points <strong>no later than the 19th of each month.</strong>
+      <ul style="margin:6px 0 0 16px;padding:0;">
+        <li><strong>Leasing:</strong> Enter the number of leases each leasing associate is bonused on for the current month.</li>
+        <li><strong>Maintenance:</strong> Enter the number of work orders each maintenance associate is bonused on for the current month.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Split layout -->
+  <div class="ms-layout">
+
+    <!-- ── Left panel: property list ──────────────────────────────────────── -->
+    <div class="ms-left">
+      <div class="ms-left-label">
+        Properties <span class="ms-prop-count" id="msPropCount"></span>
+      </div>
+      <div class="ms-search-wrap">
+        <input id="msPropSearch" type="text" placeholder="Search properties..." autocomplete="off">
+      </div>
+      <div class="ms-prop-list" id="msPropList"></div>
+    </div>
+
+    <!-- ── Right panel: content ────────────────────────────────────────────── -->
+    <div class="ms-right">
+
+      <!-- No property selected -->
+      <div class="ms-empty" id="msEmpty">
+        <div class="ms-empty-icon">&#127942;</div>
+        <div class="ms-empty-title">Select a Property</div>
+        <div class="ms-empty-sub">Choose a property from the left panel to view and enter monthly milestone points.</div>
+      </div>
+
+      <!-- Employee grid (hidden until property selected) -->
+      <div class="ms-content" id="msContent" style="display:none">
+        <div class="ms-content-header">
+          <div>
+            <div class="ms-prop-name" id="msPropName"></div>
+            <div class="ms-prop-type" id="msPropType"></div>
+          </div>
+          <div class="ms-header-right">
+            <div class="ms-month-ctrl">
+              <span class="ms-month-label">Months:</span>
+              <div class="ms-month-btns" id="msMonthBtns">
+                <button class="ms-mbtn" data-n="3">3</button>
+                <button class="ms-mbtn" data-n="6">6</button>
+                <button class="ms-mbtn active" data-n="8">8</button>
+                <button class="ms-mbtn" data-n="12">12</button>
+              </div>
+            </div>
+            <div class="ms-save-status" id="msSaveStatus"></div>
+          </div>
+        </div>
+
+        <div class="ms-table-wrap">
+          <table class="ms-table" id="msTable">
+            <thead id="msTableHead"></thead>
+            <tbody id="msTableBody"></tbody>
+          </table>
+        </div>
+
+        <!-- Lock banner — visible when day >= 20 -->
+        <div class="ms-lock-banner" id="msLockBanner" style="display:none">
+          <div class="ms-lock-icon">&#128274;</div>
+          <div class="ms-lock-text">Data entry is disabled for the remainder of the month.</div>
+        </div>
+
+        <div class="ms-loading" id="msLoading" style="display:none">
+          <div class="ms-spinner"></div>
+          Loading employees...
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/milestones.js') }}?v=5"></script>
+{% endblock %}

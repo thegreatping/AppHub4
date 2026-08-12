@@ -1,0 +1,1895 @@
+{% extends "shell.html" %}
+{% block head %}
+<style>
+/* ── Make RFS2 fill the AppHub content area fully ── */
+.apphub-content{padding:0!important;overflow:hidden!important;display:flex;flex-direction:column;height:calc(100vh - 52px);}
+
+/* ===== THEME VARS — identical to mockup ===== */
+:root,[data-theme="dark"]{
+  --nav-bg:#0f1729;--accent-cyan:#67e8e0;--accent-blue:#64b5f6;
+  --accent-gold:#fbbf24;--accent-orange:#fb923c;--accent-green:#4ade80;
+  --accent-red:#f87171;--accent-purple:#c084fc;
+  --content-bg:#111b2e;--content-header:#162035;--surface:#162035;
+  --card:#1c2d4a;--text:#f1f5f9;--text2:#94a3b8;
+  --bm:rgba(255,255,255,.08);--bl:rgba(255,255,255,.05);
+  --bi:rgba(255,255,255,.12);--ibg:rgba(255,255,255,.05);
+  --hov:rgba(255,255,255,.04);--hovs:rgba(255,255,255,.09);--shadow:rgba(0,0,0,.5);
+  --lpanel-shadow:rgba(0,0,0,.5);
+}
+[data-theme="medium"]{
+  --nav-bg:#1e293b;--accent-cyan:#2dd4bf;--accent-blue:#60a5fa;
+  --accent-gold:#d4840a;--accent-orange:#fb923c;--accent-green:#4ade80;
+  --accent-red:#f87171;--content-bg:#232f3e;--content-header:#1a2535;
+  --surface:#1e2d3e;--card:#1a2535;--text:#e2e8f0;--text2:#94a3b8;
+  --bm:rgba(255,255,255,.08);--bl:rgba(255,255,255,.05);--bi:rgba(255,255,255,.18);
+  --ibg:#1a2535;--hov:rgba(255,255,255,.03);--hovs:rgba(255,255,255,.08);--shadow:rgba(0,0,0,.4);
+  --lpanel-shadow:rgba(0,0,0,.3);
+}
+[data-theme="light"]{
+  --nav-bg:#1e293b;--accent-cyan:#0d9488;--accent-blue:#2563eb;
+  --accent-gold:#92400e;--accent-orange:#c2410c;--accent-green:#14532d;
+  --accent-red:#dc2626;--content-bg:#c8d4e0;--content-header:#d8e2ec;
+  --surface:#d8e2ec;--card:#ecf0f5;--text:#0f172a;--text2:#1e3a5f;
+  --bm:rgba(0,0,0,.15);--bl:rgba(0,0,0,.08);--bi:rgba(0,0,0,.22);
+  --ibg:#f2f5f8;--hov:rgba(0,0,0,.03);--hovs:rgba(0,0,0,.07);--shadow:rgba(0,0,0,.18);
+  --lpanel-shadow:rgba(0,0,0,.25);
+}
+
+/* ===== BASE ===== */
+.rfs2{
+  font-family:'Segoe UI',system-ui,sans-serif;
+  font-size:0.8125rem;
+  background:var(--content-bg);
+  color:var(--text);
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+/* ===== TOP BAR ===== */
+.topbar{background:var(--section-hd-bg);border-bottom:3px solid var(--section-hd-border);padding:8px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;flex-wrap:nowrap;overflow:visible;box-shadow:0 3px 10px var(--lpanel-shadow);position:relative;z-index:20;}
+.page-icon{width:34px;height:34px;border-radius:7px;background:#1e4a6a;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+.page-name{font-size:1.2rem;font-weight:700;color:var(--text);white-space:nowrap;}
+.tsep{width:1px;height:26px;background:var(--bm);flex-shrink:0;}
+.ctrl-grp{display:flex;align-items:center;gap:6px;}
+.ctrl-lbl{font-size:.9rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;}
+.ctrl-sel{background:var(--ibg);border:1px solid var(--bi);color:var(--text);padding:6px 10px;border-radius:5px;font-size:.95rem;cursor:pointer;}
+.ctrl-sel option{background:var(--card);color:var(--text);}
+.appr-btn{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:5px;border:1px solid var(--bi);background:var(--ibg);color:var(--text2);cursor:pointer;font-size:.9rem;font-weight:700;white-space:nowrap;user-select:none;}
+.appr-btn.on{background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.3);color:var(--accent-green);}
+.ml-auto{margin-left:auto;}
+.btn{padding:6px 14px;border:none;border-radius:5px;font-size:.88rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;}
+.btn-p{background:var(--accent-cyan);color:#0f1729;}
+.btn-g{background:var(--ibg);color:var(--text2);border:1px solid var(--bi);}
+
+/* Plan dropdown */
+.plan-wrap{position:relative;}
+.plan-trigger{display:flex;align-items:center;gap:6px;padding:3px 8px;background:var(--ibg);border:1px solid var(--bi);border-radius:4px;cursor:pointer;font-size:.77rem;color:var(--text);min-width:160px;}
+.plan-trigger .plan-trigger-lbl{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.plan-trigger .plan-chev{font-size:.6rem;color:var(--text2);flex-shrink:0;}
+.plan-menu{display:none;position:absolute;top:calc(100% + 3px);left:0;min-width:220px;background:var(--card);border:1px solid var(--bi);border-radius:6px;box-shadow:0 6px 20px var(--shadow);z-index:999;padding:4px 0;}
+.plan-menu.open{display:block;}
+.plan-item{display:flex;align-items:center;padding:5px 10px;cursor:pointer;font-size:.77rem;color:var(--text);}
+.plan-item:hover{background:var(--hovs);}
+.plan-item.active{font-weight:700;color:var(--accent-cyan);}
+.plan-item.archived{color:var(--text2);font-style:italic;opacity:.7;}
+.plan-item .plan-name{flex:1;}
+.plan-arch-btn,.plan-revive-btn{margin-left:6px;flex-shrink:0;width:18px;height:18px;border-radius:3px;border:none;background:transparent;cursor:pointer;font-size:.72rem;display:flex;align-items:center;justify-content:center;color:var(--text2);}
+.plan-arch-btn:hover{background:rgba(248,113,113,.18);color:var(--accent-red);}
+.plan-revive-btn:hover{background:rgba(74,222,128,.18);color:var(--accent-green);}
+.plan-divider{height:1px;background:var(--bm);margin:4px 0;}
+.plan-arch-hdr{padding:3px 10px;font-size:.65rem;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;}
+
+/* Save flash dot */
+.save-flash{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent-green);margin-left:4px;opacity:0;transition:opacity .3s;}
+.save-flash.on{opacity:1;}
+
+/* ===== BODY ===== */
+.rfs2-body{flex:1;display:flex;overflow:hidden;}
+
+/* ===== LEFT PANEL ===== */
+.lpanel{display:none;} /* left panel hidden — controls moved to dual-row header */
+
+/* Side-card collapsibles */
+.sc{border-bottom:1px solid var(--bm);flex-shrink:0;}
+.sc-hdr{display:flex;align-items:center;padding:7px 10px;cursor:pointer;user-select:none;}
+.sc-hdr:hover{background:var(--hov);}
+.sc-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--accent-cyan);flex:1;}
+.sc-chev{font-size:.62rem;color:var(--text2);transition:transform .2s;}
+.sc-chev.c{transform:rotate(-90deg);}
+.sc-body{padding:3px 0 8px;}
+.sc-body.collapsed{display:none;}
+
+/* Summary rows */
+.smr{display:flex;align-items:center;padding:2px 10px;font-size:.77rem;}
+.sml{color:var(--text2);flex:1;}
+.smv{font-weight:700;color:var(--text);}
+.smv.g{color:var(--accent-green);}
+.smv.o{color:var(--accent-gold);}
+.smv.r{color:var(--accent-red);}
+.smcols{display:flex;gap:4px;}
+.smc{min-width:44px;text-align:right;font-size:.77rem;font-weight:700;}
+.smc.b{color:var(--accent-blue);}
+.smc.g{color:var(--accent-green);}
+.smc.o{color:var(--accent-gold);}
+.sm-hdr{display:flex;padding:1px 10px 3px;gap:4px;}
+.sm-hl{flex:1;}
+.sm-hc{min-width:44px;text-align:right;font-size:.63rem;font-weight:700;text-transform:uppercase;color:var(--text2);}
+.sdiv{border:none;border-top:1px solid var(--bl);margin:4px 10px;}
+
+/* Planned use row */
+.planned-row{display:flex;align-items:center;padding:2px 10px 3px;background:rgba(251,191,36,.08);border-radius:4px;margin:2px 0 4px;font-size:.77rem;}
+.planned-lbl{color:var(--accent-gold);font-weight:700;flex:1;}
+.planned-inp{background:rgba(251,191,36,.12);border:2px solid rgba(251,191,36,.4);color:var(--accent-gold);padding:3px 6px;border-radius:4px;font-size:.77rem;width:80px;text-align:right;font-weight:800;}
+.planned-inp:focus{border-color:var(--accent-gold);outline:none;}
+
+/* Floorplan list */
+.fp-sec{display:flex;flex-direction:column;min-height:0;flex:1;overflow:hidden;}
+.fp-sec-hdr{padding:7px 10px 5px;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-top:1px solid var(--bm);}
+.fp-list{overflow-y:auto;flex:1;}
+.fpi{display:flex;align-items:center;padding:7px 10px;cursor:pointer;border-left:3px solid transparent;border-bottom:1px solid var(--bl);transition:background .1s;gap:8px;}
+.fpi:hover{background:var(--hovs);}
+.fpi.active{background:rgba(103,232,224,.07);border-left-color:var(--accent-cyan);}
+.fpi-name{font-size:.82rem;font-weight:600;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fpi.active .fpi-name{color:var(--accent-cyan);}
+.fpi-beds{font-size:.65rem;color:var(--text2);background:var(--bm);padding:1px 5px;border-radius:8px;white-space:nowrap;flex-shrink:0;}
+.fpi.active .fpi-beds{background:rgba(103,232,224,.15);color:var(--accent-cyan);}
+
+/* ===== MAIN CONTENT ===== */
+.mcontent{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+
+/* ===== DUAL-ROW HEADER ===== */
+.pfhdr{background:var(--content-header);border-bottom:2px solid var(--bm);flex-shrink:0;display:flex;flex-direction:column;}
+.pfhdr-row{display:flex;align-items:stretch;gap:0;border-bottom:1px solid var(--bl);}
+.pfhdr-row:last-child{border-bottom:none;}
+.pfhdr-sel-blk{display:flex;flex-direction:column;justify-content:center;padding:10px 18px;border-right:2px solid var(--section-hd-border);min-width:310px;max-width:310px;flex-shrink:0;}
+.pfhdr-sel-blk .plan-trigger{min-width:0;flex:1;margin-top:0;font-size:.72rem;}
+.pfhdr-sel-blk .plan-menu{min-width:260px;}
+.pfhdr-sel-blk .pfhdr-prop-trigger{font-size:1.05rem!important;font-weight:800!important;border:none!important;background:transparent!important;padding:2px 0!important;color:var(--accent-cyan)!important;}
+.prop-trigger-beds{font-size:.65rem;color:var(--text2);font-weight:400;margin-left:auto;padding-left:8px;flex-shrink:0;}
+.pfhdr-plan-row{display:flex;align-items:center;gap:4px;margin-top:4px;}
+.pfhdr-prop-trigger{font-size:1.05rem;font-weight:800;background:transparent;border:none;padding:2px 0;color:var(--text);min-width:0;}
+.pfhdr-prop-trigger:hover{background:transparent;}
+.prop-menu-item{display:flex;align-items:baseline;padding:5px 10px;cursor:pointer;font-size:.8rem;color:var(--text);gap:6px;}
+.prop-menu-item:hover{background:var(--hovs);}
+.prop-menu-item.active{font-weight:700;color:var(--accent-blue);}
+.prop-menu-item .pmi-name{flex:1;}
+.prop-menu-item .pmi-beds{font-size:.65rem;color:var(--text2);flex-shrink:0;}
+.pfhdr-icon-btn{flex-shrink:0;width:24px;height:24px;border-radius:4px;border:1px solid var(--bi);background:var(--ibg);color:var(--text2);cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;}
+.pfhdr-icon-btn:hover{background:var(--hovs);color:var(--text);
+}.pfhdr-icon-btn.clone{color:var(--accent-cyan);border-color:rgba(103,232,224,.3);}
+.pfhdr-icon-btn.newp{color:var(--accent-green);border-color:rgba(74,222,128,.3);}
+.pfhdr-appr{display:flex;align-items:center;gap:4px;padding:2px 6px;border-radius:4px;border:1px solid var(--bi);background:var(--ibg);color:var(--text2);cursor:pointer;font-size:.68rem;font-weight:700;white-space:nowrap;flex-shrink:0;}
+.pfhdr-appr.on{background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.3);color:var(--accent-green);}
+.pfhdr-badge{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.pfhdr-badge.prop{color:var(--accent-blue);}
+.pfhdr-badge.fp{color:var(--accent-cyan);}
+.pfhdr-sel{background:transparent;border:none;color:var(--text);font-size:1.05rem;font-weight:800;cursor:pointer;padding:0;width:100%;outline:none;}
+.pfhdr-sel option{background:var(--card);color:var(--text);font-weight:400;font-size:.72rem;}
+.pfhdr-sub{font-size:.7rem;color:var(--text2);margin-top:3px;}
+.pfhdr-metrics{display:flex;align-items:stretch;gap:0;padding:8px 16px;flex:1;overflow-x:auto;gap:16px;}
+.pfhdr-sep{width:1px;background:var(--bm);margin:6px 0;flex-shrink:0;}
+
+/* ===== SUMMARY STRIP (kept for compatibility, hidden) ===== */
+.sstrip{display:none;}
+.ss-fp{display:flex;flex-direction:column;justify-content:center;min-width:110px;}
+.ss-fp-name{font-size:1.1rem;font-weight:800;color:var(--accent-cyan);}
+.ss-fp-sub{font-size:.72rem;color:var(--text2);margin-top:2px;}
+.ssep{width:1px;background:var(--bm);margin:4px 0;flex-shrink:0;}
+.kpi-blk{display:flex;flex-direction:column;gap:6px;width:210px;flex-shrink:0;background:rgba(100,181,246,.06);border:1px solid rgba(100,181,246,.18);border-radius:6px;padding:10px 14px;}
+.kpi-blk-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);text-align:center;}
+.kpi-cols-hdr{display:flex;gap:6px;margin-top:2px;justify-content:center;}
+.kpi-col-hdr{min-width:62px;text-align:right;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
+.kpi-col-hdr.b{color:var(--accent-blue);}
+.kpi-col-hdr.g{color:var(--accent-green);}
+.kpi-col-hdr.f{color:var(--accent-gold);}
+.kpi-col-hdr.p{color:var(--accent-orange);}
+.kpi-vals{display:flex;gap:6px;justify-content:center;}
+.kv{min-width:62px;text-align:right;font-size:.88rem;font-weight:700;}
+.kv.b{color:var(--accent-blue);}
+.kv.g{color:var(--accent-green);}
+.kv.f{color:var(--accent-gold);}
+.kv.p{color:var(--accent-orange);}
+.ltb-blk{background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.2);border-radius:6px;padding:10px 18px;display:flex;flex-direction:column;gap:6px;}
+.ltb-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--accent-gold);}
+.ltb-nums{display:flex;gap:20px;margin-top:4px;}
+.ltb-item{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.ltb-val{font-size:1rem;font-weight:800;}
+.ltb-val.r{color:var(--accent-orange);}
+.ltb-val.n{color:var(--accent-green);}
+.ltb-val.t{color:var(--accent-gold);}
+.ltb-lbl{font-size:.6rem;color:var(--text2);text-transform:uppercase;letter-spacing:.3px;}
+
+/* ===== SCROLL AREA ===== */
+.scroll{flex:1;overflow:hidden;padding:10px 14px;display:flex;flex-direction:column;gap:10px;}
+
+/* ===== COLLAPSIBLE SECTIONS ===== */
+.coll-sec{border:1px solid var(--bm);border-radius:6px;overflow:visible;}
+.coll-sec-hdr{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--section-hd-bg);border-bottom:3px solid var(--section-hd-border);cursor:pointer;user-select:none;border-radius:6px 6px 0 0;}
+.coll-sec-hdr:hover{filter:brightness(1.08);}
+.coll-sec-title{font-size:.78rem;font-weight:700;color:var(--text);flex:1;}
+.coll-sec-chev{font-size:.65rem;color:var(--text2);transition:transform .2s;}
+.coll-sec-chev.c{transform:rotate(-90deg);}
+.coll-sec-body{padding-bottom:4px;}
+.coll-sec-body.collapsed{display:none;}
+
+/* ===== TIER ROW ===== */
+.tier-row{display:flex;align-items:stretch;overflow:hidden;}
+.tier-inner{flex:1;min-width:0;overflow:hidden;}
+.tier-sec-hdr{display:flex;align-items:center;gap:8px;padding:7px 12px;background:rgba(255,255,255,.04);border-bottom:1px solid var(--bm);}
+.tier-divider{width:16px;flex-shrink:0;background:rgba(103,232,224,.55);box-shadow:0 0 8px rgba(103,232,224,.4);}
+.tcols{display:flex;width:100%;}
+.tier-scroll{overflow-y:auto;overflow-x:hidden;max-height:168px;}
+.tier-scroll.tier-expanded{max-height:none;}
+.tier-expand-btn{flex-shrink:0;padding:1px 7px;border-radius:3px;border:1px solid var(--bi);background:var(--ibg);color:var(--text2);cursor:pointer;font-size:.65rem;font-weight:700;white-space:nowrap;margin-left:6px;}
+.tier-expand-btn:hover{border-color:var(--accent-cyan);color:var(--accent-cyan);}
+.tc-budget{flex:1;min-width:0;border-right:3px solid rgba(100,181,246,.35);background:rgba(100,181,246,.03);overflow:hidden;}
+.tc-actuals{flex:1;min-width:0;border-right:3px solid rgba(74,222,128,.3);background:rgba(74,222,128,.03);overflow:hidden;}
+.tc-forecast{flex:1.3;min-width:0;background:rgba(251,191,36,.04);overflow:hidden;}
+.tc-hdr{padding:6px 8px;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;text-align:center;border-bottom:1px solid var(--bm);display:flex;align-items:center;justify-content:center;gap:6px;}
+.tc-hdr.bgt{color:var(--accent-blue);}
+.tc-hdr.act{color:var(--accent-green);}
+.tc-hdr.fct{color:var(--accent-gold);}
+.edit-badge{font-size:.6rem;padding:1px 6px;border-radius:8px;background:rgba(251,191,36,.15);color:var(--accent-gold);border:1px solid rgba(251,191,36,.25);font-weight:700;}
+.fct-btns{display:flex;gap:4px;margin-left:auto;}
+.btn-xs{padding:3px 8px;border:none;border-radius:3px;font-size:.68rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:3px;}
+.btn-xs.add{background:rgba(74,222,128,.12);color:var(--accent-green);border:1px solid rgba(74,222,128,.25);}
+.btn-xs.add:hover{background:rgba(74,222,128,.22);}
+.btn-xs.save{background:rgba(103,232,224,.12);color:var(--accent-cyan);border:1px solid rgba(103,232,224,.25);}
+.btn-xs.save:hover{background:rgba(103,232,224,.22);}
+
+/* Tier tables */
+.ttbl{width:100%;border-collapse:collapse;font-size:.77rem;table-layout:fixed;}
+.ttbl thead th{padding:3px 6px;background:var(--surface);color:var(--text2);font-weight:600;font-size:.65rem;text-align:right;border-bottom:1px solid var(--bm);}
+.ttbl thead th:first-child{text-align:center;width:20px!important;max-width:20px;}
+.ttbl col:first-child{width:20px;}
+.ttbl tbody td{padding:3px 6px;border-bottom:1px solid var(--bl);text-align:right;color:var(--text);}
+.ttbl tbody td:first-child{text-align:center;color:var(--text2);font-size:.63rem;}
+.ttbl tbody td:last-child,.ttbl tfoot td:last-child{padding-right:10px;}
+.ttbl tbody tr:last-child td{border-bottom:none;}
+.ttbl tbody tr:hover td{background:var(--hov);}
+.ttbl tfoot td{padding:5px 6px 6px;background:var(--surface);border-top:1px solid var(--bm);font-weight:700;font-size:.72rem;text-align:right;}
+.ttbl tfoot td:first-child{text-align:center;color:var(--text2);}
+.tner{color:var(--accent-cyan);font-weight:700;padding-right:10px!important;}
+.tinp{background:transparent;border:1px solid transparent;color:var(--text);padding:2px 4px;border-radius:3px;font-size:.77rem;width:100%!important;text-align:right;box-sizing:border-box;}
+.tinp:focus{border-color:var(--accent-cyan);outline:none;background:rgba(103,232,224,.05);}
+.btn-del{background:none;border:none;color:var(--text2);cursor:pointer;font-size:.75rem;padding:0 3px;border-radius:3px;}
+.btn-del:hover{color:var(--accent-red);background:rgba(248,113,113,.1);}
+
+/* ===== BOTTOM ROW ===== */
+.bottom-row{display:flex;flex-direction:row;gap:10px;padding:10px;flex:1;min-height:0;overflow:hidden;box-sizing:border-box;}
+
+/* Comps */
+.comps-sec{flex-shrink:0;min-width:0;overflow:hidden;display:flex;flex-direction:column;border:1px solid var(--bm);border-radius:6px;}
+.comps-hdr{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--section-hd-bg);border-bottom:3px solid var(--section-hd-border);flex-shrink:0;}
+.comps-hdr-t{font-size:.82rem;font-weight:700;color:var(--text);}
+.ctype-pill{padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700;background:rgba(251,191,36,.1);color:var(--accent-gold);border:1px solid rgba(251,191,36,.22);}
+.comps-body{display:flex;flex-direction:column;flex:1;min-height:0;}
+.comps-scroll{flex:1;overflow-y:auto;max-height:320px;}
+.ctbl{width:auto;border-collapse:collapse;font-size:.77rem;table-layout:auto;}
+.ctbl thead th{background:var(--surface);padding:4px 8px;text-align:left;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--text2);border-bottom:1px solid var(--bm);position:sticky;top:0;}
+.ctbl thead th.r{text-align:right;}
+.ctbl thead th.c{text-align:center;}
+.ctbl tbody td{padding:4px 8px;border-bottom:1px solid var(--bl);color:var(--text);}
+.ctbl tbody td.r{text-align:right;font-weight:600;}
+.ctbl tbody td.c{text-align:center;}
+.ctbl tbody tr:hover td{background:var(--hov);}
+.ctbl tbody tr.excl td{opacity:.38;}
+.cfooter{border-top:2px solid var(--bm);background:var(--surface);flex-shrink:0;}
+.cfooter td{padding:4px 8px;font-weight:700;font-size:.77rem;}
+.cfooter td.r{text-align:right;}
+.cfooter td.c{text-align:center;}
+.toggle-btn{width:26px;height:20px;border-radius:3px;border:none;cursor:pointer;font-size:.78rem;font-weight:700;}
+.ton{background:rgba(74,222,128,.15);color:var(--accent-green);border:1px solid rgba(74,222,128,.3);}
+.toff{background:rgba(248,113,113,.15);color:var(--accent-red);border:1px solid rgba(248,113,113,.3);}
+.bdg{display:inline-block;padding:1px 5px;border-radius:8px;font-size:.67rem;font-weight:700;}
+.bdg-r{background:rgba(248,113,113,.15);color:var(--accent-red);}
+.bdg-b{background:rgba(100,181,246,.12);color:var(--accent-blue);}
+
+/* Stakeholder */
+.stkh-sec{flex:1;min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;border:1px solid var(--bm);border-radius:6px;}
+.stkh-hdr{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--section-hd-bg);border-bottom:3px solid var(--section-hd-border);flex-shrink:0;}
+.stkh-title{font-size:.82rem;font-weight:700;color:var(--text);flex:1;}
+.stkh-body{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;}
+.coll-sec-bottom{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
+.coll-sec-bottom .coll-sec-body{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding-bottom:0;}
+.comps-sec{flex-shrink:0;min-width:0;overflow:hidden;display:flex;flex-direction:column;border:1px solid var(--bm);border-radius:6px;}
+.stkh-tab.active-tab{background:rgba(103,232,224,.15)!important;color:var(--accent-cyan)!important;border-color:rgba(103,232,224,.35)!important;}
+.stkh-focus-btn{flex-shrink:0;padding:2px 8px;border-radius:3px;border:1px solid var(--bi);background:var(--ibg);color:var(--text2);cursor:pointer;font-size:.68rem;font-weight:700;white-space:nowrap;}
+.stkh-focus-btn:hover{border-color:var(--accent-cyan);color:var(--accent-cyan);}
+/* Focus mode: stkh-sec overlays bottom half of viewport */
+.stkh-sec.focus-mode{position:fixed;bottom:0;left:0;right:0;height:67vh;z-index:500;background:var(--content-bg);border-top:2px solid var(--accent-cyan);border-radius:0;box-shadow:0 -6px 30px rgba(0,0,0,.5);display:flex;flex-direction:column;}
+.stkh-sec.focus-mode .chart-wrap{height:calc(67vh - 80px)!important;}
+
+/* Trend legends */
+.trend-legend{display:flex;gap:16px;margin-bottom:12px;}
+.tleg-item{display:flex;align-items:center;gap:6px;font-size:.7rem;color:var(--text2);}
+.tleg-dot{width:14px;height:5px;border-radius:2px;flex-shrink:0;}
+
+/* Summary builder */
+.stkh-controls{display:flex;gap:6px;padding:8px 10px;border-bottom:1px solid var(--bl);flex-wrap:wrap;flex-shrink:0;}
+.stkh-ctrl-lbl{font-size:.7rem;color:var(--text2);display:flex;align-items:center;gap:5px;cursor:pointer;}
+.stkh-ctrl-lbl input[type=checkbox]{accent-color:var(--accent-cyan);}
+.stkh-ta-wrap{flex:1;padding:8px 10px;display:flex;flex-direction:column;gap:6px;overflow:hidden;}
+.stkh-ta{flex:1;min-height:150px;background:var(--ibg);border:1px solid var(--bi);color:var(--text);border-radius:5px;padding:10px;font-size:.82rem;font-family:'Segoe UI',system-ui,sans-serif;resize:none;line-height:1.5;}
+.stkh-ta:focus{border-color:var(--accent-cyan);outline:none;}
+.stkh-actions{display:flex;gap:6px;flex-shrink:0;}
+.stkh-note{font-size:.68rem;color:var(--text2);font-style:italic;}
+
+/* Light-mode SVG overrides */
+[data-theme="light"] #viewTrend svg text{fill:#374151!important;}
+[data-theme="light"] #viewTrend svg line{stroke:rgba(0,0,0,.18)!important;}
+[data-theme="light"] #viewTrend svg .ser-py polyline{stroke:#d97706!important;}
+[data-theme="light"] #viewTrend svg .ser-bud polyline{stroke:#2563eb!important;}
+[data-theme="light"] #viewTrend svg .ser-act polyline{stroke:#16a34a!important;}
+[data-theme="light"] #viewRate svg text{fill:#374151!important;}
+[data-theme="light"] #viewRate svg line{stroke:rgba(0,0,0,.18)!important;}
+[data-theme="light"] #viewRate svg .rt-act polyline{stroke:#16a34a!important;}
+[data-theme="light"] #viewRate svg .rt-fc polyline{stroke:#92400e!important;}
+
+/* ===== REVENUE VS BUDGET BLOCK ===== */
+.rev-kpi-blk{min-width:240px;}
+.var-attr{margin-top:6px;border-top:1px solid var(--bl);padding-top:5px;display:flex;flex-direction:column;gap:3px;}
+.var-attr-row{display:flex;align-items:center;justify-content:space-between;font-size:.67rem;}
+.var-attr-lbl{color:var(--text2);}
+.var-attr-val{font-weight:700;font-size:.7rem;}
+
+/* ===== PATH TO BUDGET STRIP ===== */
+.ptb-strip{display:flex;align-items:center;background:rgba(100,181,246,.05);border-bottom:1px solid var(--bm);padding:5px 16px;flex-shrink:0;overflow-x:auto;flex-wrap:nowrap;gap:0;}
+.ptb-lbl{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent-blue);white-space:nowrap;flex-shrink:0;}
+.ptb-divider{width:1px;height:18px;background:var(--bm);margin:0 12px;flex-shrink:0;}
+.ptb-item{display:flex;align-items:center;gap:6px;flex-shrink:0;padding:0 12px;border-left:1px solid var(--bl);}
+.ptb-item-lbl{font-size:.65rem;color:var(--text2);white-space:nowrap;}
+.ptb-item-val{font-size:.78rem;font-weight:700;color:var(--text);white-space:nowrap;}
+
+/* ===== APPROVAL WARNING MODAL ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;display:flex;align-items:center;justify-content:center;}
+.modal-box{background:var(--card);border:1px solid var(--bi);border-radius:8px;width:500px;max-width:95vw;box-shadow:0 16px 48px rgba(0,0,0,.5);}
+.modal-hdr{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--bm);font-size:.95rem;font-weight:700;color:var(--accent-gold);}
+.modal-close{margin-left:auto;background:none;border:none;color:var(--text2);cursor:pointer;font-size:1.1rem;padding:0 4px;border-radius:3px;line-height:1;}
+.modal-close:hover{color:var(--text);}
+.modal-body{padding:14px 18px;max-height:50vh;overflow-y:auto;}
+.modal-intro{font-size:.82rem;color:var(--text2);margin:0 0 12px;}
+.modal-body ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;}
+.warn-item{font-size:.83rem;color:var(--text);display:flex;align-items:flex-start;gap:8px;}
+.warn-item.error{color:var(--accent-red);}
+.warn-item.warn{color:var(--accent-gold);}
+.warn-item.ok{color:var(--accent-green);}
+.modal-footer{display:flex;gap:8px;padding:12px 18px;border-top:1px solid var(--bm);justify-content:flex-end;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rfs2">
+
+  <!-- ══════════════════ TOP BAR (branding + plan controls) ══════════════════ -->
+  <div class="topbar">
+    <div class="page-icon">&#128176;</div>
+    <span class="page-name">Rent Forecasting 2.0</span>
+    <div class="tsep"></div>
+    <span class="save-flash" id="saveFlash" title="Saved"></span>
+    <div class="ml-auto" style="display:flex;gap:8px;align-items:center;flex-shrink:0;white-space:nowrap">
+      <button class="btn" onclick="window.print()" style="background:rgba(248,113,113,.15);color:var(--accent-red);border:1px solid rgba(248,113,113,.35)">&#128196; Export PDF</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════ BODY ══════════════════ -->
+  <div class="rfs2-body">
+
+    <!-- LEFT PANEL (hidden — kept for JS id compatibility) -->
+    <div class="lpanel" aria-hidden="true">
+      <span id="lpPrelB" style="display:none"></span><span id="lpPrelA" style="display:none"></span><span id="lpPrelF" style="display:none"></span>
+      <span id="lpRateB" style="display:none"></span><span id="lpRateA" style="display:none"></span><span id="lpRateF" style="display:none"></span>
+      <span id="lpNerB"  style="display:none"></span><span id="lpNerA"  style="display:none"></span><span id="lpNerF"  style="display:none"></span>
+      <span id="lpNerAdjRow" style="display:none"><span id="lpNerFAdj"></span></span>
+      <span id="lpIndTotal" style="display:none"></span><span id="lpIndUsed" style="display:none"></span>
+      <span id="lpIndFc" style="display:none"></span><span id="lpIndTot2" style="display:none"></span>
+      <span id="lpFpBeds" style="display:none"></span>
+      <input id="plannedInp" type="number" style="display:none" onblur="savePlannedUse(this.value)">
+      <div id="fpList" style="display:none"></div>
+    </div>
+
+    <!-- MAIN CONTENT ───────────────────────────── -->
+    <div class="mcontent">
+
+      <!-- ══ DUAL-ROW HEADER ══ -->
+      <div class="pfhdr">
+
+        <!-- ROW 1: PROPERTY -->
+        <div class="pfhdr-row">
+          <div class="pfhdr-sel-blk">
+            <span class="pfhdr-badge prop">&#9632; Property</span>
+            <!-- Custom property dropdown -->
+            <div class="plan-wrap" id="propWrap">
+              <div class="plan-trigger pfhdr-prop-trigger" id="propTrigger" onclick="togglePropMenu()">
+                <span class="plan-trigger-lbl" id="propTriggerLbl">Loading&hellip;</span>
+                <span class="prop-trigger-beds" id="propTriggerBeds"></span>
+                <span class="plan-chev">&#9660;</span>
+              </div>
+              <div class="plan-menu" id="propMenu" style="min-width:320px;max-height:320px;overflow-y:auto"></div>
+            </div>
+            <!-- hidden real select kept for onPropChange compatibility -->
+            <select id="propSel" onchange="onPropChange()" style="display:none"></select>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:8px">
+              <span class="pfhdr-badge prop" style="margin-top:0">&#9632; Reforecast Plan</span>
+              <div class="pfhdr-appr" id="apprBtn" onclick="toggleApproved()">&#9675; Pending</div>
+              <button class="pfhdr-icon-btn clone" onclick="clonePlan()" title="Clone Plan">&#10697;</button>
+              <button class="pfhdr-icon-btn newp" onclick="newPlan()" title="New Plan">&#65291;</button>
+            </div>
+            <div class="pfhdr-plan-row">
+              <div class="plan-wrap" id="planWrap" style="flex:1;min-width:0">
+                <div class="plan-trigger" id="planTrigger" onclick="togglePlanMenu()">
+                  <span class="plan-trigger-lbl" id="planTriggerLbl">&mdash; select property &mdash;</span>
+                  <span class="plan-chev">&#9660;</span>
+                </div>
+                <div class="plan-menu" id="planMenu"></div>
+              </div>
+              <span class="ctrl-lbl" style="font-size:.62rem;flex-shrink:0">AY</span>
+              <select class="ctrl-sel" id="aySel" onchange="onAyChange()" style="min-width:58px;padding:3px 6px;font-size:.75rem">
+                {% for ay in ay_options %}
+                <option value="{{ ay }}"{% if ay == current_ay %} selected{% endif %}>{{ ay }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="pfhdr-metrics" id="propMetrics">
+            <div class="kpi-blk">
+              <div class="kpi-blk-title">Prelease %</div>
+              <div class="kpi-cols-hdr"><span class="kpi-col-hdr b">Budget</span><span class="kpi-col-hdr g">Actual</span><span class="kpi-col-hdr f">Fcst</span></div>
+              <div class="kpi-vals"><span class="kv b" id="ssPrelB">&mdash;</span><span class="kv g" id="ssPrelA">&mdash;</span><span class="kv f" id="ssPrelF">&mdash;</span></div>
+            </div>
+            <div class="pfhdr-sep"></div>
+            <div class="kpi-blk">
+              <div class="kpi-blk-title">Avg Rate</div>
+              <div class="kpi-cols-hdr"><span class="kpi-col-hdr b">Budget</span><span class="kpi-col-hdr g">Actual</span><span class="kpi-col-hdr f">Fcst</span></div>
+              <div class="kpi-vals"><span class="kv b" id="ssRateB">&mdash;</span><span class="kv g" id="ssRateA">&mdash;</span><span class="kv f" id="ssRateF">&mdash;</span></div>
+            </div>
+            <div class="pfhdr-sep"></div>
+            <div class="kpi-blk" style="width:270px">
+              <div class="kpi-blk-title">NER</div>
+              <div class="kpi-cols-hdr"><span class="kpi-col-hdr b">Budget</span><span class="kpi-col-hdr g">Actual</span><span class="kpi-col-hdr f">Fcst</span><span class="kpi-col-hdr p">w/plan</span></div>
+              <div class="kpi-vals"><span class="kv b" id="ssNerB">&mdash;</span><span class="kv g" id="ssNerA">&mdash;</span><span class="kv f" id="ssNerF">&mdash;</span><span class="kv p" id="ssNerPropAdj">&mdash;</span></div>
+              <span id="ssNerAdjRow" style="display:none"></span>
+              <span id="ssNerFpDelta" style="display:none"></span><span id="ssNerPropDelta" style="display:none"></span>
+            </div>
+            <div class="pfhdr-sep"></div>
+            <!-- Revenue vs Budget KPI (items 2 & 3) -->
+            <div class="kpi-blk rev-kpi-blk">
+              <div class="kpi-blk-title">Revenue vs Budget</div>
+              <div class="kpi-cols-hdr"><span class="kpi-col-hdr b">Budget</span><span class="kpi-col-hdr f">Projected</span><span class="kpi-col-hdr" style="min-width:68px">Variance</span></div>
+              <div class="kpi-vals"><span class="kv b" id="ssRevB">&mdash;</span><span class="kv f" id="ssRevF">&mdash;</span><span class="kv" id="ssRevVar">&mdash;</span></div>
+              <div class="var-attr" id="varAttrRow" style="display:none">
+                <div class="var-attr-row"><span class="var-attr-lbl">Occupancy driver:</span><span class="var-attr-val" id="ssVarOcc">&mdash;</span></div>
+                <div class="var-attr-row"><span class="var-attr-lbl">Rate/NER driver:</span><span class="var-attr-val" id="ssVarRate">&mdash;</span></div>
+              </div>
+            </div>
+            <div class="pfhdr-sep"></div>
+            <!-- Planned Inducements (item 1) -->
+            <div class="kpi-blk" style="border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.05)">
+              <div class="kpi-blk-title" style="color:var(--accent-gold)">&#9745; Planned Inducements <span style="font-size:.6rem;opacity:.7" title="Annual dollar value of planned concessions for this property. Reduces the W/Plan NER column.">&#9432;</span></div>
+              <div style="margin-top:5px">
+                <input id="propPuInp" type="number" min="0" step="100" placeholder="0"
+                  style="width:100%;box-sizing:border-box;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:4px;color:var(--text);font-size:.78rem;padding:3px 7px;outline:none"
+                  oninput="calcPropPu(this.value)">
+              </div>
+            </div>
+          </div>
+        </div><!-- /row 1 -->
+
+        <!-- ROW 2: FLOORPLAN -->
+        <div class="pfhdr-row">
+          <div class="pfhdr-sel-blk">
+            <span class="pfhdr-badge fp">&#9654; Floorplan</span>
+            <!-- Custom floorplan dropdown -->
+            <div class="plan-wrap" id="fpWrap">
+              <div class="plan-trigger pfhdr-prop-trigger" id="fpTrigger" onclick="toggleFpMenu()">
+                <span class="plan-trigger-lbl" id="fpTriggerLbl">&mdash; select property first &mdash;</span>
+                <span class="prop-trigger-beds" id="fpTriggerBeds"></span>
+                <span class="plan-chev">&#9660;</span>
+              </div>
+              <div class="plan-menu" id="fpMenu" style="min-width:320px;max-height:320px;overflow-y:auto"></div>
+            </div>
+            <!-- hidden native select kept for compatibility -->
+            <select id="fpSel" style="display:none" onchange="onFpSelChange()">
+              <option value="">— select property first —</option>
+            </select>
+            <div class="pfhdr-sub" id="ssName" style="color:var(--text2)">&mdash;</div>
+          </div>
+          <div class="pfhdr-metrics" id="fpMetrics">
+            <div class="kpi-blk">
+              <div class="kpi-blk-title">Prelease %</div>
+              <div class="kpi-cols-hdr"><span class="kpi-col-hdr b">Budget</span><span class="kpi-col-hdr g">Actual</span><span class="kpi-col-hdr f">Fcst</span></div>
+              <div class="kpi-vals"><span class="kv b" id="fpPrelB">&mdash;</span><span class="kv g" id="fpPrelA">&mdash;</span><span class="kv f" id="fpPrelF">&mdash;</span></div>
+            </div>
+            <div class="pfhdr-sep"></div>
+            <div class="kpi-blk">
+              <div class="kpi-blk-title">Avg Rate</div>
+              <div class="kpi-cols-hdr"><span class="kpi-col-hdr b">Budget</span><span class="kpi-col-hdr g">Actual</span><span class="kpi-col-hdr f">Fcst</span></div>
+              <div class="kpi-vals"><span class="kv b" id="fpRateB">&mdash;</span><span class="kv g" id="fpRateA">&mdash;</span><span class="kv f" id="fpRateF">&mdash;</span></div>
+            </div>
+            <div class="pfhdr-sep"></div>
+            <div class="kpi-blk" style="width:270px">
+              <div class="kpi-blk-title">NER</div>
+              <div class="kpi-cols-hdr"><span class="kpi-col-hdr b">Budget</span><span class="kpi-col-hdr g">Actual</span><span class="kpi-col-hdr f">Fcst</span><span class="kpi-col-hdr p">w/plan</span></div>
+              <div class="kpi-vals"><span class="kv b" id="fpNerB">&mdash;</span><span class="kv g" id="fpNerA">&mdash;</span><span class="kv f" id="fpNerF">&mdash;</span><span class="kv p" id="ssNerFpAdj">&mdash;</span></div>
+            </div>
+            <div class="pfhdr-sep"></div>
+            <!-- FP Planned Inducements (item 1) -->
+            <div class="kpi-blk" style="border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.05)">
+              <div class="kpi-blk-title" style="color:var(--accent-gold)">&#9745; FP Planned Inducements <span style="font-size:.6rem;opacity:.7" title="Annual dollar value of planned concessions for this floor plan. Reduces the FP W/Plan NER column.">&#9432;</span></div>
+              <div style="margin-top:5px">
+                <input id="fpPuInp" type="number" min="0" step="100" placeholder="0"
+                  style="width:100%;box-sizing:border-box;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:4px;color:var(--text);font-size:.78rem;padding:3px 7px;outline:none"
+                  oninput="calcFpPu(this.value)">
+              </div>
+            </div>
+            <div class="pfhdr-sep"></div>
+            <div class="ltb-blk">
+              <div class="ltb-title">Left to Budget &middot; <span id="ssLtbFpName" style="color:var(--accent-cyan)">&mdash;</span></div>
+              <div class="ltb-nums">
+                <div class="ltb-item"><div class="ltb-val r" id="ltbAct">&mdash;</div><div class="ltb-lbl">Actuals</div></div>
+                <div class="ltb-item"><div class="ltb-val n" id="ltbFc">&mdash;</div><div class="ltb-lbl">Forecast</div></div>
+                <div class="ltb-item"><div class="ltb-val t" id="ltbRem">&mdash;</div><div class="ltb-lbl">Remaining</div></div>
+              </div>
+            </div>
+          </div>
+        </div><!-- /row 2 -->
+
+      </div><!-- /pfhdr -->
+
+      <!-- hidden sstrip kept for JS id compatibility -->
+      <div class="sstrip" id="sstrip_compat">
+        <span id="ssSub" style="display:none"></span>
+      </div>
+
+      <!-- PATH TO BUDGET strip (item 4) — shown once property data loads -->
+      <div class="ptb-strip" id="ptbStrip" style="display:none">
+        <span class="ptb-lbl">&#127919; Path to Budget</span>
+        <div class="ptb-divider"></div>
+        <div class="ptb-item"><span class="ptb-item-lbl">Beds remaining:</span><span class="ptb-item-val" id="ptbBeds">&mdash;</span></div>
+        <div class="ptb-item"><span class="ptb-item-lbl">NER needed on remaining:</span><span class="ptb-item-val" id="ptbNerNeeded">&mdash;</span></div>
+        <div class="ptb-item"><span class="ptb-item-lbl">Proj. occupancy:</span><span class="ptb-item-val" id="ptbProjOcc">&mdash;</span></div>
+        <div class="ptb-item"><span class="ptb-item-lbl">Proj. avg rate:</span><span class="ptb-item-val" id="ptbProjRate">&mdash;</span></div>
+        <div class="ptb-item"><span class="ptb-item-lbl">Proj. NER:</span><span class="ptb-item-val" id="ptbProjNer">&mdash;</span></div>
+      </div>
+
+      <!-- SCROLL -->
+      <div class="scroll">
+
+        <!-- TIER SECTION (Renewals + New Leases) -->
+        <div class="coll-sec" id="tierSec">
+          <div class="coll-sec-hdr" onclick="toggleCollSec(this)">
+            <span class="coll-sec-title">Renewals &amp; New Leases</span>
+            <span id="tierMeta" style="font-size:.72rem;color:var(--text2)"></span>
+            <button class="tier-expand-btn" id="tierExpandBtn" onclick="event.stopPropagation();cycleTierExpand()">&#9723; Expand</button>
+            <span class="coll-sec-chev" style="margin-left:8px">&#9660;</span>
+          </div>
+          <div class="coll-sec-body">
+            <div class="tier-row">
+
+              <!-- RENEWALS -->
+              <div class="tier-inner">
+                <div class="tier-sec-hdr">
+                  <span style="color:var(--accent-orange);font-weight:700;font-size:.75rem">&#9654; Renewals</span>
+                </div>
+                <div class="tcols">
+                  <!-- Budget -->
+                  <div class="tc-budget">
+                    <div class="tc-hdr bgt">Budgeted Tiers</div>
+                    <div class="tier-scroll">
+                      <table class="ttbl">
+                        <colgroup><col style="width:20px"><col><col><col></colgroup>
+                        <thead><tr><th>#</th><th>Ct</th><th>Rate</th><th>NER</th></tr></thead>
+                        <tbody id="rBudBody"><tr><td colspan="4" style="text-align:center;color:var(--text2);padding:10px;font-style:italic">Select a floorplan</td></tr></tbody>
+                        <tfoot><tr><td>&#8709;</td><td id="rBudTotCt">&mdash;</td><td id="rBudTotRate">&mdash;</td><td id="rBudTotNer" class="tner">&mdash;</td></tr></tfoot>
+                      </table>
+                    </div>
+                  </div>
+                  <!-- Actuals -->
+                  <div class="tc-actuals">
+                    <div class="tc-hdr act">Actuals YTD</div>
+                    <div class="tier-scroll">
+                      <table class="ttbl">
+                        <colgroup><col style="width:20px"><col><col><col></colgroup>
+                        <thead><tr><th>#</th><th>Ct</th><th>Rate</th><th>NER</th></tr></thead>
+                        <tbody id="rActBody"><tr><td colspan="4" style="text-align:center;color:var(--text2);padding:10px;font-style:italic">Select a floorplan</td></tr></tbody>
+                        <tfoot><tr><td>&#8709;</td><td id="rActTotCt">&mdash;</td><td id="rActTotRate">&mdash;</td><td id="rActTotNer" class="tner">&mdash;</td></tr></tfoot>
+                      </table>
+                    </div>
+                  </div>
+                  <!-- Reforecast -->
+                  <div class="tc-forecast">
+                    <div class="tc-hdr fct" style="color:var(--accent-orange)">
+                      Renewal Reforecast <span class="edit-badge">Editable</span>
+                      <div class="fct-btns"><button class="btn-xs add" onclick="addTier('RENEWAL')">&#65291; Add</button></div>
+                    </div>
+                    <div class="tier-scroll">
+                      <table class="ttbl">
+                        <colgroup><col style="width:20px"><col><col><col><col style="width:22px"></colgroup>
+                        <thead><tr><th>#</th><th>Ct</th><th>Rate</th><th>NER</th><th></th></tr></thead>
+                        <tbody id="rFcBody"><tr><td colspan="5" style="text-align:center;color:var(--text2);padding:10px;font-style:italic">Select a plan</td></tr></tbody>
+                        <tfoot><tr><td>&#8709;</td><td id="rFcTotCt">&mdash;</td><td id="rFcTotRate">&mdash;</td><td id="rFcTotNer" class="tner">&mdash;</td><td></td></tr></tfoot>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div><!-- /tier-inner renewals -->
+
+              <div class="tier-divider"></div>
+
+              <!-- NEW LEASES -->
+              <div class="tier-inner">
+                <div class="tier-sec-hdr">
+                  <span style="color:var(--accent-green);font-weight:700;font-size:.75rem">&#9654; New Leases</span>
+                </div>
+                <div class="tcols">
+                  <!-- Budget -->
+                  <div class="tc-budget">
+                    <div class="tc-hdr bgt">Budgeted Tiers</div>
+                    <div class="tier-scroll">
+                      <table class="ttbl">
+                        <colgroup><col style="width:20px"><col><col><col></colgroup>
+                        <thead><tr><th>#</th><th>Ct</th><th>Rate</th><th>NER</th></tr></thead>
+                        <tbody id="nBudBody"><tr><td colspan="4" style="text-align:center;color:var(--text2);padding:10px;font-style:italic">Select a floorplan</td></tr></tbody>
+                        <tfoot><tr><td>&#8709;</td><td id="nBudTotCt">&mdash;</td><td id="nBudTotRate">&mdash;</td><td id="nBudTotNer" class="tner">&mdash;</td></tr></tfoot>
+                      </table>
+                    </div>
+                  </div>
+                  <!-- Actuals -->
+                  <div class="tc-actuals">
+                    <div class="tc-hdr act">Actuals YTD</div>
+                    <div class="tier-scroll">
+                      <table class="ttbl">
+                        <colgroup><col style="width:20px"><col><col><col></colgroup>
+                        <thead><tr><th>#</th><th>Ct</th><th>Rate</th><th>NER</th></tr></thead>
+                        <tbody id="nActBody"><tr><td colspan="4" style="text-align:center;color:var(--text2);padding:10px;font-style:italic">Select a floorplan</td></tr></tbody>
+                        <tfoot><tr><td>&#8709;</td><td id="nActTotCt">&mdash;</td><td id="nActTotRate">&mdash;</td><td id="nActTotNer" class="tner">&mdash;</td></tr></tfoot>
+                      </table>
+                    </div>
+                  </div>
+                  <!-- Reforecast -->
+                  <div class="tc-forecast">
+                    <div class="tc-hdr fct" style="color:var(--accent-green)">
+                      New Lease Reforecast <span class="edit-badge">Editable</span>
+                      <div class="fct-btns"><button class="btn-xs add" onclick="addTier('NEW')">&#65291; Add</button></div>
+                    </div>
+                    <div class="tier-scroll">
+                      <table class="ttbl">
+                        <colgroup><col style="width:20px"><col><col><col><col style="width:22px"></colgroup>
+                        <thead><tr><th>#</th><th>Ct</th><th>Rate</th><th>NER</th><th></th></tr></thead>
+                        <tbody id="nFcBody"><tr><td colspan="5" style="text-align:center;color:var(--text2);padding:10px;font-style:italic">Select a plan</td></tr></tbody>
+                        <tfoot><tr><td>&#8709;</td><td id="nFcTotCt">&mdash;</td><td id="nFcTotRate">&mdash;</td><td id="nFcTotNer" class="tner">&mdash;</td><td></td></tr></tfoot>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div><!-- /tier-inner new leases -->
+
+            </div><!-- /tier-row -->
+          </div><!-- /coll-sec-body -->
+        </div><!-- /tier coll-sec -->
+
+        <!-- BOTTOM ROW: Comps + Stakeholder -->
+        <div class="coll-sec coll-sec-bottom">
+          <div class="coll-sec-hdr" onclick="toggleCollSec(this)">
+            <span class="coll-sec-title">&#128202; Market Comps &amp; Stakeholder Summary</span>
+            <span style="font-size:.7rem;color:var(--text2);margin-right:8px" id="compsSummaryLbl"></span>
+            <span class="coll-sec-chev">&#9660;</span>
+          </div>
+          <div class="coll-sec-body">
+            <div class="bottom-row">
+
+              <!-- MARKET COMPS -->
+              <div class="comps-sec">
+                <div class="comps-hdr">
+                  <span class="comps-hdr-t">Comps &mdash; <strong style="color:var(--accent-cyan)" id="compsFpName">&mdash;</strong></span>
+                  <span class="ctype-pill" id="compsTypePill">&mdash;</span>
+                  <span style="font-size:.7rem;color:var(--text2)" id="compsCntLbl"></span>
+                </div>
+                <div class="comps-body">
+                  <div class="comps-scroll">
+                    <table class="ctbl">
+                      <colgroup><col style="width:32%"><col style="width:26%"><col style="width:16%"><col style="width:12%"><col style="width:14%"></colgroup>
+                      <thead>
+                        <tr>
+                          <th>Competitor</th>
+                          <th>Floorplan</th>
+                          <th class="r">NER</th>
+                          <th class="c">Sold</th>
+                          <th class="c">Incl</th>
+                        </tr>
+                      </thead>
+                      <tbody id="compsTbody">
+                        <tr><td colspan="5" style="text-align:center;color:var(--text2);padding:14px;font-style:italic">Select a floorplan</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <table class="ctbl cfooter">
+                    <colgroup><col style="width:32%"><col style="width:26%"><col style="width:16%"><col style="width:12%"><col style="width:14%"></colgroup>
+                    <tbody>
+                      <tr>
+                        <td colspan="2" style="text-align:right;color:var(--text2);font-weight:400">All Competitors</td>
+                        <td class="r" id="cAllNer">&mdash;</td>
+                        <td class="c" style="color:var(--accent-red)" id="cSoldCnt">&mdash;</td>
+                        <td class="c" id="cAllCnt">&mdash;</td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" style="text-align:right;color:var(--text2);font-weight:400">Leasing Comps</td>
+                        <td class="r" id="cLcNer">&mdash;</td>
+                        <td class="c">&mdash;</td>
+                        <td class="c" style="color:var(--accent-cyan)" id="cLcCnt">&mdash;</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div><!-- /comps-sec -->
+
+              <!-- STAKEHOLDER PANEL -->
+              <div class="stkh-sec" id="stkhSec">
+                <div class="stkh-hdr">
+                  <span class="stkh-title">&#128221; Stakeholder Summary Builder</span>
+                  <div style="display:flex;gap:4px;margin-left:auto;margin-right:8px;align-items:center">
+                    <button class="btn-xs save stkh-tab" id="tabSummary" onclick="switchStkhTab('summary')">&#128221; Summary</button>
+                    <button class="btn-xs save stkh-tab active-tab" id="tabTrend" onclick="switchStkhTab('trend')">&#128200; Leasing Trend</button>
+                    <button class="btn-xs save stkh-tab" id="tabRate" onclick="switchStkhTab('rate')">&#128178; Rate Trends</button>
+                    <button class="stkh-focus-btn" id="focusBtn" onclick="toggleChartFocus()">&#9974; Focus</button>
+                  </div>
+                </div>
+
+                <!-- VIEW 1: Summary Builder -->
+                <div class="stkh-body" id="viewSummary" style="display:none">
+                  <div class="stkh-controls">
+                    <label class="stkh-ctrl-lbl"><input type="checkbox" id="incProp" checked> Property KPIs</label>
+                    <label class="stkh-ctrl-lbl"><input type="checkbox" id="incTiers" checked> Reforecast Tiers</label>
+                    <label class="stkh-ctrl-lbl"><input type="checkbox" id="incComps" checked> Market Comps</label>
+                    <label class="stkh-ctrl-lbl"><input type="checkbox" id="incLTB" checked> Left to Budget</label>
+                  </div>
+                  <div class="stkh-ta-wrap">
+                    <textarea class="stkh-ta" id="stkTA" placeholder="Click Build to generate a copy-paste stakeholder summary for the selected floorplan..."></textarea>
+                    <div class="stkh-actions">
+                      <button class="btn btn-p" style="font-size:.8rem" onclick="buildAndCopyStkMsg()">&#128203; Copy to Clipboard</button>
+                      <button class="btn btn-g" style="font-size:.8rem" onclick="document.getElementById('stkTA').value=''">Clear</button>
+                      <span class="stkh-note" id="cpyNote"></span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- VIEW 2: Leasing Trend chart -->
+                <div class="stkh-body" id="viewTrend" style="padding:12px 16px 8px">
+                  <div style="font-size:.7rem;color:var(--text2);margin-bottom:6px">Leases per week &mdash; floorplan level</div>
+                  <div class="trend-legend" style="margin-bottom:6px">
+                    <span class="tleg-item"><span class="tleg-dot" style="background:var(--accent-green)"></span>CY Actuals (<span id="trendCyLbl">—</span>)</span>
+                    <span class="tleg-item"><span class="tleg-dot" style="background:var(--accent-gold)"></span>PY1 Actuals (<span id="trendPy1Lbl">—</span>)</span>
+                    <span class="tleg-item"><span class="tleg-dot" style="background:rgba(100,181,246,.8);border-radius:0;height:3px;margin-bottom:2px"></span>Budget</span>
+                    <span style="font-size:.65rem;color:var(--text2);margin-left:auto;padding-right:4px">&#9655; now = dashed line</span>
+                  </div>
+                  <div class="chart-wrap" style="height:280px;overflow:hidden">
+                    <svg id="trendSvg" viewBox="0 0 560 180" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block">
+                      <text x="280" y="100" text-anchor="middle" font-size="11" fill="rgba(148,163,184,.4)">Select a floorplan</text>
+                    </svg>
+                  </div>
+                </div>
+
+                <!-- VIEW 3: Rate Trends chart -->
+                <div class="stkh-body" id="viewRate" style="padding:12px 16px 8px;display:none">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                    <span style="font-size:.7rem;color:var(--text2)">NER by tier &mdash; <strong style="color:var(--accent-cyan)" id="rateFpLbl">&mdash;</strong></span>
+                    <span style="font-size:.62rem;opacity:.6">(dot = bed count)</span>
+                    <div style="margin-left:auto;display:flex;gap:4px">
+                      <button id="rateToggleRen" class="btn-xs" onclick="setRateType('RENEWAL')" style="background:rgba(251,146,60,.2);border:1px solid rgba(251,146,60,.5);color:#fb923c;font-size:.68rem;padding:2px 8px;border-radius:4px">Renewals</button>
+                      <button id="rateToggleNew" class="btn-xs" onclick="setRateType('NEW')" style="background:transparent;border:1px solid rgba(255,255,255,.2);color:var(--text2);font-size:.68rem;padding:2px 8px;border-radius:4px">New Leases</button>
+                    </div>
+                  </div>
+                  <div class="trend-legend">
+                    <span class="tleg-item"><span class="tleg-dot" style="background:var(--accent-green)"></span>Actuals YTD</span>
+                    <span class="tleg-item"><span class="tleg-dot" style="background:var(--accent-gold)"></span>Reforecast</span>
+                    <span class="tleg-item"><span style="width:10px;height:10px;border-radius:50%;border:2px solid var(--accent-blue);display:inline-block"></span>&nbsp;Budget (float)</span>
+                  </div>
+                  <div class="chart-wrap" style="height:280px;overflow:hidden">
+                    <svg id="rateSvg" viewBox="0 0 580 189" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block">
+                      <text x="290" y="110" text-anchor="middle" font-size="11" fill="rgba(148,163,184,.4)">Select a floorplan and plan</text>
+                    </svg>
+                  </div>
+                  <div style="display:flex;gap:16px;margin-top:4px;padding-left:50px" id="rateAvgRow"></div>
+                </div>
+
+              </div><!-- /stkh-sec -->
+
+            </div><!-- /bottom-row -->
+          </div><!-- /coll-sec-body -->
+        </div><!-- /bottom coll-sec -->
+
+      </div><!-- /scroll -->
+    </div><!-- /mcontent -->
+  </div><!-- /rfs2-body -->
+</div><!-- /rfs2 -->
+
+<!-- PRE-APPROVAL WARNING MODAL (item 5) -->
+<div class="modal-overlay" id="approvalModal" style="display:none" onclick="if(event.target===this)_closeApprovalModal()">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      &#9888; Pre-Approval Check
+      <button class="modal-close" onclick="_closeApprovalModal()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-intro">The following issues were found. Review before approving, or click Approve Anyway to proceed.</p>
+      <ul id="approvalWarningList"></ul>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-g" onclick="_closeApprovalModal()">Cancel</button>
+      <button class="btn" style="background:rgba(74,222,128,.12);color:var(--accent-green);border:1px solid rgba(74,222,128,.3)" onclick="_confirmApprove()">Approve Anyway</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// =============================================================
+//  RFS 2.0 — JavaScript
+// =============================================================
+const _$ = id => document.getElementById(id);
+
+// ── App state ─────────────────────────────────────────────────
+let _ay      = {{ current_ay }};
+let _prop    = null, _propName = '';
+let _fp      = null, _fpName = '', _fpCode = '', _compType = '';
+let _fk      = null;
+let _plans   = [];
+let _summ    = {};
+
+// ── Formatters ────────────────────────────────────────────────
+const _fc  = v => (v == null || v === '') ? '\u2014' : '$' + Number(v).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+const _fp2 = v => (v == null || v === '') ? '\u2014' : Number(v).toFixed(1) + '%';
+const _fn  = v => (v == null || v === '') ? '\u2014' : Math.round(Number(v)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+function _esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _esc2(s) { return String(s || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+// ── HTTP helpers ──────────────────────────────────────────────
+async function _get(url) {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) { console.error('RFS2 GET', url, r.status); return null; }
+    return r.json();
+  } catch(e) { console.error('RFS2 GET', url, e); return null; }
+}
+async function _post(url, body) {
+  try {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { console.error('RFS2 POST', url, r.status); return null; }
+    return r.json();
+  } catch(e) { console.error('RFS2 POST', url, e); return null; }
+}
+
+// ── Flash indicator ───────────────────────────────────────────
+function flash() {
+  const d = _$('saveFlash');
+  d.classList.add('on');
+  setTimeout(() => d.classList.remove('on'), 1500);
+}
+
+// ── Collapsibles ──────────────────────────────────────────────
+function toggleSC(hdr) {
+  const body = hdr.nextElementSibling;
+  const chev = hdr.querySelector('.sc-chev');
+  body.classList.toggle('collapsed');
+  chev.classList.toggle('c');
+}
+function toggleCollSec(hdr) {
+  const body = hdr.nextElementSibling;
+  const chev = hdr.querySelector('.coll-sec-chev');
+  body.classList.toggle('collapsed');
+  chev.classList.toggle('c');
+}
+
+// ── Tier section 3-state expand ───────────────────────────────
+// states: 'default' → 'expanded' → 'collapsed' → 'default' ...
+// collapsed here means the scroll area is hidden via the normal coll-sec toggle
+let _tierState = 'default'; // 'default' | 'expanded'
+function cycleTierExpand() {
+  _tierState = _tierState === 'default' ? 'expanded' : 'default';
+  _applyTierState();
+}
+function _applyTierState() {
+  const scrolls = document.querySelectorAll('.tier-scroll');
+  const btn = _$('tierExpandBtn');
+  if (_tierState === 'expanded') {
+    scrolls.forEach(s => s.classList.add('tier-expanded'));
+    if (btn) { btn.textContent = '\u25a3 Collapse'; btn.style.color = 'var(--accent-cyan)'; btn.style.borderColor = 'var(--accent-cyan)'; }
+  } else {
+    scrolls.forEach(s => s.classList.remove('tier-expanded'));
+    if (btn) { btn.textContent = '\u25a3 Expand'; btn.style.color = ''; btn.style.borderColor = ''; }
+  }
+}
+function resetTierToDefault() {
+  _tierState = 'default';
+  _applyTierState();
+  // Also ensure section is not collapsed
+  const sec = _$('tierSec');
+  if (sec) {
+    const body = sec.querySelector('.coll-sec-body');
+    const chev = sec.querySelector('.coll-sec-chev');
+    if (body) body.classList.remove('collapsed');
+    if (chev) chev.classList.remove('c');
+  }
+}
+
+// ── Plan dropdown ─────────────────────────────────────────────
+function togglePlanMenu() { _$('planMenu').classList.toggle('open'); }
+document.addEventListener('click', e => {
+  if (!e.target.closest('#planWrap')) _$('planMenu')?.classList.remove('open');
+  if (!e.target.closest('#propWrap')) _$('propMenu')?.classList.remove('open');
+  if (!e.target.closest('#fpWrap'))   _$('fpMenu')?.classList.remove('open');
+});
+
+function renderPlanMenu() {
+  const active   = _plans.filter(p => !p.archived);
+  const archived = _plans.filter(p =>  p.archived);
+  let html = '';
+  // Group active plans by AY; current AY first
+  const ayGroups = {};
+  active.forEach(p => { (ayGroups[p.ay] = ayGroups[p.ay] || []).push(p); });
+  const sortedAys = Object.keys(ayGroups).map(Number).sort((a,b) => b - a);
+  sortedAys.forEach((ay, gi) => {
+    if (gi > 0) html += `<div class="plan-divider"></div><div class="plan-arch-hdr">AY ${ay}</div>`;
+    ayGroups[ay].forEach(p => {
+      const cls = p.key === _fk ? 'plan-item active' : 'plan-item';
+      const ayBadge = ay !== _ay ? ` <span style="font-size:.68rem;opacity:.6;margin-left:4px">AY${ay}</span>` : '';
+      html += `<div class="${cls}" onclick="selectPlan(${p.key})">
+        <span class="plan-name">${_esc(p.name)}${p.approved ? ' \u2713' : ''}${ayBadge}</span>
+        <button class="plan-arch-btn" onclick="event.stopPropagation();archivePlan(${p.key})" title="Archive">\u2715</button>
+      </div>`;
+    });
+  });
+  if (archived.length) {
+    html += '<div class="plan-divider"></div><div class="plan-arch-hdr">Archived</div>';
+    archived.forEach(p => {
+      const ayBadge = p.ay !== _ay ? ` <span style="font-size:.68rem;opacity:.6;margin-left:4px">AY${p.ay}</span>` : '';
+      html += `<div class="plan-item archived" onclick="selectPlan(${p.key})">
+        <span class="plan-name">${_esc(p.name)}${ayBadge}</span>
+        <button class="plan-revive-btn" onclick="event.stopPropagation();revivePlan(${p.key})" title="Revive">\u271a</button>
+      </div>`;
+    });
+  }
+  if (!html) html = '<div style="padding:8px 10px;font-size:.72rem;color:var(--text2)">No plans \u2014 click New Plan</div>';
+  _$('planMenu').innerHTML = html;
+}
+
+function updatePlanLabel() {
+  const p = _plans.find(x => x.key === _fk);
+  _$('planTriggerLbl').textContent = p ? p.name : '\u2014 no plan \u2014';
+  const btn = _$('apprBtn');
+  if (p?.approved) { btn.innerHTML = '\u2713 Approved'; btn.classList.add('on'); }
+  else             { btn.innerHTML = '\u25cb Pending';  btn.classList.remove('on'); }
+  const inp = _$('plannedInp');
+  if (inp && p) inp.value = p.plannedUse != null ? p.plannedUse : '';
+}
+
+async function selectPlan(key) {
+  _fk = key;
+  _fpPuCache = {};  // clear cache — different plan, fresh inducement data
+  await loadAllFpInducements();
+  updatePlanLabel(); renderPlanMenu();
+  _$('planMenu').classList.remove('open');
+  if (_fp) { await loadFpInducement(); await loadTierData(); }
+}
+async function archivePlan(key) {
+  if (!confirm('Archive this plan?')) return;
+  await _post('/rfs2/api/forecasts/archive', { forecast_key: key });
+  await loadForecasts();
+  if (_fp) loadTierData();
+}
+async function revivePlan(key) {
+  await _post('/rfs2/api/forecasts/revive', { forecast_key: key });
+  await loadForecasts();
+}
+
+// ── Properties ────────────────────────────────────────────────
+let _propData = [];
+function togglePropMenu() {
+  _$('propMenu').classList.toggle('open');
+}
+async function loadProperties() {
+  const data = await _get('/rfs2/api/properties');
+  if (!data) return;
+  _propData = data;
+  // Populate hidden select for legacy compat
+  const sel = _$('propSel');
+  sel.innerHTML = '<option value="">\u2014 select property \u2014</option>';
+  data.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.PROPERTY_KEY;
+    o.textContent = p.PROPERTY_NAME;
+    sel.appendChild(o);
+  });
+  // Build custom menu with styled bed count
+  const menu = _$('propMenu');
+  menu.innerHTML = data.map(p =>
+    `<div class="prop-menu-item" data-key="${p.PROPERTY_KEY}" onclick="selectPropFromMenu(${p.PROPERTY_KEY})">` +
+    `<span class="pmi-name">${_esc(p.PROPERTY_NAME)}</span>` +
+    (p.BED_COUNT_COMPILED ? `<span class="pmi-beds">${p.BED_COUNT_COMPILED}bd</span>` : '') +
+    `</div>`
+  ).join('');
+  _$('propTriggerLbl').textContent = '\u2014 select property \u2014';
+  if (_$('propTriggerBeds')) _$('propTriggerBeds').textContent = '';
+}
+function selectPropFromMenu(key) {
+  const p = _propData.find(x => x.PROPERTY_KEY === key);
+  if (!p) return;
+  _$('propTriggerLbl').textContent = p.PROPERTY_NAME;
+  _$('propTriggerBeds').textContent = p.BED_COUNT_COMPILED ? p.BED_COUNT_COMPILED + 'bd' : '';
+  document.querySelectorAll('.prop-menu-item').forEach(el => el.classList.remove('active'));
+  _$('propMenu').querySelector(`[data-key="${key}"]`)?.classList.add('active');
+  _$('propMenu').classList.remove('open');
+  _prop = key; _propName = p.PROPERTY_NAME;
+  _fp = null; _fk = null; _fpName = ''; _fpCode = ''; _compType = '';
+  _fpPuCache = {};  // new property — clear all cached FP inducements
+  _$('planTriggerLbl').textContent = '\u2014 select plan \u2014';
+  resetTierToDefault();
+  resetKpis();
+  Promise.all([loadForecasts(), loadFloorplans()]).then(async () => { await loadAllFpInducements(); loadLeasingTrend(); });
+}
+async function onPropChange() {
+  const sel = _$('propSel');
+  _prop = sel.value ? +sel.value : null;
+  _propName = sel.options[sel.selectedIndex]?.text || '';
+  _fp = null; _fk = null; _fpName = ''; _fpCode = ''; _compType = '';
+  _fpPuCache = {};  // new property — clear all cached FP inducements
+  _$('planTriggerLbl').textContent = '\u2014 select plan \u2014';
+  resetTierToDefault();
+  resetKpis();
+  if (!_prop) return;
+  await Promise.all([loadForecasts(), loadFloorplans()]);
+  await loadAllFpInducements();
+  loadLeasingTrend();
+}
+async function onAyChange() {
+  _ay = +_$('aySel').value;
+  if (_prop) { await Promise.all([loadForecasts(), loadFloorplans()]); loadLeasingTrend(); }
+}
+
+// ── Forecasts ─────────────────────────────────────────────────
+async function loadForecasts() {
+  // Load ALL AYs so plans from prior years (e.g. AY=2025) remain visible
+  const data = await _get(`/rfs2/api/forecasts?property_key=${_prop}`);
+  if (!data) return;
+  _plans = data.map(f => ({
+    key: f.FORECAST_KEY, name: f.FORECAST_NAME, ay: f.AY,
+    archived: !!f.FLAG_ARCHIVED, approved: !!f.FLAG_APPROVED,
+    plannedUse: f.INDUCEMENT_PLANNED_USE ?? 0
+  }));
+  if (!_fk || !_plans.find(p => p.key === _fk)) {
+    // Prefer a non-archived plan matching the current AY
+    _fk = _plans.find(p => !p.archived && p.ay === _ay)?.key
+       ?? _plans.find(p => !p.archived)?.key
+       ?? (_plans[0]?.key ?? null);
+  }
+  renderPlanMenu(); updatePlanLabel();
+  // Bulk-load all FP inducements for the selected forecast so property w/plan stays stable
+  await loadAllFpInducements();
+  // If a FP is already selected, refresh its displayed value from cache
+  if (_fp) { await loadFpInducement(); }
+}
+
+// ── Floorplans ────────────────────────────────────────────────
+let _fpData = []; // cache for dropdown
+async function loadFloorplans() {
+  const data = await _get(`/rfs2/api/floorplans?property_key=${_prop}`);
+  _fpData = data || [];
+  const sel = _$('fpSel');
+  const menu = _$('fpMenu');
+  const list = _$('fpList'); // hidden compat element
+  if (!_fpData.length) {
+    _$('fpTriggerLbl').textContent = 'No floorplans found';
+    _$('fpTriggerBeds').textContent = '';
+    if (sel) sel.innerHTML = '<option value="">No floorplans found</option>';
+    if (menu) menu.innerHTML = '';
+    if (list) list.innerHTML = '';
+    return;
+  }
+  const total = _fpData.reduce((s, f) => s + (f.BEDS || 0), 0);
+  _$('lpFpBeds').textContent = total + ' beds';
+  // Build custom menu
+  if (menu) menu.innerHTML = _fpData.map(f =>
+    `<div class="prop-menu-item" onclick="selectFpFromMenu(${f.FLOORPLAN_KEY})">
+       <span class="pmi-name">${_esc(f.FLOORPLAN)}</span>
+       <span class="pmi-beds">${f.BEDS}bd</span>
+     </div>`
+  ).join('');
+  // Sync hidden native select
+  if (sel) sel.innerHTML = '<option value="">— select floorplan —</option>' +
+    _fpData.map(f =>
+      `<option value="${f.FLOORPLAN_KEY}" data-ct="${_esc2(f.COMPARE_AS_FLOORPLAN_TYPE||'')}" data-code="${_esc2(f.FLOORPLAN_CODE||f.FLOORPLAN)}">${f.FLOORPLAN} \u00b7 ${f.BEDS}bd</option>`
+    ).join('');
+  // Also build hidden fpList for any legacy code that relies on it
+  if (list) list.innerHTML = _fpData.map(f =>
+    `<div class="fpi" id="fpi${f.FLOORPLAN_KEY}"
+          onclick="selectFloorplan(${f.FLOORPLAN_KEY},'${_esc2(f.FLOORPLAN)}','${_esc2(f.FLOORPLAN_CODE||f.FLOORPLAN)}','${_esc2(f.COMPARE_AS_FLOORPLAN_TYPE||'')}')">
+       <span class="fpi-name">${_esc(f.FLOORPLAN)}</span><span class="fpi-beds">${f.BEDS}bd</span>
+     </div>`
+  ).join('');
+  // Reset trigger to prompt
+  _$('fpTriggerLbl').textContent = '\u2014 select floorplan \u2014';
+  _$('fpTriggerBeds').textContent = '';
+  // Re-select if a floorplan was already active
+  if (_fp) {
+    const f = _fpData.find(x => x.FLOORPLAN_KEY === _fp);
+    if (f) {
+      _$('fpTriggerLbl').textContent = f.FLOORPLAN;
+      _$('fpTriggerBeds').textContent = f.BEDS ? f.BEDS + 'bd' : '';
+      _$('fpMenu')?.querySelectorAll('.prop-menu-item').forEach((el, i) => el.classList.toggle('active', _fpData[i]?.FLOORPLAN_KEY === _fp));
+      if (sel) sel.value = _fp;
+    }
+  }
+}
+function toggleFpMenu() { _$('fpMenu').classList.toggle('open'); }
+function selectFpFromMenu(key) {
+  const f = _fpData.find(x => x.FLOORPLAN_KEY === key);
+  if (!f) return;
+  _$('fpTriggerLbl').textContent = f.FLOORPLAN;
+  _$('fpTriggerBeds').textContent = f.BEDS ? f.BEDS + 'bd' : '';
+  _$('fpMenu').querySelectorAll('.prop-menu-item').forEach(el => el.classList.remove('active'));
+  event.currentTarget?.classList.add('active');
+  _$('fpMenu').classList.remove('open');
+  const sel = _$('fpSel'); if (sel) sel.value = key;
+  selectFloorplan(key, f.FLOORPLAN, f.FLOORPLAN_CODE || f.FLOORPLAN, f.COMPARE_AS_FLOORPLAN_TYPE || '');
+}
+async function onFpSelChange() {
+  const sel = _$('fpSel');
+  if (!sel.value) return;
+  const key  = +sel.value;
+  const f    = _fpData.find(x => x.FLOORPLAN_KEY === key);
+  if (!f) return;
+  await selectFloorplan(key, f.FLOORPLAN, f.FLOORPLAN_CODE || f.FLOORPLAN, f.COMPARE_AS_FLOORPLAN_TYPE || '');
+}
+async function selectFloorplan(key, name, code, ct) {
+  _fp = key; _fpName = name; _fpCode = code; _compType = ct;
+  document.querySelectorAll('.fpi').forEach(e => e.classList.remove('active'));
+  _$('fpi' + key)?.classList.add('active');
+  // Sync custom dropdown trigger
+  _$('fpTriggerLbl').textContent = name;
+  const fObj = _fpData.find(x => x.FLOORPLAN_KEY === key);
+  _$('fpTriggerBeds').textContent = fObj?.BEDS ? fObj.BEDS + 'bd' : '';
+  // Sync hidden native select
+  const sel = _$('fpSel'); if (sel) sel.value = key;
+  _$('ssName').textContent      = ct ? ct + ' type' : '';
+  _$('ssLtbFpName').textContent = name;
+  _$('ssSub').textContent       = 'Floorplan \u00b7 ' + (ct || '\u2014') + ' type';
+  if (_$('rateFpLbl')) _$('rateFpLbl').textContent  = name;
+  _$('compsFpName').textContent = name;
+  await loadFpInducement();
+  await loadTierData();
+}
+
+// ── Master data loader ────────────────────────────────────────
+async function loadTierData() {
+  if (!_fp) return;
+  const base = `property_key=${_prop}&floorplan_key=${_fp}&ay=${_ay}`;
+  const fkStr = _fk ? '&forecast_key=' + _fk : '';
+  const [budR, budN, actR, actN, fcR, fcN, summ, ltb, comps] = await Promise.all([
+    _get(`/rfs2/api/budget-tiers?${base}&lease_type=RENEWAL`),
+    _get(`/rfs2/api/budget-tiers?${base}&lease_type=NEW`),
+    _get(`/rfs2/api/actuals?${base}&lease_type=RENEWAL`),
+    _get(`/rfs2/api/actuals?${base}&lease_type=NEW`),
+    _fk ? _get(`/rfs2/api/forecast-tiers?forecast_key=${_fk}&floorplan_key=${_fp}&lease_type=RENEWAL`) : Promise.resolve([]),
+    _fk ? _get(`/rfs2/api/forecast-tiers?forecast_key=${_fk}&floorplan_key=${_fp}&lease_type=NEW`)     : Promise.resolve([]),
+    _get(`/rfs2/api/property-summary?${base}${fkStr}`),
+    _get(`/rfs2/api/left-to-budget?${base}${fkStr}`),
+    _fk ? _get(`/rfs2/api/comps?forecast_key=${_fk}&property_key=${_prop}&compare_type=${encodeURIComponent(_compType)}`) : Promise.resolve([]),
+  ]);
+  if (budR)  renderBudget('r', budR);
+  if (budN)  renderBudget('n', budN);
+  if (actR)  renderActuals('r', actR);
+  if (actN)  renderActuals('n', actN);
+  if (fcR)   renderForecast('r', fcR);
+  if (fcN)   renderForecast('n', fcN);
+  if (summ)  { _summ = summ; renderSummary(summ); _recalcAll(); }
+  if (ltb)   renderLtb(ltb);
+  if (comps) renderComps(comps);
+  if (_fk)   { loadRateTrends(); }
+  loadLeasingTrend();
+}
+
+// ── Budget tiers ──────────────────────────────────────────────
+function renderBudget(side, rows) {
+  const tbody = _$(side + 'BudBody');
+  if (!rows || !rows.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text2);padding:8px;font-style:italic">No budget tiers</td></tr>';
+    _$(side+'BudTotCt').textContent = _$(side+'BudTotRate').textContent = _$(side+'BudTotNer').textContent = '\u2014';
+    return;
+  }
+  let ct = 0, rExt = 0, nExt = 0;
+  tbody.innerHTML = rows.map((r, i) => {
+    ct += r.BEDS || 0;
+    rExt += (r.RATE || 0) * (r.BEDS || 0);
+    nExt += (r.RATE || 0) * (r.BEDS || 0);
+    return `<tr><td>${i+1}</td><td>${_fn(r.BEDS)}</td><td>${_fc(r.RATE)}</td><td class="tner">${_fc(r.RATE)}</td></tr>`;
+  }).join('');
+  _$(side+'BudTotCt').textContent   = _fn(ct);
+  _$(side+'BudTotRate').textContent = _fc(ct ? rExt / ct : 0);
+  _$(side+'BudTotNer').textContent  = _fc(ct ? nExt / ct : 0);
+}
+
+// ── Actuals ───────────────────────────────────────────────────
+function renderActuals(side, data) {
+  const tbody = _$(side + 'ActBody');
+  const rent = data?.rent || [], ner = data?.ner || [];
+  const maxLen = Math.max(rent.length, ner.length);
+  if (!maxLen) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text2);padding:8px;font-style:italic">No actuals</td></tr>';
+    _$(side+'ActTotCt').textContent = _$(side+'ActTotRate').textContent = _$(side+'ActTotNer').textContent = '\u2014';
+    return;
+  }
+  let ct = 0, rExt = 0, nExt = 0;
+  const rows = [];
+  for (let i = 0; i < maxLen; i++) {
+    const r = rent[i] || {}, n = ner[i] || {};
+    const c    = r.LEASED_COUNT_RENT || n.LEASED_COUNT_NER || 0;
+    const rate = r.RENT_PER_SPACE || 0;
+    const nerv = n.NER_PER_SPACE  || 0;
+    ct += c; rExt += rate * c; nExt += nerv * c;
+    rows.push(`<tr><td>T${i+1}</td><td>${_fn(c)}</td><td>${_fc(rate)}</td><td class="tner">${_fc(nerv)}</td></tr>`);
+  }
+  tbody.innerHTML = rows.join('');
+  _$(side+'ActTotCt').textContent   = _fn(ct);
+  _$(side+'ActTotRate').textContent = _fc(ct ? rExt / ct : 0);
+  _$(side+'ActTotNer').textContent  = _fc(ct ? nExt / ct : 0);
+}
+
+// ── Forecast tiers (editable) ────────────────────────────────
+function renderForecast(side, rows) {
+  const lt    = side === 'r' ? 'RENEWAL' : 'NEW';
+  const tbody = _$(side + 'FcBody');
+  if (!rows || !rows.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:10px;font-style:italic">${_fk ? 'No tiers \u2014 click + Add' : 'Select a plan'}</td></tr>`;
+    _$(side+'FcTotCt').textContent = _$(side+'FcTotRate').textContent = _$(side+'FcTotNer').textContent = '\u2014';
+    return;
+  }
+  let ct = 0, rExt = 0, nExt = 0;
+  tbody.innerHTML = rows.map((r, i) => {
+    ct   += r.LEASE_COUNT   || 0;
+    rExt += r.RATE_EXTENDED || 0;
+    nExt += r.NER_EXTENDED  || 0;
+    return `<tr data-tk="${r.FORECAST_TIERS_KEY}" data-lt="${lt}">
+      <td>${i+1}</td>
+      <td><input class="tinp" type="number" min="0" value="${r.LEASE_COUNT || 0}"
+          onblur="saveTier(${r.FORECAST_TIERS_KEY},'${lt}')" data-f="ct"></td>
+      <td><input class="tinp" type="number" min="0" step="0.01" value="${(r.RATE || 0).toFixed(2)}"
+          onblur="saveTier(${r.FORECAST_TIERS_KEY},'${lt}')" data-f="rate"></td>
+      <td class="tner" id="nerCell${r.FORECAST_TIERS_KEY}">${_fc(r.NER)}</td>
+      <td><button class="btn-del" onclick="delTier(${r.FORECAST_TIERS_KEY},'${lt}')" title="Delete">\u00d7</button></td>
+    </tr>`;
+  }).join('');
+  _$(side+'FcTotCt').textContent   = _fn(ct);
+  _$(side+'FcTotRate').textContent = _fc(ct ? rExt / ct : 0);
+  _$(side+'FcTotNer').textContent  = _fc(ct ? nExt / ct : 0);
+}
+
+async function saveTier(tk, lt) {
+  const row = document.querySelector(`[data-tk="${tk}"]`);
+  if (!row) return;
+  const lc   = parseFloat(row.querySelector('[data-f="ct"]').value)   || 0;
+  const rate = parseFloat(row.querySelector('[data-f="rate"]').value) || 0;
+  const ord  = Array.from(row.parentNode.children).indexOf(row) + 1;
+  const res  = await _post('/rfs2/api/forecast-tiers/save', { forecast_tiers_key: tk, lease_count: lc, rate: rate, tier_order: ord });
+  if (res?.ok) {
+    _$('nerCell' + tk).textContent = _fc(res.ner);
+    flash();
+    loadRateTrends();
+  }
+}
+async function addTier(lt) {
+  if (!_fk || !_fp) return;
+  const side    = lt === 'RENEWAL' ? 'r' : 'n';
+  const rows    = document.querySelectorAll(`[data-lt="${lt}"]`);
+  const lastRate = rows.length ? (parseFloat(rows[rows.length-1].querySelector('[data-f="rate"]')?.value) || 0) : 0;
+  const res = await _post('/rfs2/api/forecast-tiers/add', {
+    forecast_key: _fk, floorplan_key: _fp, floorplan_code: _fpCode,
+    property_key: _prop, property_name: _propName,
+    lease_type: lt, rate: lastRate
+  });
+  if (res?.ok) {
+    const fc = await _get(`/rfs2/api/forecast-tiers?forecast_key=${_fk}&floorplan_key=${_fp}&lease_type=${lt}`);
+    if (fc) renderForecast(side, fc);
+  }
+}
+async function delTier(tk, lt) {
+  if (!confirm('Delete this tier?')) return;
+  const res = await _post('/rfs2/api/forecast-tiers/delete', { forecast_tiers_key: tk });
+  if (res?.ok) {
+    const side = lt === 'RENEWAL' ? 'r' : 'n';
+    const fc   = await _get(`/rfs2/api/forecast-tiers?forecast_key=${_fk}&floorplan_key=${_fp}&lease_type=${lt}`);
+    if (fc) renderForecast(side, fc);
+    loadRateTrends();
+  }
+}
+
+// ── Summary / KPI strip ───────────────────────────────────────
+function renderSummary(s) {
+  // Property-level KPIs (row 1)
+  const map = [
+    ['lpPrelB','budget_occ','p'],    ['lpPrelA','actual_prelease','p'],   ['lpPrelF','forecast_prelease','p'],
+    ['lpRateB','budget_avg_rate','c'],['lpRateA','actual_avg_rate','c'],  ['lpRateF','forecast_avg_rate','c'],
+    ['lpNerB','budget_ner','c'],     ['lpNerA','actual_ner','c'],         ['lpNerF','forecast_ner','c'],
+    ['ssPrelB','budget_occ','p'],    ['ssPrelA','actual_prelease','p'],   ['ssPrelF','forecast_prelease','p'],
+    ['ssRateB','budget_avg_rate','c'],['ssRateA','actual_avg_rate','c'],  ['ssRateF','forecast_avg_rate','c'],
+    ['ssNerB','budget_ner','c'],     ['ssNerA','actual_ner','c'],         ['ssNerF','forecast_ner','c'],
+  ];
+  map.forEach(([id, k, t]) => { const el = _$(id); if (el) el.textContent = t === 'p' ? _fp2(s[k]) : _fc(s[k]); });
+
+  // Floorplan-level KPIs (row 2) — computed from bud_r/n, act_r/n, fcd_r/n
+  const bud_r = s.bud_r || {}, bud_n = s.bud_n || {};
+  const act_r = s.act_r || {}, act_n = s.act_n || {};
+  const fcd_r = s.fcd_r || {}, fcd_n = s.fcd_n || {};
+  // FP beds from budget tiers (best proxy for prelease denominator)
+  const fp_beds = (bud_r.count || 0) + (bud_n.count || 0) || 1;
+  const bud_cnt = (bud_r.count || 0) + (bud_n.count || 0);
+  const act_cnt = (act_r.count || 0) + (act_n.count || 0);
+  const fcd_cnt = (fcd_r.count || 0) + (fcd_n.count || 0);
+  const bud_rate_ext = (bud_r.rate_ext || 0) + (bud_n.rate_ext || 0);
+  const act_rate_ext = (act_r.rent_ext || 0) + (act_n.rent_ext || 0);
+  const fcd_rate_ext = (fcd_r.rate_ext || 0) + (fcd_n.rate_ext || 0);
+  const bud_ner_ext  = (bud_r.rate_ext || 0) + (bud_n.rate_ext || 0); // budget NER = rate (no concessions)
+  const act_ner_ext  = (act_r.ner_ext  || 0) + (act_n.ner_ext  || 0);
+  const fcd_ner_ext  = (fcd_r.ner_ext  || 0) + (fcd_n.ner_ext  || 0);
+  const _pct = (n,d) => d > 0 ? _fp2(n/d*100) : '\u2014';
+  const _avg = (e,c) => c > 0 ? _fc(e/c) : '\u2014';
+  const _v   = (id, v) => { const el = _$(id); if (el) el.textContent = v; };
+  _v('fpPrelB', _pct(bud_cnt, fp_beds)); _v('fpPrelA', _pct(act_cnt, fp_beds)); _v('fpPrelF', _pct(fcd_cnt, fp_beds));
+  _v('fpRateB', _avg(bud_rate_ext, bud_cnt)); _v('fpRateA', _avg(act_rate_ext, act_cnt)); _v('fpRateF', _avg(fcd_rate_ext, fcd_cnt));
+  _v('fpNerB',  _avg(bud_ner_ext,  bud_cnt)); _v('fpNerA',  _avg(act_ner_ext,  act_cnt)); _v('fpNerF',  _avg(fcd_ner_ext,  fcd_cnt));
+
+  // Property sub-label (total beds)
+  const propSub = _$('propSub');
+  if (propSub && s.total_beds) propSub.textContent = s.total_beds + ' beds total';
+
+  _$('lpIndUsed').textContent  = _fc(s.inducement_used || 0);
+  _$('lpIndFc').textContent    = _fc(s.forecast_concession_ext || 0);
+  const tot = (s.inducement_used || 0) + (s.forecast_concession_ext || 0);
+  _$('lpIndTotal').textContent = _fc(tot);
+  _$('lpIndTot2').textContent  = _fc(tot);
+  const tc  = (s.act_r?.count || 0) + (s.act_n?.count || 0);
+  const tfc = (s.fc_r?.count  || 0) + (s.fc_n?.count  || 0);
+  _$('tierMeta').textContent = (s.total_beds || 0) + ' beds \u00b7 ' + tc + ' leased \u00b7 ' + Math.max(0,(s.total_beds||0)-tc-tfc) + ' remaining';
+
+  // ── Revenue vs Budget (item 2) ──────────────────────────────
+  const budget_rev   = s.budget_rev   || 0;
+  const forecast_rev = s.forecast_rev || 0;
+  const rev_var  = forecast_rev - budget_rev;
+  const rev_pct  = budget_rev > 0 ? rev_var / budget_rev * 100 : 0;
+  _v('ssRevB', _fc(budget_rev));
+  _v('ssRevF', _fc(forecast_rev));
+  const rvEl = _$('ssRevVar');
+  if (rvEl) {
+    const revSign = rev_var >= 0 ? '+' : '-';
+    const pctSign = rev_pct >= 0 ? '+' : '-';
+    rvEl.textContent = revSign + _fc(Math.abs(rev_var)) + ' / ' + pctSign + Math.abs(rev_pct).toFixed(1) + '%';
+    rvEl.style.color = rev_var >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+  }
+
+  // ── Variance attribution (item 3) ──────────────────────────
+  const bud_beds_total = s.bud_beds_total || 0;
+  const fc_beds_total  = s.fc_beds_total  || 0;
+  if (bud_beds_total > 0 || fc_beds_total > 0) {
+    const occ_driver  = (fc_beds_total - bud_beds_total) * (s.budget_avg_rate || 0);
+    const rate_driver = ((s.forecast_avg_rate || 0) - (s.budget_avg_rate || 0)) * fc_beds_total;
+    const varRow = _$('varAttrRow');
+    if (varRow) varRow.style.display = '';
+    const occEl = _$('ssVarOcc');
+    if (occEl) {
+      occEl.textContent = (occ_driver >= 0 ? '+' : '-') + _fc(Math.abs(occ_driver));
+      occEl.style.color = occ_driver >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+    }
+    const rateEl = _$('ssVarRate');
+    if (rateEl) {
+      rateEl.textContent = (rate_driver >= 0 ? '+' : '-') + _fc(Math.abs(rate_driver));
+      rateEl.style.color = rate_driver >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+    }
+  }
+
+  // ── Path to Budget strip (item 4) ───────────────────────────
+  const total_beds  = s.total_beds || 0;
+  const remaining   = total_beds - fc_beds_total;
+  const ptbEl = _$('ptbStrip');
+  if (ptbEl && total_beds > 0) {
+    ptbEl.style.display = '';
+    _v('ptbBeds', remaining + ' beds');
+    _v('ptbProjOcc',  _fp2(fc_beds_total / total_beds * 100));
+    _v('ptbProjRate', _fc(s.forecast_avg_rate || 0));
+    _v('ptbProjNer',  _fc(s.forecast_ner || 0));
+    const budget_ner_rev = (s.budget_ner || 0) * bud_beds_total;
+    const fc_ner_rev     = s.forecast_ner_rev || 0;
+    const ner_gap        = budget_ner_rev - fc_ner_rev;
+    const nerEl = _$('ptbNerNeeded');
+    if (nerEl) {
+      if (remaining > 0) {
+        nerEl.textContent = _fc(ner_gap / remaining);
+        nerEl.style.color = ner_gap > 0 ? 'var(--accent-gold)' : 'var(--accent-green)';
+      } else {
+        nerEl.textContent = remaining <= 0 ? 'N/A' : '\u2014';
+        nerEl.style.color = '';
+      }
+    }
+  }
+}
+function renderLtb(ltb) {
+  _$('ltbAct').textContent = _fn(ltb.actuals_total);
+  _$('ltbFc').textContent  = _fn(ltb.forecast_total);
+  const rem = ltb.left_to_budget;
+  _$('ltbRem').textContent    = (rem >= 0 ? '+' : '') + _fn(rem);
+  _$('ltbRem').style.color = rem < 0 ? 'var(--accent-red)' : rem === 0 ? 'var(--accent-gold)' : 'var(--accent-green)';
+}
+function resetKpis() {
+  ['lpPrelB','lpPrelA','lpPrelF','lpRateB','lpRateA','lpRateF','lpNerB','lpNerA','lpNerF',
+   'ssPrelB','ssPrelA','ssPrelF','ssRateB','ssRateA','ssRateF','ssNerB','ssNerA','ssNerF','ssNerPropAdj',
+   'fpPrelB','fpPrelA','fpPrelF','fpRateB','fpRateA','fpRateF','fpNerB','fpNerA','fpNerF','ssNerFpAdj',
+   'ltbAct','ltbFc','ltbRem','tierMeta',
+   'ssRevB','ssRevF','ssRevVar','ssVarOcc','ssVarRate',
+   'ptbBeds','ptbNerNeeded','ptbProjOcc','ptbProjRate','ptbProjNer',
+  ].forEach(id => { const el = _$(id); if (el) { el.textContent = '\u2014'; el.style.color = ''; } });
+  const fpi = _$('fpPuInp'); if (fpi) fpi.value = '';
+  const ppi = _$('propPuInp'); if (ppi) ppi.value = '';
+  _propPu = 0; _fpPu = 0;
+  if (_$('ssNerAdjRow')) _$('ssNerAdjRow').style.display = 'none';
+  if (_$('lpNerAdjRow')) _$('lpNerAdjRow').style.display = 'none';
+  const varRow = _$('varAttrRow'); if (varRow) varRow.style.display = 'none';
+  const ptbEl  = _$('ptbStrip');  if (ptbEl)  ptbEl.style.display  = 'none';
+}
+
+// ── Plan Use: shared helpers ─────────────────────────────────
+// _propPu = annual $ prop-level concession
+// _fpPu   = annual $ concession for the CURRENTLY selected FP
+// _fpPuCache = { floorplan_key: annual_val } — persists across FP switches for this property/plan
+let _propPu = 0, _fpPu = 0;
+let _fpPuCache = {};
+let _fpPuSaveTimer = null;
+
+// Bulk-load ALL FP inducements for the current forecast into _fpPuCache
+async function loadAllFpInducements() {
+  _fpPuCache = {};
+  if (!_fk) return;
+  const rows = await _get(`/rfs2/api/fp-inducements?forecast_key=${_fk}`);
+  if (rows) rows.forEach(r => { _fpPuCache[r.floorplan_key] = r.planned_use || 0; });
+}
+
+// Load FP inducement from cache (already fetched by loadAllFpInducements)
+// Falls back to DB if cache is empty (e.g. first load before bulk call completes)
+async function loadFpInducement() {
+  if (!_fk || !_fp) { _fpPu = 0; _applyFpPuInput(); return; }
+  if (_fpPuCache[_fp] !== undefined) {
+    _fpPu = _fpPuCache[_fp];
+  } else {
+    const d = await _get(`/rfs2/api/fp-inducement?forecast_key=${_fk}&floorplan_key=${_fp}`);
+    _fpPu = d?.planned_use || 0;
+    _fpPuCache[_fp] = _fpPu;
+  }
+  _applyFpPuInput();
+}
+
+// Reflect _fpPu into the input box
+function _applyFpPuInput() {
+  const el = _$('fpPuInp');
+  if (el) el.value = _fpPu || '';
+  _recalcAll();
+}
+
+// Called oninput on the FP input
+function calcFpPu(rawVal) {
+  _fpPu = parseFloat(rawVal) || 0;
+  if (_fp) _fpPuCache[_fp] = _fpPu;  // keep cache in sync
+  _recalcAll();
+  // Debounced save to DB
+  clearTimeout(_fpPuSaveTimer);
+  _fpPuSaveTimer = setTimeout(() => {
+    if (_fk && _fp) {
+      _post('/rfs2/api/fp-inducement', { forecast_key: _fk, floorplan_key: _fp, planned_use: _fpPu });
+      flash();
+    }
+  }, 800);
+}
+
+// Called oninput on the Prop input
+function calcPropPu(rawVal) {
+  _propPu = parseFloat(rawVal) || 0;
+  _recalcAll();
+}
+
+// Master recalc — combines both plan use values and updates all w/plan columns
+function _recalcAll() {
+  const s = _summ;
+  if (!s) return;
+
+  // FP-level lease counts
+  const fp_fc_cnt  = (s.fc_r?.count    || 0) + (s.fc_n?.count    || 0);
+  const fp_act_cnt = (s.act_r?.ner_cnt || 0) + (s.act_n?.ner_cnt || 0);
+  const fp_act_ne  = (s.act_r?.ner_ext || 0) + (s.act_n?.ner_ext || 0);
+  const fp_fc_ne   = (s.fc_r?.ner_ext  || 0) + (s.fc_n?.ner_ext  || 0);
+  const fp_total   = fp_act_cnt + fp_fc_cnt;
+
+  const fp_monthly   = _fpPu  / 12;
+  const prop_monthly = _propPu / 12;
+
+  // ── FP NER w/plan ──────────────────────────────────────────
+  // Subtract this FP's monthly concession from each FP forecast lease, blend with actuals
+  const fp_ner_base  = fp_total > 0 ? (fp_act_ne + fp_fc_ne) / fp_total : (s.forecast_ner || 0);
+  const fp_ner_adj   = fp_total > 0
+    ? (fp_act_ne + fp_fc_ne - fp_monthly * fp_fc_cnt) / fp_total
+    : fp_ner_base - fp_monthly;
+
+  // ── Property NER w/plan ────────────────────────────────────
+  // Sum ALL cached FP Plan Use values (all floorplans for this property/plan)
+  // plus the Prop Plan Use, then subtract monthly total from property-wide forecast_ner
+  const total_all_fp_pu  = Object.values(_fpPuCache).reduce((a, b) => a + b, 0);
+  const total_all_monthly = total_all_fp_pu / 12;
+  const prop_ner_adj = (s.forecast_ner || 0) - total_all_monthly - prop_monthly;
+
+  const _dash = '\u2014';
+  const total_all_fp_pu_check = Object.values(_fpPuCache).reduce((a, b) => a + b, 0);
+  const hasAny = total_all_fp_pu_check > 0 || _propPu > 0;
+
+  if (hasAny) {
+    _$('ssNerFpAdj').textContent   = _fc(fp_ner_adj);
+    _$('ssNerPropAdj').textContent = _fc(prop_ner_adj);
+    if (_$('lpNerAdjRow')) _$('lpNerAdjRow').style.display = '';
+    if (_$('lpNerFAdj'))   _$('lpNerFAdj').textContent = _fc(prop_ner_adj);
+  } else {
+    _$('ssNerFpAdj').textContent   = _dash;
+    _$('ssNerPropAdj').textContent = _dash;
+    if (_$('lpNerAdjRow')) _$('lpNerAdjRow').style.display = 'none';
+  }
+}
+
+// ── Planned inducement ────────────────────────────────────────
+async function savePlannedUse(val) {
+  if (!_fk) return;
+  await _post('/rfs2/api/forecasts/planned-use', { forecast_key: _fk, planned_use: +val || 0 });
+  flash();
+  const p = _plans.find(x => x.key === _fk);
+  if (p) p.plannedUse = +val || 0;
+}
+
+// ── Approved toggle (item 5: runs pre-approval checks) ───────
+async function toggleApproved() {
+  if (!_fk) return;
+  const p = _plans.find(x => x.key === _fk);
+  if (!p) return;
+  // Run checks only when moving to Approved state
+  if (!p.approved && _prop && _ay) {
+    const checks = await _get(`/rfs2/api/approval-check?forecast_key=${_fk}&property_key=${_prop}&ay=${_ay}`);
+    if (checks && checks.warnings && checks.warnings.length > 0) {
+      _showApprovalModal(checks.warnings);
+      return;
+    }
+  }
+  await _doApprove(p);
+}
+async function _doApprove(p) {
+  p.approved = !p.approved;
+  await _post('/rfs2/api/forecasts/approve', { forecast_key: _fk, approved: p.approved });
+  updatePlanLabel(); renderPlanMenu(); flash();
+}
+async function _confirmApprove() {
+  const p = _plans.find(x => x.key === _fk);
+  if (!p) return;
+  _closeApprovalModal();
+  await _doApprove(p);
+}
+function _showApprovalModal(warnings) {
+  const ul = _$('approvalWarningList');
+  ul.innerHTML = warnings.map(w => {
+    const cls  = w.level === 'error' ? 'error' : w.level === 'warn' ? 'warn' : 'ok';
+    const icon = w.level === 'error' ? '&#10060;' : w.level === 'warn' ? '&#9888;&#65039;' : '&#10004;';
+    return `<li class="warn-item ${cls}">${icon}&nbsp;${_esc(w.msg)}</li>`;
+  }).join('');
+  _$('approvalModal').style.display = 'flex';
+}
+function _closeApprovalModal() {
+  _$('approvalModal').style.display = 'none';
+}
+
+// ── Clone / New plan ──────────────────────────────────────────
+async function clonePlan() {
+  if (!_fk) { alert('Select a plan first.'); return; }
+  const p    = _plans.find(x => x.key === _fk);
+  const name = prompt('New plan name:', (p?.name || '') + ' (Copy)');
+  if (!name) return;
+  const res = await _post('/rfs2/api/forecasts/clone', { forecast_key: _fk, new_name: name });
+  if (res?.ok) { await loadForecasts(); _fk = res.forecast_key; updatePlanLabel(); renderPlanMenu(); if (_fp) loadTierData(); }
+}
+async function newPlan() {
+  if (!_prop) { alert('Select a property first.'); return; }
+  const name = prompt('Plan name:', 'RFC \u00b7 ' + new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
+  if (!name) return;
+  const res = await _post('/rfs2/api/forecasts/create', { property_key: _prop, property_name: _propName, forecast_name: name, ay: _ay });
+  if (res?.ok) { await loadForecasts(); _fk = res.forecast_key; updatePlanLabel(); renderPlanMenu(); if (_fp) loadTierData(); }
+}
+
+// ── Market comps ──────────────────────────────────────────────
+function renderComps(rows) {
+  _$('compsTypePill').textContent = _compType || '\u2014';
+  if (!rows || !rows.length) {
+    _$('compsTbody').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:12px;font-style:italic">No comps found</td></tr>';
+    _$('compsSummaryLbl').textContent = '';
+    return;
+  }
+  const incl    = rows.filter(r => r.FLAG_INCLUDE);
+  const leasing = incl.filter(r => !r.FLAG_SOLD_OUT);
+  _$('compsCntLbl').textContent    = incl.length + ' incl \u00b7 ' + leasing.length + ' leasing';
+  _$('compsSummaryLbl').textContent = incl.length + ' incl \u00b7 ' + leasing.length + ' leasing';
+  _$('compsTbody').innerHTML = rows.map(r => {
+    const on   = r.FLAG_INCLUDE;
+    const sold = r.FLAG_SOLD_OUT ? '<span class="bdg bdg-r">Yes</span>' : '<span class="bdg bdg-b">No</span>';
+    return `<tr${on ? '' : ' class="excl"'}>
+      <td>${_esc(r.COMP_PROPERTY_NAME)}</td>
+      <td>${_esc(r.FLOORPLAN_NAME || r.FLOORPLAN)}</td>
+      <td class="r">${_fc(r.NER)}</td>
+      <td class="c">${sold}</td>
+      <td class="c"><button class="toggle-btn ${on ? 'ton' : 'toff'}" onclick="toggleComp(${r.FLOORPLAN_ASSIGNMENT_KEY})">${on ? '\u2713' : '\u2717'}</button></td>
+    </tr>`;
+  }).join('');
+  const allN = rows.filter(r => r.NER);
+  const lcN  = leasing.filter(r => r.NER);
+  _$('cAllNer').textContent  = allN.length ? _fc(allN.reduce((s,r) => s+r.NER, 0) / allN.length) : '\u2014';
+  _$('cLcNer').textContent   = lcN.length  ? _fc(lcN.reduce((s,r)  => s+r.NER, 0) / lcN.length)  : '\u2014';
+  _$('cAllCnt').textContent  = rows.length;
+  _$('cSoldCnt').textContent = rows.filter(r => r.FLAG_SOLD_OUT).length;
+  _$('cLcCnt').textContent   = leasing.length;
+}
+async function toggleComp(fak) {
+  await _post('/rfs2/api/comps/toggle', { floorplan_assignment_key: fak, forecast_key: _fk });
+  const comps = await _get(`/rfs2/api/comps?forecast_key=${_fk}&property_key=${_prop}&compare_type=${encodeURIComponent(_compType)}`);
+  if (comps) renderComps(comps);
+}
+
+// ── Stakeholder tabs ──────────────────────────────────────────
+function toggleChartFocus() {
+  const sec = _$('stkhSec');
+  const btn = _$('focusBtn');
+  const focused = sec.classList.toggle('focus-mode');
+  btn.textContent = focused ? '\u2715 Back' : '\u25f3 Focus';
+  btn.style.color = focused ? 'var(--accent-cyan)' : '';
+  btn.style.borderColor = focused ? 'var(--accent-cyan)' : '';
+  // Redraw active chart so it fills the new size
+  if (focused) {
+    if (_rateData && _$('viewRate').style.display !== 'none') drawRateChart(_rateData);
+    else if (_$('trendSvg') && _$('viewTrend').style.display !== 'none' && _prop && _fp) loadLeasingTrend();
+  }
+}
+function switchStkhTab(tab) {
+  ['summary', 'trend', 'rate'].forEach(t => {
+    _$('tab' + t.charAt(0).toUpperCase() + t.slice(1))?.classList.toggle('active-tab', t === tab);
+    const v = _$('view' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (v) v.style.display = t === tab ? '' : 'none';
+  });
+}
+async function buildAndCopyStkMsg() {
+  const s = _summ;
+  let msg = `=== RENT FORECAST SUMMARY: ${_fpName} ===\n`;
+  if (_$('incProp').checked)  msg += `\nPROPERTY KPIs\nPrelease:  Bgt ${_fp2(s.budget_occ)} | Act ${_fp2(s.actual_prelease)} | Fc ${_fp2(s.forecast_prelease)}\nAvg Rate:  Bgt ${_fc(s.budget_avg_rate)} | Act ${_fc(s.actual_avg_rate)} | Fc ${_fc(s.forecast_avg_rate)}\nNER:       Bgt ${_fc(s.budget_ner)} | Act ${_fc(s.actual_ner)} | Fc ${_fc(s.forecast_ner)}\n`;
+  if (_$('incLTB').checked)   msg += `\nLEFT TO BUDGET\nActuals: ${_fn(_summ.actuals_total)} | Forecast: ${_fn(_summ.forecast_total)}\n`;
+  _$('stkTA').value = msg;
+  navigator.clipboard.writeText(msg).then(() => {
+    _$('cpyNote').textContent = '\u2713 Copied!';
+    setTimeout(() => _$('cpyNote').textContent = '', 2000);
+  });
+}
+
+// ── Rate Trends SVG ───────────────────────────────────────────
+let _rateType = 'RENEWAL';   // 'RENEWAL' or 'NEW'
+let _rateData = null;         // last fetched data
+
+function setRateType(t) {
+  _rateType = t;
+  const btnRen = _$('rateToggleRen'), btnNew = _$('rateToggleNew');
+  if (t === 'RENEWAL') {
+    btnRen.style.background = 'rgba(251,146,60,.25)'; btnRen.style.color = '#fb923c'; btnRen.style.borderColor = 'rgba(251,146,60,.6)';
+    btnNew.style.background = 'transparent'; btnNew.style.color = 'var(--text2)'; btnNew.style.borderColor = 'rgba(255,255,255,.2)';
+  } else {
+    btnNew.style.background = 'rgba(74,222,128,.2)'; btnNew.style.color = '#4ade80'; btnNew.style.borderColor = 'rgba(74,222,128,.5)';
+    btnRen.style.background = 'transparent'; btnRen.style.color = 'var(--text2)'; btnRen.style.borderColor = 'rgba(255,255,255,.2)';
+  }
+  if (_rateData) drawRateChart(_rateData);
+}
+
+async function loadRateTrends() {
+  if (!_fp || !_fk) return;
+  const data = await _get(`/rfs2/api/rate-trends?property_key=${_prop}&floorplan_key=${_fp}&ay=${_ay}&forecast_key=${_fk}`);
+  if (data) { _rateData = data; drawRateChart(data); }
+}
+function drawRateChart(data) {
+  const svg = _$('rateSvg');
+  const W = 580, yB = 174, yT = 20, xL = 50;
+  const lt = _rateType;  // filter by current toggle
+  const actuals  = (data.actuals    || []).filter(r => !r.LEASE_TYPE || r.LEASE_TYPE === lt);
+  const budget   = (data.budget     || []).filter(r => !r.LEASE_TYPE || r.LEASE_TYPE === lt);
+  const refc     = (data.reforecast || []).filter(r => !r.LEASE_TYPE || r.LEASE_TYPE === lt);
+  const allNer   = [...actuals, ...budget, ...refc].map(r => r.NER || 0).filter(v => v > 0);
+  if (!allNer.length) {
+    svg.innerHTML = '<text x="290" y="110" text-anchor="middle" font-size="11" fill="rgba(148,163,184,.4)">No rate data</text>';
+    return;
+  }
+  const nerMin = Math.floor(Math.min(...allNer) / 25) * 25 - 25;
+  const nerMax = Math.ceil( Math.max(...allNer) / 25) * 25 + 25;
+  const yS = v => yB - (v - nerMin) / (nerMax - nerMin) * (yB - yT);
+  const maxBeds = Math.max(...[...actuals, ...budget, ...refc].map(r => r.BEDS || r.LEASE_COUNT || 1));
+  const rS  = b => Math.max(3, Math.min(10, 3 + (b / maxBeds) * 7));
+  const nA  = actuals.length, nR = refc.length, nB = budget.length;
+  const total = nA + nR;
+  const xStep = total > 0 ? (W - xL - 30) / Math.max(total + 1, 2) : 60;
+  const xA  = i => xL + (i + 1) * xStep;
+  const xR  = i => xL + (nA + i + 1.5) * xStep;
+  const xBu = i => xL + (i + 1) * xStep;
+  let html = '';
+  // Grid + Y axis labels
+  for (let n = nerMin; n <= nerMax; n += 25) {
+    const y = yS(n);
+    html += `<line x1="${xL}" y1="${y.toFixed(1)}" x2="${W-10}" y2="${y.toFixed(1)}" stroke="${n===nerMin?'rgba(255,255,255,.18)':'rgba(255,255,255,.07)'}" stroke-width="1"/>`;
+    html += `<text x="${xL-2}" y="${(y+3).toFixed(1)}" font-size="8" fill="rgba(255,255,255,.4)" text-anchor="end">$${_fn(n)}</text>`;
+  }
+  // Actuals / Reforecast divider
+  if (nA > 0 && nR > 0) {
+    const dx = (xA(nA - 1) + xR(0)) / 2;
+    html += `<line x1="${dx.toFixed(1)}" y1="${yT}" x2="${dx.toFixed(1)}" y2="${yB}" stroke="rgba(255,255,255,.2)" stroke-width="1" stroke-dasharray="4,3"/>`;
+    html += `<text x="${(xA(nA/2-.5)).toFixed(1)}" y="${yT-2}" font-size="7" fill="rgba(74,222,128,.5)" text-anchor="middle">\u25c4 Actuals YTD</text>`;
+    html += `<text x="${(xR(nR/2-.5)).toFixed(1)}" y="${yT-2}" font-size="7" fill="rgba(251,191,36,.5)" text-anchor="middle">Reforecast \u25ba</text>`;
+  }
+  // Actuals series (green)
+  if (nA > 1) html += `<g class="rt-act"><polyline points="${actuals.map((r,i)=>`${xA(i).toFixed(1)},${yS(r.NER||0).toFixed(1)}`).join(' ')}" fill="none" stroke="rgba(74,222,128,.7)" stroke-width="2"/>`;
+  else if (nA === 1) html += '<g class="rt-act">';
+  actuals.forEach((r, i) => {
+    const x = xA(i), y = yS(r.NER || 0), rd = rS(r.BEDS || r.LEASE_COUNT || 1);
+    html += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rd.toFixed(1)}" fill="#4ade80"/>`;
+    html += `<text x="${x.toFixed(1)}" y="${(y-rd-2).toFixed(1)}" font-size="7" fill="rgba(74,222,128,.95)" text-anchor="middle" font-weight="700">${_fc(r.NER)}</text>`;
+    html += `<text x="${x.toFixed(1)}" y="${(yB+12).toFixed(1)}" font-size="8" fill="rgba(74,222,128,.6)" text-anchor="middle">${i+1}</text>`;
+  });
+  if (nA > 0) html += '</g>';
+  // Bridge line
+  if (nA > 0 && nR > 0) {
+    html += `<line x1="${xA(nA-1).toFixed(1)}" y1="${yS(actuals[nA-1].NER||0).toFixed(1)}" x2="${xR(0).toFixed(1)}" y2="${yS(refc[0].NER||0).toFixed(1)}" stroke="rgba(251,191,36,.25)" stroke-width="1" stroke-dasharray="3,3"/>`;
+  }
+  // Reforecast series (gold)
+  if (nR > 1) html += `<g class="rt-fc"><polyline points="${refc.map((r,i)=>`${xR(i).toFixed(1)},${yS(r.NER||0).toFixed(1)}`).join(' ')}" fill="none" stroke="rgba(251,191,36,.8)" stroke-width="2"/>`;
+  else if (nR === 1) html += '<g class="rt-fc">';
+  refc.forEach((r, i) => {
+    const x = xR(i), y = yS(r.NER || 0), rd = rS(r.LEASE_COUNT || 1);
+    html += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rd.toFixed(1)}" fill="#fbbf24"/>`;
+    html += `<text x="${x.toFixed(1)}" y="${(y-rd-2).toFixed(1)}" font-size="7.5" fill="rgba(251,191,36,.98)" text-anchor="middle" font-weight="700">${_fc(r.NER)}</text>`;
+    html += `<text x="${x.toFixed(1)}" y="${(yB+12).toFixed(1)}" font-size="8" fill="rgba(251,191,36,.6)" text-anchor="middle">${nA+i+1}</text>`;
+  });
+  if (nR > 0) html += '</g>';
+  // Budget hollow rings (blue, floating)
+  if (nB > 0) {
+    html += '<g class="rt-bud">';
+    budget.forEach((r, i) => {
+      const x = xBu(i), y = yS(r.NER || 0), rd = rS(r.BEDS || 1);
+      html += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(rd+1).toFixed(1)}" fill="rgba(100,181,246,.1)" stroke="#64b5f6" stroke-width="2"/>`;
+      html += `<text x="${x.toFixed(1)}" y="${(y-rd-3).toFixed(1)}" font-size="7" fill="rgba(100,181,246,.8)" text-anchor="middle" font-weight="700">${_fc(r.NER)}</text>`;
+    });
+    html += '</g>';
+  }
+  svg.innerHTML = html;
+  // Avg NER row
+  const avgA = nA ? actuals.reduce((s,r) => s+(r.NER||0), 0) / nA : 0;
+  const avgR = nR ? refc.reduce((s,r)    => s+(r.NER||0), 0) / nR : 0;
+  const avgB = nB ? budget.reduce((s,r)  => s+(r.NER||0), 0) / nB : 0;
+  _$('rateAvgRow').innerHTML =
+    `<div style="font-size:.62rem;color:var(--text2)">Avg NER \u2192</div>` +
+    `<div style="font-size:.65rem;font-weight:800;color:var(--accent-blue)">${nB ? 'Bgt: '+_fc(avgB) : 'Bgt: \u2014'}</div>` +
+    `<div style="font-size:.65rem;font-weight:800;color:var(--accent-green)">${nA ? 'Act: '+_fc(avgA) : 'Act: \u2014'}</div>` +
+    `<div style="font-size:.65rem;font-weight:800;color:var(--accent-gold)">${nR ? 'RFC: '+_fc(avgR) : 'RFC: \u2014'}</div>`;
+}
+
+// ── Leasing Trend SVG ─────────────────────────────────────────
+async function loadLeasingTrend() {
+  if (!_prop || !_fp) return;
+  const data = await _get(`/rfs2/api/leasing-trend?property_key=${_prop}&ay=${_ay}&floorplan_key=${_fp}`);
+  if (data) drawTrendChart(data);
+}
+function drawTrendChart(data) {
+  const svg     = _$('trendSvg');
+  const budget  = data.budget      || [];
+  const actCy   = data.actuals_cy  || [];
+  const actPy1  = data.actuals_py1 || [];
+  const cw      = data.current_week || 1;
+  const w0      = data.window_start || Math.max(1, cw - 7);
+  const w1      = data.window_end   || Math.min(52, cw + 2);
+
+  if (_$('trendCyLbl'))  _$('trendCyLbl').textContent  = data.cy_label  || 'CY';
+  if (_$('trendPy1Lbl')) _$('trendPy1Lbl').textContent = data.py1_label || 'PY1';
+
+  if (!budget.length && !actCy.length && !actPy1.length) {
+    svg.innerHTML = '<text x="280" y="100" text-anchor="middle" font-size="11" fill="rgba(148,163,184,.4)">No data for this floorplan</text>';
+    return;
+  }
+
+  const weeks = [];
+  for (let w = w0; w <= w1; w++) weeks.push(w);
+  const n = weeks.length;
+  const lookup = (arr, w) => arr.find(r => r.week === w);
+
+  const W = 560, yB = 160, yT = 20, xL = 38;
+  const xStep = (W - xL - 14) / (n - 1 || 1);
+  const xS = i => xL + i * xStep;
+
+  // Y scale: max of all series in window
+  const allVals = weeks.flatMap(w => [
+    lookup(actCy,  w)?.total || 0,
+    lookup(actPy1, w)?.total || 0,
+    lookup(budget, w)?.total || 0,
+  ]);
+  const yMax = Math.ceil((Math.max(...allVals, 1)) / 5) * 5 + 5;
+  const yS = v => yB - (v / yMax) * (yB - yT);
+
+  let html = '';
+
+  // Grid lines + Y labels
+  [0, .25, .5, .75, 1].forEach(f => {
+    const v = Math.round(yMax * f), y = yS(v);
+    html += `<line x1="${xL}" y1="${y.toFixed(1)}" x2="${W-4}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,.07)" stroke-width="1"/>`;
+    html += `<text x="${xL-3}" y="${(y+3).toFixed(1)}" font-size="7.5" fill="rgba(255,255,255,.35)" text-anchor="end">${v}</text>`;
+  });
+
+  // X labels
+  weeks.forEach((w, i) => {
+    const bold = w === cw ? 'font-weight="700"' : '';
+    const fill = w === cw ? 'rgba(255,255,255,.75)' : 'rgba(255,255,255,.35)';
+    html += `<text x="${xS(i).toFixed(1)}" y="${(yB+11).toFixed(1)}" font-size="7.5" fill="${fill}" text-anchor="middle" ${bold}>W${w}</text>`;
+  });
+
+  // "Now" divider + future shading
+  const cwIdx = weeks.indexOf(cw);
+  if (cwIdx >= 0) {
+    const nx = xS(cwIdx);
+    if (cwIdx < n - 1) {
+      html += `<rect x="${nx.toFixed(1)}" y="${yT}" width="${(W-4-nx).toFixed(1)}" height="${yB-yT}" fill="rgba(255,255,255,.02)"/>`;
+    }
+    html += `<line x1="${nx.toFixed(1)}" y1="${yT}" x2="${nx.toFixed(1)}" y2="${yB}" stroke="rgba(255,255,255,.3)" stroke-width="1" stroke-dasharray="3,3"/>`;
+    html += `<text x="${nx.toFixed(1)}" y="${(yT-3).toFixed(1)}" font-size="6.5" fill="rgba(255,255,255,.4)" text-anchor="middle">now</text>`;
+  }
+
+  // Budget line (blue dashed) — all weeks
+  const budPts = weeks.map((w,i) => { const r=lookup(budget,w); return (r && r.total>0) ? `${xS(i).toFixed(1)},${yS(r.total).toFixed(1)}` : null; }).filter(Boolean);
+  if (budPts.length > 1)
+    html += `<polyline points="${budPts.join(' ')}" fill="none" stroke="rgba(100,181,246,.7)" stroke-width="3" stroke-dasharray="5,3"/>`;
+
+  // Budget labels (blue) — all weeks
+  weeks.forEach((w, i) => {
+    const r = lookup(budget, w);
+    if (r && r.total > 0) {
+      const yy = yS(r.total);
+      html += `<circle cx="${xS(i).toFixed(1)}" cy="${yy.toFixed(1)}" r="3" fill="rgba(100,181,246,.8)"/>`;
+      html += `<text x="${xS(i).toFixed(1)}" y="${(yy+13).toFixed(1)}" font-size="6.5" fill="rgba(100,181,246,.85)" text-anchor="middle">${r.total % 1 === 0 ? r.total : r.total.toFixed(1)}</text>`;
+    }
+  });
+
+  // PY1 actuals (gold dashed) — ALL weeks in window
+  const py1Pts = weeks.map((w,i) => { const r=lookup(actPy1,w); return (r != null) ? `${xS(i).toFixed(1)},${yS(r.total).toFixed(1)}` : null; }).filter(Boolean);
+  if (py1Pts.length > 1)
+    html += `<polyline points="${py1Pts.join(' ')}" fill="none" stroke="rgba(251,191,36,.8)" stroke-width="3" stroke-dasharray="5,3"/>`;
+  weeks.forEach((w, i) => {
+    const r = lookup(actPy1, w);
+    if (r != null) {
+      const futureFade = w > cw ? '.5' : '.9';
+      html += `<circle cx="${xS(i).toFixed(1)}" cy="${yS(r.total).toFixed(1)}" r="3" fill="rgba(251,191,36,${futureFade})"/>`;
+      html += `<text x="${xS(i).toFixed(1)}" y="${(yS(r.total)-5).toFixed(1)}" font-size="6.5" fill="rgba(251,191,36,${futureFade})" text-anchor="middle">${r.total}</text>`;
+    }
+  });
+
+  // CY actuals (solid green) — weeks up to cw
+  const cyPts = weeks.filter(w => w <= cw).map(w => { const r=lookup(actCy,w); const i=weeks.indexOf(w); return (r != null) ? `${xS(i).toFixed(1)},${yS(r.total).toFixed(1)}` : null; }).filter(Boolean);
+  if (cyPts.length > 1)
+    html += `<polyline points="${cyPts.join(' ')}" fill="none" stroke="rgba(74,222,128,.95)" stroke-width="4"/>`;
+  weeks.filter(w => w <= cw).forEach(w => {
+    const r = lookup(actCy, w); const i = weeks.indexOf(w);
+    if (r != null) {
+      html += `<circle cx="${xS(i).toFixed(1)}" cy="${yS(r.total).toFixed(1)}" r="4" fill="#4ade80"/>`;
+      html += `<text x="${xS(i).toFixed(1)}" y="${(yS(r.total)-5).toFixed(1)}" font-size="7" fill="rgba(74,222,128,.95)" text-anchor="middle" font-weight="700">${r.total}</text>`;
+    }
+  });
+
+  svg.innerHTML = html;
+}
+
+// ── Init ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', loadProperties);
+</script>
+{% endblock %}

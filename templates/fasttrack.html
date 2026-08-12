@@ -1,0 +1,472 @@
+{% extends "shell.html" %}
+{% block head %}
+    <style>
+        .ft-container { padding: 24px; max-width: 1200px; }
+        .ft-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+        .ft-header h1 { font-size: 1.4rem; color: var(--text-primary); margin: 0; }
+        .ft-header-icon { width: 40px; height: 40px; border-radius: 10px; background: #f59e0b; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.1rem; }
+        .ft-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border-medium); }
+        .ft-tab { padding: 10px 20px; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+        .ft-tab:hover { color: var(--text-primary); }
+        .ft-tab.active { color: #f59e0b; border-bottom-color: #f59e0b; }
+        .ft-panel { display: none; }
+        .ft-panel.active { display: block; }
+
+        /* Form */
+        .ft-form { max-width: 700px; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 10px 14px; border-radius: 6px; font-size: 0.9rem; font-family: inherit; }
+        .form-group input::placeholder, .form-group textarea::placeholder { color: var(--text-secondary); }
+        .form-group textarea { resize: vertical; min-height: 120px; }
+        .form-group input:disabled { opacity: 0.6; cursor: not-allowed; }
+        .form-group select { cursor: pointer; }
+        .form-group select option { background: var(--surface-raised); color: var(--text-primary); }
+        .form-row { display: flex; gap: 16px; }
+        .form-row .form-group { flex: 1; }
+
+        /* Employee dropdown */
+        .emp-search-wrap { position: relative; }
+        .emp-results { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface-raised); border: 1px solid var(--border-medium); border-radius: 6px; max-height: 250px; overflow-y: auto; z-index: 100; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+        .emp-results.show { display: block; }
+        .emp-item { padding: 10px 14px; cursor: pointer; font-size: 0.85rem; border-bottom: 1px solid var(--border-subtle); }
+        .emp-item:hover { background: var(--hover-bg); }
+        .emp-item-name { font-weight: 600; color: var(--text-primary); }
+        .emp-item-detail { font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; }
+
+        /* Buttons */
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: #f59e0b; color: #fff; }
+        .btn-primary:hover { background: #d97706; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-danger { background: rgba(244,67,54,0.2); color: #e57373; border: none; padding: 6px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+        .btn-danger:hover { background: rgba(244,67,54,0.4); }
+        .btn-sm { padding: 6px 14px; font-size: 0.75rem; }
+
+        /* Data table */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .data-table th { text-align: left; padding: 10px 12px; background: var(--surface-raised); color: var(--text-secondary); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-medium); position: sticky; top: 0; z-index: 1; white-space: nowrap; }
+        .data-table th[data-col] { cursor: pointer; user-select: none; }
+        .data-table th[data-col]:hover { color: var(--text-primary); }
+        .data-table th[data-col]::after { content: ' \2195'; opacity: 0.3; font-size: 0.65rem; }
+        .data-table th[data-col].sort-asc::after  { content: ' \2191'; opacity: 1; }
+        .data-table th[data-col].sort-desc::after { content: ' \2193'; opacity: 1; }
+        .data-table td { padding: 8px 12px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); }
+        .data-table tr:hover td { background: var(--hover-bg); }
+        .table-scroll { max-height: calc(100vh - 300px); overflow-y: auto; border: 1px solid var(--border-light); border-radius: 8px; }
+
+        /* Detail expand */
+        .detail-row { display: none; }
+        .detail-row.show { display: table-row; }
+        .detail-row td { background: var(--hover-bg); padding: 12px 20px; }
+        .detail-content { font-size: 0.85rem; color: var(--text-primary); }
+        .detail-content h4 { margin: 0 0 6px; font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; }
+        .detail-content p { margin: 0 0 12px; white-space: pre-wrap; }
+
+        /* Admin add form */
+        .admin-add { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; padding: 12px; background: var(--hover-bg); border: 1px solid var(--border-light); border-radius: 8px; }
+        .admin-add input { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; min-width: 300px; }
+        .admin-add input::placeholder { color: var(--text-secondary); }
+
+        /* Toast */
+        .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 8px; font-size: 0.85rem; color: #fff; z-index: 9999; transition: opacity 0.3s; }
+        .toast-success { background: rgba(76,175,80,0.9); }
+        .toast-error { background: rgba(244,67,54,0.9); }
+
+        .empty-state { text-align: center; padding: 40px; color: var(--text-secondary); font-size: 0.9rem; }
+        .success-msg { padding: 16px; background: rgba(76,175,80,0.1); border: 1px solid rgba(76,175,80,0.3); border-radius: 8px; color: #81c784; text-align: center; display: none; }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="ft-container">
+    <div class="ft-header">
+        <div class="ft-header-icon"><i class="fa-solid fa-forward-fast"></i></div>
+        <h1>FastTrack Recommendation</h1>
+    </div>
+    <div class="info-blurb" id="blurb-fasttrack">
+        <div class="blurb-header" onclick="toggleBlurb('fasttrack')">
+            <span class="blurb-title">About FastTrack Recommendation</span>
+            <span class="blurb-toggle" id="blurbToggle-fasttrack">&#9660;</span>
+        </div>
+        <div class="blurb-body" id="blurbBody-fasttrack">
+            Recommend associates ready for accelerated career advancement. FastTrack nominees are evaluated for leadership potential and fast-tracked into development programs.
+        </div>
+    </div>
+
+    <div class="ft-tabs">
+        <div class="ft-tab active" data-tab="submit">Submit Recommendation</div>
+        {% if is_admin %}
+        <div class="ft-tab" data-tab="recommendations">All Recommendations</div>
+        <div class="ft-tab" data-tab="admins">Manage Admins</div>
+        {% endif %}
+    </div>
+
+    <!-- SUBMIT TAB -->
+    <div class="ft-panel active" id="panel-submit">
+        <div class="ft-form">
+            <div class="success-msg" id="submitSuccess">
+                <i class="fa-solid fa-check-circle"></i> Recommendation submitted successfully!
+            </div>
+
+            <form id="recForm">
+                <div class="form-group emp-search-wrap">
+                    <label>Associate Recommended *</label>
+                    <input type="text" id="empSearch" placeholder="Search by name..." autocomplete="off">
+                    <div class="emp-results" id="empResults"></div>
+                    <input type="hidden" id="empName">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Current Property</label>
+                        <input type="text" id="empProperty" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Current Position</label>
+                        <input type="text" id="empPosition" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Date Hired</label>
+                        <input type="text" id="empDateHired" disabled>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Recommended FastTrack *</label>
+                        <select id="recFasttrack">
+                            <option value="">— Select a FastTrack —</option>
+                            <option value="Property Manager FastTrack">Property Manager FastTrack</option>
+                            <option value="Leasing Manager FastTrack">Leasing Manager FastTrack</option>
+                            <option value="Assistant Manager FastTrack">Assistant Manager FastTrack</option>
+                            <option value="Maintenance Supervisor FastTrack">Maintenance Supervisor FastTrack</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Time in Current Position *</label>
+                        <input type="text" id="recTimeInPos" placeholder="e.g. 2 years">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Please provide a brief summary as to why you believe the recommended associate should be accepted into the FastTrack program. *</label>
+                    <textarea id="recNotes" placeholder="Describe why this associate should be accepted..."></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="submitBtn">Submit Recommendation</button>
+            </form>
+        </div>
+    </div>
+
+    {% if is_admin %}
+    <!-- ALL RECOMMENDATIONS TAB -->
+    <div class="ft-panel" id="panel-recommendations">
+        <div class="table-scroll">
+            <table class="data-table" id="recTable">
+                <thead>
+                    <tr>
+                        <th data-col="id" onclick="sortRecs(this)">#</th>
+                        <th data-col="employee" onclick="sortRecs(this)" class="sort-asc">Associate</th>
+                        <th data-col="position" onclick="sortRecs(this)">Position</th>
+                        <th data-col="property" onclick="sortRecs(this)">Property</th>
+                        <th data-col="fasttrack" onclick="sortRecs(this)">FastTrack</th>
+                        <th data-col="time_in_position" onclick="sortRecs(this)">Time in Pos</th>
+                        <th data-col="modified_by" onclick="sortRecs(this)">Submitted By</th>
+                        <th data-col="date_modified" onclick="sortRecs(this)">Date</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="recBody"></tbody>
+            </table>
+        </div>
+        <div class="empty-state" id="recEmpty" style="display:none;">No recommendations found.</div>
+    </div>
+
+    <!-- MANAGE ADMINS TAB -->
+    <div class="ft-panel" id="panel-admins">
+        <div class="admin-add">
+            <input type="email" id="adminEmail" placeholder="Enter email address...">
+            <button class="btn btn-primary btn-sm" id="addAdminBtn">Add Admin</button>
+        </div>
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th data-col="email" onclick="sortFtAdmins(this)" class="sort-asc">Email</th>
+                        <th data-col="date_created" onclick="sortFtAdmins(this)">Added</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="adminBody"></tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+(function() {
+    // ─── TABS ───────────────────────────────────────────────────────────────────
+    var tabs = document.querySelectorAll('.ft-tab');
+    var panels = document.querySelectorAll('.ft-panel');
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            tabs.forEach(function(t) { t.classList.remove('active'); });
+            panels.forEach(function(p) { p.classList.remove('active'); });
+            tab.classList.add('active');
+            document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+            if (tab.dataset.tab === 'recommendations') loadRecommendations();
+            if (tab.dataset.tab === 'admins') loadAdmins();
+        });
+    });
+
+    // ─── EMPLOYEE SEARCH ────────────────────────────────────────────────────────
+    var empSearch = document.getElementById('empSearch');
+    var empResults = document.getElementById('empResults');
+    var empCache = null;
+    var searchTimeout = null;
+
+    empSearch.addEventListener('focus', function() { loadEmployees(); });
+    empSearch.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() { filterEmployees(); }, 200);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.emp-search-wrap')) empResults.classList.remove('show');
+    });
+
+    function loadEmployees() {
+        if (empCache) { filterEmployees(); return; }
+        fetch('/fasttrack/api/employees')
+            .then(function(r) { return r.json(); })
+            .then(function(data) { empCache = data; filterEmployees(); });
+    }
+
+    function filterEmployees() {
+        if (!empCache) return;
+        var q = empSearch.value.toLowerCase().trim();
+        var filtered = empCache;
+        if (q) {
+            filtered = empCache.filter(function(e) {
+                return e.name.toLowerCase().indexOf(q) >= 0;
+            });
+        }
+        var html = '';
+        var limit = Math.min(filtered.length, 50);
+        for (var i = 0; i < limit; i++) {
+            var e = filtered[i];
+            html += '<div class="emp-item" data-name="' + e.name + '" data-title="' + e.title + '" data-property="' + e.property + '" data-hired="' + (e.date_hired || '') + '">';
+            html += '<div class="emp-item-name">' + e.name + '</div>';
+            html += '<div class="emp-item-detail">' + e.title + ' — ' + e.property + '</div>';
+            html += '</div>';
+        }
+        empResults.innerHTML = html;
+        empResults.classList.add('show');
+
+        empResults.querySelectorAll('.emp-item').forEach(function(item) {
+            item.addEventListener('click', function() {
+                empSearch.value = this.dataset.name;
+                document.getElementById('empName').value = this.dataset.name;
+                document.getElementById('empPosition').value = this.dataset.title;
+                document.getElementById('empProperty').value = this.dataset.property;
+                document.getElementById('empDateHired').value = this.dataset.hired;
+                empResults.classList.remove('show');
+            });
+        });
+    }
+
+    // ─── SUBMIT RECOMMENDATION ──────────────────────────────────────────────────
+    var form = document.getElementById('recForm');
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var name = document.getElementById('empName').value.trim();
+        var fasttrack = document.getElementById('recFasttrack').value;
+        var timeInPos = document.getElementById('recTimeInPos').value.trim();
+        var notes = document.getElementById('recNotes').value.trim();
+
+        if (!name) { showToast('Please select an associate.', 'error'); return; }
+        if (!fasttrack) { showToast('Please select a FastTrack.', 'error'); return; }
+        if (!timeInPos) { showToast('Time in current position is required.', 'error'); return; }
+        if (!notes) { showToast('Summary notes are required.', 'error'); return; }
+
+        var btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.textContent = 'Submitting...';
+
+        fetch('/fasttrack/api/recommendations', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                employee_recommended: name,
+                current_property: document.getElementById('empProperty').value,
+                current_position: document.getElementById('empPosition').value,
+                date_hired: document.getElementById('empDateHired').value || null,
+                recommended_fasttrack: fasttrack,
+                time_in_current_position: timeInPos,
+                additional_notes: notes,
+            })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            btn.disabled = false;
+            btn.textContent = 'Submit Recommendation';
+            if (data.success) {
+                document.getElementById('submitSuccess').style.display = 'block';
+                form.reset();
+                document.getElementById('empName').value = '';
+                document.getElementById('empPosition').value = '';
+                document.getElementById('empProperty').value = '';
+                document.getElementById('empDateHired').value = '';
+                setTimeout(function() { document.getElementById('submitSuccess').style.display = 'none'; }, 4000);
+            } else {
+                showToast(data.error || 'Submission failed.', 'error');
+            }
+        })
+        .catch(function() {
+            btn.disabled = false;
+            btn.textContent = 'Submit Recommendation';
+            showToast('Network error.', 'error');
+        });
+    });
+
+    // ─── RECOMMENDATIONS (admin) ────────────────────────────────────────────────
+    var _allRecs = [], _recSortCol = 'employee', _recSortDir = 'asc';
+    var _allFtAdmins = [], _ftAdminSortCol = 'email', _ftAdminSortDir = 'asc';
+
+    function _applyRecSort(arr) {
+        return arr.slice().sort(function(a, b) {
+            var va = String(a[_recSortCol] || '').toLowerCase();
+            var vb = String(b[_recSortCol] || '').toLowerCase();
+            return _recSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+        });
+    }
+    function sortRecs(th) {
+        var col = th.dataset.col;
+        if (_recSortCol === col) { _recSortDir = _recSortDir === 'asc' ? 'desc' : 'asc'; }
+        else { _recSortCol = col; _recSortDir = 'asc'; }
+        document.querySelectorAll('#recTable th[data-col]').forEach(function(h) { h.classList.remove('sort-asc','sort-desc'); });
+        th.classList.add(_recSortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+        renderRecs(_applyRecSort(_allRecs));
+    }
+    function renderRecs(data) {
+        var body = document.getElementById('recBody');
+        var empty = document.getElementById('recEmpty');
+        if (!data.length) { body.innerHTML = ''; empty.style.display = 'block'; return; }
+        empty.style.display = 'none';
+        var html = '';
+        for (var i = 0; i < data.length; i++) {
+            var n = data[i];
+            html += '<tr class="rec-row" data-idx="' + i + '" style="cursor:pointer;">';
+            html += '<td>' + n.id + '</td>';
+            html += '<td>' + (n.employee || '') + '</td>';
+            html += '<td>' + (n.position || '') + '</td>';
+            html += '<td>' + (n.property || '') + '</td>';
+            html += '<td>' + (n.fasttrack || '') + '</td>';
+            html += '<td>' + (n.time_in_position || '') + '</td>';
+            html += '<td>' + (n.modified_by || '') + '</td>';
+            html += '<td>' + (n.date_modified || '') + '</td>';
+            html += '<td><i class="fa-solid fa-chevron-down" style="color:var(--text-secondary);"></i></td>';
+            html += '</tr>';
+            html += '<tr class="detail-row" id="detail-' + i + '"><td colspan="9"><div class="detail-content">';
+            html += '<h4>Additional Notes</h4><p>' + (n.notes || 'N/A') + '</p>';
+            html += '<h4>Date Hired</h4><p>' + (n.date_hired || 'N/A') + '</p>';
+            html += '</div></td></tr>';
+        }
+        body.innerHTML = html;
+        body.querySelectorAll('.rec-row').forEach(function(row) {
+            row.addEventListener('click', function() {
+                document.getElementById('detail-' + this.dataset.idx).classList.toggle('show');
+            });
+        });
+    }
+    function _applyFtAdminSort(arr) {
+        return arr.slice().sort(function(a, b) {
+            var va = String(a[_ftAdminSortCol] || '').toLowerCase();
+            var vb = String(b[_ftAdminSortCol] || '').toLowerCase();
+            return _ftAdminSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+        });
+    }
+    function sortFtAdmins(th) {
+        var col = th.dataset.col;
+        if (_ftAdminSortCol === col) { _ftAdminSortDir = _ftAdminSortDir === 'asc' ? 'desc' : 'asc'; }
+        else { _ftAdminSortCol = col; _ftAdminSortDir = 'asc'; }
+        document.querySelectorAll('#adminBody').item(0).closest('table').querySelectorAll('th[data-col]').forEach(function(h) { h.classList.remove('sort-asc','sort-desc'); });
+        th.classList.add(_ftAdminSortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+        renderFtAdmins(_applyFtAdminSort(_allFtAdmins));
+    }
+    function renderFtAdmins(data) {
+        var body = document.getElementById('adminBody');
+        var html = '';
+        for (var i = 0; i < data.length; i++) {
+            var a = data[i];
+            html += '<tr><td>' + a.email + '</td><td>' + (a.date_created || '') + '</td>';
+            html += '<td><button class="btn-danger" onclick="removeAdmin(' + a.id + ')">Remove</button></td></tr>';
+        }
+        body.innerHTML = html;
+    }
+    function loadRecommendations() {
+        fetch('/fasttrack/api/recommendations')
+            .then(function(r) { return r.json(); })
+            .then(function(data) { _allRecs = data; renderRecs(_applyRecSort(_allRecs)); });
+    }
+
+    // ─── ADMINS (admin) ─────────────────────────────────────────────────────────
+    function loadAdmins() {
+        fetch('/fasttrack/api/admins')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                _allFtAdmins = data;
+                renderFtAdmins(_applyFtAdminSort(_allFtAdmins));
+            });
+    }
+
+    window.removeAdmin = function(id) {
+        if (!confirm('Remove this admin?')) return;
+        fetch('/fasttrack/api/admins/' + id, { method: 'DELETE' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) { loadAdmins(); showToast('Admin removed.', 'success'); }
+                else showToast(data.error || 'Failed.', 'error');
+            });
+    };
+
+    var addBtn = document.getElementById('addAdminBtn');
+    if (addBtn) {
+        addBtn.addEventListener('click', function() {
+            var email = document.getElementById('adminEmail').value.trim();
+            if (!email) { showToast('Enter an email.', 'error'); return; }
+            fetch('/fasttrack/api/admins', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ email: email })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    document.getElementById('adminEmail').value = '';
+                    loadAdmins();
+                    showToast('Admin added.', 'success');
+                } else {
+                    showToast(data.error || 'Failed.', 'error');
+                }
+            });
+        });
+    }
+
+    // ─── TOAST ──────────────────────────────────────────────────────────────────
+    function showToast(msg, type) {
+        var toast = document.createElement('div');
+        toast.className = 'toast toast-' + type;
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(function() { toast.style.opacity = '0'; }, 3000);
+        setTimeout(function() { toast.remove(); }, 3500);
+    }
+
+    window.sortRecs = sortRecs;
+    window.sortFtAdmins = sortFtAdmins;
+})();
+</script>
+{% endblock %}

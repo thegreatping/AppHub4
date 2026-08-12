@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RFS Redesign v2 — AppHub 4.0 Native</title>
+<style>
+/* ── AppHub 4.0 Theme ── */
+:root, [data-theme="dark"] {
+    --nav-bg:#0f1729; --accent-cyan:#67e8e0; --accent-blue:#64b5f6;
+    --accent-gold:#fbbf24; --accent-orange:#fb923c; --accent-green:#4ade80;
+    --accent-red:#f87171; --accent-purple:#c084fc;
+    --content-bg:#111b2e; --content-header:#162035; --surface-raised:#162035;
+    --card-bg:#1c2d4a; --text-primary:#f1f5f9; --text-secondary:#94a3b8;
+    --border-medium:rgba(255,255,255,0.08); --border-light:rgba(255,255,255,0.05);
+    --border-input:rgba(255,255,255,0.12); --input-bg:rgba(255,255,255,0.05);
+    --hover-bg:rgba(255,255,255,0.03); --hover-bg-strong:rgba(255,255,255,0.08);
+    --shadow:rgba(0,0,0,0.5); --nav-width:200px;
+    --renewal-color:#fb923c; --new-color:#4ade80;
+}
+[data-theme="medium"] {
+    --nav-bg:#1e293b; --accent-cyan:#2dd4bf; --accent-blue:#3b82f6;
+    --accent-gold:#f59e0b; --accent-orange:#ea580c; --accent-green:#16a34a;
+    --accent-red:#dc2626; --accent-purple:#9333ea;
+    --content-bg:#f1f5f9; --content-header:#e2e8f0; --surface-raised:#e2e8f0;
+    --card-bg:#ffffff; --text-primary:#0f172a; --text-secondary:#475569;
+    --border-medium:rgba(0,0,0,0.08); --border-light:rgba(0,0,0,0.05);
+    --border-input:rgba(0,0,0,0.15); --input-bg:#fff; --hover-bg:rgba(0,0,0,0.02);
+    --hover-bg-strong:rgba(0,0,0,0.06); --shadow:rgba(0,0,0,0.15);
+}
+[data-theme="light"] {
+    --nav-bg:#fff; --accent-cyan:#0d9488; --accent-blue:#3b82f6;
+    --accent-gold:#d97706; --accent-orange:#c2410c; --accent-green:#15803d;
+    --accent-red:#dc2626; --accent-purple:#7c3aed;
+    --content-bg:#f3f4f6; --content-header:#ffffff; --surface-raised:#fff;
+    --card-bg:#fff; --text-primary:#111827; --text-secondary:#6b7280;
+    --border-medium:rgba(0,0,0,0.1); --border-light:rgba(0,0,0,0.06);
+    --border-input:rgba(0,0,0,0.18); --input-bg:#f9fafb;
+    --hover-bg:rgba(0,0,0,0.02); --hover-bg-strong:rgba(0,0,0,0.05);
+    --shadow:rgba(0,0,0,0.1);
+}
+
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--content-bg); color:var(--text-primary); height:100vh; display:flex; overflow:hidden; font-size:13px; }
+
+/* ── Shell Nav ── */
+.shell-nav { width:var(--nav-width); background:var(--nav-bg); display:flex; flex-direction:column; flex-shrink:0; border-right:1px solid var(--border-medium); }
+.nav-logo { padding:12px 14px 10px; border-bottom:1px solid rgba(255,255,255,0.06); }
+.nav-logo-text { font-size:0.9rem; font-weight:800; color:var(--accent-cyan); letter-spacing:0.5px; }
+.nav-logo-sub { font-size:0.65rem; color:var(--text-secondary); margin-top:1px; }
+.nav-modules { list-style:none; padding:6px 0; flex:1; overflow-y:auto; }
+.nav-item { display:flex; align-items:center; gap:8px; padding:8px 12px; cursor:pointer; font-size:0.78rem; color:var(--text-secondary); opacity:.7; border-left:3px solid transparent; transition:all .15s; }
+.nav-item:hover { opacity:.9; background:var(--hover-bg); }
+.nav-item.active { opacity:1; background:rgba(103,232,224,.08); border-left-color:var(--accent-cyan); color:var(--accent-cyan); font-weight:700; }
+.nav-dot { width:24px; height:24px; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:0.8rem; flex-shrink:0; }
+.nav-footer { border-top:1px solid rgba(255,255,255,0.06); padding:8px 12px; font-size:0.7rem; color:var(--text-secondary); }
+.theme-row { display:flex; gap:4px; padding:6px 12px; }
+.theme-btn { flex:1; padding:4px; background:var(--input-bg); border:1px solid var(--border-input); color:var(--text-secondary); border-radius:3px; cursor:pointer; font-size:0.7rem; }
+.theme-btn.active, .theme-btn:hover { background:rgba(103,232,224,.15); color:var(--accent-cyan); border-color:rgba(103,232,224,.3); }
+
+/* ── Main Shell ── */
+.shell-main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+
+/* ── Top Bar ── */
+.top-bar { background:var(--content-header); border-bottom:1px solid var(--border-medium); padding:10px 14px; display:flex; align-items:center; gap:12px; flex-shrink:0; flex-wrap:wrap; }
+.page-icon { width:30px; height:30px; border-radius:7px; background:#1e4a6a; display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; }
+.page-name { font-size:1.5rem; font-weight:700; color:var(--text-primary); white-space:nowrap; }
+.top-sep { width:1px; height:28px; background:var(--border-medium); }
+.ctrl-grp { display:flex; align-items:center; gap:6px; }
+.ctrl-lbl { font-size:1.02rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.3px; white-space:nowrap; }
+.ctrl-sel { background:var(--input-bg); border:1px solid var(--border-input); color:var(--text-primary); padding:6px 10px; border-radius:4px; font-size:1.17rem; cursor:pointer; }
+.ctrl-sel option { background:var(--card-bg); }
+.approved-btn { display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:4px; border:1px solid var(--border-input); background:var(--input-bg); color:var(--text-secondary); cursor:pointer; font-size:1.13rem; font-weight:700; white-space:nowrap; }
+.approved-btn.on { background:rgba(74,222,128,.1); border-color:rgba(74,222,128,.3); color:var(--accent-green); }
+.ml-auto { margin-left:auto; }
+.btn { padding:6px 14px; border:none; border-radius:4px; font-size:1.13rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px; transition:all .15s; }
+.btn-primary { background:var(--accent-cyan); color:#0f1729; }
+.btn-primary:hover { opacity:.85; }
+.btn-ghost { background:var(--input-bg); color:var(--text-secondary); border:1px solid var(--border-input); }
+.btn-ghost:hover { color:var(--text-primary); background:var(--hover-bg-strong); }
+
+/* Mockup banner */
+.mockup-bar { background:rgba(251,191,36,.07); border-bottom:1px solid rgba(251,191,36,.18); padding:4px 14px; font-size:0.72rem; color:var(--accent-gold); display:flex; align-items:center; gap:6px; flex-shrink:0; }
+
+/* ── Body Layout ── */
+.body-layout { flex:1; display:flex; overflow:hidden; }
+
+/* ── Left Panel ── */
+.left-panel { width:200px; flex-shrink:0; border-right:1px solid var(--border-medium); display:flex; flex-direction:column; overflow:hidden; background:var(--surface-raised); }
+
+/* Floorplan list — primary nav */
+.fp-section { display:flex; flex-direction:column; min-height:0; }
+.fp-section-hdr { padding:8px 10px 5px; font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-secondary); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.fp-list { overflow-y:auto; flex:1; }
+.fp-item { display:flex; align-items:center; padding:7px 10px; cursor:pointer; border-left:3px solid transparent; border-bottom:1px solid var(--border-light); transition:all .12s; gap:8px; }
+.fp-item:hover { background:var(--hover-bg-strong); }
+.fp-item.active { background:rgba(103,232,224,.07); border-left-color:var(--accent-cyan); }
+.fp-item-name { font-size:0.8rem; font-weight:600; color:var(--text-primary); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.fp-item.active .fp-item-name { color:var(--accent-cyan); }
+.fp-item-beds { font-size:0.65rem; color:var(--text-secondary); background:var(--border-medium); padding:1px 5px; border-radius:8px; white-space:nowrap; flex-shrink:0; }
+.fp-item.active .fp-item-beds { background:rgba(103,232,224,.15); color:var(--accent-cyan); }
+
+/* Collapsible side cards */
+.side-card { border-top:1px solid var(--border-medium); flex-shrink:0; }
+.side-card-hdr { display:flex; align-items:center; padding:7px 10px; cursor:pointer; user-select:none; }
+.side-card-hdr:hover { background:var(--hover-bg); }
+.side-card-title { font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--accent-cyan); flex:1; }
+.side-card-chev { font-size:0.6rem; color:var(--text-secondary); transition:transform .2s; }
+.side-card-body { padding:2px 0 6px; }
+.side-card-body.collapsed { display:none; }
+.side-card-chev.collapsed { transform:rotate(-90deg); }
+
+/* Side metrics */
+.sm-row { display:flex; align-items:center; padding:2px 10px; font-size:0.75rem; }
+.sm-label { color:var(--text-secondary); flex:1; }
+.sm-val { font-weight:700; color:var(--text-primary); }
+.sm-val.c { color:var(--accent-cyan); }
+.sm-val.g { color:var(--accent-green); }
+.sm-val.o { color:var(--accent-gold); }
+.sm-val.r { color:var(--accent-red); }
+.sm-cols { display:flex; gap:0; }
+.sm-col { min-width:52px; text-align:right; font-size:0.75rem; font-weight:700; }
+.sm-col.b { color:var(--accent-blue); }
+.sm-col.g { color:var(--accent-green); }
+.sm-col.o { color:var(--accent-gold); }
+.sm-hdr-row { display:flex; padding:1px 10px 2px; }
+.sm-hdr-lbl { flex:1; }
+.sm-hdr-col { min-width:52px; text-align:right; font-size:0.62rem; font-weight:700; text-transform:uppercase; color:var(--text-secondary); }
+.ind-input { background:var(--input-bg); border:1px solid var(--border-input); color:var(--text-primary); padding:2px 6px; border-radius:3px; font-size:0.75rem; width:68px; text-align:right; font-weight:700; }
+.sm-divider { border:none; border-top:1px solid var(--border-light); margin:4px 10px; }
+.conc-toggle { padding:2px 10px 1px; font-size:0.7rem; color:var(--accent-blue); cursor:pointer; display:flex; align-items:center; gap:4px; }
+.conc-toggle:hover { color:var(--accent-cyan); }
+.conc-detail { margin:0 10px 4px; border:1px solid var(--border-light); border-radius:4px; font-size:0.7rem; overflow:hidden; }
+.cd-row { display:flex; padding:2px 7px; border-bottom:1px solid var(--border-light); }
+.cd-row:last-child { border-bottom:none; }
+.cd-lbl { flex:1; color:var(--text-secondary); }
+.cd-val { font-weight:700; color:var(--text-primary); }
+
+/* ── Main Content ── */
+.main-content { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+
+/* Summary strip */
+.summary-strip { background:var(--content-header); border-bottom:1px solid var(--border-medium); padding:6px 14px; display:flex; align-items:center; gap:12px; flex-shrink:0; flex-wrap:wrap; }
+.ss-fp-name { font-size:0.85rem; font-weight:700; color:var(--accent-cyan); white-space:nowrap; }
+.ss-sep { width:1px; height:18px; background:var(--border-medium); }
+.kpi-chip { display:flex; flex-direction:column; align-items:center; min-width:80px; }
+.kpi-chip-label { font-size:0.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.3px; color:var(--text-secondary); }
+.kpi-chip-vals { display:flex; gap:10px; font-weight:700; margin-top:4px; align-items:flex-end; }
+.kv-item { display:flex; flex-direction:column; align-items:center; gap:2px; }
+.kv-sub { font-size:0.6rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.2px; font-weight:600; }
+.kv-b { color:var(--accent-blue); }
+.kv-a { color:var(--accent-green); }
+.kv-f { color:var(--accent-gold); }
+.ltb-chip { display:flex; align-items:center; gap:8px; padding:4px 10px; background:rgba(251,191,36,.08); border:1px solid rgba(251,191,36,.2); border-radius:5px; }
+.ltb-chip-lbl { font-size:0.65rem; font-weight:700; text-transform:uppercase; color:var(--accent-gold); }
+.ltb-nums { display:flex; gap:10px; font-size:0.78rem; font-weight:700; }
+.ltb-r { color:var(--renewal-color); }
+.ltb-n { color:var(--new-color); }
+.ltb-t { color:var(--accent-gold); }
+
+/* Scroll area */
+.scroll-area { flex:1; overflow-y:auto; padding:10px 14px; display:flex; flex-direction:column; gap:10px; }
+
+/* ── Tier Section ── */
+.tier-section { display:flex; flex-direction:column; gap:0; border:1px solid var(--border-medium); border-radius:6px; overflow:hidden; }
+.tier-section-hdr { display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--surface-raised); border-bottom:1px solid var(--border-medium); }
+.ts-label { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; padding:3px 10px; border-radius:10px; }
+.ts-label.renewal { background:rgba(251,146,60,.15); color:var(--renewal-color); border:1px solid rgba(251,146,60,.25); }
+.ts-label.new { background:rgba(74,222,128,.12); color:var(--new-color); border:1px solid rgba(74,222,128,.25); }
+.ts-meta { font-size:0.72rem; color:var(--text-secondary); }
+.ts-actions { display:flex; gap:5px; margin-left:auto; }
+.btn-xs { padding:3px 9px; border:none; border-radius:3px; font-size:0.7rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px; }
+.btn-xs.add { background:rgba(74,222,128,.12); color:var(--accent-green); border:1px solid rgba(74,222,128,.25); }
+.btn-xs.add:hover { background:rgba(74,222,128,.22); }
+.btn-xs.save { background:rgba(103,232,224,.12); color:var(--accent-cyan); border:1px solid rgba(103,232,224,.25); }
+.btn-xs.save:hover { background:rgba(103,232,224,.22); }
+.tier-cols { display:grid; grid-template-columns:1fr 1fr 1fr; }
+.tier-col { border-right:4px solid var(--border-medium); }
+.tier-col:last-child { border-right:none; }
+.tc-hdr { padding:5px 8px; font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.4px; text-align:center; border-bottom:1px solid var(--border-medium); }
+.tc-hdr.bgt { background:rgba(100,181,246,.08); color:var(--accent-blue); }
+.tc-hdr.act { background:rgba(74,222,128,.07); color:var(--accent-green); }
+.tc-hdr.fct { background:rgba(251,191,36,.07); color:var(--accent-gold); }
+
+/* Tier tables */
+.tier-tbl { width:100%; border-collapse:collapse; font-size:0.75rem; }
+.tier-tbl thead th { padding:3px 6px; background:var(--surface-raised); color:var(--text-secondary); font-weight:600; font-size:0.65rem; text-align:right; border-bottom:1px solid var(--border-medium); white-space:nowrap; }
+.tier-tbl thead th:first-child { text-align:center; width:28px; }
+.tier-tbl tbody td { padding:3px 6px; border-bottom:1px solid var(--border-light); text-align:right; color:var(--text-primary); }
+.tier-tbl tbody td:first-child { text-align:center; color:var(--text-secondary); font-size:0.7rem; }
+.tier-tbl tbody tr:last-child td { border-bottom:none; }
+.tier-tbl tbody tr:hover td { background:var(--hover-bg); }
+.tier-tbl tfoot td { padding:3px 6px; background:var(--surface-raised); border-top:1px solid var(--border-medium); font-weight:700; font-size:0.72rem; text-align:right; }
+.tier-tbl tfoot td:first-child { text-align:center; color:var(--text-secondary); font-size:0.65rem; }
+.tier-ner { color:var(--accent-cyan); font-weight:700; }
+.tier-inp { background:transparent; border:1px solid transparent; color:var(--text-primary); padding:2px 4px; border-radius:3px; font-size:0.75rem; width:100%; text-align:right; }
+.tier-inp:focus { border-color:var(--accent-cyan); outline:none; background:rgba(103,232,224,.05); }
+.btn-del { background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:0.75rem; padding:0 3px; border-radius:3px; line-height:1; }
+.btn-del:hover { color:var(--accent-red); background:rgba(248,113,113,.1); }
+.tier-add-bar { padding:4px 6px; border-top:1px solid var(--border-light); display:flex; gap:5px; align-items:center; }
+.tier-tot-strip { display:grid; grid-template-columns:1fr 1fr 1fr; background:var(--surface-raised); border-top:2px solid var(--border-medium); }
+.tt-cell { padding:5px 8px; font-size:0.72rem; font-weight:700; text-align:right; border-right:1px solid var(--border-medium); }
+.tt-cell:last-child { border-right:none; }
+.tt-lbl { font-size:0.65rem; color:var(--text-secondary); font-weight:400; display:block; margin-bottom:1px; }
+.tt-row { display:flex; justify-content:space-between; gap:6px; }
+.tt-v { color:var(--text-primary); }
+.tt-v.ner { color:var(--accent-cyan); }
+
+/* ── Market Comps Section ── */
+.comps-section { border:1px solid var(--border-medium); border-radius:6px; overflow:hidden; display:flex; flex-direction:column; }
+.comps-hdr { display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--surface-raised); border-bottom:1px solid var(--border-medium); }
+.comps-hdr-title { font-size:0.8rem; font-weight:700; color:var(--text-primary); }
+.comps-type-pill { padding:2px 9px; border-radius:10px; font-size:0.7rem; font-weight:700; background:rgba(251,191,36,.1); color:var(--accent-gold); border:1px solid rgba(251,191,36,.22); }
+.comps-count-txt { font-size:0.7rem; color:var(--text-secondary); }
+.comps-body { display:flex; flex-direction:column; }
+.comps-scroll { max-height:200px; overflow-y:auto; }
+.comps-tbl { width:100%; border-collapse:collapse; font-size:0.75rem; table-layout:fixed; }
+.comps-tbl thead th { background:var(--surface-raised); padding:4px 8px; text-align:left; font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.3px; color:var(--text-secondary); border-bottom:1px solid var(--border-medium); position:sticky; top:0; }
+.comps-tbl thead th.r { text-align:right; }
+.comps-tbl thead th.c { text-align:center; }
+.comps-tbl colgroup .cc-name { width:28%; }
+.comps-tbl colgroup .cc-fp   { width:26%; }
+.comps-tbl colgroup .cc-ner  { width:16%; }
+.comps-tbl colgroup .cc-sold { width:14%; }
+.comps-tbl colgroup .cc-inc  { width:16%; }
+.comps-tbl tbody td { padding:4px 8px; border-bottom:1px solid var(--border-light); color:var(--text-primary); }
+.comps-tbl tbody td.r { text-align:right; font-weight:600; }
+.comps-tbl tbody td.c { text-align:center; }
+.comps-tbl tbody tr:hover td { background:var(--hover-bg); }
+.comps-tbl tbody tr.excl td { opacity:.4; }
+.comps-footer { border-top:2px solid var(--border-medium); background:var(--surface-raised); }
+.comps-footer td { padding:4px 8px; font-weight:700; font-size:0.75rem; }
+.comps-footer td.r { text-align:right; }
+.comps-footer td.c { text-align:center; }
+.toggle-btn { width:28px; height:20px; border-radius:3px; border:none; cursor:pointer; font-size:0.78rem; font-weight:700; line-height:1; }
+.ton { background:rgba(74,222,128,.15); color:var(--accent-green); border:1px solid rgba(74,222,128,.3); }
+.toff { background:rgba(248,113,113,.15); color:var(--accent-red); border:1px solid rgba(248,113,113,.3); }
+.badge { display:inline-block; padding:1px 6px; border-radius:8px; font-size:0.67rem; font-weight:700; }
+.badge-r { background:rgba(248,113,113,.15); color:var(--accent-red); }
+.badge-b { background:rgba(100,181,246,.12); color:var(--accent-blue); }
+
+/* Annotation */
+.anno { background:rgba(100,181,246,.05); border:1px solid rgba(100,181,246,.15); border-left:3px solid var(--accent-blue); border-radius:0 5px 5px 0; padding:8px 12px; font-size:0.72rem; color:var(--text-secondary); line-height:1.5; margin-top:4px; }
+.anno strong { color:var(--accent-blue); }
+.anno h4 { font-size:0.68rem; text-transform:uppercase; letter-spacing:.4px; color:var(--accent-blue); margin-bottom:4px; }
+.anno ul { margin-left:12px; }
+.anno li { margin-bottom:2px; }
+
+/* Medium/light overrides */
+[data-theme="medium"] .tier-inp, [data-theme="light"] .tier-inp { color:var(--text-primary); }
+[data-theme="medium"] .ctrl-sel option, [data-theme="light"] .ctrl-sel option { background:#fff; color:#111; }
+
+/* ── New v2 classes ── */
+/* Read-only badge on Budget/Actuals column headers */
+.tc-readonly-badge { font-size:0.58rem; color:var(--text-secondary); font-weight:400; text-transform:none; letter-spacing:0; display:block; margin-top:2px; opacity:0.7; }
+/* Reforecast column header: flex to hold buttons */
+.tc-hdr.fct { display:flex; align-items:center; justify-content:space-between; text-align:left; }
+.tc-fct-lbl { display:flex; flex-direction:column; }
+.tc-fct-lbl em { font-size:0.56rem; font-style:normal; color:rgba(251,191,36,0.7); font-weight:400; margin-top:1px; }
+.tc-fct-btns { display:flex; gap:4px; flex-shrink:0; }
+/* Comps outer wrapper: side-by-side comps + stakeholder panel */
+.comps-outer { display:flex; gap:10px; align-items:stretch; min-height:320px; }
+.comps-outer .comps-section { flex:0 0 52%; display:flex; flex-direction:column; }
+.comps-outer .comps-section .comps-scroll { max-height:none; flex:1; overflow-y:auto; min-height:0; }
+.comps-outer .comps-section .comps-body { flex:1; display:flex; flex-direction:column; min-height:0; }
+/* Stakeholder panel */
+.stakeholder-panel { flex:1; border:1px solid var(--border-medium); border-radius:6px; overflow:hidden; display:flex; flex-direction:column; }
+.sp-hdr { background:var(--surface-raised); border-bottom:1px solid var(--border-medium); padding:8px 10px; font-size:0.75rem; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.sp-body { flex:1; padding:10px; display:flex; flex-direction:column; gap:8px; overflow-y:auto; min-height:0; }
+.sp-field { display:flex; flex-direction:column; gap:3px; }
+.sp-field-lbl { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.3px; color:var(--text-secondary); }
+.sp-field-val { font-size:0.78rem; color:var(--text-primary); }
+.sp-textarea { width:100%; flex:1; min-height:160px; background:var(--input-bg); border:1px solid var(--border-input); color:var(--text-primary); padding:8px; border-radius:4px; font-size:0.78rem; font-family:inherit; line-height:1.55; resize:vertical; }
+.sp-textarea:focus { outline:none; border-color:var(--accent-cyan); }
+.btn-copy { padding:5px 14px; background:rgba(103,232,224,.12); color:var(--accent-cyan); border:1px solid rgba(103,232,224,.25); border-radius:4px; font-size:0.75rem; font-weight:700; cursor:pointer; align-self:flex-start; }
+.btn-copy:hover { background:rgba(103,232,224,.22); }
+/* Planned input: gold, larger, highlighted */
+.ind-planned-lbl { font-weight:800; color:var(--accent-gold); font-size:0.88rem; }
+.ind-planned-inp { background:rgba(251,191,36,.08); border:1px solid rgba(251,191,36,.3); color:var(--accent-gold); padding:3px 6px; border-radius:3px; font-size:0.88rem; width:74px; text-align:right; font-weight:800; }
+.ind-planned-inp:focus { outline:none; border-color:var(--accent-gold); background:rgba(251,191,36,.13); }
+/* Summary strip taller */
+.summary-strip { padding:10px 14px; gap:14px; }
+.ss-fp-name { font-size:1.1rem; font-weight:700; color:var(--accent-cyan); white-space:nowrap; }
+.kpi-chip-label { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.3px; color:var(--text-secondary); }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="shell-nav">
+    <div class="nav-logo">
+        <div class="nav-logo-text">⬡ PEAK APPHUB</div>
+        <div class="nav-logo-sub">v4.0 · PeakMade Real Estate</div>
+    </div>
+    <ul class="nav-modules">
+        <li class="nav-item"><div class="nav-dot" style="background:#1e3a5f">🏠</div>Dashboard</li>
+        <li class="nav-item"><div class="nav-dot" style="background:#1a4040">📊</div>Employee Data Mgr</li>
+        <li class="nav-item"><div class="nav-dot" style="background:#1e3a5f">🏢</div>Property Data Mgr</li>
+        <li class="nav-item"><div class="nav-dot" style="background:#1e4a2e">🔧</div>App Maintenance</li>
+        <li class="nav-item active"><div class="nav-dot" style="background:#1a3a4a">💰</div>Rent Forecasting</li>
+        <li class="nav-item"><div class="nav-dot" style="background:#2a1f3a">📋</div>Field Manager</li>
+    </ul>
+    <div class="theme-row">
+        <button class="theme-btn active" onclick="setTheme('dark',this)">🌙</button>
+        <button class="theme-btn" onclick="setTheme('medium',this)">◑</button>
+        <button class="theme-btn" onclick="setTheme('light',this)">☀️</button>
+    </div>
+    <div class="nav-footer">👤 Craig Pell · Developer</div>
+</nav>
+
+<div class="shell-main">
+    <div class="mockup-bar">⚠️ <strong>DESIGN MOCKUP v2</strong> — Read-only prototype. No data is modified. Scroll the center area to see all sections.</div>
+
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="page-icon">💰</div>
+        <span class="page-name">Rent Forecasting</span>
+        <div class="top-sep"></div>
+        <div class="ctrl-grp">
+            <span class="ctrl-lbl">Property</span>
+            <select class="ctrl-sel" onchange="onPropChange(this)">
+                <option>GEOCENTRAL</option>
+                <option>48 WEST</option>
+                <option>BRIX &amp; MORTAR</option>
+                <option>FOUNDRY PRINCESS</option>
+            </select>
+        </div>
+        <div class="ctrl-grp">
+            <span class="ctrl-lbl">AY</span>
+            <select class="ctrl-sel" style="min-width:70px"><option>2026</option><option>2025</option></select>
+        </div>
+        <div class="ctrl-grp">
+            <span class="ctrl-lbl">Reforecast Plan</span>
+            <select class="ctrl-sel">
+                <option>RF-284 · June 2026</option>
+                <option>RF-275 · March 2026</option>
+                <option>RF-261 · January 2026</option>
+            </select>
+        </div>
+        <div class="top-sep"></div>
+        <div class="approved-btn on" id="approvedBtn" onclick="this.classList.toggle('on');this.textContent=this.classList.contains('on')?'✓ Approved':'○ Pending'">✓ Approved</div>
+        <div class="ml-auto" style="display:flex;gap:6px">
+            <button class="btn btn-ghost" onclick="alert('Opens new Reforecast Plan dialog')">＋ New Plan</button>
+            <button class="btn btn-primary" id="saveAllBtn" onclick="alert('Saves ALL pending tier edits across both lease types')">💾 Save All Tiers</button>
+        </div>
+    </div>
+
+    <div class="body-layout">
+        <!-- ── Left Panel ── -->
+        <div class="left-panel">
+
+            <!-- Floorplan List -->
+            <div class="fp-section" style="flex:1;min-height:120px;order:3;border-top:1px solid var(--border-medium)">
+                <div class="fp-section-hdr">
+                    <span>Floor Plans</span>
+                    <span style="font-size:0.65rem;color:var(--accent-cyan)" id="fpBedTotal">350 beds</span>
+                </div>
+                <div class="fp-list" id="fpList">
+                    <div class="fp-item active" onclick="selectFP(this,'EMERALD','2x2',118)">
+                        <span class="fp-item-name">EMERALD</span>
+                        <span class="fp-item-beds">118</span>
+                    </div>
+                    <div class="fp-item" onclick="selectFP(this,'EMERALD LUXE','2x2',12)">
+                        <span class="fp-item-name">EMERALD LUXE</span>
+                        <span class="fp-item-beds">12</span>
+                    </div>
+                    <div class="fp-item" onclick="selectFP(this,'GRANITE','4x4',72)">
+                        <span class="fp-item-name">GRANITE</span>
+                        <span class="fp-item-beds">72</span>
+                    </div>
+                    <div class="fp-item" onclick="selectFP(this,'GRANITE PREMIUM','4x4',4)">
+                        <span class="fp-item-name">GRANITE PREMIUM</span>
+                        <span class="fp-item-beds">4</span>
+                    </div>
+                    <div class="fp-item" onclick="selectFP(this,'MARBEL ONE','2x2',60)">
+                        <span class="fp-item-name">MARBEL ONE</span>
+                        <span class="fp-item-beds">60</span>
+                    </div>
+                    <div class="fp-item" onclick="selectFP(this,'MARBEL TWO','2x2',36)">
+                        <span class="fp-item-name">MARBEL TWO</span>
+                        <span class="fp-item-beds">36</span>
+                    </div>
+                    <div class="fp-item" onclick="selectFP(this,'ONYX','3x3',48)">
+                        <span class="fp-item-name">ONYX</span>
+                        <span class="fp-item-beds">48</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Property Summary (collapsible) -->
+            <div class="side-card" style="order:1;border-top:none">
+                <div class="side-card-hdr" onclick="toggleSideCard(this)">
+                    <span class="side-card-title">Property Summary</span>
+                    <span class="side-card-chev">▼</span>
+                </div>
+                <div class="side-card-body">
+                    <div class="sm-hdr-row">
+                        <span class="sm-hdr-lbl"></span>
+                        <span class="sm-hdr-col b">Bgt</span>
+                        <span class="sm-hdr-col g">Act</span>
+                        <span class="sm-hdr-col o">Fc</span>
+                    </div>
+                    <div class="sm-row">
+                        <span class="sm-label">Prelease</span>
+                        <div class="sm-cols">
+                            <span class="sm-col b">82%</span>
+                            <span class="sm-col g">79%</span>
+                            <span class="sm-col o">79%</span>
+                        </div>
+                    </div>
+                    <div class="sm-row">
+                        <span class="sm-label">Rate</span>
+                        <div class="sm-cols">
+                            <span class="sm-col b">$1,877</span>
+                            <span class="sm-col g">$1,851</span>
+                            <span class="sm-col o">$1,858</span>
+                        </div>
+                    </div>
+                    <div class="sm-row">
+                        <span class="sm-label">NER</span>
+                        <div class="sm-cols">
+                            <span class="sm-col b">$1,853</span>
+                            <span class="sm-col g">$1,829</span>
+                            <span class="sm-col o">$1,840</span>
+                        </div>
+                    </div>
+                    <div class="sm-row" style="margin-top:3px">
+                        <span class="sm-label" style="font-size:0.7rem">Fc. NER Ext.</span>
+                        <span class="sm-val o">$198K</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inducements (collapsible) -->
+            <div class="side-card" style="order:2">
+                <div class="side-card-hdr" onclick="toggleSideCard(this)">
+                    <span class="side-card-title">Inducements</span>
+                    <span style="font-size:0.68rem;color:var(--accent-gold);margin-right:6px">$14,750</span>
+                    <span class="side-card-chev">▼</span>
+                </div>
+                <div class="side-card-body">
+                    <div class="sm-row" style="padding-top:4px;padding-bottom:4px">
+                        <span class="sm-label ind-planned-lbl">Planned</span>
+                        <input class="ind-planned-inp" value="30,000">
+                    </div>
+                    <div class="sm-row"><span class="sm-label">Used YTD</span><span class="sm-val">$9,750</span></div>
+                    <div class="sm-row"><span class="sm-label">Forecasted</span><span class="sm-val">$5,000</span></div>
+                    <hr class="sm-divider">
+                    <div class="sm-row"><span class="sm-label" style="font-weight:700;color:var(--text-primary)">Total</span><span class="sm-val o">$14,750</span></div>
+                    <div class="conc-toggle" onclick="toggleConcDetail()">
+                        <span id="concArrow">▶</span> Concession detail
+                    </div>
+                    <div class="conc-detail" id="concDetail" style="display:none">
+                        <div class="cd-row"><span class="cd-lbl">Bgt Conc.</span><span class="cd-val">$250/mo</span></div>
+                        <div class="cd-row"><span class="cd-lbl">Act Conc.</span><span class="cd-val">$208/mo</span></div>
+                        <div class="cd-row"><span class="cd-lbl">Gift (Bgt)</span><span class="cd-val">$0</span></div>
+                        <div class="cd-row"><span class="cd-lbl">Gift (YTD)</span><span class="cd-val">$500</span></div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /left-panel -->
+
+        <!-- ── Main Content ── -->
+        <div class="main-content">
+
+            <!-- Summary strip (always visible) -->
+            <div class="summary-strip">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                    <span class="ss-fp-name" id="ssName">EMERALD</span>
+                    <span style="font-size:0.72rem;color:var(--text-secondary)" id="ssType">2x2 &middot; 118 beds &mdash; <em style="font-style:normal;color:var(--accent-cyan)">Floorplan</em></span>
+                </div>
+                <div class="ss-sep"></div>
+                <div class="kpi-chip">
+                    <span class="kpi-chip-label">Prelease</span>
+                    <div class="kpi-chip-vals">
+                        <div class="kv-item"><span class="kv-b" style="font-size:0.95rem">82%</span><span class="kv-sub">Budget</span></div>
+                        <div class="kv-item"><span class="kv-a" style="font-size:0.95rem">79%</span><span class="kv-sub">Actual</span></div>
+                        <div class="kv-item"><span class="kv-f" style="font-size:0.95rem">79%</span><span class="kv-sub">Rfct</span></div>
+                    </div>
+                </div>
+                <div class="kpi-chip">
+                    <span class="kpi-chip-label">Avg Rate</span>
+                    <div class="kpi-chip-vals">
+                        <div class="kv-item"><span class="kv-b" style="font-size:0.95rem">$1,877</span><span class="kv-sub">Budget</span></div>
+                        <div class="kv-item"><span class="kv-a" style="font-size:0.95rem">$1,851</span><span class="kv-sub">Actual</span></div>
+                        <div class="kv-item"><span class="kv-f" style="font-size:0.95rem">$1,858</span><span class="kv-sub">Rfct</span></div>
+                    </div>
+                </div>
+                <div class="kpi-chip">
+                    <span class="kpi-chip-label">NER</span>
+                    <div class="kpi-chip-vals">
+                        <div class="kv-item"><span class="kv-b" style="font-size:0.95rem">$1,853</span><span class="kv-sub">Budget</span></div>
+                        <div class="kv-item"><span class="kv-a" style="font-size:0.95rem">$1,829</span><span class="kv-sub">Actual</span></div>
+                        <div class="kv-item"><span class="kv-f" style="font-size:0.95rem">$1,840</span><span class="kv-sub">Rfct</span></div>
+                    </div>
+                </div>
+                <div class="ss-sep"></div>
+                <div class="ltb-chip" style="flex-direction:column;align-items:flex-start;gap:4px;padding:6px 12px">
+                    <span class="ltb-chip-lbl" style="font-size:0.68rem">Left to Budget <em style="font-style:normal;font-weight:400;color:var(--text-secondary)">&mdash; this floorplan</em></span>
+                    <div class="ltb-nums" style="gap:14px">
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:1px">
+                            <span class="ltb-r" id="ltbR" style="font-size:1rem">7</span>
+                            <span style="font-size:0.58rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.2px">Renewals</span>
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:1px">
+                            <span class="ltb-n" id="ltbN" style="font-size:1rem">8</span>
+                            <span style="font-size:0.58rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.2px">New Lse</span>
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:1px">
+                            <span class="ltb-t" id="ltbT" style="font-size:1rem">15</span>
+                            <span style="font-size:0.58rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.2px">Total</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-left:auto;font-size:0.65rem;color:var(--text-secondary)">
+                    <span style="color:var(--accent-blue)">■</span> Budget &nbsp;
+                    <span style="color:var(--accent-green)">■</span> Actual &nbsp;
+                    <span style="color:var(--accent-gold)">■</span> Reforecast
+                </div>
+            </div>
+
+            <!-- Scrollable work area -->
+            <div class="scroll-area">
+
+                <!-- ═══ RENEWALS TIER SECTION ═══ -->
+                <div class="tier-section">
+                    <div class="tier-section-hdr">
+                        <span class="ts-label renewal">🔄 Renewals</span>
+                        <span class="ts-meta" id="rMeta">118 beds · 93 leased · 7 remaining</span>
+                        <div class="ts-actions">
+                            <button class="btn-xs add" onclick="addTierRow('rBody',this)">＋ Add</button>
+                            <button class="btn-xs save" onclick="saveTiers('renewal')">💾 Save</button>
+                        </div>
+                    </div>
+                    <div class="tier-cols">
+                        <div class="tier-col">
+                            <div class="tc-hdr bgt">📋 Budgeted</div>
+                            <table class="tier-tbl"><thead><tr><th>#</th><th>Ct</th><th>Rate</th><th>Conc</th><th>NER</th></tr></thead>
+                            <tbody>
+                                <tr><td>1</td><td>40</td><td>$1,709</td><td>$0</td><td class="tier-ner">$1,709</td></tr>
+                                <tr><td>2</td><td>30</td><td>$1,749</td><td>$0</td><td class="tier-ner">$1,749</td></tr>
+                                <tr><td>3</td><td>33</td><td>$1,799</td><td>$0</td><td class="tier-ner">$1,799</td></tr>
+                            </tbody>
+                            <tfoot><tr><td>Avg</td><td>103</td><td>$1,748</td><td>—</td><td class="tier-ner">$1,748</td></tr></tfoot>
+                            </table>
+                        </div>
+                        <div class="tier-col">
+                            <div class="tc-hdr act">✅ Actuals YTD</div>
+                            <table class="tier-tbl"><thead><tr><th>#</th><th>Ct</th><th>Rate</th><th>Conc</th><th>NER</th></tr></thead>
+                            <tbody>
+                                <tr><td>T1</td><td>45</td><td>$1,719</td><td>$0</td><td class="tier-ner">$1,719</td></tr>
+                                <tr><td>T2</td><td>28</td><td>$1,760</td><td>$0</td><td class="tier-ner">$1,760</td></tr>
+                                <tr><td>T3</td><td>20</td><td>$1,800</td><td>$0</td><td class="tier-ner">$1,800</td></tr>
+                            </tbody>
+                            <tfoot><tr><td>Avg</td><td>93</td><td>$1,751</td><td>—</td><td class="tier-ner">$1,751</td></tr></tfoot>
+                            </table>
+                        </div>
+                        <div class="tier-col">
+                            <div class="tc-hdr fct">🎯 Reforecast</div>
+                            <table class="tier-tbl"><thead><tr><th>#</th><th>Ct</th><th>Rate</th><th>Conc</th><th>NER</th><th></th></tr></thead>
+                            <tbody id="rBody">
+                                <tr><td><input class="tier-inp" value="1" style="width:22px;text-align:center"></td><td><input class="tier-inp liveNer" data-type="cnt" value="45" style="width:32px"></td><td><input class="tier-inp liveNer" data-type="rate" value="1709" style="width:52px"></td><td><input class="tier-inp liveNer" data-type="conc" value="0" style="width:44px"></td><td class="tier-ner">$1,709</td><td><button class="btn-del" onclick="delRow(this)">✕</button></td></tr>
+                                <tr><td><input class="tier-inp" value="2" style="width:22px;text-align:center"></td><td><input class="tier-inp liveNer" data-type="cnt" value="28" style="width:32px"></td><td><input class="tier-inp liveNer" data-type="rate" value="1760" style="width:52px"></td><td><input class="tier-inp liveNer" data-type="conc" value="250" style="width:44px"></td><td class="tier-ner">$1,739</td><td><button class="btn-del" onclick="delRow(this)">✕</button></td></tr>
+                                <tr><td><input class="tier-inp" value="3" style="width:22px;text-align:center"></td><td><input class="tier-inp liveNer" data-type="cnt" value="20" style="width:32px"></td><td><input class="tier-inp liveNer" data-type="rate" value="1800" style="width:52px"></td><td><input class="tier-inp liveNer" data-type="conc" value="0" style="width:44px"></td><td class="tier-ner">$1,800</td><td><button class="btn-del" onclick="delRow(this)">✕</button></td></tr>
+                            </tbody>
+                            <tfoot><tr id="rFoot"><td>Avg</td><td>93</td><td>$1,751</td><td>—</td><td class="tier-ner">$1,749</td><td></td></tr></tfoot>
+                            </table>
+                            <div class="tier-add-bar">
+                                <button class="btn-xs add" onclick="addTierRow('rBody',this)" style="font-size:0.65rem">＋ Add row</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ NEW LEASES TIER SECTION ═══ -->
+                <div class="tier-section">
+                    <div class="tier-section-hdr">
+                        <span class="ts-label new">✨ New Leases</span>
+                        <span class="ts-meta" id="nMeta">118 beds · 85 leased · 8 remaining</span>
+                        <div class="ts-actions">
+                            <button class="btn-xs add" onclick="addTierRow('nBody',this)">＋ Add</button>
+                            <button class="btn-xs save" onclick="saveTiers('new')">💾 Save</button>
+                        </div>
+                    </div>
+                    <div class="tier-cols">
+                        <div class="tier-col">
+                            <div class="tc-hdr bgt">📋 Budgeted</div>
+                            <table class="tier-tbl"><thead><tr><th>#</th><th>Ct</th><th>Rate</th><th>Conc</th><th>NER</th></tr></thead>
+                            <tbody>
+                                <tr><td>1</td><td>10</td><td>$1,999</td><td>$250</td><td class="tier-ner">$1,978</td></tr>
+                                <tr><td>2</td><td>5</td><td>$2,015</td><td>$500</td><td class="tier-ner">$1,973</td></tr>
+                                <tr><td>3</td><td>4</td><td>$2,025</td><td>$500</td><td class="tier-ner">$1,983</td></tr>
+                            </tbody>
+                            <tfoot><tr><td>Avg</td><td>19</td><td>$2,008</td><td>—</td><td class="tier-ner">$1,978</td></tr></tfoot>
+                            </table>
+                        </div>
+                        <div class="tier-col">
+                            <div class="tc-hdr act">✅ Actuals YTD</div>
+                            <table class="tier-tbl"><thead><tr><th>#</th><th>Ct</th><th>Rate</th><th>Conc</th><th>NER</th></tr></thead>
+                            <tbody>
+                                <tr><td>T1</td><td>12</td><td>$1,980</td><td>$250</td><td class="tier-ner">$1,959</td></tr>
+                                <tr><td>T2</td><td>4</td><td>$2,010</td><td>$500</td><td class="tier-ner">$1,968</td></tr>
+                            </tbody>
+                            <tfoot><tr><td>Avg</td><td>16</td><td>$1,988</td><td>—</td><td class="tier-ner">$1,961</td></tr></tfoot>
+                            </table>
+                        </div>
+                        <div class="tier-col">
+                            <div class="tc-hdr fct">🎯 Reforecast</div>
+                            <table class="tier-tbl"><thead><tr><th>#</th><th>Ct</th><th>Rate</th><th>Conc</th><th>NER</th><th></th></tr></thead>
+                            <tbody id="nBody">
+                                <tr><td><input class="tier-inp" value="1" style="width:22px;text-align:center"></td><td><input class="tier-inp liveNer" data-type="cnt" value="12" style="width:32px"></td><td><input class="tier-inp liveNer" data-type="rate" value="1999" style="width:52px"></td><td><input class="tier-inp liveNer" data-type="conc" value="250" style="width:44px"></td><td class="tier-ner">$1,978</td><td><button class="btn-del" onclick="delRow(this)">✕</button></td></tr>
+                                <tr><td><input class="tier-inp" value="2" style="width:22px;text-align:center"></td><td><input class="tier-inp liveNer" data-type="cnt" value="5" style="width:32px"></td><td><input class="tier-inp liveNer" data-type="rate" value="2015" style="width:52px"></td><td><input class="tier-inp liveNer" data-type="conc" value="500" style="width:44px"></td><td class="tier-ner">$1,973</td><td><button class="btn-del" onclick="delRow(this)">✕</button></td></tr>
+                                <tr><td><input class="tier-inp" value="3" style="width:22px;text-align:center"></td><td><input class="tier-inp liveNer" data-type="cnt" value="4" style="width:32px"></td><td><input class="tier-inp liveNer" data-type="rate" value="2025" style="width:52px"></td><td><input class="tier-inp liveNer" data-type="conc" value="500" style="width:44px"></td><td class="tier-ner">$1,983</td><td><button class="btn-del" onclick="delRow(this)">✕</button></td></tr>
+                            </tbody>
+                            <tfoot><tr id="nFoot"><td>Avg</td><td>21</td><td>$2,008</td><td>—</td><td class="tier-ner">$1,978</td><td></td></tr></tfoot>
+                            </table>
+                            <div class="tier-add-bar">
+                                <button class="btn-xs add" onclick="addTierRow('nBody',this)" style="font-size:0.65rem">＋ Add row</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ MARKET COMPS ═══ -->
+                <div class="comps-section">
+                    <div class="comps-hdr">
+                        <span class="comps-hdr-title">Market Comps for <strong style="color:var(--accent-cyan)" id="compsTitle">EMERALD</strong></span>
+                        <span class="comps-type-pill" id="compsTypePill">Compare As: 2x2</span>
+                        <span class="comps-count-txt" id="compsCnt">12 shown · 11 included · 9 leasing comps</span>
+                        <span style="margin-left:auto"></span>
+                    </div>
+                    <div class="comps-body">
+                        <div class="comps-scroll">
+                            <table class="comps-tbl">
+                                <colgroup><col class="cc-name"><col class="cc-fp"><col class="cc-ner"><col class="cc-sold"><col class="cc-inc"></colgroup>
+                                <thead><tr><th>Competitor</th><th>Floorplan</th><th class="r">NER</th><th class="c">Sold Out</th><th class="c">Include</th></tr></thead>
+                                <tbody id="compsBody">
+                                    <tr><td>E-LEVEN</td><td>2b2b</td><td class="r">—</td><td class="c"><span class="badge badge-b">No</span></td><td class="c"><button class="toggle-btn ton" onclick="toggleInc(this)">✓</button></td></tr>
+                                    <tr><td>FOUNDRY PRINCESS</td><td>2 X 2</td><td class="r">$1,449</td><td class="c"><span class="badge badge-b">No</span></td><td class="c"><button class="toggle-btn ton" onclick="toggleInc(this)">✓</button></td></tr>
+                                    <tr class="excl"><td>UNITY PLACE</td><td>2X2-UNION KING</td><td class="r">$1,525</td><td class="c"><span class="badge badge-b">No</span></td><td class="c"><button class="toggle-btn toff" onclick="toggleInc(this)">✗</button></td></tr>
+                                    <tr><td>UNITY POINT</td><td>2X1 - ALFRED</td><td class="r">$1,499</td><td class="c"><span class="badge badge-r">Yes</span></td><td class="c"><button class="toggle-btn ton" onclick="toggleInc(this)">✓</button></td></tr>
+                                    <tr><td>UNITY POINT</td><td>2X2 - BROCK</td><td class="r">$1,609</td><td class="c"><span class="badge badge-b">No</span></td><td class="c"><button class="toggle-btn ton" onclick="toggleInc(this)">✓</button></td></tr>
+                                    <tr><td>UNITY POINT</td><td>2X2 - UNION</td><td class="r">$1,699</td><td class="c"><span class="badge badge-b">No</span></td><td class="c"><button class="toggle-btn ton" onclick="toggleInc(this)">✓</button></td></tr>
+                                    <tr><td>MURAL</td><td>2x2-STANDARD</td><td class="r">$1,435</td><td class="c"><span class="badge badge-b">No</span></td><td class="c"><button class="toggle-btn ton" onclick="toggleInc(this)">✓</button></td></tr>
+                                    <tr><td>GEOPARK</td><td>Birch</td><td class="r">$1,675</td><td class="c"><span class="badge badge-b">No</span></td><td class="c"><button class="toggle-btn ton" onclick="toggleInc(this)">✓</button></td></tr>
+                                    <tr><td>GEOPARK</td><td>Fir</td><td class="r">$1,700</td><td class="c"><span class="badge badge-r">Yes</span></td><td class="c"><button class="toggle-btn ton" onclick="toggleInc(this)">✓</button></td></tr>
+                                    <tr><td>GEOPARK</td><td>Maple</td><td class="r">$1,700</td><td class="c"><span class="badge badge-b">No</span></td><td class="c"><button class="toggle-btn ton" onclick="toggleInc(this)">✓</button></td></tr>
+                                    <tr><td>GEOPARK</td><td>Poplar</td><td class="r">$1,825</td><td class="c"><span class="badge badge-b">No</span></td><td class="c"><button class="toggle-btn ton" onclick="toggleInc(this)">✓</button></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <table class="comps-tbl" style="background:var(--surface-raised)">
+                            <colgroup><col class="cc-name"><col class="cc-fp"><col class="cc-ner"><col class="cc-sold"><col class="cc-inc"></colgroup>
+                            <tbody class="comps-footer">
+                                <tr style="border-top:2px solid var(--border-medium)">
+                                    <td colspan="2" style="text-align:right;color:var(--text-secondary)">All Competitors</td>
+                                    <td class="r" id="compAllNer">$1,621</td><td class="c">—</td>
+                                    <td class="c" id="compAllCnt" style="color:var(--text-primary)">11</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" style="text-align:right;color:var(--text-secondary)">Leasing Comps</td>
+                                    <td class="r" id="compLcNer">$1,621</td><td class="c">—</td>
+                                    <td class="c" id="compLcCnt" style="color:var(--accent-cyan)">9</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- How it works annotation -->
+                <div class="anno">
+                    <h4>Design Rationale &amp; Interaction Model</h4>
+                    <ul>
+                        <li><strong>Left panel:</strong> Floorplan list is the primary navigation. Clicking a floorplan reloads all three sections (Renewals tiers, New Leases tiers, Market Comps) simultaneously. Property Summary and Inducements collapse to save space.</li>
+                        <li><strong>Summary strip:</strong> Always-visible header shows Budget/Actual/Reforecast KPIs + Left-to-Budget split by lease type so users always have context without scrolling.</li>
+                        <li><strong>Both lease types visible:</strong> Renewals and New Leases sections are stacked. Users can edit both without toggling. Each section has its own Add + Save buttons inline.</li>
+                        <li><strong>NER live-update:</strong> Typing in Rate or Conc. instantly recalculates NER in that row and the weighted-avg footer.</li>
+                        <li><strong>💾 Save All Tiers</strong> (top right) commits ALL pending edits across both lease types at once. Individual section Save buttons commit just that lease type.</li>
+                        <li><strong>Market Comps:</strong> Auto-filtered to the selected floorplan's Compare-As type. Include toggle persists immediately. Totals always visible below the scrollable list.</li>
+                    </ul>
+                </div>
+
+            </div><!-- /scroll-area -->
+        </div><!-- /main-content -->
+    </div><!-- /body-layout -->
+</div><!-- /shell-main -->
+
+<script>
+// Theme
+function setTheme(t,btn) {
+    document.documentElement.setAttribute('data-theme',t);
+    document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+// Side card toggle
+function toggleSideCard(hdr) {
+    const body = hdr.nextElementSibling;
+    const chev = hdr.querySelector('.side-card-chev');
+    body.classList.toggle('collapsed');
+    chev.classList.toggle('collapsed');
+    chev.textContent = body.classList.contains('collapsed') ? '▶' : '▼';
+}
+
+// Concession detail
+function toggleConcDetail() {
+    const d = document.getElementById('concDetail');
+    const a = document.getElementById('concArrow');
+    const open = d.style.display !== 'none';
+    d.style.display = open ? 'none' : 'block';
+    a.textContent = open ? '▶' : '▼';
+}
+
+// Floorplan select
+function selectFP(el, name, type, beds) {
+    document.querySelectorAll('.fp-item').forEach(i=>i.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('ssName').textContent = name;
+    document.getElementById('ssType').textContent = type + ' · ' + beds + ' beds';
+    document.getElementById('compsTitle').textContent = name;
+    document.getElementById('compsTypePill').textContent = 'Compare As: ' + type;
+    document.getElementById('rMeta').textContent = beds + ' beds · ' + Math.round(beds*.79) + ' leased · ' + Math.round(beds*.06) + ' remaining';
+    document.getElementById('nMeta').textContent = beds + ' beds · ' + Math.round(beds*.72) + ' leased · ' + Math.round(beds*.07) + ' remaining';
+}
+
+// Live NER + foot recalc
+document.querySelectorAll('tbody').forEach(tbody => {
+    tbody.addEventListener('input', e => {
+        if (!e.target.classList.contains('liveNer')) return;
+        const tr = e.target.closest('tr');
+        const rate = parseFloat(tr.querySelector('[data-type="rate"]')?.value) || 0;
+        const conc = parseFloat(tr.querySelector('[data-type="conc"]')?.value) || 0;
+        const nerCell = tr.querySelector('.tier-ner');
+        if (nerCell) nerCell.textContent = '$' + Math.round(rate - conc/12).toLocaleString();
+        recalcFoot(tbody.id);
+    });
+});
+
+function recalcFoot(bodyId) {
+    const tbody = document.getElementById(bodyId);
+    if (!tbody) return;
+    const footId = bodyId === 'rBody' ? 'rFoot' : 'nFoot';
+    const foot = document.getElementById(footId);
+    if (!foot) return;
+    let tCnt=0, tRate=0, tNer=0;
+    tbody.querySelectorAll('tr').forEach(tr => {
+        const cnt  = parseFloat(tr.querySelector('[data-type="cnt"]')?.value) || 0;
+        const rate = parseFloat(tr.querySelector('[data-type="rate"]')?.value) || 0;
+        const conc = parseFloat(tr.querySelector('[data-type="conc"]')?.value) || 0;
+        tCnt += cnt; tRate += rate*cnt; tNer += (rate-conc/12)*cnt;
+    });
+    const fmt = v => '$' + Math.round(v).toLocaleString();
+    const cells = foot.querySelectorAll('td');
+    cells[1].textContent = tCnt;
+    cells[2].textContent = tCnt > 0 ? fmt(tRate/tCnt) : '—';
+    cells[4].textContent = tCnt > 0 ? fmt(tNer/tCnt) : '—';
+}
+
+// Delete row
+function delRow(btn) {
+    if (!confirm('Delete this tier row?')) return;
+    const tr = btn.closest('tr');
+    const bodyId = tr.closest('tbody').id;
+    tr.remove();
+    recalcFoot(bodyId);
+}
+
+// Add tier row
+let tierNums = {rBody:3, nBody:3};
+function addTierRow(bodyId) {
+    const tbody = document.getElementById(bodyId);
+    const rows = tbody.querySelectorAll('tr');
+    const lastRow = rows[rows.length-1];
+    const lastRate = lastRow?.querySelector('[data-type="rate"]')?.value || '0';
+    tierNums[bodyId] = (tierNums[bodyId]||rows.length) + 1;
+    const n = tierNums[bodyId];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><input class="tier-inp" value="${n}" style="width:22px;text-align:center"></td>
+        <td><input class="tier-inp liveNer" data-type="cnt" value="0" style="width:32px"></td>
+        <td><input class="tier-inp liveNer" data-type="rate" value="${lastRate}" style="width:52px"></td>
+        <td><input class="tier-inp liveNer" data-type="conc" value="0" style="width:44px"></td>
+        <td class="tier-ner">$${parseInt(lastRate).toLocaleString()}</td>
+        <td><button class="btn-del" onclick="delRow(this)">✕</button></td>`;
+    tbody.appendChild(tr);
+    tr.querySelector('[data-type="cnt"]').focus();
+    recalcFoot(bodyId);
+}
+
+// Save tiers
+function saveTiers(type) {
+    alert('Would save all ' + type + ' tier rows to FORECAST_FORECAST_TIERS');
+}
+
+// Comps include toggle
+function toggleInc(btn) {
+    const on = btn.classList.contains('ton');
+    btn.classList.toggle('ton', !on);
+    btn.classList.toggle('toff', on);
+    btn.textContent = on ? '✗' : '✓';
+    btn.closest('tr').classList.toggle('excl', on);
+    recomputeCompTotals();
+}
+
+function recomputeCompTotals() {
+    const rows = document.querySelectorAll('#compsBody tr');
+    let allInc=0, lcInc=0, allNer=0, lcNer=0;
+    rows.forEach(tr => {
+        const inc = tr.querySelector('.ton') !== null;
+        const soldOut = tr.querySelector('.badge-r') !== null;
+        const nerTxt = tr.querySelector('.r')?.textContent?.replace(/[$,]/g,'');
+        const ner = nerTxt && nerTxt !== '—' ? parseFloat(nerTxt) : null;
+        if (inc) {
+            allInc++;
+            if (ner) allNer += ner;
+            if (!soldOut) {
+                lcInc++;
+                if (ner) lcNer += ner;
+            }
+        }
+    });
+    const fmt = (s, n) => n > 0 ? '$' + Math.round(s/n).toLocaleString() : '—';
+    document.getElementById('compAllNer').textContent = fmt(allNer, allInc);
+    document.getElementById('compLcNer').textContent = fmt(lcNer, lcInc);
+    document.getElementById('compAllCnt').textContent = allInc;
+    document.getElementById('compLcCnt').textContent = lcInc;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,503 @@
+{% extends "shell.html" %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/promotion_transfer.css') }}?v=2">
+{% endblock %}
+
+{% block content %}
+<div class="paf-outer">
+
+  <div class="paf-page-header">
+    <div class="paf-header-icon"><i class="fa-solid fa-people-arrows"></i></div>
+    <h1>Promotion/Transfer Alert</h1>
+  </div>
+
+  <div class="info-blurb" id="blurb-paf">
+    <div class="blurb-header" onclick="toggleBlurb('paf')">
+      <span class="blurb-title">About This Form</span>
+      <span class="blurb-toggle" id="blurbToggle-paf">&#9650;</span>
+    </div>
+      <div class="blurb-body collapsed" id="blurbBody-paf">
+      Use this form to submit a Promotion or Transfer Alert (PAF) for an associate.
+      Complete all three steps: <strong>Associate &amp; Position</strong>,
+      <strong>Payroll</strong>, and <strong>System Logins</strong>.
+      A job requisition must be submitted before proceeding.
+    </div>
+  </div>
+
+  <div class="paf-tabs">
+    <button class="paf-tab active" data-tab="submit">Submit Alert</button>
+    {% if is_admin %}<button class="paf-tab" data-tab="history">All Submissions</button>{% endif %}
+    {% if is_admin %}<button class="paf-tab" data-tab="admin">Admin</button>{% endif %}
+  </div>
+
+  <!-- ── Tab: Submit ──────────────────────────────────────────────────────────── -->
+  <div class="paf-panel active" id="tab-submit">
+
+    <!-- Step indicator -->
+    <div class="paf-stepper">
+      <div class="paf-step active" id="step-dot-1">
+        <div class="paf-step-circle">1</div>
+        <div class="paf-step-label">Associate &amp; Position</div>
+      </div>
+      <div class="paf-step-line"></div>
+      <div class="paf-step" id="step-dot-2">
+        <div class="paf-step-circle">2</div>
+        <div class="paf-step-label">Payroll</div>
+      </div>
+      <div class="paf-step-line"></div>
+      <div class="paf-step" id="step-dot-3">
+        <div class="paf-step-circle">3</div>
+        <div class="paf-step-label">System Logins</div>
+      </div>
+    </div>
+
+    <!-- Success message -->
+    <div class="paf-success" id="pafSuccess" style="display:none">
+      <i class="fa-solid fa-circle-check" style="font-size:1.4rem;color:#22c55e;margin-bottom:8px;"></i>
+      <div style="font-weight:600;font-size:1rem;margin-bottom:4px;">PAF Alert Submitted</div>
+      <div style="color:var(--text-secondary);font-size:0.85rem;">The alert has been recorded. You may submit another using the button below.</div>
+      <button class="paf-btn paf-btn-primary" style="margin-top:16px;" onclick="resetForm()">Submit Another</button>
+    </div>
+
+    <!-- ── Page 1: Associate & Position ── -->
+    <div class="paf-form-page" id="page-1">
+      <div class="paf-form paf-max">
+
+        <div class="form-section">
+          <div class="form-section-title">Job Requisition</div>
+          <div class="paf-jobreq-row">
+            <div>
+              <div class="form-label">Has a job requisition been submitted for this position?</div>
+              <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px;">If not, please submit a requisition before proceeding.</div>
+            </div>
+            <div class="paf-toggle-wrap">
+              <button type="button" class="paf-toggle-btn" id="jobReqBtn" data-value="0" onclick="toggleBtn('jobReqBtn')">
+                <span class="paf-toggle-label" id="jobReqLabel">No</span>
+              </button>
+            </div>
+          </div>
+          <div class="paf-jobreq-warn" id="jobReqWarn">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            A job requisition must be submitted before this PAF Alert can proceed.
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Employee</div>
+          <div class="form-row">
+            <div class="form-group" style="flex:2;min-width:260px;">
+              <label>Employee Name <span class="req">*</span></label>
+              <div class="paf-combo-wrap">
+                <input type="text" id="empSearch" placeholder="Search employees..." autocomplete="off">
+                <div class="paf-combo-dropdown" id="empDropdown"></div>
+              </div>
+              <input type="hidden" id="empName">
+              <input type="hidden" id="empCode">
+              <input type="hidden" id="empFirst">
+              <input type="hidden" id="empLast">
+              <input type="hidden" id="empEmail">
+              <input type="hidden" id="empSupervisorName">
+              <input type="hidden" id="empSupervisorEmail">
+            </div>
+            <div class="form-group" style="flex:1;min-width:130px;">
+              <label>Employee ID</label>
+              <input type="text" id="empCodeDisplay" disabled placeholder="Auto-filled">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Change Details</div>
+          <div class="form-row">
+            <div class="form-group" style="flex:1;min-width:160px;">
+              <label>Effective Date <span class="req">*</span></label>
+              <input type="date" id="effectiveDate">
+              <div class="form-hint">Must be at the beginning of a pay period.</div>
+            </div>
+            <div class="form-group" style="flex:1;min-width:160px;">
+              <label>PAF Type <span class="req">*</span></label>
+              <select id="pafType">
+                <option value="">-- Select --</option>
+                <option value="Promotion">Promotion</option>
+                <option value="Transfer">Transfer</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="flex:1;min-width:160px;">
+              <label>New Location <span class="req">*</span></label>
+              <select id="locationType" onchange="onLocationChange()">
+                <option value="">-- Select --</option>
+                <option value="Property">Property</option>
+                <option value="Corporate">Corporate</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Property location fields (shown when Location = Property) -->
+          <div id="propertyFields" style="display:none">
+            <div class="form-row">
+              <div class="form-group" style="flex:2;min-width:260px;">
+                <label>New Property <span class="req">*</span></label>
+                <select id="newPropertyLocation" onchange="onPropertySelect()">
+                  <option value="">-- Select Property --</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Corporate location fields -->
+          <div id="corporateFields" style="display:none">
+            <div class="form-row">
+              <div class="form-group" style="flex:1;min-width:160px;">
+                <label>Home Office Location <span class="req">*</span></label>
+                <select id="homeOfficeLocation">
+                  <option value="">-- Select --</option>
+                  <option value="Athens, GA">Athens, GA</option>
+                  <option value="Atlanta, GA">Atlanta, GA</option>
+                  <option value="Austin, TX">Austin, TX</option>
+                  <option value="Canada">Canada</option>
+                  <option value="Charlotte, NC">Charlotte, NC</option>
+                  <option value="Chicago, IL">Chicago, IL</option>
+                  <option value="Dallas, TX">Dallas, TX</option>
+                  <option value="Denver, CO">Denver, CO</option>
+                  <option value="Houston, TX">Houston, TX</option>
+                  <option value="Nashville, TN">Nashville, TN</option>
+                  <option value="Orlando, FL">Orlando, FL</option>
+                  <option value="Raleigh, NC">Raleigh, NC</option>
+                  <option value="Remote">Remote</option>
+                  <option value="Tampa, FL">Tampa, FL</option>
+                  <option value="Washington, DC">Washington, DC</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex:1;min-width:160px;">
+                <label>New Department <span class="req">*</span></label>
+                <select id="newDepartment">
+                  <option value="">-- Select --</option>
+                  <option>Accounting</option>
+                  <option>Business Development</option>
+                  <option>Canada Corporate</option>
+                  <option>Centralized Marketing Services</option>
+                  <option>Development</option>
+                  <option>Enterprise Systems Services</option>
+                  <option>Operations</option>
+                  <option>Peak Shared Services</option>
+                  <option>People Operations</option>
+                  <option>Redpoint Connect</option>
+                  <option>Sales &amp; Marketing</option>
+                  <option>Technology</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="flex:1;min-width:200px;">
+              <label>New Company / Entity <span class="req">*</span></label>
+              <select id="newCompanyEntity">
+                <option value="">-- Select --</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1;min-width:200px;">
+              <label>New Payroll Entity <span class="req">*</span></label>
+              <select id="newPayrollEntity">
+                <option value="">-- Select --</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="flex:2;min-width:260px;">
+              <label>New Position / Title <span class="req">*</span></label>
+              <select id="newPositionSelect" onchange="onPositionChange()">
+                <option value="">-- Select --</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- "Other" title text input -->
+          <div id="otherTitleWrap" style="display:none">
+            <div class="form-row">
+              <div class="form-group" style="flex:2;min-width:260px;">
+                <label>Specify Title <span class="req">*</span></label>
+                <input type="text" id="otherTitleInput" placeholder="Enter custom title">
+              </div>
+            </div>
+          </div>
+
+          <!-- RM Properties (shown when position = Regional Manager) -->
+          <div id="rmPropsWrap" style="display:none">
+            <div class="form-group">
+              <label>RM Properties</label>
+              <div class="paf-checkgrid" id="rmPropsGrid"></div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Hiring Manager</div>
+          <div class="form-row">
+            <div class="form-group" style="flex:2;min-width:260px;">
+              <label>Hiring Manager <span class="req">*</span></label>
+              <input type="text" id="hiringMgrDisplay" disabled placeholder="Auto-filled from employee">
+              <input type="hidden" id="hiringMgrName">
+              <input type="hidden" id="hiringMgrEmail">
+            </div>
+          </div>
+        </div>
+
+        <div class="paf-page-footer">
+          <div></div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="paf-page-label">Page 1 of 3</span>
+            <button class="paf-btn paf-btn-primary" id="btnNext1" onclick="goToPage(2)">Next <i class="fa-solid fa-chevron-right"></i></button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Page 2: Payroll ── -->
+    <div class="paf-form-page" id="page-2" style="display:none">
+      <div class="paf-form paf-max">
+
+        <div class="form-section">
+          <div class="form-section-title">Compensation</div>
+          <div class="form-row">
+            <div class="form-group" style="flex:1;min-width:160px;">
+              <label>New Pay Type <span class="req">*</span></label>
+              <select id="newPayType" onchange="onPayTypeChange()">
+                <option value="">-- Select --</option>
+                <option value="Hourly">Hourly</option>
+                <option value="Salary">Salary</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="flex:1;min-width:180px;" id="hourlyWrap">
+              <label>New Base Hourly Rate <span class="req">*</span></label>
+              <input type="number" id="newHourlyRate" placeholder="0.00" step="0.01" min="0" disabled>
+            </div>
+            <div class="form-group" style="flex:1;min-width:180px;" id="salaryWrap">
+              <label>New Annual Salary <span class="req">*</span></label>
+              <input type="number" id="newAnnualSalary" placeholder="0.00" step="1" min="0" disabled>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Housing &amp; Relocation</div>
+
+          <div class="paf-toggle-row">
+            <div class="paf-toggle-label-col">
+              <span>Rent Discount</span>
+            </div>
+            <button type="button" class="paf-toggle-btn" id="rentDiscountBtn" data-value="0" onclick="toggleBtn('rentDiscountBtn'); onRentDiscountChange()">
+              <span class="paf-toggle-label" id="rentDiscountLabel">No</span>
+            </button>
+          </div>
+          <div id="rentDiscountFields" class="paf-conditional" style="display:none">
+            <div class="form-row" style="margin-top:10px;">
+              <div class="form-group" style="flex:1;min-width:150px;">
+                <label>Rent Discount % <span class="req">*</span></label>
+                <input type="number" id="rentDiscountPct" placeholder="1-100" min="1" max="100" step="0.01">
+                <div class="form-hint">Note: &gt;20% is subject to tax implications.</div>
+              </div>
+              <div class="form-group" style="flex:1;min-width:150px;">
+                <label>Base Rent <span class="req">*</span></label>
+                <input type="number" id="baseRent" placeholder="0.00" min="0" step="1">
+              </div>
+            </div>
+          </div>
+
+          <div class="paf-toggle-row" style="margin-top:14px;">
+            <div class="paf-toggle-label-col">
+              <span>Relocation Assistance</span>
+            </div>
+            <button type="button" class="paf-toggle-btn" id="relocBtn" data-value="0" onclick="toggleBtn('relocBtn'); onRelocChange()">
+              <span class="paf-toggle-label" id="relocLabel">No</span>
+            </button>
+          </div>
+          <div id="relocFields" class="paf-conditional" style="display:none">
+            <div class="form-row" style="margin-top:10px;">
+              <div class="form-group" style="flex:1;min-width:180px;">
+                <label>Relocation Amount <span class="req">*</span></label>
+                <input type="number" id="relocAmount" placeholder="0.00" min="0" step="1">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Cell Phone Reimbursement</div>
+          <div class="form-hint" style="margin-bottom:10px;">Applies to: Property Manager, Executive Director, Maintenance Supervisor.</div>
+          <div class="paf-toggle-row">
+            <div class="paf-toggle-label-col"><span>Cell Phone Reimbursement</span></div>
+            <button type="button" class="paf-toggle-btn" id="cellBtn" data-value="0" onclick="toggleBtn('cellBtn'); onCellChange()">
+              <span class="paf-toggle-label" id="cellLabel">No</span>
+            </button>
+          </div>
+          <div id="cellFields" class="paf-conditional" style="display:none">
+            <div class="form-row" style="margin-top:10px;">
+              <div class="form-group" style="flex:1;min-width:180px;">
+                <label>Monthly Amount <span class="req">*</span></label>
+                <input type="number" id="cellAmount" placeholder="0.00" min="0" step="0.01">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Other Payments</div>
+          <div class="form-group">
+            <label>Other Special Payment Requests</label>
+            <textarea id="specialPayments" rows="3" placeholder="e.g. sign on bonus, etc."></textarea>
+          </div>
+        </div>
+
+        <div class="paf-page-footer">
+          <button class="paf-btn paf-btn-secondary" onclick="goToPage(1)"><i class="fa-solid fa-chevron-left"></i> Back</button>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="paf-page-label">Page 2 of 3</span>
+            <button class="paf-btn paf-btn-primary" id="btnNext2" onclick="goToPage(3)">Next <i class="fa-solid fa-chevron-right"></i></button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Page 3: System Logins ── -->
+    <div class="paf-form-page" id="page-3" style="display:none">
+      <div class="paf-form paf-max">
+
+        <div class="form-section">
+          <div class="form-section-title">System Access Needed</div>
+          <div class="form-hint" style="margin-bottom:16px;">Select all systems that require access for this associate's new role.</div>
+
+          <div class="paf-access-grid">
+            <div class="paf-access-item" data-field="paycom_client" onclick="toggleAccess(this)">
+              <div class="paf-access-check"><i class="fa-solid fa-check"></i></div>
+              <div class="paf-access-info">
+                <div class="paf-access-name">Paycom Client Account</div>
+                <div class="paf-access-note">Associates with direct reports only.</div>
+              </div>
+            </div>
+            <div class="paf-access-item" data-field="adaptive_insights" onclick="toggleAccess(this)">
+              <div class="paf-access-check"><i class="fa-solid fa-check"></i></div>
+              <div class="paf-access-info">
+                <div class="paf-access-name">Adaptive Insights</div>
+                <div class="paf-access-note"></div>
+              </div>
+            </div>
+            <div class="paf-access-item" data-field="amex" onclick="toggleAccess(this)">
+              <div class="paf-access-check"><i class="fa-solid fa-check"></i></div>
+              <div class="paf-access-info">
+                <div class="paf-access-name">AMEX</div>
+                <div class="paf-access-note">Traveling associates only.</div>
+              </div>
+            </div>
+            <div class="paf-access-item" data-field="avidxchange" onclick="toggleAccess(this)">
+              <div class="paf-access-check"><i class="fa-solid fa-check"></i></div>
+              <div class="paf-access-info">
+                <div class="paf-access-name">AvidXchange</div>
+                <div class="paf-access-note"></div>
+              </div>
+            </div>
+            <div class="paf-access-item" data-field="certify" onclick="toggleAccess(this)">
+              <div class="paf-access-check"><i class="fa-solid fa-check"></i></div>
+              <div class="paf-access-info">
+                <div class="paf-access-name">Certify (Expense Reports)</div>
+                <div class="paf-access-note"></div>
+              </div>
+            </div>
+            <div class="paf-access-item" data-field="concur" onclick="toggleAccess(this)">
+              <div class="paf-access-check"><i class="fa-solid fa-check"></i></div>
+              <div class="paf-access-info">
+                <div class="paf-access-name">Concur</div>
+                <div class="paf-access-note">Traveling associates only.</div>
+              </div>
+            </div>
+            <div class="paf-access-item" data-field="grace_hill" onclick="toggleAccess(this)">
+              <div class="paf-access-check"><i class="fa-solid fa-check"></i></div>
+              <div class="paf-access-info">
+                <div class="paf-access-name">Grace Hill</div>
+                <div class="paf-access-note"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Additional Notes</div>
+          <div class="form-group">
+            <label>Other Information</label>
+            <textarea id="otherInformation" rows="4" placeholder="Any other relevant information..."></textarea>
+          </div>
+        </div>
+
+        <div id="pafError" class="paf-error" style="display:none"></div>
+
+        <div class="paf-page-footer">
+          <button class="paf-btn paf-btn-secondary" onclick="goToPage(2)"><i class="fa-solid fa-chevron-left"></i> Back</button>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="paf-page-label">Page 3 of 3</span>
+            <button class="paf-btn paf-btn-primary" id="btnSubmit" onclick="submitForm()">
+              <i class="fa-solid fa-paper-plane"></i> Submit
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /tab-submit -->
+
+  <!-- ── Tab: History (admin) ── -->
+  {% if is_admin %}
+  <div class="paf-panel" id="tab-history">
+    <div class="paf-search-bar">
+      <input type="text" id="historySearch" placeholder="Search submissions..." oninput="filterHistory()">
+    </div>
+    <div class="paf-table-scroll">
+      <table class="paf-table" id="historyTable">
+        <thead>
+          <tr>
+            <th data-col="id" onclick="sortHistory(this)">#</th>
+            <th data-col="date_submitted" onclick="sortHistory(this)">Date</th>
+            <th data-col="employee_name" onclick="sortHistory(this)" class="sort-asc">Employee</th>
+            <th data-col="paf_type" onclick="sortHistory(this)">Type</th>
+            <th data-col="position" onclick="sortHistory(this)">New Position</th>
+            <th data-col="effective_date" onclick="sortHistory(this)">Effective</th>
+            <th data-col="property" onclick="sortHistory(this)">Location</th>
+            <th data-col="submitted_by" onclick="sortHistory(this)">Submitted By</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+    <div class="paf-empty" id="historyEmpty" style="display:none">No submissions found.</div>
+  </div>
+  {% endif %}
+
+  <!-- ── Tab: Admin ── -->
+  {% if is_admin %}
+  <div class="paf-panel" id="tab-admin">
+    <div class="paf-admin-add">
+      <input type="email" id="adminEmailInput" placeholder="user@peakmade.com">
+      <button class="paf-btn paf-btn-primary paf-btn-sm" onclick="addAdmin()">Add Admin</button>
+    </div>
+    <table class="paf-table" id="adminTable">
+      <thead>
+        <tr><th data-col="email" onclick="sortAdminTbl(this)" class="sort-asc">Email</th><th data-col="date_created" onclick="sortAdminTbl(this)">Added</th><th></th></tr>
+      </thead>
+      <tbody id="adminBody"></tbody>
+    </table>
+  </div>
+  {% endif %}
+
+</div>
+
+<script src="{{ url_for('static', filename='js/promotion_transfer.js') }}?v=2"></script>
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends "shell.html" %}
+{% block content %}
+<div class="dashboard">
+    <div class="dash-header">
+        <h1 class="dash-title">Dashboard</h1>
+        <p class="dash-subtitle">Peak AppHub — all tools in one place</p>
+    </div>
+
+    <!-- Dashboard Favorites (populated by JS) -->
+    <div class="dash-favorites" id="dashFavoritesSection" style="display:none;">
+        <h2 class="dash-section-title"><i class="fa-solid fa-heart"></i> Favorites</h2>
+        <div class="dash-favorites-grid" id="dashFavoritesGrid"></div>
+    </div>
+
+    <!-- All Apps -->
+    <h2 class="dash-section-title dash-all-apps-title">All Apps</h2>
+    <div class="dash-grid">
+        {% for mod in modules %}
+        <div class="dash-card-wrapper"
+             data-app-id="{{ mod.id }}"
+             data-app-name="{{ mod.name }}"
+             data-app-url="{{ url_for('main.module', module_id=mod.id) }}"
+             data-app-icon="{{ mod.icon }}"
+             data-app-color="{{ mod.color | default('#64748b') }}"
+             data-app-type="{{ mod.type }}">
+            <button class="dash-fav-btn" title="Toggle favorite" onclick="event.stopPropagation(); event.preventDefault(); toggleFav(this);">
+                <i class="fa-solid fa-heart"></i>
+            </button>
+            <a class="dash-card" href="{{ url_for('main.module', module_id=mod.id) }}">
+                <div class="dash-card-banner" style="background: {{ mod.color | default('#64748b') }}"></div>
+                <div class="dash-card-body">
+                    <div class="dash-card-top">
+                        <div class="dash-card-icon" style="background: {{ mod.color | default('#64748b') }}">
+                            <i class="{{ mod.icon }}"></i>
+                        </div>
+                        <div class="dash-card-text">
+                            <div class="dash-card-name">{{ mod.name }}</div>
+                            <div class="dash-card-desc">{{ mod.description | default('') }}</div>
+                        </div>
+                    </div>
+                    <div class="dash-card-footer">
+                        <span class="dash-card-type">
+                            {% if mod.type == 'flask' %}
+                            <span class="type-badge native">Native</span>
+                            {% else %}
+                            <span class="type-badge external">Power Apps</span>
+                            {% endif %}
+                        </span>
+                        <span class="dash-card-open">Open <i class="fa-solid fa-arrow-right"></i></span>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+// ── Favorites system (localStorage-backed) ──
+var AH_FAV_KEY = 'apphub_favorites';
+
+// Purge any corrupt data from previous attempts
+(function cleanupOldFavs() {
+    try {
+        var raw = JSON.parse(localStorage.getItem(AH_FAV_KEY) || '[]');
+        var clean = [];
+        for (var i = 0; i < raw.length; i++) {
+            if (raw[i] && raw[i].id && raw[i].name && raw[i].name !== 'undefined') {
+                clean.push(raw[i]);
+            }
+        }
+        if (clean.length !== raw.length) {
+            localStorage.setItem(AH_FAV_KEY, JSON.stringify(clean));
+        }
+    } catch(e) {
+        localStorage.removeItem(AH_FAV_KEY);
+    }
+})();
+
+function getFavs() {
+    try { return JSON.parse(localStorage.getItem(AH_FAV_KEY) || '[]'); }
+    catch(e) { return []; }
+}
+
+function saveFavs(favs) {
+    localStorage.setItem(AH_FAV_KEY, JSON.stringify(favs));
+}
+
+function toggleFav(btn) {
+    var wrap = btn.closest('.dash-card-wrapper');
+    var id = wrap.dataset.appId;
+    var favs = getFavs();
+    var idx = -1;
+    for (var i = 0; i < favs.length; i++) {
+        if (favs[i].id === id) { idx = i; break; }
+    }
+    if (idx >= 0) {
+        favs.splice(idx, 1);
+        btn.classList.remove('active');
+    } else {
+        favs.push({
+            id: id,
+            name: wrap.dataset.appName,
+            url: wrap.dataset.appUrl,
+            icon: wrap.dataset.appIcon,
+            color: wrap.dataset.appColor,
+            type: wrap.dataset.appType
+        });
+        btn.classList.add('active');
+    }
+    saveFavs(favs);
+    renderDashFavs();
+}
+
+function renderDashFavs() {
+    var section = document.getElementById('dashFavoritesSection');
+    var grid = document.getElementById('dashFavoritesGrid');
+    if (!section || !grid) return;
+    var favs = getFavs();
+    if (favs.length === 0) { section.style.display = 'none'; return; }
+    section.style.display = 'block';
+    var html = '';
+    for (var i = 0; i < favs.length; i++) {
+        var f = favs[i];
+        html += '<a class="dash-card" href="' + f.url + '">' +
+            '<div class="dash-card-banner" style="background:' + f.color + '"></div>' +
+            '<div class="dash-card-body"><div class="dash-card-top">' +
+            '<div class="dash-card-icon" style="background:' + f.color + '"><i class="' + f.icon + '"></i></div>' +
+            '<div class="dash-card-text"><div class="dash-card-name">' + f.name + '</div></div>' +
+            '</div><div class="dash-card-footer">' +
+            '<span class="dash-card-open">Open <i class="fa-solid fa-arrow-right"></i></span>' +
+            '</div></div></a>';
+    }
+    grid.innerHTML = html;
+}
+
+// Mark hearts on page load
+(function() {
+    var favs = getFavs();
+    var ids = [];
+    for (var i = 0; i < favs.length; i++) { ids.push(favs[i].id); }
+    var wraps = document.querySelectorAll('.dash-card-wrapper');
+    for (var j = 0; j < wraps.length; j++) {
+        if (ids.indexOf(wraps[j].dataset.appId) >= 0) {
+            var btn = wraps[j].querySelector('.dash-fav-btn');
+            if (btn) btn.classList.add('active');
+        }
+    }
+    renderDashFavs();
+})();
+</script>
+{% endblock %}

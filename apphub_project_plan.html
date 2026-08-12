@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AppHub 4.0 -- Project Plan</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f1923; color: #e0e0e0; }
+
+  #header {
+    position: sticky; top: 0; z-index: 100;
+    background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
+    padding: 16px 32px; box-shadow: 0 2px 12px rgba(0,0,0,.5);
+  }
+  #header h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+  #header h1 span { color: #53c0f0; }
+  #header .subtitle { font-size: 13px; color: #8ab4d4; }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 32px; }
+
+  .summary-row {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 16px; margin-bottom: 32px;
+  }
+  .card {
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+    border-radius: 10px; padding: 16px 20px;
+  }
+  .card h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #6ba3d6; margin-bottom: 6px; }
+  .card .value { font-size: 24px; font-weight: 700; }
+  .card .detail { font-size: 11px; color: #888; margin-top: 4px; }
+
+  .legend {
+    display: flex; gap: 20px; flex-wrap: wrap;
+    margin: 24px 0; padding: 12px 16px;
+    background: rgba(255,255,255,.03); border-radius: 8px; font-size: 12px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-swatch { width: 20px; height: 12px; border-radius: 3px; }
+
+  .section-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+    color: #555; padding: 10px 0 4px 0;
+  }
+  .section-divider { border-top: 1px solid rgba(255,255,255,.08); margin: 6px 0; }
+
+  /* Gantt */
+  .gantt-visual { margin: 8px 0 32px 0; }
+  .gantt-row {
+    display: grid; grid-template-columns: 240px 1fr;
+    align-items: center; margin-bottom: 3px; min-height: 28px;
+  }
+  .gantt-label { font-size: 12px; padding-right: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gantt-bar-container { position: relative; height: 22px; background: rgba(255,255,255,.02); border-radius: 3px; }
+  .gantt-bar {
+    position: absolute; height: 100%; border-radius: 3px;
+    display: flex; align-items: center; padding-left: 6px;
+    font-size: 10px; color: rgba(255,255,255,.9); white-space: nowrap; overflow: hidden;
+  }
+  .bar-foundation   { background: linear-gradient(90deg, #1a5276, #2980b9); }
+  .bar-module       { background: linear-gradient(90deg, #0e6655, #16a085); }
+  .bar-infra        { background: linear-gradient(90deg, #6c3483, #9b59b6); }
+  .bar-done         { opacity: 0.55; }
+  .bar-blocked      { background: repeating-linear-gradient(45deg, #c0392b, #c0392b 4px, rgba(192,57,43,.35) 4px, rgba(192,57,43,.35) 8px); }
+  .milestone-tick {
+    position: absolute; top: 0; bottom: 0; width: 3px;
+    background: #f1c40f; border-radius: 2px;
+  }
+  .milestone-label {
+    position: absolute; bottom: 24px; font-size: 9px; color: #f1c40f;
+    transform: translateX(-50%); white-space: nowrap; font-weight: 700;
+  }
+  .today-line {
+    position: absolute; top: 0; bottom: 0; width: 2px;
+    background: #f1c40f; z-index: 10; opacity: .7; left: 61%;
+  }
+  .today-label {
+    position: absolute; bottom: -16px; font-size: 9px;
+    color: #f1c40f; transform: translateX(-50%); white-space: nowrap; left: 61%;
+  }
+
+  /* Module table */
+  .module-section { margin-bottom: 40px; }
+  .track-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 2px solid rgba(255,255,255,.1);
+  }
+  .track-header .dot { width: 14px; height: 14px; border-radius: 4px; }
+  .track-header h2 { font-size: 17px; font-weight: 600; }
+  .track-header .cap { font-size: 12px; color: #888; margin-left: auto; }
+
+  table.mod-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.mod-table th {
+    text-align: left; padding: 8px 12px; font-size: 11px;
+    text-transform: uppercase; letter-spacing: .5px; color: #6ba3d6;
+    border-bottom: 1px solid rgba(255,255,255,.1);
+  }
+  table.mod-table td { padding: 7px 12px; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+  table.mod-table tr:hover td { background: rgba(255,255,255,.03); }
+
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+  }
+  .b-done     { background: rgba(39,174,96,.2);  color: #27ae60; }
+  .b-active   { background: rgba(52,152,219,.2);  color: #3498db; }
+  .b-blocked  { background: rgba(231,76,60,.2);   color: #e74c3c; }
+  .b-pending  { background: rgba(149,165,166,.15); color: #95a5a6; }
+  .b-link     { background: rgba(241,196,15,.15);  color: #f1c40f; }
+
+  .est { color: #6ba3d6; font-size: 12px; }
+
+  .blocker-box {
+    background: rgba(231,76,60,.08); border: 1px solid rgba(231,76,60,.3);
+    border-radius: 8px; padding: 14px 20px; margin: 20px 0;
+    font-size: 13px; line-height: 1.6;
+  }
+  .blocker-box strong { color: #e74c3c; }
+
+  .notes { margin-top: 32px; }
+  .notes h3 { font-size: 14px; margin-bottom: 12px; color: #6ba3d6; }
+  .notes ul { padding-left: 20px; line-height: 1.9; font-size: 13px; color: #aaa; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1><span>AppHub 4.0</span> &nbsp;&middot;&nbsp; Project Plan</h1>
+  <div class="subtitle">
+    1 Developer (AI-assisted, 6 hrs/day) &nbsp;&middot;&nbsp; 26 Modules (all Flask native -- 15 done/in-progress, 11 planned builds)
+    &nbsp;&middot;&nbsp; Flask 3 + Entra ID SSO + SharePoint Graph API
+    &nbsp;&middot;&nbsp; <strong style="color:#f1c40f;">Target Go-Live: Oct 1, 2026</strong>
+    &nbsp;&middot;&nbsp; Updated: Aug 10
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Summary Cards -->
+  <div class="summary-row">
+    <div class="card">
+      <h3>Project Start</h3>
+      <div class="value">Jul 1</div>
+      <div class="detail">Shell, auth, module framework</div>
+    </div>
+    <div class="card">
+      <h3>Modules Total</h3>
+      <div class="value">26</div>
+      <div class="detail">15 Flask native (done/in progress) + 11 planned builds</div>
+    </div>
+    <div class="card">
+      <h3>Progress</h3>
+      <div class="value" style="color:#4ade80;">46%</div>
+      <div class="detail">12 modules done, 3 in progress, 11 builds queued</div>
+    </div>
+    <div class="card">
+      <h3>Remaining Work</h3>
+      <div class="value" style="color:#f59e0b;">~22 days</div>
+      <div class="detail">3 in-progress + 11 builds + testing + infra + UAT</div>
+    </div>
+    <div class="card">
+      <h3 style="color:#f1c40f;">Target Go-Live</h3>
+      <div class="value" style="color:#f1c40f;">Oct 1</div>
+      <div class="detail">Production on Azure App Service</div>
+    </div>
+  </div>
+
+  <!-- Resolved blocker -->
+  <div class="blocker-box" style="background:rgba(39,174,96,.1);border-color:#27ae60;">
+    <strong style="color:#27ae60;">&#10003; Resolved Aug 10:</strong> Mindset Award Nomination data now loading.
+    <strong>Sites.FullControl.All</strong> granted to FabricPipelineApp; site-level Graph permission posted; token cache fixed to respect expiry.
+    Nominations confirmed loading from SharePoint list.</div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:linear-gradient(90deg,#1a5276,#2980b9)"></div> Foundation / Infrastructure</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:linear-gradient(90deg,#0e6655,#16a085)"></div> Module Rebuilds</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:linear-gradient(90deg,#6c3483,#9b59b6)"></div> Testing &amp; Deployment</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:linear-gradient(90deg,#1a5276,#2980b9);opacity:.55"></div> Completed</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#f1c40f"></div> Milestone</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:repeating-linear-gradient(45deg,#c0392b,#c0392b 3px,rgba(192,57,43,.4) 3px,rgba(192,57,43,.4) 6px)"></div> Blocked</div>
+  </div>
+
+  <!-- Gantt Visual -->
+  <!-- Timeline: Jul 1 = 0%, Oct 3 = 100% (94 days). Today Aug 10 = day 40 = 43% -->
+  <div class="gantt-visual">
+
+    <!-- Month headers -->
+    <div class="gantt-row">
+      <div class="gantt-label"></div>
+      <div class="gantt-bar-container" style="display:flex;background:none;height:20px;">
+        <span style="flex:31;text-align:center;font-size:10px;color:#6ba3d6;border-left:1px solid rgba(255,255,255,.08);">JULY</span>
+        <span style="flex:31;text-align:center;font-size:10px;color:#f1c40f;font-weight:700;border-left:1px solid rgba(255,255,255,.08);">AUGUST</span>
+        <span style="flex:30;text-align:center;font-size:10px;color:#6ba3d6;border-left:1px solid rgba(255,255,255,.08);">SEPTEMBER</span>
+        <span style="flex:2;text-align:center;font-size:10px;color:#6ba3d6;border-left:1px solid rgba(255,255,255,.08);">OCT</span>
+      </div>
+    </div>
+
+    <!-- Milestone ticks row -->
+    <div class="gantt-row" style="margin-bottom:20px;">
+      <div class="gantt-label" style="font-size:10px;color:#555;">MILESTONES</div>
+      <div class="gantt-bar-container" style="background:none;">
+        <div class="today-line" style="left:43%;"></div>
+        <div class="today-label" style="left:43%;">TODAY</div>
+        <div class="milestone-tick" style="left:21%;"></div><div class="milestone-label" style="left:21%;">Shell Live</div>
+        <div class="milestone-tick" style="left:41%;"></div><div class="milestone-label" style="left:41%;">Phase 2 Done</div>
+        <div class="milestone-tick" style="left:50%;"></div><div class="milestone-label" style="left:50%;">Rem. Modules</div>
+        <div class="milestone-tick" style="left:67%;"></div><div class="milestone-label" style="left:67%;">All Builds</div>
+        <div class="milestone-tick" style="left:83%;"></div><div class="milestone-label" style="left:83%;">Staging</div>
+        <div class="milestone-tick" style="left:98%;"></div><div class="milestone-label" style="left:98%;">Prod</div>
+      </div>
+    </div>
+
+    <!-- Foundation Track -->
+    <div class="section-label">&nbsp;&nbsp;PHASE 1 - FOUNDATION (COMPLETE)</div>
+
+    <div class="gantt-row">
+      <div class="gantt-label" style="color:#888;">&#10003; Flask Shell + Entra ID SSO</div>
+      <div class="gantt-bar-container">
+        <div class="today-line"></div>
+        <div class="gantt-bar bar-foundation bar-done" style="left:0%;width:10%;">Jul 1-7</div>
+      </div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label" style="color:#888;">&#10003; Module Registry + Audience Model</div>
+      <div class="gantt-bar-container">
+        <div class="today-line"></div>
+        <div class="gantt-bar bar-foundation bar-done" style="left:5%;width:8%;">Jul 5-10</div>
+      </div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label" style="color:#888;">&#10003; SPA Navigation + Script Fix</div>
+      <div class="gantt-bar-container">
+        <div class="today-line"></div>
+        <div class="gantt-bar bar-foundation bar-done" style="left:8%;width:13%;">Jul 8-18</div>
+      </div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label" style="color:#888;">&#10003; Graph API Client (MSAL)</div>
+      <div class="gantt-bar-container">
+        <div class="today-line"></div>
+        <div class="gantt-bar bar-foundation bar-done" style="left:15%;width:10%;">Jul 15-21</div>
+      </div>
+    </div>
+
+    <div class="section-divider" style="margin:8px 0;"></div>
+    <div class="section-label">&nbsp;&nbsp;PHASE 2 - MODULE REBUILDS (IN PROGRESS)</div>
+
+    <div class="gantt-row">
+      <div class="gantt-label" style="color:#888;">&#10003; PDM + EDM + Dashboard</div>
+      <div class="gantt-bar-container">
+        <div class="today-line" style="left:43%;"></div>
+        <div class="gantt-bar bar-module bar-done" style="left:10%;width:31%;">Jul 10 - Aug 9</div>
+      </div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label" style="color:#888;">&#10003; Maintenance, Cultivate, FastTrack</div>
+      <div class="gantt-bar-container">
+        <div class="today-line" style="left:43%;"></div>
+        <div class="gantt-bar bar-module bar-done" style="left:21%;width:20%;">Jul 21 - Aug 7</div>
+      </div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label" style="color:#888;">&#10003; Mindset, New Hire, Mentor Cert, Peak Link</div>
+      <div class="gantt-bar-container">
+        <div class="today-line" style="left:43%;"></div>
+        <div class="gantt-bar bar-module bar-done" style="left:30%;width:12%;">Jul 29 - Aug 10</div>
+      </div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label" style="color:#888;">&#10003; PAF / Promotion Transfer + Sort Fixes</div>
+      <div class="gantt-bar-container">
+        <div class="today-line" style="left:43%;"></div>
+        <div class="gantt-bar bar-module bar-done" style="left:39%;width:4%;">Aug 3-9</div>
+      </div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label">Milestones Module</div>
+      <div class="gantt-bar-container">
+        <div class="today-line" style="left:43%;"></div>
+        <div class="gantt-bar bar-module" style="left:43%;width:4%;">Aug 10-14</div>
+      </div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label">Rent Forecasting 1.0</div>
+      <div class="gantt-bar-container">
+        <div class="today-line" style="left:43%;"></div>
+        <div class="gantt-bar bar-module" style="left:43%;width:8%;">Aug 10-17</div>
+      </div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label">Rent Forecasting 2.0</div>
+      <div class="gantt-bar-container">
+        <div class="today-line" style="left:43%;"></div>
+        <div class="gantt-bar bar-module" style="left:48%;width:8%;">Aug 13-21</div>
+      </div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label">Market Benchmark - Floor Plans</div>
+      <div class="gantt-bar-container">
+        <div class="today-line" style="left:43%;"></div>
+        <div class="gantt-bar bar-module" style="left:51%;width:4%;">Aug 18-21</div>
+      </div>
+    </div>
+
+    <div class="section-divider" style="margin:8px 0;"></div>
+    <div class="section-label">&nbsp;&nbsp;PHASE 3 - REMAINING MODULES (Aug 24 - Sep 5)</div>
+
+    <div class="gantt-row">
+      <div class="gantt-label">Canada Survey, Rush Check, Special Handling, Vendor, ACH, Prepaid Visa</div>
+      <div class="gantt-bar-container">
+        <div class="today-line" style="left:43%;"></div>
+        <div class="gantt-bar bar-module" style="left:55%;width:12%;">Aug 24 - Sep 2</div>
+      </div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label">SAM Ad Spend, SAM Contracts, Pitch, Support DM, RM Inspections</div>
+      <div class="gantt-bar-container">
+        <div class="today-line" style="left:43%;"></div>
+        <div class="gantt-bar bar-module" style="left:55%;width:14%;">Aug 24 - Sep 5</div>
+      </div>
+    </div>
+
+    <div class="section-divider" style="margin:8px 0;"></div>
+    <div class="section-label">&nbsp;&nbsp;PHASE 4 - TESTING &amp; DEPLOYMENT (Sep 8 - Oct 1)</div>
+
+    <div class="gantt-row">
+      <div class="gantt-label">Integration Testing + Bug Fix</div>
+      <div class="gantt-bar-container">
+        <div class="today-line" style="left:43%;"></div>
+        <div class="gantt-bar bar-infra" style="left:69%;width:8%;">Sep 8-15</div>
+      </div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label">Azure App Service + Env Config</div>
+      <div class="gantt-bar-container">
+        <div class="today-line" style="left:43%;"></div>
+        <div class="gantt-bar bar-infra" style="left:75%;width:8%;">Sep 15-22</div>
+      </div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label">UAT + Stakeholder Sign-off</div>
+      <div class="gantt-bar-container">
+        <div class="today-line" style="left:43%;"></div>
+        <div class="gantt-bar bar-infra" style="left:82%;width:9%;">Sep 22-30</div>
+      </div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label"><strong style="color:#f1c40f;">PRODUCTION GO-LIVE</strong></div>
+      <div class="gantt-bar-container">
+        <div class="today-line" style="left:43%;"></div>
+        <div class="gantt-bar bar-infra" style="left:97%;width:3%;background:#f1c40f;color:#000;">Oct 1</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Module Status Table -->
+  <div class="module-section">
+    <div class="track-header">
+      <div class="dot" style="background:#16a085;"></div>
+      <h2>All 26 Modules</h2>
+      <span class="cap">12 done &bull; 3 in progress &bull; 11 not started</span>
+    </div>
+    <table class="mod-table">
+      <thead>
+        <tr>
+          <th>Module</th>
+          <th>Route</th>
+          <th>Backend</th>
+          <th>Data Source</th>
+          <th>Status</th>
+          <th>Est.</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>AppHub Maintenance</td><td>/maintenance/</td><td>maintenance.py</td><td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-done">Done</span></td><td class="est">--</td>
+          <td>Admin tools, module registry, audience mgmt</td>
+        </tr>
+        <tr>
+          <td>Property Data Manager</td><td>/pdm/</td><td>pdm.py</td><td>DB_APP_SUPPORT + WH_PROD2</td>
+          <td><span class="badge b-done">Done</span></td><td class="est">--</td>
+          <td>Full 3-tab UI, detail panel, property search</td>
+        </tr>
+        <tr>
+          <td>Employee Data Manager</td><td>/edm/</td><td>edm.py</td><td>DB_APP_SUPPORT + WH_STAGING</td>
+          <td><span class="badge b-done">Done</span></td><td class="est">--</td>
+          <td>Title groups, Entrata mappings, overrides</td>
+        </tr>
+        <tr>
+          <td>Dashboard</td><td>/</td><td>routes.py</td><td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-done">Done</span></td><td class="est">--</td>
+          <td>Module launcher with audience-filtered cards</td>
+        </tr>
+        <tr>
+          <td>Cultivate Nomination</td><td>/cultivate/</td><td>cultivate.py</td><td>SharePoint (Graph API)</td>
+          <td><span class="badge b-done">Done</span></td><td class="est">--</td>
+          <td>Nomination submit + admin All Noms view</td>
+        </tr>
+        <tr>
+          <td>FastTrack Recommendation</td><td>/fasttrack/</td><td>fasttrack.py</td><td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-done">Done</span></td><td class="est">--</td>
+          <td>Submit + admin review; sort fixed</td>
+        </tr>
+        <tr>
+          <td>Mindset Award Nomination</td><td>/mindset/</td><td>mindset.py</td><td>SharePoint (Graph API)</td>
+          <td><span class="badge b-done">Done</span></td><td class="est">--</td>
+          <td>Unblocked Aug 10 -- Sites.FullControl.All granted, nominations loading</td>
+        </tr>
+        <tr>
+          <td>New Hire Alert</td><td>/new-hire/</td><td>new_hire.py</td><td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-done">Done</span></td><td class="est">--</td>
+          <td>Alerts table, admin view; sort fixed</td>
+        </tr>
+        <tr>
+          <td>Mentor Certification</td><td>/mentor-cert/</td><td>mentor_cert.py</td><td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-done">Done</span></td><td class="est">--</td>
+          <td>Cert tracking, admin view; sort fixed</td>
+        </tr>
+        <tr>
+          <td>Peak Link (Ideas)</td><td>/peak-link/</td><td>peak_link.py</td><td>SharePoint (Graph API)</td>
+          <td><span class="badge b-done">Done</span></td><td class="est">--</td>
+          <td>Idea submission + admin view; sort fixed</td>
+        </tr>
+        <tr>
+          <td>Promotion / Transfer (PAF)</td><td>/paf/</td><td>paf.py</td><td>SharePoint (Graph API)</td>
+          <td><span class="badge b-done">Done</span></td><td class="est">--</td>
+          <td>PAF form submit + admin review</td>
+        </tr>
+        <tr>
+          <td>Milestones</td><td>/milestones/</td><td>milestones.py</td><td>DB_APP_SUPPORT + WH_STAGING</td>
+          <td><span class="badge b-active">In Progress</span></td><td class="est">0.5 d</td>
+          <td>Template exists; backend and data wiring needed</td>
+        </tr>
+        <tr>
+          <td>Rent Forecasting 1.0</td><td>/rfs/</td><td>rfs.py</td><td>WH_PROD2 + DB_APP_SUPPORT</td>
+          <td><span class="badge b-active">In Progress</span></td><td class="est">2 d</td>
+          <td>Template exists; full backend impl needed</td>
+        </tr>
+        <tr>
+          <td>Rent Forecasting 2.0</td><td>/rfs2/</td><td>rfs2.py</td><td>WH_PROD2 + DB_APP_SUPPORT</td>
+          <td><span class="badge b-active">In Progress</span></td><td class="est">2 d</td>
+          <td>Template exists; tier editing, market comps, charts</td>
+        </tr>
+        <tr>
+          <td>Market Benchmark</td><td>/mrb/ (port 5055)</td><td>app.py (standalone)</td><td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-active">In Progress</span></td><td class="est">1 d</td>
+          <td>5 of 6 tabs done; Floor Plans tab pending</td>
+        </tr>
+        <tr>
+          <td>Canada Market Survey</td><td>/canada-survey/</td><td>canada_survey.py</td><td>TBD</td>
+          <td><span class="badge b-pending">Not Started</span></td><td class="est">1 d</td>
+          <td>Survey form + responses admin view</td>
+        </tr>
+        <tr>
+          <td>Rush Check Request</td><td>/rush-check/</td><td>rush_check.py</td><td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-pending">Not Started</span></td><td class="est">1 d</td>
+          <td>Check request form + approvals tracking</td>
+        </tr>
+        <tr>
+          <td>SAM Ad Spend Planning</td><td>/sam-adspend/</td><td>sam_adspend.py</td><td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-pending">Not Started</span></td><td class="est">1.5 d</td>
+          <td>Budget grid, property-level ad spend entries</td>
+        </tr>
+        <tr>
+          <td>SAM Contract Manager</td><td>/sam-contracts/</td><td>sam_contracts.py</td><td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-pending">Not Started</span></td><td class="est">1.5 d</td>
+          <td>Contract list, status tracking, document links</td>
+        </tr>
+        <tr>
+          <td>Special Handling Form</td><td>/special-handling/</td><td>special_handling.py</td><td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-pending">Not Started</span></td><td class="est">0.5 d</td>
+          <td>Exception request form + ops admin view</td>
+        </tr>
+        <tr>
+          <td>Support Data Manager</td><td>/support-dm/</td><td>support_dm.py</td><td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-pending">Not Started</span></td><td class="est">1 d</td>
+          <td>Support ticket/data management table + admin</td>
+        </tr>
+        <tr>
+          <td>The Pitch Workflow</td><td>/pitch/</td><td>pitch.py</td><td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-pending">Not Started</span></td><td class="est">1.5 d</td>
+          <td>Idea submission, voting/scoring, admin approval workflow</td>
+        </tr>
+        <tr>
+          <td>Vendor Setup Form</td><td>/vendor-setup/</td><td>vendor_setup.py</td><td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-pending">Not Started</span></td><td class="est">0.5 d</td>
+          <td>New vendor onboarding form + admin review queue</td>
+        </tr>
+        <tr>
+          <td>ACH Request</td><td>/ach-request/</td><td>ach_request.py</td><td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-pending">Not Started</span></td><td class="est">0.5 d</td>
+          <td>ACH payment request form + finance admin view</td>
+        </tr>
+        <tr>
+          <td>Prepaid Visa Compliance</td><td>/prepaid-visa/</td><td>prepaid_visa.py</td><td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-pending">Not Started</span></td><td class="est">0.5 d</td>
+          <td>Prepaid card usage compliance form + audit log</td>
+        </tr>
+        <tr>
+          <td>RM Inspections</td><td>/rm-inspections/</td><td>rm_inspections.py</td><td>DB_APP_SUPPORT + WH_PROD2</td>
+          <td><span class="badge b-pending">Not Started</span></td><td class="est">1.5 d</td>
+          <td>Property inspection tracking, scoring, history, admin</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+      <thead>
+        <tr>
+          <th>Module</th>
+          <th>Route</th>
+          <th>Backend</th>
+          <th>Data Source</th>
+          <th>Status</th>
+          <th>Est.</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>AppHub Maintenance</td>
+          <td>/maintenance/</td>
+          <td>maintenance.py</td>
+          <td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-done">Done</span></td>
+          <td class="est">--</td>
+          <td>Admin tools, module registry, audience mgmt</td>
+        </tr>
+        <tr>
+          <td>Property Data Manager</td>
+          <td>/pdm/</td>
+          <td>pdm.py</td>
+          <td>DB_APP_SUPPORT + WH_PROD2</td>
+          <td><span class="badge b-done">Done</span></td>
+          <td class="est">--</td>
+          <td>Full 3-tab UI, detail panel, property search</td>
+        </tr>
+        <tr>
+          <td>Employee Data Manager</td>
+          <td>/edm/</td>
+          <td>edm.py</td>
+          <td>DB_APP_SUPPORT + WH_STAGING</td>
+          <td><span class="badge b-done">Done</span></td>
+          <td class="est">--</td>
+          <td>Title groups, Entrata mappings, overrides</td>
+        </tr>
+        <tr>
+          <td>Dashboard</td>
+          <td>/</td>
+          <td>routes.py</td>
+          <td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-done">Done</span></td>
+          <td class="est">--</td>
+          <td>Module launcher with audience-filtered cards</td>
+        </tr>
+        <tr>
+          <td>Cultivate Nomination</td>
+          <td>/cultivate/</td>
+          <td>cultivate.py</td>
+          <td>SharePoint (Graph API)</td>
+          <td><span class="badge b-done">Done</span></td>
+          <td class="est">--</td>
+          <td>Nomination submit + admin All Noms view</td>
+        </tr>
+        <tr>
+          <td>FastTrack Recommendation</td>
+          <td>/fasttrack/</td>
+          <td>fasttrack.py</td>
+          <td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-done">Done</span></td>
+          <td class="est">--</td>
+          <td>Submit + admin review; sort fixed</td>
+        </tr>
+        <tr>
+          <td>Mindset Award Nomination</td>
+          <td>/mindset/</td>
+          <td>mindset.py</td>
+          <td>SharePoint (Graph API)</td>
+          <td><span class="badge b-done">Done</span></td>
+          <td class="est">--</td>
+          <td>All code done; Mindset data unblocked Aug 10 -- Sites.FullControl.All granted, Graph site permission posted</td>
+        </tr>
+        <tr>
+          <td>New Hire Alert</td>
+          <td>/new-hire/</td>
+          <td>new_hire.py</td>
+          <td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-done">Done</span></td>
+          <td class="est">--</td>
+          <td>Alerts table, admin view; sort fixed</td>
+        </tr>
+        <tr>
+          <td>Mentor Certification</td>
+          <td>/mentor-cert/</td>
+          <td>mentor_cert.py</td>
+          <td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-done">Done</span></td>
+          <td class="est">--</td>
+          <td>Cert tracking, admin view; sort fixed</td>
+        </tr>
+        <tr>
+          <td>Peak Link (Ideas)</td>
+          <td>/peak-link/</td>
+          <td>peak_link.py</td>
+          <td>SharePoint (Graph API)</td>
+          <td><span class="badge b-done">Done</span></td>
+          <td class="est">--</td>
+          <td>Idea submission + admin view; sort fixed</td>
+        </tr>
+        <tr>
+          <td>Promotion / Transfer (PAF)</td>
+          <td>/paf/</td>
+          <td>paf.py</td>
+          <td>SharePoint (Graph API)</td>
+          <td><span class="badge b-done">Done</span></td>
+          <td class="est">--</td>
+          <td>PAF form submit + admin review</td>
+        </tr>
+        <tr>
+          <td>Milestones</td>
+          <td>/milestones/</td>
+          <td>milestones.py</td>
+          <td>DB_APP_SUPPORT + WH_STAGING</td>
+          <td><span class="badge b-active">In Progress</span></td>
+          <td class="est">0.5 d</td>
+          <td>Template exists; backend and data wiring needed</td>
+        </tr>
+        <tr>
+          <td>Rent Forecasting 1.0</td>
+          <td>/rfs/</td>
+          <td>rfs.py</td>
+          <td>WH_PROD2 + DB_APP_SUPPORT</td>
+          <td><span class="badge b-active">In Progress</span></td>
+          <td class="est">2 d</td>
+          <td>Template exists; full backend impl needed</td>
+        </tr>
+        <tr>
+          <td>Rent Forecasting 2.0</td>
+          <td>/rfs2/</td>
+          <td>rfs2.py</td>
+          <td>WH_PROD2 + DB_APP_SUPPORT</td>
+          <td><span class="badge b-active">In Progress</span></td>
+          <td class="est">2 d</td>
+          <td>Template exists; tier editing, market comps, charts</td>
+        </tr>
+        <tr>
+          <td>Market Benchmark</td>
+          <td>/mrb/ (port 5055)</td>
+          <td>app.py (standalone)</td>
+          <td>DB_APP_SUPPORT</td>
+          <td><span class="badge b-active">In Progress</span></td>
+          <td class="est">1 d</td>
+          <td>5 of 6 tabs done; Floor Plans tab pending</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="module-section">
+    <div class="track-header">
+      <div class="dot" style="background:#9b59b6;"></div>
+      <h2>Infrastructure &amp; Deployment</h2>
+      <span class="cap">Est. 8 days &bull; Sep 8 - Oct 1</span>
+    </div>
+    <table class="mod-table">
+      <thead>
+        <tr><th>Task</th><th>Status</th><th>Est.</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Integration &amp; regression testing (all 26 modules)</td><td><span class="badge b-pending">Not Started</span></td><td class="est">2 d</td><td>Each module: submit, admin view, sort, edge cases</td></tr>
+        <tr><td>Azure App Service provisioning</td><td><span class="badge b-pending">Not Started</span></td><td class="est">0.5 d</td><td>Linux App Service, Python 3.12, startup command</td></tr>
+        <tr><td>Environment variables (prod .env)</td><td><span class="badge b-pending">Not Started</span></td><td class="est">0.25 d</td><td>All Azure AD + DB + Graph credentials in App Service config</td></tr>
+        <tr><td>ODBC Driver 18 on Linux App Service</td><td><span class="badge b-pending">Not Started</span></td><td class="est">0.25 d</td><td>Custom startup script: apt-get install msodbcsql18</td></tr>
+        <tr><td>GitHub Actions CI/CD pipeline</td><td><span class="badge b-pending">Not Started</span></td><td class="est">0.5 d</td><td>Push to main = auto-deploy to App Service</td></tr>
+        <tr><td>Custom domain + SSL cert</td><td><span class="badge b-pending">Not Started</span></td><td class="est">0.25 d</td><td>apphub.peakmade.com (or similar)</td></tr>
+        <tr><td>Azure AD redirect URI updated for prod</td><td><span class="badge b-pending">Not Started</span></td><td class="est">0.25 d</td><td>Add prod URL to FabricPipelineApp reply URLs</td></tr>
+        <tr><td>UAT - stakeholder sign-off</td><td><span class="badge b-pending">Not Started</span></td><td class="est">2 d</td><td>All module owners test their module in staging</td></tr>
+        <tr><td><strong>PRODUCTION GO-LIVE</strong></td><td><span class="badge b-pending">Not Started</span></td><td class="est">Oct 1</td><td>Announce via email + Teams</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Notes -->
+  <div class="notes">
+    <h3>Architecture Notes</h3>
+    <ul>
+      <li><strong>Shell pattern:</strong> All modules extend shell.html via Jinja2 inheritance; nav is sticky with SPA-like content swapping.</li>
+      <li><strong>Auth:</strong> Entra ID MSAL auth-code flow. DEV_BYPASS=true skips auth in dev. Prod uses Azure AD app registration.</li>
+      <li><strong>SharePoint modules:</strong> Cultivate, Peak Link, PAF, Mindset use Graph API (FabricPipelineApp client credentials). Requires Sites.ReadWrite.All (done) + Sites.FullControl.All (pending admin consent for unique-permission lists).</li>
+      <li><strong>Sort pattern:</strong> All module tables use <code>th[data-col]</code> sort arrows. Functions exposed via <code>window.sortFn = sortFn</code> due to IIFE scope. Fixed Aug 9.</li>
+      <li><strong>Market Benchmark:</strong> Standalone Flask app on port 5055 (separate process). Eventual plan: integrate into AppHub shell.</li>
+      <li><strong>Module audience:</strong> Access controlled by MODULE_AUDIENCE table in DB_APP_SUPPORT + EMPLOYEE_F.TITLE_GROUP. No legacy numeric security levels.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,2007 @@
+{% extends "shell.html" %}
+{% block head %}
+    <style>
+        .pdm-container { padding: 24px; max-width: 100%; }
+        .pdm-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+        .pdm-header h1 { font-size: 1.4rem; color: var(--text-primary); margin: 0; }
+        .pdm-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border-medium); }
+        .pdm-tab { padding: 10px 20px; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+        .pdm-tab:hover { color: var(--text-primary); }
+        .pdm-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
+        .pdm-panel { display: none; }
+        .pdm-panel.active { display: block; }
+
+        /* Collapsible blurbs */
+        .info-blurb { background: rgba(0,188,212,0.04); border: 1px solid rgba(0,188,212,0.15); border-radius: 8px; padding: 0; margin-bottom: 16px; font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; overflow: hidden; }
+        .blurb-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; cursor: pointer; user-select: none; }
+        .blurb-header:hover { background: rgba(0,188,212,0.06); }
+        .blurb-title { font-weight: 700; color: var(--text-primary); font-size: 0.85rem; }
+        .blurb-toggle { font-size: 0.7rem; color: var(--text-secondary); transition: transform 0.2s; }
+        .blurb-body { padding: 0 14px 12px; }
+        .blurb-body.collapsed { display: none; }
+
+        /* Data tables */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        .data-table th { text-align: left; padding: 10px 12px; background: var(--surface-raised); color: var(--text-secondary); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-medium); cursor: pointer; position: sticky; top: 0; z-index: 2; white-space: nowrap; }
+        .data-table th:hover { color: var(--text-primary); }
+        .data-table td { padding: 6px 12px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); white-space: nowrap; max-width: 250px; overflow: hidden; text-overflow: ellipsis; }
+        .data-table tr:hover td { background: var(--hover-bg); }
+        .data-table tr { cursor: pointer; }
+        .table-scroll { max-height: calc(100vh - 340px); overflow: auto; border: 1px solid var(--border-light); border-radius: 6px; }
+
+        /* Filter bar */
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+        .filter-bar input, .filter-bar select { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; }
+        .filter-bar input { min-width: 250px; }
+        .filter-bar input::placeholder { color: var(--text-secondary); }
+        .filter-bar select { cursor: pointer; min-width: 160px; }
+        .filter-bar select option { background: var(--surface-raised); color: var(--text-primary); }
+        .count-label { font-size: 0.75rem; color: var(--text-secondary); margin-left: auto; }
+
+        /* Buttons */
+        .btn { padding: 6px 14px; border: none; border-radius: 4px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: var(--accent-cyan); color: #fff; }
+        .btn-primary:hover { opacity: 0.85; }
+        .btn-danger { background: rgba(244,67,54,0.2); color: #e57373; }
+        .btn-danger:hover { background: rgba(244,67,54,0.4); }
+        .btn-sm { padding: 4px 10px; font-size: 0.7rem; }
+        .btn-secondary { background: var(--hover-bg-strong); color: var(--text-secondary); }
+        .btn-secondary:hover { background: var(--border-input); color: var(--text-primary); }
+
+        /* Add form */
+        .add-form { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+        .add-form input { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 6px 10px; border-radius: 4px; font-size: 0.8rem; }
+        .add-form input::placeholder { color: var(--text-secondary); }
+        .add-form label { font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; }
+
+        /* Editable cells */
+        .editable { cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background 0.2s; min-width: 60px; display: inline-block; }
+        .editable:hover { background: var(--hover-bg-strong); }
+        .editable input, .editable select { background: var(--input-bg); border: 1px solid var(--accent-cyan); color: var(--text-primary); padding: 4px 8px; border-radius: 4px; font-size: 0.82rem; width: 100%; outline: none; }
+        .editable select option { background: var(--surface-raised); color: var(--text-primary); }
+
+        /* Status badges */
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.3px; }
+        .badge.managed { background: rgba(76,175,80,0.3); color: #4caf50; border: 1px solid rgba(76,175,80,0.4); }
+        .badge.dispositioned { background: rgba(244,67,54,0.3); color: #f44336; border: 1px solid rgba(244,67,54,0.4); }
+        .badge.reportable { background: rgba(33,150,243,0.3); color: #42a5f5; border: 1px solid rgba(33,150,243,0.4); }
+        .badge.pending { background: rgba(255,152,0,0.3); color: #ffa726; border: 1px solid rgba(255,152,0,0.4); }
+
+        /* Detail overlay */
+        .prop-detail-overlay { display: none; position: fixed; top: 0; right: 0; bottom: 0; width: 700px; min-width: 400px; max-width: 90vw; background: var(--surface-raised); border-left: 2px solid var(--accent-cyan); z-index: 100; padding: 0; box-shadow: -4px 0 20px var(--shadow-overlay); font-size: 1.1rem; flex-direction: column; overflow: hidden; }
+        .prop-detail-overlay.open { display: flex; }
+        .prop-detail-overlay h2 { font-size: 1.6rem; color: var(--text-primary); margin: 0 0 4px; }
+        .prop-detail-overlay .close-btn { position: absolute; top: 12px; right: 16px; font-size: 1.8rem; color: var(--text-secondary); cursor: pointer; background: none; border: none; }
+        .prop-detail-overlay .close-btn:hover { color: var(--text-primary); }
+        /* Resize handle on left edge */
+        .resize-handle { position: absolute; top: 0; left: -4px; width: 8px; height: 100%; cursor: ew-resize; z-index: 101; background: transparent; }
+        .resize-handle:hover, .resize-handle.active { background: var(--accent-cyan); opacity: 0.5; }
+        /* Collapsible sections */
+        .detail-section { margin-top: 4px; border-radius: 6px; overflow: hidden; }
+        .detail-section-header { display: flex; align-items: center; padding: 10px 14px; background: var(--surface-card, #2a2d3e); cursor: pointer; user-select: none; border-bottom: 1px solid var(--border-medium); transition: background 0.15s; gap: 8px; }
+        .detail-section-header:hover { background: var(--hover-bg); }
+        .detail-section-header .chevron { font-size: 0.7rem; color: var(--text-secondary); transition: transform 0.2s; flex-shrink: 0; }
+        .detail-section-header.collapsed .chevron { transform: rotate(-90deg); }
+        .detail-section-header h3 { font-size: 0.95rem; text-transform: uppercase; color: var(--accent-cyan); letter-spacing: 0.5px; margin: 0; flex: 1; }
+        .detail-section-header .section-count { font-size: 0.75rem; color: var(--text-secondary); background: rgba(255,255,255,0.08); padding: 2px 8px; border-radius: 10px; }
+        .detail-section-body { padding: 6px 10px; transition: max-height 0.25s ease; }
+        .detail-section-body.collapsed { display: none; }
+        .detail-row { display: flex; align-items: center; padding: 4px 0; font-size: 1.1rem; border-radius: 3px; }
+        .detail-row.missing { background: transparent; }
+        .detail-row.missing .detail-value { background: transparent; border-radius: 4px; padding: 2px 6px; }
+        .detail-row.missing .detail-value input, .detail-row.missing .detail-value select { background: rgba(255,120,0,0.45) !important; border-color: rgba(255,120,0,0.7) !important; }
+        .detail-row.missing .detail-value.readonly { background: rgba(255,120,0,0.35); border-radius: 4px; padding: 2px 8px; }
+        .detail-label { color: var(--pdm-label, #c8ccd4); width: 220px; flex-shrink: 0; font-size: 1.0rem; font-weight: 600; }
+        .detail-value { color: var(--pdm-value, #e8ecf2); word-break: break-all; flex: 1; }
+        .detail-value.readonly { opacity: 0.8; }
+        .detail-value { display: flex; align-items: center; gap: 6px; }
+        .detail-value input, .detail-value select { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--pdm-value, #e8ecf2); padding: 5px 9px; border-radius: 4px; font-size: 1.1rem; flex: 1; min-width: 0; }
+        [data-theme="light"] .detail-label, [data-theme="medium"] .detail-label { --pdm-label: #334155; color: #334155; }
+        [data-theme="light"] .detail-value, [data-theme="medium"] .detail-value { --pdm-value: #1e293b; color: #1e293b; }
+        [data-theme="light"] .detail-value input, [data-theme="light"] .detail-value select,
+        [data-theme="medium"] .detail-value input, [data-theme="medium"] .detail-value select { color: #1e293b; }
+        .detail-value input.override-check { width: 14px; display: inline; vertical-align: middle; }
+        .detail-value input:focus, .detail-value select:focus { border-color: var(--accent-cyan); outline: none; }
+        .detail-value select option { background: var(--surface-raised); color: var(--text-primary); }
+
+        /* Jump-to search */
+        .detail-sticky-header { position: sticky; top: 0; z-index: 10; background: var(--surface-raised, #1e2130); border-bottom: 2px solid var(--border-medium); padding: 10px 14px 8px 14px; display: flex; flex-direction: column; gap: 4px; }
+        .detail-header-row1 { font-size: 1.35rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 32px; }
+        .detail-header-row2 { font-size: 1rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+        .jump-to-bar { display: flex; gap: 8px; align-items: center; }
+        .jump-to-label { font-size: 1rem; font-weight: 600; color: var(--text-secondary); white-space: nowrap; flex-shrink: 0; }
+        .jump-to-bar input { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 6px 10px; border-radius: 4px; font-size: 1.275rem; flex: 1; }
+        .jump-to-bar input::placeholder { color: var(--text-secondary); }
+
+        /* Flag checkboxes */
+        .flag-check { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+        .flag-check input[type="checkbox"] { width: 18px; height: 18px; accent-color: #4caf50; cursor: pointer; }
+        .flag-check label { cursor: pointer; font-size: 1.1rem; }
+        .flag-check label.checked { color: #81c784; font-weight: 700; }
+        .flag-check label.unchecked { color: #e57373; opacity: 0.6; }
+
+        /* Staff dropdown */
+        .staff-select { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 5px 9px; border-radius: 4px; font-size: 1.05rem; width: 100%; cursor: pointer; }
+        .staff-select:focus { border-color: var(--accent-cyan); outline: none; }
+        .staff-linked { font-size: 1.0rem; color: #c8ccd4; margin-left: 220px; padding: 1px 0; }
+        [data-theme="light"] .staff-linked { color: #475569; }
+        [data-theme="medium"] .staff-linked { color: #475569; }
+
+        /* Alpha/Category toggle */
+        .sort-toggle { display: flex; gap: 0; border-radius: 6px; overflow: hidden; border: 1px solid var(--border-input); margin-left: 8px; }
+        .sort-toggle button { padding: 5px 12px; font-size: 1.275rem; font-weight: 600; border: none; cursor: pointer; background: var(--input-bg); color: var(--text-secondary); transition: all 0.15s; }
+        .sort-toggle button.active { background: var(--accent-cyan); color: #fff; }
+
+        /* Highlight for jump-to */
+        .detail-row.highlighted, .flag-check.highlighted { background: rgba(0,188,212,0.35); border-left: 4px solid #00e5ff; padding-left: 6px; font-size: 1.3em; font-weight: 700; color: #fff; box-shadow: inset 0 0 0 1px rgba(0,229,255,0.25); }
+        /* highlighted must win over .external and .missing (equal specificity, later rules win) */
+        .detail-row.external.highlighted, .detail-row.missing.highlighted, .detail-row.external.missing.highlighted { background: rgba(0,188,212,0.35) !important; border-left: 4px solid #00e5ff !important; }
+
+        /* External source fields */
+        .detail-row.external { background: transparent; }
+        .detail-row.external .detail-value input, .detail-row.external .detail-value select { background: rgba(156,39,176,0.35) !important; border-color: rgba(156,39,176,0.6) !important; }
+        .detail-row.external .detail-value.readonly { background: rgba(156,39,176,0.25); border-radius: 4px; padding: 2px 8px; }
+        .detail-row.external .detail-label { position: relative; cursor: help; }
+        .detail-row.external .detail-label:hover::before { content: attr(data-source); position: absolute; bottom: 100%; left: 0; background: #2d2d44; color: #ce93d8; padding: 4px 8px; border-radius: 4px; font-size: 0.9rem; white-space: nowrap; z-index: 200; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+
+        /* Override checkbox (inline, left of value) */
+        .override-check { width: 14px; height: 14px; accent-color: #ff9800; cursor: pointer; vertical-align: middle; margin-right: 4px; }
+
+        /* Staff group alternating */
+        .staff-group { transition: background 0.2s; }
+
+        /* Popout header with gear button */
+        .detail-header-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+        .detail-header-bar h2 { font-size: 1.6rem; color: var(--text-primary); margin: 0; flex: 1; }
+        .detail-gear-btn { background: none; border: none; color: var(--text-secondary); font-size: 2.34rem; font-weight: 700; cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: color 0.15s, background 0.15s; line-height: 1; }
+        .detail-gear-btn:hover { color: var(--accent-cyan); background: rgba(0,188,212,0.1); }
+
+        /* Settings modal */
+        .pdm-settings-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; }
+        .pdm-settings-overlay.open { display: block; }
+        .pdm-settings-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 480px; max-width: 95vw; max-height: 80vh; background: var(--surface-raised); border: 1px solid var(--border-medium); border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); z-index: 201; flex-direction: column; }
+        .pdm-settings-modal.open { display: flex; }
+        .pdm-settings-header { display: flex; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border-medium); gap: 10px; }
+        .pdm-settings-header h3 { flex: 1; margin: 0; font-size: 1rem; color: var(--text-primary); }
+        .pdm-settings-body { flex: 1; overflow-y: auto; padding: 14px 18px; }
+        .pdm-settings-hint { font-size: 0.78rem; color: var(--text-secondary); margin: 0 0 12px; }
+        .pdm-settings-list { display: flex; flex-direction: column; gap: 5px; }
+        .pdm-settings-cat { background: var(--surface-card, #2a2d3e); border: 1px solid var(--border-subtle); border-radius: 6px; cursor: grab; }
+        .pdm-settings-cat.dragging { opacity: 0.45; box-shadow: 0 4px 16px rgba(0,188,212,0.3); }
+        .pdm-settings-cat.drag-over { border-color: var(--accent-cyan); }
+        .pdm-settings-cat.is-hidden { opacity: 0.45; }
+        .pdm-settings-cat-header { display: flex; align-items: center; gap: 10px; padding: 11px 14px; }
+        .pdm-settings-cat-name { flex: 1; font-size: 1.26rem; font-weight: 600; color: #ffffff; }
+        .pdm-vis-btn { background: none; border: none; cursor: pointer; font-size: 1.26rem; padding: 3px 6px; border-radius: 4px; color: var(--accent-cyan); transition: opacity 0.15s; }
+        .pdm-vis-btn.hidden { color: var(--text-secondary); opacity: 0.5; }
+        .drag-grip { color: #ffffff; font-size: 1.47rem; cursor: grab; }
+        .pdm-settings-fields { padding: 0 4px 4px 28px; display: flex; flex-direction: column; gap: 1px; border-top: 1px solid var(--border-subtle); }
+        .pdm-settings-field { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px; font-size: 1.12rem; color: #ffffff; border-radius: 4px; cursor: grab; }
+        .pdm-settings-field:hover { background: rgba(255,255,255,0.07); }
+        .pdm-settings-field.is-hidden { opacity: 0.4; text-decoration: line-through; }
+        .pdm-settings-field.dragging { opacity: 0.4; }
+        .pdm-settings-field.drag-over-field { border-top: 2px solid var(--accent-cyan); }
+        .field-drag-grip { color: rgba(255,255,255,0.4); font-size: 0.85rem; margin-right: 6px; cursor: grab; flex-shrink: 0; }
+
+        /* Column selector */
+        .col-selector { display: none; position: absolute; top: 40px; right: 0; width: 320px; box-sizing: border-box; max-height: 400px; overflow-y: auto; overflow-x: auto; background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 8px; padding: 12px; z-index: 50; box-shadow: 0 4px 16px var(--shadow-overlay); }
+        .col-selector.open { display: block; }
+        .col-search { width: 100%; box-sizing: border-box; margin-bottom: 8px; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 6px 8px; border-radius: 4px; font-size: 0.8rem; }
+        .col-list div { padding: 4px 8px; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; border-radius: 3px; white-space: nowrap; }
+        .col-list div:hover { background: var(--input-bg); color: var(--text-primary); }
+        .col-list div.col-active { background: var(--accent-cyan); color: #fff; font-weight: 600; }
+
+        /* Toggle switch */
+        .toggle-active { cursor: pointer; }
+
+        /* ── New Property Panel ─────────────────────────────────────── */
+        .new-prop-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.55); z-index: 200; align-items: center; justify-content: center; }
+        .new-prop-overlay.open { display: flex; }
+        .new-prop-wizard { background: var(--surface-raised); border: 1px solid var(--accent-cyan); border-radius: 10px; width: 700px; max-width: 96vw; max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 8px 40px rgba(0,0,0,0.6); overflow: hidden; }
+        .new-prop-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px 12px; border-bottom: 1px solid var(--border-medium); }
+        .new-prop-title { font-size: 1.1rem; font-weight: 700; color: var(--accent-cyan); }
+        .new-prop-close { background: none; border: none; font-size: 1.5rem; color: var(--text-secondary); cursor: pointer; line-height: 1; padding: 0; }
+        .new-prop-close:hover { color: var(--text-primary); }
+        .new-prop-body { padding: 20px 24px 10px; overflow-y: auto; flex: 1; }
+        .np-section-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--accent-cyan); margin: 18px 0 8px; border-bottom: 1px solid rgba(0,188,212,0.2); padding-bottom: 4px; }
+        .np-section-label:first-child { margin-top: 0; }
+        .np-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
+        .np-field { display: flex; flex-direction: column; gap: 3px; }
+        .np-field.full { grid-column: 1 / -1; }
+        .np-field label { font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); }
+        .np-field input, .np-field select { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 7px 10px; border-radius: 5px; font-size: 0.85rem; width: 100%; box-sizing: border-box; }
+        .np-field input:focus, .np-field select:focus { border-color: var(--accent-cyan); outline: none; }
+        .np-field input.required-empty { border-color: rgba(244,67,54,0.8) !important; }
+        .np-field select option { background: var(--surface-raised); color: var(--text-primary); }
+        .np-tables-note { margin-top: 14px; background: rgba(255,193,7,0.1); border: 1px solid rgba(255,193,7,0.3); border-radius: 5px; padding: 10px 14px; font-size: 0.8rem; color: #ffc107; }
+        .new-prop-footer { display: flex; align-items: center; justify-content: flex-end; padding: 12px 24px; border-top: 1px solid var(--border-medium); gap: 10px; }
+        .btn-new-property { background: var(--accent-cyan); color: #fff; font-size: 0.78rem; font-weight: 700; padding: 6px 14px; border-radius: 5px; border: none; cursor: pointer; display: none; }
+        .btn-new-property:hover { opacity: 0.85; }
+        .btn-new-property.visible { display: inline-flex; align-items: center; gap: 6px; }
+    </style>
+{% endblock %}
+{% block content %}
+    <div class="pdm-container">
+        <div class="pdm-header">
+            <i class="fa-solid fa-house" style="font-size: 1.5rem; color: var(--accent-cyan);"></i>
+            <h1>Property Data Manager <span style="font-size:0.6rem;color:var(--text-secondary);vertical-align:super;">v1.6</span></h1>
+        </div>
+
+        <div class="pdm-tabs">
+            <div class="pdm-tab active" data-panel="properties">Properties</div>
+            <div class="pdm-tab" data-panel="groups">Property Groups</div>
+            <div class="pdm-tab" data-panel="markets">Markets</div>
+        </div>
+
+        <!-- PROPERTIES PANEL -->
+        <div class="pdm-panel active" id="panel-properties">
+            <div class="info-blurb" id="blurb-properties">
+                <div class="blurb-header" onclick="toggleBlurb('properties')">
+                    <span class="blurb-title">Property Directory</span>
+                    <span class="blurb-toggle" id="blurbToggle-properties">&#9660;</span>
+                </div>
+                <div class="blurb-body" id="blurbBody-properties">
+                    Master view of <code>PROPERTY_0</code> — the authoritative property table with ~190 fields covering identity, staff, status, financials, and more.
+                    <br><br>
+                    <strong>How to use:</strong>
+                    <ul style="margin:4px 0 0 16px;padding:0">
+                        <li><strong>Search</strong> — Type a property name, city, school name, or property key.</li>
+                        <li><strong>Filters</strong> — Use Status (Managed/Dispositioned/Reportable/All), Property Group, and Market dropdowns.</li>
+                        <li><strong>Sort</strong> — Click any column header to sort ascending/descending (▲/▼).</li>
+                        <li><strong>⚙ Columns</strong> — Add or remove any of ~190 available columns. Type in the search box to find columns quickly. Click "Reset to Default" to restore defaults.</li>
+                        <li><strong>💾 Export</strong> — Download the current filtered view as a CSV file with your selected columns.</li>
+                        <li><strong>Detail View</strong> — Click any property row to open a side panel showing ALL fields, grouped by category. Editable fields can be changed directly in the panel.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="filter-bar">
+                <input type="text" id="propSearch" placeholder="Search properties..." autocomplete="off">
+                <select id="propStatus">
+                    <option value="managed">Managed (Active)</option>
+                    <option value="reportable">Reportable</option>
+                    <option value="dispositioned">Dispositioned</option>
+                    <option value="all">All</option>
+                </select>
+                <select id="propGroup"><option value="">All Groups</option></select>
+                <select id="propMarket"><option value="">All Markets</option></select>
+                <div style="position:relative; margin-left: auto; display:flex; gap:6px;">
+                    <button class="btn btn-secondary btn-sm" onclick="exportPropCSV()">💾 Export</button>
+                    <button class="btn btn-secondary btn-sm" onclick="toggleColSelector()">⚙ Columns</button>
+                    <div class="col-selector" id="colSelector">
+                        <input type="text" class="col-search" id="colSearch" placeholder="Search columns...">
+                        <div style="margin-bottom:8px;"><button class="btn btn-sm btn-secondary" onclick="resetColumns()">Reset to Default</button></div>
+                        <div class="col-list" id="colList"></div>
+                    </div>
+                </div>
+                <button class="btn-new-property" id="btnNewProperty" onclick="openNewPropertyWizard()">&#43; New Property</button>
+                <span class="count-label" id="propCount"></span>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table" id="propTable">
+                    <thead><tr></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- PROPERTY GROUPS PANEL -->
+        <div class="pdm-panel" id="panel-groups">
+            <div class="info-blurb" id="blurb-groups">
+                <div class="blurb-header" onclick="toggleBlurb('groups')">
+                    <span class="blurb-title">Property Groups</span>
+                    <span class="blurb-toggle" id="blurbToggle-groups">&#9660;</span>
+                </div>
+                <div class="blurb-body" id="blurbBody-groups">
+                    Manages the <code>PROPERTY_GROUP_0</code> lookup table. Property Groups organize properties into portfolios for reporting, security, and billing.
+                    <br><br>
+                    <strong>How to use:</strong>
+                    <ul style="margin:4px 0 0 16px;padding:0">
+                        <li><strong>Add a group</strong> — Enter the group name and click Add.</li>
+                        <li><strong>Edit inline</strong> — Click a group name to rename it.</li>
+                        <li><strong>Toggle status</strong> — Click Active/Inactive to enable or disable a group.</li>
+                        <li><strong>Sort</strong> — Click column headers to sort.</li>
+                        <li><strong>Filter</strong> — Type in the filter box to search.</li>
+                    </ul>
+                    <br>
+                    <strong>Note:</strong> Each property in PROPERTY_0 references a group by name. Renaming a group here does NOT update existing property records — you must also update the properties.
+                </div>
+            </div>
+            <div class="add-form">
+                <label>New Group:</label>
+                <input type="text" id="newGroupName" placeholder="Group Name" style="min-width:250px">
+                <button class="btn btn-primary" onclick="addGroup()">Add</button>
+            </div>
+            <div class="filter-bar">
+                <input type="text" id="groupFilter" placeholder="Filter groups...">
+                <span class="count-label" id="groupCount"></span>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table" id="groupTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortGroups('PROPERTY_GROUP_KEY')">Key</th>
+                            <th onclick="sortGroups('PROPERTY_GROUP_NAME')">Group Name</th>
+                            <th onclick="sortGroups('FLAG_ACTIVE')">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- MARKETS PANEL -->
+        <div class="pdm-panel" id="panel-markets">
+            <div class="info-blurb" id="blurb-markets">
+                <div class="blurb-header" onclick="toggleBlurb('markets')">
+                    <span class="blurb-title">Markets</span>
+                    <span class="blurb-toggle" id="blurbToggle-markets">&#9660;</span>
+                </div>
+                <div class="blurb-body" id="blurbBody-markets">
+                    Manages the <code>MARKETS</code> dimension table. Each property is assigned to a market (city + state) used for geographic reporting and comp analysis.
+                    <br><br>
+                    <strong>How to use:</strong>
+                    <ul style="margin:4px 0 0 16px;padding:0">
+                        <li><strong>Add a market</strong> — Enter a city and 2-letter state code, then click Add. The City/State display value is auto-generated.</li>
+                        <li><strong>Edit inline</strong> — Click any City or State cell to change it.</li>
+                        <li><strong>Sort</strong> — Click column headers to sort.</li>
+                        <li><strong>Filter</strong> — Type in the filter box to search.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="add-form">
+                <label>New Market:</label>
+                <input type="text" id="newMarketCity" placeholder="City" style="min-width:200px">
+                <input type="text" id="newMarketState" placeholder="ST" style="width:60px" maxlength="2">
+                <button class="btn btn-primary" onclick="addMarket()">Add</button>
+            </div>
+            <div class="filter-bar">
+                <input type="text" id="marketFilter" placeholder="Filter markets...">
+                <span class="count-label" id="marketCount"></span>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table" id="marketTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortMarkets('MARKET_KEY')">Key</th>
+                            <th onclick="sortMarkets('MARKET_CITY')">City</th>
+                            <th onclick="sortMarkets('MARKET_STATE')">State</th>
+                            <th onclick="sortMarkets('MARKET_CITY_STATE')">City, State</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Detail overlay -->
+        <div class="prop-detail-overlay" id="propDetail">
+            <div class="resize-handle" id="resizeHandle"></div>
+            <button class="close-btn" onclick="closeDetail()">&times;</button>
+            <div class="detail-sticky-header">
+                <div class="detail-header-row1" id="detailPropName"></div>
+                <div class="detail-header-row2" id="detailPropMeta"></div>
+                <div class="jump-to-bar">
+                    <span class="jump-to-label">Jump To</span>
+                    <input type="text" id="jumpToField" placeholder="field..." oninput="jumpToField(this.value)">
+                    <button class="detail-gear-btn" onclick="openPdmSettings()" title="Show/hide categories &amp; reorder">&#9881;</button>
+                    <div class="sort-toggle">
+                        <button id="sortCategory" class="active" onclick="setDetailSort('category')">Category</button>
+                        <button id="sortAlpha" onclick="setDetailSort('alpha')">A-Z</button>
+                    </div>
+                </div>
+            </div>
+            <div id="propDetailScroll" style="overflow-y:auto;flex:1;padding:12px 28px 24px 28px;">
+                <div id="propDetailContent"></div>
+            </div>
+        </div>
+
+        <!-- PDM Settings Modal -->
+        <div class="pdm-settings-overlay" id="pdmSettingsOverlay" onclick="closePdmSettings()"></div>
+        <div class="pdm-settings-modal" id="pdmSettingsModal">
+            <div class="pdm-settings-header">
+                <h3>&#9881; Property Intel Settings</h3>
+                <button class="close-btn" style="position:static;font-size:1.4rem;" onclick="closePdmSettings()">&times;</button>
+            </div>
+            <div class="pdm-settings-body">
+                <p class="pdm-settings-hint">Drag to reorder categories. Click the eye to show/hide.</p>
+                <div class="pdm-settings-list" id="pdmSettingsList"></div>
+            </div>
+        </div>
+
+        <!-- New Property Panel -->
+        <div class="new-prop-overlay" id="newPropOverlay">
+            <div class="new-prop-wizard">
+                <div class="new-prop-header">
+                    <div class="new-prop-title">&#43; New Property</div>
+                    <button class="new-prop-close" onclick="closeNewPropertyWizard()">&times;</button>
+                </div>
+                <div class="new-prop-body">
+                    <!-- Key display -->
+                    <div style="text-align:center; margin-bottom:16px;">
+                        <div style="font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-secondary); margin-bottom:4px;">Assigned Property Key</div>
+                        <div id="npKeyDisplay" style="font-size:2.4rem; font-weight:800; color:var(--accent-cyan); letter-spacing:2px;">—</div>
+                    </div>
+
+                    <div class="np-section-label">Identity</div>
+                    <div class="np-grid">
+                        <div class="np-field full">
+                            <label>Property Name <span style="color:#ef5350">*</span></label>
+                            <input type="text" id="npName" placeholder="e.g. HIGHLAND COMMONS" autocomplete="off">
+                        </div>
+                        <div class="np-field">
+                            <label>Address 1</label>
+                            <input type="text" id="npAddr1" placeholder="123 Main St">
+                        </div>
+                        <div class="np-field">
+                            <label>Address 2</label>
+                            <input type="text" id="npAddr2" placeholder="Apt, Suite, etc.">
+                        </div>
+                        <div class="np-field">
+                            <label>City</label>
+                            <input type="text" id="npCity" placeholder="City">
+                        </div>
+                        <div class="np-field">
+                            <label>State</label>
+                            <select id="npState">
+                                <option value="">-- Select --</option>
+                                <option>AL</option><option>AK</option><option>AZ</option><option>AR</option>
+                                <option>CA</option><option>CO</option><option>CT</option><option>DE</option>
+                                <option>FL</option><option>GA</option><option>HI</option><option>ID</option>
+                                <option>IL</option><option>IN</option><option>IA</option><option>KS</option>
+                                <option>KY</option><option>LA</option><option>ME</option><option>MD</option>
+                                <option>MA</option><option>MI</option><option>MN</option><option>MS</option>
+                                <option>MO</option><option>MT</option><option>NE</option><option>NV</option>
+                                <option>NH</option><option>NJ</option><option>NM</option><option>NY</option>
+                                <option>NC</option><option>ND</option><option>OH</option><option>OK</option>
+                                <option>OR</option><option>PA</option><option>RI</option><option>SC</option>
+                                <option>SD</option><option>TN</option><option>TX</option><option>UT</option>
+                                <option>VT</option><option>VA</option><option>WA</option><option>WV</option>
+                                <option>WI</option><option>WY</option>
+                            </select>
+                        </div>
+                        <div class="np-field">
+                            <label>Zip</label>
+                            <input type="text" id="npZip" placeholder="12345" maxlength="10">
+                        </div>
+                        <div class="np-field">
+                            <label>Source System</label>
+                            <select id="npSource">
+                                <option value="INTERNAL">INTERNAL</option>
+                                <option value="ENTRATA">ENTRATA</option>
+                                <option value="ONESITE">ONESITE</option>
+                                <option value="NEVER MANAGED">NEVER MANAGED</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="np-section-label">Size &amp; Classification</div>
+                    <div class="np-grid">
+                        <div class="np-field">
+                            <label>Apartment Count</label>
+                            <input type="number" id="npAptCount" placeholder="e.g. 300" min="0">
+                        </div>
+                        <div class="np-field">
+                            <label>Bed Count (Static)</label>
+                            <input type="number" id="npBedCount" placeholder="e.g. 600" min="0">
+                        </div>
+                        <div class="np-field">
+                            <label>Build Year</label>
+                            <input type="number" id="npBuildYear" placeholder="e.g. 2024" min="1900" max="2100">
+                        </div>
+                        <div class="np-field">
+                            <label>Building Count</label>
+                            <input type="number" id="npBuildingCount" placeholder="e.g. 4" min="0">
+                        </div>
+                    </div>
+
+                    <div class="np-section-label">Ownership &amp; Contact</div>
+                    <div class="np-grid">
+                        <div class="np-field">
+                            <label>Company</label>
+                            <input type="text" id="npCompany" placeholder="e.g. PeakMade Real Estate">
+                        </div>
+                        <div class="np-field">
+                            <label>Legal Entity</label>
+                            <input type="text" id="npLegalEntity" placeholder="Optional">
+                        </div>
+                        <div class="np-field">
+                            <label>Owner</label>
+                            <input type="text" id="npOwner" placeholder="Optional">
+                        </div>
+                        <div class="np-field">
+                            <label>Entity Number</label>
+                            <input type="text" id="npEntityNumber" placeholder="Optional">
+                        </div>
+                        <div class="np-field">
+                            <label>Phone</label>
+                            <input type="text" id="npPhone" placeholder="e.g. 555-867-5309">
+                        </div>
+                        <div class="np-field">
+                            <label>Email</label>
+                            <input type="email" id="npEmail" placeholder="property@example.com">
+                        </div>
+                    </div>
+
+                    <div class="np-tables-note">
+                        &#9888; This will create records in:
+                        <strong>PROPERTY_0, PARENT_PROPERTY, COMP_PROPERTY, COMP_ASSIGNMENTS, COMP_FACT</strong>
+                    </div>
+                </div>
+                <div class="new-prop-footer">
+                    <button class="btn btn-secondary btn-sm" onclick="closeNewPropertyWizard()">Cancel</button>
+                    <button class="btn btn-primary btn-sm" id="npBtnCreate" style="background:#00bcd4;" onclick="npSubmit()">&#10003; Create Stub Record</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ─── Collapsible blurbs ────────────────────────────────────────────────────
+    function toggleBlurb(id) {
+        const body = document.getElementById('blurbBody-' + id);
+        const toggle = document.getElementById('blurbToggle-' + id);
+        const collapsed = body.classList.toggle('collapsed');
+        toggle.innerHTML = collapsed ? '&#9654;' : '&#9660;';
+        localStorage.setItem('pdm_blurb_' + id, collapsed ? '1' : '0');
+    }
+    ['properties','groups','markets'].forEach(id => {
+        const state = localStorage.getItem('pdm_blurb_' + id);
+        if (state === '1') {
+            const body = document.getElementById('blurbBody-' + id);
+            const toggle = document.getElementById('blurbToggle-' + id);
+            if (body) { body.classList.add('collapsed'); toggle.innerHTML = '&#9654;'; }
+        }
+    });
+
+    // ─── Tab navigation ────────────────────────────────────────────────────────
+    let groupsLoaded = false, marketsLoaded = false;
+    document.querySelectorAll('.pdm-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.pdm-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.pdm-panel').forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+            if (tab.dataset.panel === 'groups' && !groupsLoaded) loadGroups();
+            if (tab.dataset.panel === 'markets' && !marketsLoaded) loadMarkets();
+        });
+    });
+
+    // ─── Utility ───────────────────────────────────────────────────────────────
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    // ─── Properties tab ────────────────────────────────────────────────────────
+    let propData = [], propSorted = [], propSortCol = 'PROPERTY_NAME', propSortAsc = true;
+
+    const PROP_DEFAULT_COLS = ['PROPERTY_KEY','PROPERTY_NAME','RM_NAME','PM_NAME','ADDRESS_CITY','ADDRESS_STATE','ADDRESS_COUNTRY','PROPERTY_GROUP','MARKET_CITY_STATE','STATUS'];
+    const PROP_HIDDEN_KEYS = new Set(['AutoIDField','RowVer']);
+    let PROP_COLUMNS = [];
+    let propVisibleCols = [...PROP_DEFAULT_COLS];
+
+    const PROP_DATE_KEYS = new Set(['DATE_ADDED_TO_DW','DATE_ANTICIPATED_TAKEOVER','DATE_CREATED','DATE_DATA_FREEZE','DATE_DISPOSITIONED','DATE_LAST_UPDATED','DATE_LIFECYCLE','DATE_MGMT_TAKEOVER','DATE_MIGRATED','DATE_STABILIZED','DATE_STATUS']);
+    const PROP_FLAG_PREFIX = 'FLAG_';
+
+    function formatDate(v) {
+        if (!v) return '';
+        const s = String(v);
+        if (s.length === 8) return s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);
+        return s;
+    }
+
+    function renderPropCell(col, val) {
+        if (val == null || val === '') return '';
+        if (PROP_DATE_KEYS.has(col)) return formatDate(val);
+        if (col.startsWith(PROP_FLAG_PREFIX)) return val == 1 ? '✓' : val == 0 ? '✗' : esc(val);
+        return esc(val);
+    }
+
+    function getStatusBadge(row) {
+        if (row.FLAG_DISPOSITIONED == 1) return '<span class="badge dispositioned">Dispositioned</span>';
+        if (row.FLAG_REPORTABLE == 1) return '<span class="badge reportable">Reportable</span>';
+        if (row.FLAG_MANAGED == 1) return '<span class="badge managed">Managed</span>';
+        if (row.FLAG_PENDING == 1) return '<span class="badge pending">Pending</span>';
+        return '<span class="badge" style="background:var(--input-bg);color:var(--text-secondary)">Other</span>';
+    }
+
+    function loadProperties() {
+        const q = document.getElementById('propSearch').value;
+        const status = document.getElementById('propStatus').value;
+        const group = document.getElementById('propGroup').value;
+        const market = document.getElementById('propMarket').value;
+        const params = new URLSearchParams({q, status, property_group: group, market});
+        fetch('/pdm/api/properties/search?' + params)
+            .then(r => r.json())
+            .then(d => {
+                propData = d.properties || [];
+                // Build column list from first row
+                if (propData.length > 0) {
+                    PROP_COLUMNS = Object.keys(propData[0]).filter(k => !PROP_HIDDEN_KEYS.has(k));
+                }
+                buildColSelector();
+                sortAndRenderProps();
+            });
+    }
+
+    function sortAndRenderProps() {
+        propSorted = [...propData].sort((a, b) => {
+            let va = a[propSortCol], vb = b[propSortCol];
+            if (va == null) va = '';
+            if (vb == null) vb = '';
+            if (typeof va === 'string') va = va.toLowerCase();
+            if (typeof vb === 'string') vb = vb.toLowerCase();
+            if (va < vb) return propSortAsc ? -1 : 1;
+            if (va > vb) return propSortAsc ? 1 : -1;
+            return 0;
+        });
+        renderPropTable();
+    }
+
+    function renderPropTable() {
+        const thead = document.querySelector('#propTable thead tr');
+        const tbody = document.querySelector('#propTable tbody');
+        // Header
+        thead.innerHTML = propVisibleCols.map(c => {
+            const arrow = propSortCol === c ? (propSortAsc ? ' ▲' : ' ▼') : '';
+            const label = c.replace(/_/g,' ');
+            return `<th onclick="sortProps('${c}')">${esc(label)}${arrow}</th>`;
+        }).join('');
+        // Rows
+        tbody.innerHTML = propSorted.map((row, idx) => {
+            const cells = propVisibleCols.map(c => {
+                const val = c === 'STATUS' ? getStatusBadge(row) : renderPropCell(c, row[c]);
+                const rendered = c === 'STATUS' ? val : esc(row[c] == null ? '' : row[c]);
+                return `<td title="${esc(String(row[c]||''))}">${c === 'STATUS' ? val : renderPropCell(c, row[c])}</td>`;
+            }).join('');
+            return `<tr onclick="showPropDetail(${idx})">${cells}</tr>`;
+        }).join('');
+        document.getElementById('propCount').textContent = `${propSorted.length} properties`;
+    }
+
+    function sortProps(col) {
+        if (propSortCol === col) propSortAsc = !propSortAsc;
+        else { propSortCol = col; propSortAsc = true; }
+        sortAndRenderProps();
+    }
+
+    // Column selector
+    function buildColSelector() {
+        const list = document.getElementById('colList');
+        list.innerHTML = PROP_COLUMNS.map(c => {
+            const active = propVisibleCols.includes(c) ? ' col-active' : '';
+            const label = c.replace(/_/g,' ');
+            return `<div class="col-item${active}" data-col="${c}" onclick="toggleCol('${c}')">${label}</div>`;
+        }).join('');
+    }
+
+    function toggleColSelector() {
+        document.getElementById('colSelector').classList.toggle('open');
+    }
+
+    function toggleCol(col) {
+        if (propVisibleCols.includes(col)) {
+            // Don't remove PROPERTY_NAME or PROPERTY_KEY
+            if (col === 'PROPERTY_NAME' || col === 'PROPERTY_KEY') return;
+            propVisibleCols = propVisibleCols.filter(c => c !== col);
+        } else {
+            const nameIdx = propVisibleCols.indexOf('PROPERTY_NAME');
+            if (nameIdx >= 0) propVisibleCols.splice(nameIdx + 1, 0, col);
+            else propVisibleCols.push(col);
+        }
+        // Update highlight in list
+        const el = document.querySelector(`#colList [data-col="${col}"]`);
+        if (el) el.classList.toggle('col-active', propVisibleCols.includes(col));
+        renderPropTable();
+    }
+
+    function resetColumns() {
+        propVisibleCols = [...PROP_DEFAULT_COLS];
+        buildColSelector();
+        renderPropTable();
+    }
+
+    document.getElementById('colSearch').addEventListener('input', function() {
+        const q = this.value.toLowerCase();
+        document.querySelectorAll('#colList .col-item').forEach(el => {
+            el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+    });
+
+    // Close column selector on outside click
+    document.addEventListener('click', e => {
+        const sel = document.getElementById('colSelector');
+        if (sel.classList.contains('open') && !sel.contains(e.target) && !e.target.textContent.includes('Columns')) {
+            sel.classList.remove('open');
+        }
+    });
+
+    // CSV export
+    function exportPropCSV() {
+        if (!propSorted.length) return;
+        const header = propVisibleCols.join(',');
+        const rows = propSorted.map(r => propVisibleCols.map(c => {
+            let v = r[c] == null ? '' : String(r[c]);
+            if (v.includes(',') || v.includes('"') || v.includes('\n')) v = '"' + v.replace(/"/g, '""') + '"';
+            return v;
+        }).join(','));
+        const blob = new Blob([header + '\n' + rows.join('\n')], {type: 'text/csv'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'properties_export.csv';
+        a.click();
+    }
+
+    // Detail panel
+    // ─── Employee data for staff dropdowns ────────────────────────────────────
+    let empList = [];
+    fetch('/pdm/api/employees').then(r => r.json()).then(d => { empList = d.employees || []; });
+
+    // ─── Field metadata ────────────────────────────────────────────────────────
+    // System-updated fields and their sources
+    const EXTERNAL_SOURCES = {
+        // Paycom-sourced staff
+        'PM_NAME': 'Paycom', 'PM_EMAIL': 'Paycom', 'PM_EMP_CODE': 'Paycom',
+        'RM_NAME': 'Paycom', 'RM_EMAIL': 'Paycom', 'RM_EMP_CODE': 'Paycom',
+        'RVP_NAME': 'Paycom', 'RVP_EMAIL': 'Paycom', 'RVP_EMP_CODE': 'Paycom',
+        'AM_NAME': 'Paycom', 'AM_EMAIL': 'Paycom', 'AM_EMP_CODE': 'Paycom',
+        'LM_NAME': 'Paycom', 'LM_EMAIL': 'Paycom', 'LM_EMP_CODE': 'Paycom',
+        'EXEC_DIR_NAME': 'Paycom', 'EXEC_DIR_EMAIL': 'Paycom', 'EXEC_DIR_EMP_CODE': 'Paycom',
+        'MAINT_SUPV_NAME': 'Paycom', 'MAINT_SUPV_EMAIL': 'Paycom', 'MAINT_SUPV_EMP_CODE': 'Paycom',
+        'ACCOUNTANT': 'Paycom', 'ACCOUNTANT_EMP_CODE': 'Paycom',
+        'CONTROLLER': 'Paycom', 'CONTROLLER_EMP_CODE': 'Paycom',
+        'ACCOUNTING_MGR': 'Paycom', 'ACCOUNTING_MGR_EMP_CODE': 'Paycom',
+        'RESIDENT_DIR_NAME': 'Paycom', 'RESIDENT_DIR_EMAIL': 'Paycom', 'RESIDENT_DIR_EMP_CODE': 'Paycom',
+        'RAM_NAME': 'Paycom', 'RAM_EMP_CODE': 'Paycom',
+        'RMLS_NAME': 'Paycom', 'RMLS_EMAIL': 'Paycom', 'RMLS_EMP_CODE': 'Paycom',
+        'ASSET_MGR_NAME': 'Paycom', 'ASSET_MGR_EMAIL': 'Paycom',
+        // CS roles (manual-only — no system sync)
+        // CS_REP_NAME, CS_REP_EMAIL, CS_REP_EMP_CODE, CS_MGR_NAME, CS_MGR_EMAIL, CS_MGR_EMP_CODE
+        // intentionally omitted from FIELD_SOURCES — no badge shown
+        // Entrata-sourced
+        'SOURCE_SYSTEM_ID': 'Entrata', 'SOURCE_SYSTEM_SUB_ID': 'Entrata',
+        'LEGACY_ENTRATA_ID': 'Entrata', 'LEGACY_SUBPROPERTY_ID_ENTRATA': 'Entrata',
+        'APARTMENT_COUNT': 'Entrata',
+        // SP-synced fields (read-only, system overwrites)
+        'ADDRESS_1': 'SP Sync', 'ADDRESS_2': 'SP Sync', 'ADDRESS_CITY': 'SP Sync',
+        'ADDRESS_STATE': 'SP Sync', 'ADDRESS_ZIP': 'SP Sync', 'ADDRESS_COUNTY': 'SP Sync',
+        'ADDRESS_COUNTRY': 'SP Sync', 'EMAIL': 'SP Sync',
+        'LATITUDE': 'SP Sync', 'LONGITUDE': 'SP Sync',
+        'PHONE_1': 'SP Sync', 'PHONE_2': 'SP Sync', 'PHONE_FAX': 'SP Sync',
+        'BUILD_YEAR': 'SP Sync', 'BUILDING_COUNT': 'SP Sync', 'ENTITY_NUMBER': 'SP Sync',
+        'PROPERTY_NAME': 'SP Sync', 'RENTABLE_SQFT': 'SP Sync',
+        'SAME_STORE_AY': 'SP Sync', 'URL_WEBSITE': 'SP Sync',
+        'LIST_MANAGED': 'Notebook', 'LIST_STATUS': 'Notebook',
+        'LIST_TRANSITIONTYPE': 'Notebook', 'LIST_TYPE': 'Notebook',
+        // Calculated
+        'BED_COUNT_COMPILED': 'Calculated', 'BED_COUNT_STATIC': 'Calculated', 'BED_COUNT_STATIC_PY': 'Calculated',
+        'HEADCOUNT': 'Calculated', 'COUNT': 'Calculated',
+        'SAME_STORE_YEAR_REVERSE_ID': 'Calculated',
+        // System dates
+        'DATE_CREATED': 'System', 'DATE_LAST_UPDATED': 'System', 'DATE_LIFECYCLE': 'System',
+        'DATE_MIGRATED': 'System', 'DATE_ADDED_TO_DW': 'System', 'DATE_STATUS': 'System',
+        // Keys
+        'PROPERTY_KEY': 'System', 'AutoIDField': 'System', 'RowVer': 'System',
+        'LIFECYCLE_KEY': 'System', 'PROPERTY_LIST_CODE': 'System',
+        'IMAGE_KEY_FLAG': 'System', 'IMAGE_KEY_PROPERTY': 'System',
+        // Legacy
+        'LEGACY_ONESITE_ID': 'OneSite', 'LEGACY_SUBPROPERTY_ID_ONESITE': 'OneSite',
+        'LEGACY_NAME_1': 'Legacy', 'LEGACY_NAME_2': 'Legacy', 'LEGACY_NAME_3': 'Legacy',
+        'LEGACY_NAME_4': 'Legacy', 'LEGACY_NAME_5': 'Legacy', 'LEGACY_NAME_6': 'Legacy',
+        'LEGACY_SUBPROPERTY_NAME_1': 'Legacy', 'LEGACY_SUBPROPERTY_NAME_2': 'Legacy',
+        'LEGACY_SUBPROPERTY_NUMBER': 'Legacy',
+        'SOURCE_SYSTEM': 'System',
+        'BED_COUNT_CUSTOM': 'Notebook',
+        'DATE_DISPOSITIONED': 'SP Sync',
+        'OFFICE_HOURS_1': 'SP Sync', 'OFFICE_HOURS_2': 'SP Sync', 'OFFICE_HOURS_3': 'SP Sync',
+        'OWNER': 'SP Sync', 'OWNER_GROUP': 'SP Sync',
+        'PROPERTY_GROUP': 'SP Sync', 'STATUS': 'SP Sync', 'LEGAL_ENTITY': 'SP Sync',
+    };
+
+    // READ-ONLY: never editable, no override
+    const READONLY_FIELDS = new Set([
+        'AutoIDField','BED_COUNT_COMPILED','BUILD_YEAR','BUILDING_COUNT',
+        'DATE_ADDED_TO_DW','DATE_CREATED','DATE_DATA_FREEZE','DATE_DISPOSITIONED',
+        'DATE_LAST_UPDATED','DATE_LIFECYCLE','DATE_MIGRATED','DATE_STATUS',
+        'EMAIL','ENTITY_NUMBER','IMAGE_KEY_FLAG','IMAGE_KEY_PROPERTY',
+        'OFFICE_HOURS_1','OFFICE_HOURS_2','OFFICE_HOURS_3',
+        'PHONE_1','PHONE_2','PHONE_FAX','PROPERTY_NAME','RowVer',
+    ]);
+
+    // OVERRIDE-CAPABLE: system-updated fields the user MAY override (checkbox on far right, bold red when active)
+    const OVERRIDE_FIELDS = new Set([
+        'ACCOUNTANT','ACCOUNTING_MGR','ALTERNATE_ID_1','ALTERNATE_ID_2','ALTERNATE_ID_3',
+        'AM_NAME','APARTMENT_COUNT','ASSET_MGR_NAME','ASSISTANT_CONTROLLER',
+        'BED_COUNT_CUSTOM','BED_COUNT_STATIC','BED_COUNT_STATIC_PY',
+        'CONTROLLER','COUNT','EXEC_DIR_NAME','GROSS_SQFT','HEADCOUNT',
+        'LATITUDE','LEGAL_ENTITY','LM_NAME','LONGITUDE','MAINT_SUPV_NAME',
+        'OWNER','PM_NAME','RAM_NAME','RENTABLE_SQFT','RESIDENT_DIR_NAME',
+        'RM_NAME','RMLS_NAME','RVP_NAME','STATUS','URL_WEBSITE',
+    ]);
+
+    // TEXT ENTRY fields
+    const TEXT_FIELDS = new Set([
+        'ALTERNATE_ID_1','ALTERNATE_ID_2','ALTERNATE_ID_3',
+        'APARTMENT_COUNT','APARTMENT_COUNT_BILLING','ASSET_MGR_EMAIL',
+        'BED_COUNT_BILLING','BED_COUNT_CUSTOM','BED_COUNT_STATIC','BED_COUNT_STATIC_PY',
+        'BILLING_ALLOCATION_PARTNERS','BILLING_ALLOCATION_PCT',
+        'COMPANY','COUNT','DATE_ANTICIPATED_TAKEOVER','DATE_MGMT_TAKEOVER','DATE_STABILIZED',
+        'ENTITY_NAME','FINANCIAL_PUBLICATION_DAY',
+        'GOAL_GOOGLE_RATING','GOAL_ORA','GOAL_REPUTATION',
+        'GOOGLE_PROPERTY_LINK','GOOGLE_PROPERTY_TYPE','GROSS_SQFT','HEADCOUNT',
+        'LATITUDE','LEGACY_ENTRATA_ID','LEGACY_NAME_1','LEGACY_NAME_2','LEGACY_NAME_3',
+        'LEGACY_NAME_4','LEGACY_NAME_5','LEGACY_NAME_6',
+        'LEGACY_SUBPROPERTY_ID_ENTRATA','LEGACY_SUBPROPERTY_ID_ONESITE',
+        'LEGACY_SUBPROPERTY_NAME_1','LEGACY_SUBPROPERTY_NAME_2','LEGACY_SUBPROPERTY_NUMBER',
+        'LEGAL_ENTITY','LENDER_NAME','LONGITUDE','MGMT_ENTITY','NOTES',
+        'OFFICE_HOURS_4','OFFICE_HOURS_5','OWNER',
+        'PREVIOUS_MGMT_COMPANY','PREVIOUS_MGMT_CONTACT','PREVIOUS_NAA','PREVIOUS_PMS',
+        'PROPERTY_AR_CODE','PROPERTY_KEY','PROPERTY_LIST_CODE',
+        'RENTABLE_SQFT','SAME_STORE_YEAR','SAME_STORE_YEAR_REVERSE_ID',
+        'SOURCE_SYSTEM','SOURCE_SYSTEM_ID','SOURCE_SYSTEM_SUB_ID',
+        'STABILIZED_YEAR','STATUS','SUBPROPERTY_NAME','TAX_ID',
+        'TEMP_CITY','TEMP_STATE','TEMP_STREET','TEMP_ZIP',
+        'URL_FACEBOOK','URL_INSTAGRAM','URL_SHARED_FOLDER','URL_TRANSITION_CHECKLIST',
+        'URL_TWITTER','URL_WEBSITE','VENDOR_COMMENTS_01','VENDOR_COMMENTS_02',
+    ]);
+
+    // DROPDOWN fields (select from list)
+    const DROPDOWN_FIELDS = new Set([
+        'ACCOUNTANT','ACCOUNTING_MGR','AM_NAME','ASSET_MGR_NAME','ASSISTANT_CONTROLLER',
+        'CONTROLLER','CURRENT_PHASE','EXEC_DIR_NAME','LIFECYCLE_STATUS','LIFECYCLE_STEP',
+        'LIST_MANAGED','LIST_STATUS','LIST_TRANSITIONTYPE','LIST_TYPE',
+        'LM_NAME','MAINT_SUPV_NAME','MANAGEMENT_TYPE','MARKET_CITY','MSA',
+        'OWNER_GROUP','PAYROLL_ENTITY','PM_NAME','PROPERTY_GROUP','PROPERTY_TYPE',
+        'RAM_NAME','RESIDENT_DIR_NAME','RM_NAME','RMLS_NAME','RVP_NAME',
+        'CS_REP_NAME','CS_MGR_NAME',
+        'SCHOOL_NAME','TIME_ZONE','TRANSITION_TYPE',
+        'VENDOR_01','VENDOR_02','VENDOR_03','VENDOR_04','VENDOR_05','VENDOR_06','VENDOR_07',
+        'VENDOR_08','VENDOR_09','VENDOR_10','VENDOR_11','VENDOR_12','VENDOR_13','VENDOR_14','VENDOR_15',
+    ]);
+
+    // TIED-TO relationships (child → parent)
+    const TIED_TO = {
+        'ACCOUNTANT_EMP_CODE':'ACCOUNTANT','ACCOUNTING_MGR_EMP_CODE':'ACCOUNTING_MGR',
+        'AM_EMAIL':'AM_NAME','AM_EMP_CODE':'AM_NAME',
+        'ASSISTANT_CONTROLLER_EMP_CODE':'ASSISTANT_CONTROLLER',
+        'BED_COUNT_BILLING':'BED_COUNT_COMPILED','CONTROLLER_EMP_CODE':'CONTROLLER',
+        'DATE_STATUS':'STATUS','ENTITY_NUMBER':'ENTITY_NAME',
+        'EXEC_DIR_EMAIL':'EXEC_DIR_NAME','EXEC_DIR_EMP_CODE':'EXEC_DIR_NAME',
+        'FLAG_DISPOSITIONED':'DATE_DISPOSITIONED',
+        'IMAGE_KEY_FLAG':'PROPERTY_KEY','IMAGE_KEY_PROPERTY':'PROPERTY_KEY',
+        'LIFECYCLE_KEY':'LIFECYCLE_STATUS',
+        'LM_EMAIL':'LM_NAME','LM_EMP_CODE':'LM_NAME',
+        'MAINT_SUPV_EMAIL':'MAINT_SUPV_NAME','MAINT_SUPV_EMP_CODE':'MAINT_SUPV_NAME',
+        'MANAGEMENT_TYPE_KEY':'MANAGEMENT_TYPE',
+        'MARKET_CITY_STATE':'MARKET_CITY','MARKET_KEY':'MARKET_CITY','MARKET_STATE':'MARKET_CITY',
+        'OWNER_GROUP_SHORT':'OWNER_GROUP','OWNER_SHORT':'OWNER',
+        'PM_EMAIL':'PM_NAME','PM_EMP_CODE':'PM_NAME',
+        'PROPERTY_GROUP_KEY':'PROPERTY_GROUP','PROPERTY_TYPE_KEY':'PROPERTY_TYPE',
+        'RAM_EMP_CODE':'RAM_NAME',
+        'CS_REP_EMAIL':'CS_REP_NAME','CS_REP_EMP_CODE':'CS_REP_NAME',
+        'CS_MGR_EMAIL':'CS_MGR_NAME','CS_MGR_EMP_CODE':'CS_MGR_NAME',
+        'RESIDENT_DIR_EMAIL':'RESIDENT_DIR_NAME','RESIDENT_DIR_EMP_CODE':'RESIDENT_DIR_NAME',
+        'RM_EMAIL':'RM_NAME','RM_EMP_CODE':'RM_NAME',
+        'RMLS_EMAIL':'RMLS_NAME','RMLS_EMP_CODE':'RMLS_NAME',
+        'RVP_EMAIL':'RVP_NAME','RVP_EMP_CODE':'RVP_NAME',
+        'SAME_STORE_YEAR_REVERSE_ID':'SAME_STORE_YEAR',
+        'SCHOOL_ACRONYM':'SCHOOL_NAME','SCHOOL_INITIALS':'SCHOOL_NAME','SCHOOL_MASCOT':'SCHOOL_NAME',
+        'TEMP_CITY':'TEMP_STREET','TEMP_STATE':'TEMP_STREET','TEMP_ZIP':'TEMP_STREET',
+        'TRANSITION_TYPE_KEY':'TRANSITION_TYPE',
+    };
+
+    // Staff roles
+    const STAFF_ROLES = {
+        'PM':  {name:'PM_NAME', email:'PM_EMAIL', code:'PM_EMP_CODE', label:'Property Manager'},
+        'RM':  {name:'RM_NAME', email:'RM_EMAIL', code:'RM_EMP_CODE', label:'Regional Manager'},
+        'RVP': {name:'RVP_NAME', email:'RVP_EMAIL', code:'RVP_EMP_CODE', label:'Regional VP'},
+        'AM':  {name:'AM_NAME', email:'AM_EMAIL', code:'AM_EMP_CODE', label:'Area Manager'},
+        'LM':  {name:'LM_NAME', email:'LM_EMAIL', code:'LM_EMP_CODE', label:'Leasing Manager'},
+        'EXEC_DIR': {name:'EXEC_DIR_NAME', email:'EXEC_DIR_EMAIL', code:'EXEC_DIR_EMP_CODE', label:'Executive Director'},
+        'MAINT_SUPV': {name:'MAINT_SUPV_NAME', email:'MAINT_SUPV_EMAIL', code:'MAINT_SUPV_EMP_CODE', label:'Maintenance Supervisor'},
+        'ACCOUNTANT': {name:'ACCOUNTANT', email:null, code:'ACCOUNTANT_EMP_CODE', label:'Accountant'},
+        'CONTROLLER': {name:'CONTROLLER', email:null, code:'CONTROLLER_EMP_CODE', label:'Controller'},
+        'ACCOUNTING_MGR': {name:'ACCOUNTING_MGR', email:null, code:'ACCOUNTING_MGR_EMP_CODE', label:'Accounting Manager'},
+        'ASSISTANT_CONTROLLER': {name:'ASSISTANT_CONTROLLER', email:null, code:'ASSISTANT_CONTROLLER_EMP_CODE', label:'Asst. Controller'},
+        'RESIDENT_DIR': {name:'RESIDENT_DIR_NAME', email:'RESIDENT_DIR_EMAIL', code:'RESIDENT_DIR_EMP_CODE', label:'Resident Director'},
+        'RAM': {name:'RAM_NAME', email:null, code:'RAM_EMP_CODE', label:'RAM'},
+        'RMLS': {name:'RMLS_NAME', email:'RMLS_EMAIL', code:'RMLS_EMP_CODE', label:'RMLS'},
+        'CS_REP': {name:'CS_REP_NAME', email:'CS_REP_EMAIL', code:'CS_REP_EMP_CODE', label:'CS Rep'},
+        'CS_MGR': {name:'CS_MGR_NAME', email:'CS_MGR_EMAIL', code:'CS_MGR_EMP_CODE', label:'CS Manager'},
+        'ASSET_MGR': {name:'ASSET_MGR_NAME', email:'ASSET_MGR_EMAIL', code:null, label:'Asset Manager'},
+    };
+
+    // Dropdown options for classification/list fields
+    const DROPDOWN_OPTIONS = {
+        'LIST_MANAGED': ['MANAGED','UN-MANAGED'],
+        'LIST_STATUS': ['DISPOSITIONED','ON-BOARDING','REPORTABLE'],
+        'LIST_TRANSITIONTYPE': ['LEASE UP','NEW DEV','STABILIZED','TRANSITION','TRANSITION-MGMT CHANGE','TRANSITION-RECEIVERSHIP','TRANSITION-SALE'],
+        'LIST_TYPE': ['MULTI-FAMILY','NON-PROPERTY','RETAIL','STUDENT'],
+        'PROPERTY_TYPE': ['MULTI-FAMILY','OTHER','RETAIL','STUDENT'],
+        'MANAGEMENT_TYPE': ['MANAGED','UN-MANAGED'],
+        'TRANSITION_TYPE': ['LEASE UP','NEW DEV','STABILIZED','TRANSITION','TRANSITION-MGMT CHANGE','TRANSITION-RECEIVERSHIP','TRANSITION-SALE'],
+        'STATUS': ['ACTIVE','DISPOSITIONED','NEW DEVELOPMENT','NEW START','ON-BOARDING','OPERATING','REPORTABLE','TAKEOVER'],
+        'SOURCE_SYSTEM': ['ENTRATA','INTERNAL','NEVER MANAGED','ONESITE'],
+        'LIFECYCLE_STATUS': ['DISPOSITIONED','ON-BOARDING','REPORTABLE'],
+        'GOOGLE_PROPERTY_TYPE': ['apartment_building','apartment_complex','student_housing'],
+        'TIME_ZONE': ['EST','CST','MST','PST'],
+    };
+
+    // Fields that are EDITABLE (user-only, no system writes to these) — union of TEXT and DROPDOWN minus OVERRIDE-only
+    const EDITABLE_FIELDS = new Set([...TEXT_FIELDS, ...DROPDOWN_FIELDS]);
+
+    // Editable date fields (rendered as date pickers)
+    const EDITABLE_DATES = new Set(['DATE_MGMT_TAKEOVER','DATE_STABILIZED','DATE_ANTICIPATED_TAKEOVER']);
+    const READONLY_DATES = new Set(['DATE_CREATED','DATE_LAST_UPDATED','DATE_LIFECYCLE','DATE_MIGRATED','DATE_ADDED_TO_DW','DATE_STATUS','DATE_DATA_FREEZE','DATE_DISPOSITIONED']);
+
+    // All flag fields
+    const ALL_FLAGS = ['FLAG_ACTIVE','FLAG_REPORTABLE','FLAG_MANAGED','FLAG_DISPOSITIONED','FLAG_LEASEUP','FLAG_STABILIZED',
+        'FLAG_PENDING','FLAG_TENTATIVE','FLAG_CORPORATE_LOCATION','FLAG_NON_PROPERTY','FLAG_SUBPROPERTY',
+        'FLAG_CONVENTIONAL_ONLY','FLAG_DATA_FREEZE','FLAG_FANNIE_FREDDIE_MORTGAGE','FLAG_MIXED_USE',
+        'FLAG_RETAIL','FLAG_STUDENT_ONLY','FLAG_USE_TEMP_ADDRESS','FLAG_MIGRATED','FLAG_PHASE_0',
+        'FLAG_PHASE_1','FLAG_PHASE_2','FLAG_PHASE_3','FLAG_PHASE_4','FLAG_PHASE_5','FLAG_PHASE_6',
+        'FLAG_PHASE_7','FLAG_PHASE_8','FLAG_PHASE_9','FLAG_PHASE_10'];
+    const EDITABLE_FLAGS = new Set(['FLAG_REPORTABLE','FLAG_MANAGED','FLAG_DISPOSITIONED','FLAG_LEASEUP',
+        'FLAG_STABILIZED','FLAG_PENDING','FLAG_TENTATIVE','FLAG_CORPORATE_LOCATION','FLAG_NON_PROPERTY',
+        'FLAG_SUBPROPERTY','FLAG_CONVENTIONAL_ONLY','FLAG_DATA_FREEZE','FLAG_FANNIE_FREDDIE_MORTGAGE',
+        'FLAG_MIXED_USE','FLAG_RETAIL','FLAG_STUDENT_ONLY','FLAG_USE_TEMP_ADDRESS']);
+
+    // Current detail state
+    let detailPropertyKey = null;
+    let detailOverrides = new Set();
+    let detailSortMode = 'category';
+    let detailCurrentRow = null;
+
+    window.setDetailSort = function(mode) {
+        detailSortMode = mode;
+        document.getElementById('sortCategory').classList.toggle('active', mode === 'category');
+        document.getElementById('sortAlpha').classList.toggle('active', mode === 'alpha');
+        if (detailCurrentRow) renderDetail(detailCurrentRow);
+    };
+
+    // Sections (flags and staff handled specially)
+    const DETAIL_SECTIONS = {
+        'Identity': ['PROPERTY_KEY','PROPERTY_NAME','ADDRESS_1','ADDRESS_2','ADDRESS_CITY','ADDRESS_STATE','ADDRESS_ZIP','ADDRESS_COUNTY','ADDRESS_COUNTRY','PHONE_1','PHONE_2','PHONE_FAX','EMAIL','LATITUDE','LONGITUDE','TIME_ZONE','ALTERNATE_ID_1','ALTERNATE_ID_2','ALTERNATE_ID_3','SUBPROPERTY_NAME','IMAGE_KEY_FLAG','IMAGE_KEY_PROPERTY'],
+        'Temporary Address': ['TEMP_STREET','TEMP_CITY','TEMP_STATE','TEMP_ZIP'],
+        'Classification & Lists': ['PROPERTY_TYPE','PROPERTY_TYPE_KEY','PROPERTY_GROUP','PROPERTY_GROUP_KEY','MARKET_CITY_STATE','MARKET_CITY','MARKET_STATE','MARKET_KEY','OWNER','OWNER_GROUP','OWNER_SHORT','OWNER_GROUP_SHORT','COMPANY','MANAGEMENT_TYPE','MANAGEMENT_TYPE_KEY','SCHOOL_NAME','SCHOOL_ACRONYM','SCHOOL_INITIALS','SCHOOL_MASCOT','LIST_MANAGED','LIST_STATUS','LIST_TRANSITIONTYPE','LIST_TYPE','STATUS','LIFECYCLE_STATUS','LIFECYCLE_KEY','LIFECYCLE_STEP','TRANSITION_TYPE','TRANSITION_TYPE_KEY','SOURCE_SYSTEM','SOURCE_SYSTEM_ID','SOURCE_SYSTEM_SUB_ID','CURRENT_PHASE','MSA','PROPERTY_LIST_CODE','PROPERTY_AR_CODE'],
+        'Financials': ['APARTMENT_COUNT','APARTMENT_COUNT_BILLING','BED_COUNT_CUSTOM','BED_COUNT_BILLING','BED_COUNT_COMPILED','BED_COUNT_STATIC','BED_COUNT_STATIC_PY','BUILDING_COUNT','GROSS_SQFT','RENTABLE_SQFT','BUILD_YEAR','SAME_STORE_YEAR','SAME_STORE_YEAR_REVERSE_ID','STABILIZED_YEAR','PAYROLL_ENTITY','ENTITY_NAME','ENTITY_NUMBER','LEGAL_ENTITY','TAX_ID','BILLING_ALLOCATION_PARTNERS','BILLING_ALLOCATION_PCT','HEADCOUNT','COUNT','FINANCIAL_PUBLICATION_DAY','LENDER_NAME','MGMT_ENTITY'],
+        'Goals': ['GOAL_GOOGLE_RATING','GOAL_ORA','GOAL_REPUTATION'],
+        'Dates': ['DATE_CREATED','DATE_LAST_UPDATED','DATE_MGMT_TAKEOVER','DATE_STABILIZED','DATE_DISPOSITIONED','DATE_LIFECYCLE','DATE_MIGRATED','DATE_ANTICIPATED_TAKEOVER','DATE_DATA_FREEZE','DATE_ADDED_TO_DW','DATE_STATUS'],
+        'Legacy IDs & Names': ['LEGACY_ENTRATA_ID','LEGACY_ONESITE_ID','LEGACY_SUBPROPERTY_ID_ENTRATA','LEGACY_SUBPROPERTY_ID_ONESITE','LEGACY_SUBPROPERTY_NAME_1','LEGACY_SUBPROPERTY_NAME_2','LEGACY_SUBPROPERTY_NUMBER','LEGACY_NAME_1','LEGACY_NAME_2','LEGACY_NAME_3','LEGACY_NAME_4','LEGACY_NAME_5','LEGACY_NAME_6'],
+        'Previous Management': ['PREVIOUS_MGMT_COMPANY','PREVIOUS_MGMT_CONTACT','PREVIOUS_PMS','PREVIOUS_NAA'],
+        'URLs & Links': ['URL_WEBSITE','URL_FACEBOOK','URL_INSTAGRAM','URL_TWITTER','URL_SHARED_FOLDER','GOOGLE_PROPERTY_LINK','GOOGLE_PROPERTY_TYPE','URL_TRANSITION_CHECKLIST'],
+        'Vendors': ['VENDOR_01','VENDOR_02','VENDOR_03','VENDOR_04','VENDOR_05','VENDOR_06','VENDOR_07','VENDOR_08','VENDOR_09','VENDOR_10','VENDOR_11','VENDOR_12','VENDOR_13','VENDOR_14','VENDOR_15','VENDOR_COMMENTS_01','VENDOR_COMMENTS_02'],
+        'Notes & Office Hours': ['NOTES','OFFICE_HOURS_1','OFFICE_HOURS_2','OFFICE_HOURS_3','OFFICE_HOURS_4','OFFICE_HOURS_5'],
+    };
+
+    // All section names including special sections rendered manually
+    const ALL_SECTION_NAMES = [...Object.keys(DETAIL_SECTIONS), 'Staff Assignments', 'Flags'];
+
+    // ─── PDM Settings: category order + visibility ────────────────────────────
+    // Stored in sessionStorage as { order: [...names], hidden: [...names] }
+    // Return friendly label for a field name used in settings list
+    function fieldLabel(f) { return f.replace(/_/g,' '); }
+
+    // Get all fields for a section (for settings display)
+    function sectionFields(name, settings) {
+        let base;
+        if (name === 'Staff Assignments') base = Object.values(STAFF_ROLES).map(r => r.name);
+        else if (name === 'Flags') base = ALL_FLAGS;
+        else base = DETAIL_SECTIONS[name] || [];
+        if (settings && settings.fieldOrder) {
+            const custom = settings.fieldOrder[name] || [];
+            // Fields explicitly assigned to OTHER categories should not appear here
+            const claimedElsewhere = new Set();
+            Object.entries(settings.fieldOrder).forEach(([cat, fields]) => {
+                if (cat !== name) fields.forEach(f => claimedElsewhere.add(f));
+            });
+            // Start with custom order (may include cross-category arrivals),
+            // then append base fields not yet explicitly placed anywhere
+            const extra = base.filter(f => !custom.includes(f) && !claimedElsewhere.has(f));
+            return [...custom, ...extra];
+        }
+        return base;
+    }
+
+    function loadPdmSettings() {
+        const raw = sessionStorage.getItem('pdm_section_settings');
+        if (!raw) return { order: [...ALL_SECTION_NAMES], hidden: [], hiddenFields: [] };
+        try {
+            const s = JSON.parse(raw);
+            if (!s.hiddenFields) s.hiddenFields = [];
+            return s;
+        } catch { return { order: [...ALL_SECTION_NAMES], hidden: [], hiddenFields: [] }; }
+    }
+    function savePdmSettingsState(settings) {
+        sessionStorage.setItem('pdm_section_settings', JSON.stringify(settings));
+    }
+
+    window.openPdmSettings = function() {
+        document.getElementById('pdmSettingsOverlay').classList.add('open');
+        document.getElementById('pdmSettingsModal').classList.add('open');
+        renderPdmSettingsList();
+    };
+    window.closePdmSettings = function() {
+        document.getElementById('pdmSettingsOverlay').classList.remove('open');
+        document.getElementById('pdmSettingsModal').classList.remove('open');
+        if (detailCurrentRow) renderDetail(detailCurrentRow);
+    };
+
+    // Track which categories are expanded in settings panel
+    let settingsExpanded = {};
+
+    function renderPdmSettingsList() {
+        const settings = loadPdmSettings();
+        ALL_SECTION_NAMES.forEach(n => { if (!settings.order.includes(n)) settings.order.push(n); });
+        const list = document.getElementById('pdmSettingsList');
+        let html = '';
+        for (const name of settings.order) {
+            const isCatHidden = settings.hidden.includes(name);
+            const icon = SECTION_ICONS[name] || '📄';
+            const fields = sectionFields(name, settings);
+            const isExpanded = settingsExpanded[name] || false;
+            const hiddenFieldCount = fields.filter(f => settings.hiddenFields.includes(f)).length;
+            const countBadge = hiddenFieldCount > 0 ? ` <span style="font-size:0.7rem;color:#f9a825;">(${hiddenFieldCount} hidden)</span>` : '';
+            html += `<div class="pdm-settings-cat${isCatHidden ? ' is-hidden' : ''}" draggable="true" data-cat="${esc(name)}">
+                <div class="pdm-settings-cat-header" onclick="toggleSettingsCatExpand('${esc(name)}')" style="cursor:pointer">
+                    <span class="drag-grip" onclick="event.stopPropagation()">&#8942;&#8942;</span>
+                    <span style="font-size:0.98rem;color:#ffffff;margin-right:2px;transition:transform 0.15s;display:inline-block;transform:${isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'}">&#9658;</span>
+                    <span style="margin-right:4px">${icon}</span>
+                    <span class="pdm-settings-cat-name">${esc(name)}${countBadge}</span>
+                    <button class="pdm-vis-btn${isCatHidden ? ' hidden' : ''}" onclick="event.stopPropagation();togglePdmCatVisibility('${esc(name)}')" title="${isCatHidden ? 'Show category' : 'Hide category'}">
+                        ${isCatHidden ? '&#128065;&#65039;' : '&#128065;'}
+                    </button>
+                </div>`;
+            if (isExpanded && fields.length) {
+                html += `<div class="pdm-settings-fields" data-fields-cat="${esc(name)}">`;
+                for (const f of fields) {
+                    const isFHidden = settings.hiddenFields.includes(f);
+                    html += `<div class="pdm-settings-field${isFHidden ? ' is-hidden' : ''}" draggable="true" data-field="${f}" data-cat="${esc(name)}">
+                        <span style="display:flex;align-items:center;flex:1;">
+                            <span class="field-drag-grip">&#8942;&#8942;</span>
+                            ${fieldLabel(f)}
+                        </span>
+                        <button class="pdm-vis-btn${isFHidden ? ' hidden' : ''}" onclick="event.stopPropagation();togglePdmFieldVisibility('${f}')" title="${isFHidden ? 'Show field' : 'Hide field'}">
+                            ${isFHidden ? '&#128065;&#65039;' : '&#128065;'}
+                        </button>
+                    </div>`;
+                }
+                html += `</div>`;
+            }
+            html += `</div>`;
+        }
+        list.innerHTML = html;
+        initPdmDragDrop();
+    }
+
+    window.toggleSettingsCatExpand = function(name) {
+        settingsExpanded[name] = !settingsExpanded[name];
+        renderPdmSettingsList();
+    };
+
+    window.togglePdmCatVisibility = function(name) {
+        const settings = loadPdmSettings();
+        const idx = settings.hidden.indexOf(name);
+        if (idx >= 0) settings.hidden.splice(idx, 1); else settings.hidden.push(name);
+        savePdmSettingsState(settings);
+        renderPdmSettingsList();
+    };
+
+    window.togglePdmFieldVisibility = function(f) {
+        const settings = loadPdmSettings();
+        const idx = settings.hiddenFields.indexOf(f);
+        if (idx >= 0) settings.hiddenFields.splice(idx, 1); else settings.hiddenFields.push(f);
+        savePdmSettingsState(settings);
+        renderPdmSettingsList();
+    };
+
+    function initPdmDragDrop() {
+        const list = document.getElementById('pdmSettingsList');
+        let dragEl = null;
+        let dragType = null; // 'cat' or 'field'
+
+        // ── Category drag ──
+        list.querySelectorAll('.pdm-settings-cat').forEach(item => {
+            item.addEventListener('dragstart', e => {
+                if (e.target.closest('.pdm-settings-field')) return; // let field handle it
+                dragEl = item;
+                dragType = 'cat';
+                item.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+                e.stopPropagation();
+            });
+            item.addEventListener('dragend', () => {
+                if (dragType !== 'cat') return;
+                item.classList.remove('dragging');
+                list.querySelectorAll('.pdm-settings-cat').forEach(i => i.classList.remove('drag-over'));
+                dragEl = null; dragType = null;
+                const newOrder = Array.from(list.querySelectorAll('.pdm-settings-cat')).map(el => el.dataset.cat);
+                const settings = loadPdmSettings();
+                settings.order = newOrder;
+                savePdmSettingsState(settings);
+            });
+            item.addEventListener('dragover', e => {
+                if (dragType !== 'cat') return;
+                e.preventDefault();
+                if (!dragEl || dragEl === item) return;
+                list.querySelectorAll('.pdm-settings-cat').forEach(i => i.classList.remove('drag-over'));
+                item.classList.add('drag-over');
+                const rect = item.getBoundingClientRect();
+                if (e.clientY < rect.top + rect.height / 2) list.insertBefore(dragEl, item);
+                else list.insertBefore(dragEl, item.nextSibling);
+            });
+            item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+        });
+
+        // ── Field drag ──
+        list.querySelectorAll('.pdm-settings-field').forEach(fieldEl => {
+            fieldEl.addEventListener('dragstart', e => {
+                dragEl = fieldEl;
+                dragType = 'field';
+                fieldEl.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+                e.stopPropagation();
+            });
+            fieldEl.addEventListener('dragend', () => {
+                if (dragType !== 'field') return;
+                list.querySelectorAll('.pdm-settings-field').forEach(f => {
+                    f.classList.remove('dragging');
+                    f.classList.remove('drag-over-field');
+                });
+                // Rebuild fieldOrder from DOM, deduplicate per category
+                const settings = loadPdmSettings();
+                if (!settings.fieldOrder) settings.fieldOrder = {};
+                list.querySelectorAll('[data-fields-cat]').forEach(container => {
+                    const cat = container.dataset.fieldsCat;
+                    const seen = new Set();
+                    settings.fieldOrder[cat] = Array.from(container.querySelectorAll('[data-field]'))
+                        .map(el => el.dataset.field)
+                        .filter(f => { if (seen.has(f)) return false; seen.add(f); return true; });
+                });
+                savePdmSettingsState(settings);
+                dragEl = null; dragType = null;
+            });
+            fieldEl.addEventListener('dragover', e => {
+                if (dragType !== 'field') return;
+                e.preventDefault(); e.stopPropagation();
+                if (dragEl === fieldEl) return;
+                list.querySelectorAll('.pdm-settings-field').forEach(f => f.classList.remove('drag-over-field'));
+                fieldEl.classList.add('drag-over-field');
+                const targetContainer = fieldEl.closest('[data-fields-cat]');
+                if (!targetContainer) return;
+                const rect = fieldEl.getBoundingClientRect();
+                if (e.clientY < rect.top + rect.height / 2) targetContainer.insertBefore(dragEl, fieldEl);
+                else targetContainer.insertBefore(dragEl, fieldEl.nextSibling);
+                // Update data-cat on dragged element
+                dragEl.dataset.cat = targetContainer.dataset.fieldsCat;
+            });
+            fieldEl.addEventListener('dragleave', () => fieldEl.classList.remove('drag-over-field'));
+        });
+    }
+
+    // Staff role colors for alternating groups
+    const STAFF_COLORS = [
+        'var(--hover-bg)', 'transparent', 'var(--hover-bg)',
+        'transparent', 'var(--hover-bg)', 'transparent',
+        'var(--hover-bg)', 'transparent', 'var(--hover-bg)',
+        'transparent', 'var(--hover-bg)', 'transparent',
+        'var(--hover-bg)', 'transparent',
+    ];
+
+    function isMissing(v) {
+        return v == null || String(v).trim() === '' || String(v).trim() === '--' || String(v).trim() === ' --';
+    }
+    function intToDateStr(v) {
+        if (!v) return '';
+        const s = String(v);
+        if (s.length === 8) return s.slice(0,4) + '-' + s.slice(4,6) + '-' + s.slice(6,8);
+        return s;
+    }
+    function isExternal(f) { return f in EXTERNAL_SOURCES; }
+
+    function showPropDetail(idx) {
+        const row = propSorted[idx];
+        if (!row) return;
+        detailPropertyKey = row.PROPERTY_KEY;
+        const overlay = document.getElementById('propDetail');
+        const content = document.getElementById('propDetailContent');
+        document.getElementById('jumpToField').value = '';
+
+        // Load overrides for this property
+        fetch('/pdm/api/overrides/' + detailPropertyKey)
+            .then(r => r.json())
+            .then(d => {
+                detailOverrides = new Set(d.overrides || []);
+                renderDetail(row);
+            })
+            .catch(() => {
+                detailOverrides = new Set();
+                renderDetail(row);
+            });
+
+        overlay.classList.add('open');
+    }
+
+    // Section icons (matching screenshot style)
+    const SECTION_ICONS = {
+        'Identity': '🏠', 'Temporary Address': '📫', 'Classification & Lists': '📋',
+        'Financials': '💰', 'Goals': '🎯', 'Dates': '📅',
+        'Legacy IDs & Names': '🏷️', 'Previous Management': '🔄',
+        'URLs & Links': '🔗', 'Vendors': '🛠️', 'Notes & Office Hours': '📝',
+        'Staff Assignments': '👥', 'Flags': '🚩',
+    };
+
+    // Track collapsed sections (persisted per session)
+    // On first visit all sections start collapsed; after any toggle the state is sticky
+    const _storedSections = sessionStorage.getItem('pdm_collapsed_sections');
+    let collapsedSections = _storedSections ? JSON.parse(_storedSections) : null;  // null = first visit
+
+    function toggleSection(sectionId) {
+        const header = document.querySelector(`[data-section="${sectionId}"]`);
+        const body = document.getElementById('secBody_' + sectionId);
+        if (!header || !body) return;
+        const isCollapsed = header.classList.toggle('collapsed');
+        body.classList.toggle('collapsed', isCollapsed);
+        if (collapsedSections === null) collapsedSections = {};
+        collapsedSections[sectionId] = isCollapsed;
+        sessionStorage.setItem('pdm_collapsed_sections', JSON.stringify(collapsedSections));
+    }
+
+    function renderSectionHeader(name, fieldCount) {
+        const id = name.replace(/[^a-zA-Z0-9]/g, '_');
+        const icon = SECTION_ICONS[name] || '📄';
+        // null = first visit → default collapsed; otherwise use stored state
+        const isCollapsed = collapsedSections === null ? true : (collapsedSections[id] || false);
+        const collClass = isCollapsed ? ' collapsed' : '';
+        return `<div class="detail-section">
+            <div class="detail-section-header${collClass}" data-section="${id}" onclick="toggleSection('${id}')">
+                <span class="chevron">▼</span>
+                <span>${icon}</span>
+                <h3>${name}</h3>
+                <span class="section-count">${fieldCount}</span>
+            </div>
+            <div class="detail-section-body${collClass ? ' collapsed' : ''}" id="secBody_${id}">`;
+    }
+
+    function renderDetail(row) {
+        detailCurrentRow = row;
+        // Update sticky header
+        document.getElementById('detailPropName').textContent = row.PROPERTY_NAME || 'Property';
+        document.getElementById('detailPropMeta').innerHTML = `Key: ${row.PROPERTY_KEY} &nbsp; ${getStatusBadge(row)}`;
+        const content = document.getElementById('propDetailContent');
+        let html = '';
+
+        if (detailSortMode === 'alpha') {
+            const allFields = Object.keys(row).filter(k => !PROP_HIDDEN_KEYS.has(k)).sort();
+            html += renderSectionHeader('All Fields (A-Z)', allFields.length);
+            for (const f of allFields) {
+                if (f.startsWith('FLAG_')) {
+                    const v = row[f];
+                    const checked = v == 1;
+                    const editable = EDITABLE_FLAGS.has(f);
+                    const labelClass = checked ? 'checked' : 'unchecked';
+                    const disabledAttr = editable ? '' : 'disabled';
+                    html += `<div class="flag-check" data-field="${f}">
+                        <input type="checkbox" id="flag_${f}" ${checked ? 'checked' : ''} ${disabledAttr}
+                            onchange="saveFlag('${f}', this.checked)">
+                        <label for="flag_${f}" class="${labelClass}">${f}</label>
+                    </div>`;
+                } else {
+                    html += renderDetailField(f, row);
+                }
+            }
+            html += '</div></div>';
+        } else {
+            // Category mode — use user-defined order and visibility from settings
+            const settings = loadPdmSettings();
+            const hiddenSet = new Set(settings.hidden);
+            const hiddenFieldsSet = new Set(settings.hiddenFields || []);
+            // Ensure all sections present in order
+            ALL_SECTION_NAMES.forEach(n => { if (!settings.order.includes(n)) settings.order.push(n); });
+
+            for (const section of settings.order) {
+                if (hiddenSet.has(section)) continue;
+
+                if (section === 'Staff Assignments') {
+                    const staffFields = Object.values(STAFF_ROLES).map(r => r.name).filter(f => !hiddenFieldsSet.has(f));
+                    const staffPopulated = staffFields.filter(f => !isMissing(row[f])).length;
+                    html += renderSectionHeader('Staff Assignments', `${staffPopulated}/${staffFields.length}`);
+                    Object.entries(STAFF_ROLES).forEach(([prefix, role], idx) => {
+                        if (hiddenFieldsSet.has(role.name)) return;
+                        const bg = STAFF_COLORS[idx % STAFF_COLORS.length];
+                        html += `<div class="staff-group" style="background:${bg};padding:6px 8px;margin:2px -8px;border-radius:4px;">`;
+                        html += renderStaffRole(prefix, role, row);
+                        html += '</div>';
+                    });
+                    html += '</div></div>';
+                    continue;
+                }
+
+                if (section === 'Flags') {
+                    const visFlags = ALL_FLAGS.filter(f => !hiddenFieldsSet.has(f));
+                    const flagPopulated = visFlags.filter(f => row[f] == 1).length;
+                    html += renderSectionHeader('Flags', `${flagPopulated}/${visFlags.length}`);
+                    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;">';
+                    for (const f of visFlags) {
+                        const v = row[f];
+                        const checked = v == 1;
+                        const editable = EDITABLE_FLAGS.has(f);
+                        const label = f.replace(/^FLAG_/, '').replace(/_/g, ' ');
+                        const labelClass = checked ? 'checked' : 'unchecked';
+                        const disabledAttr = editable ? '' : 'disabled';
+                        html += `<div class="flag-check" data-field="${f}">
+                            <input type="checkbox" id="flag_${f}" ${checked ? 'checked' : ''} ${disabledAttr}
+                                onchange="saveFlag('${f}', this.checked)">
+                            <label for="flag_${f}" class="${labelClass}">${label}</label>
+                        </div>`;
+                    }
+                    html += '</div></div></div>';
+                    continue;
+                }
+
+                const fields = sectionFields(section, settings);
+                if (!fields || !fields.length) continue;
+                const visibleFields = fields.filter(f => !hiddenFieldsSet.has(f));
+                const populated = visibleFields.filter(f => !isMissing(row[f])).length;
+                html += renderSectionHeader(section, `${populated}/${visibleFields.length}`);
+                for (const f of visibleFields) html += renderDetailField(f, row);
+                html += '</div></div>';
+            }
+
+            // Other fields (not in any known section)
+            const allKnown = new Set([...Object.values(DETAIL_SECTIONS).flat(), ...ALL_FLAGS,
+                ...Object.values(STAFF_ROLES).flatMap(r => [r.name, r.email, r.code].filter(Boolean)),
+                'AutoIDField', 'RowVer']);
+            const extras = Object.keys(row).filter(k => !allKnown.has(k) && !PROP_HIDDEN_KEYS.has(k));
+            if (extras.length) {
+                html += renderSectionHeader('Other', extras.length);
+                for (const f of extras) html += renderDetailField(f, row);
+                html += '</div></div>';
+            }
+        }
+
+        content.innerHTML = html;
+    }
+
+    function renderStaffRole(prefix, role, row) {
+        const currentName = row[role.name] || '';
+        const currentEmail = role.email ? (row[role.email] || '') : '';
+        const currentCode = role.code ? (row[role.code] || '') : '';
+        const missing = isMissing(currentName);
+        const hasOverride = detailOverrides.has(role.name);
+        const overrideStyle = hasOverride ? ' style="font-weight:bold;color:#ef4444;"' : '';
+
+        let options = `<option value="">— Select ${role.label} —</option>`;
+        empList.forEach(emp => {
+            const sel = emp.EMPLOYEE_CODE === currentCode ? ' selected' : '';
+            options += `<option value="${esc(emp.EMPLOYEE_CODE)}"${sel}>${esc(emp.NAME_FULL)}</option>`;
+        });
+
+        const overrideCb = OVERRIDE_FIELDS.has(role.name) ? renderOverrideCheckbox(role.name, hasOverride) : '';
+
+        let html = `<div class="detail-row${missing ? ' missing' : ''}" data-field="${role.name}" style="margin-bottom:2px;">
+            <span class="detail-label" title="Source: ${isExternal(role.name) ? EXTERNAL_SOURCES[role.name] : 'Manual'}">${role.label}</span>
+            <span class="detail-value"${overrideStyle}>
+                <select class="staff-select" onchange="saveStaffField('${role.name}','${role.email || ''}','${role.code}', this.value)" style="flex:1">${options}</select>${overrideCb}
+            </span>
+        </div>`;
+        // Show linked email/code compactly
+        const linkedParts = [];
+        if (role.email && currentEmail) linkedParts.push(currentEmail);
+        if (currentCode) linkedParts.push(currentCode);
+        if (linkedParts.length) {
+            html += `<div style="font-size:0.75rem;color:var(--text-secondary);margin-left:200px;padding:0 0 2px;">↳ ${esc(linkedParts.join(' • '))}</div>`;
+        }
+        return html;
+    }
+
+    function renderDetailField(f, row) {
+        const v = row[f];
+        const missing = isMissing(v);
+        const missingClass = (missing && f !== 'ADDRESS_2') ? ' missing' : '';
+        const ext = isExternal(f);
+        const extClass = ext ? ' external' : '';
+        const source = ext ? EXTERNAL_SOURCES[f] : '';
+        const titleAttr = source ? ` title="Source: ${source}"` : '';
+        const labelSourceAttr = source ? ` data-source="Source: ${source}"` : '';
+        const labelHtml = `<span class="detail-label"${labelSourceAttr}>${f.replace(/_/g,' ')}</span>`;
+        const hasOverride = detailOverrides.has(f);
+        // If this field is tied to a parent (e.g. AM_EMAIL → AM_NAME), inherit parent's override
+        const parentField = TIED_TO[f];
+        const parentHasOverride = parentField ? detailOverrides.has(parentField) : false;
+        const effectiveOverride = hasOverride || parentHasOverride;
+        const isOverrideField = OVERRIDE_FIELDS.has(f);
+        const overrideStyle = effectiveOverride ? ' style="font-weight:bold;color:#ef4444;"' : '';
+
+        // ── READ-ONLY fields: no editing, no override ──
+        if (READONLY_FIELDS.has(f)) {
+            const display = missing ? '<span style="color:var(--text-secondary);">—</span>' : esc(v);
+            return `<div class="detail-row${extClass}" data-field="${f}"${titleAttr}>
+                ${labelHtml}<span class="detail-value readonly">${display}</span>
+            </div>`;
+        }
+
+        // ── TIED fields with parent override: lock as readonly with red style ──
+        if (parentHasOverride) {
+            const display = missing ? '<span style="color:var(--text-secondary);">—</span>' : `<span style="font-weight:bold;color:#ef4444;">${esc(v)}</span>`;
+            return `<div class="detail-row${missingClass}${extClass}" data-field="${f}"${titleAttr}>
+                ${labelHtml}<span class="detail-value readonly">${display}</span>
+            </div>`;
+        }
+
+        // ── DATE fields ──
+        if (EDITABLE_DATES.has(f)) {
+            const dateVal = intToDateStr(v);
+            return `<div class="detail-row${missingClass}" data-field="${f}"${titleAttr}>
+                ${labelHtml}
+                <span class="detail-value"><input type="date" value="${dateVal}" onchange="saveField('${f}', this.value.replace(/-/g,''))"></span>
+            </div>`;
+        }
+        if (READONLY_DATES.has(f)) {
+            return `<div class="detail-row${extClass}" data-field="${f}"${titleAttr}>
+                ${labelHtml}<span class="detail-value readonly">${formatDate(v)}</span>
+            </div>`;
+        }
+
+        // ── DROPDOWN fields ──
+        if (DROPDOWN_FIELDS.has(f)) {
+            // Staff dropdowns use empList
+            const isStaff = Object.values(STAFF_ROLES).some(r => r.name === f);
+            if (isStaff) {
+                const currentVal = v || '';
+                let optHtml = `<option value="">— Select —</option>`;
+                empList.forEach(emp => {
+                    const sel = emp.NAME_FULL === currentVal ? ' selected' : '';
+                    optHtml += `<option value="${esc(emp.NAME_FULL)}"${sel}>${esc(emp.NAME_FULL)}</option>`;
+                });
+                const overrideCb = isOverrideField ? renderOverrideCheckbox(f, hasOverride) : '';
+                const valStyle = hasOverride ? ' style="font-weight:bold;color:#ef4444;"' : '';
+                return `<div class="detail-row${missingClass}${extClass}" data-field="${f}"${titleAttr}>
+                    ${labelHtml}
+                    <span class="detail-value"${valStyle}><select onchange="saveStaffByName('${f}', this.value)" style="flex:1">${optHtml}</select>${overrideCb}</span>
+                </div>`;
+            }
+            // Regular dropdown with DROPDOWN_OPTIONS
+            const opts = DROPDOWN_OPTIONS[f] || [];
+            const currentVal = v || '';
+            let optHtml = `<option value="">—</option>`;
+            opts.forEach(o => { optHtml += `<option value="${esc(o)}"${o === currentVal ? ' selected' : ''}>${esc(o)}</option>`; });
+            const overrideCb = isOverrideField ? renderOverrideCheckbox(f, hasOverride) : '';
+            return `<div class="detail-row${missingClass}${extClass}" data-field="${f}"${titleAttr}>
+                ${labelHtml}
+                <span class="detail-value"${overrideStyle}><select onchange="saveField('${f}', this.value)" style="flex:1">${optHtml}</select>${overrideCb}</span>
+            </div>`;
+        }
+
+        // ── TEXT ENTRY fields ──
+        if (TEXT_FIELDS.has(f)) {
+            const inputVal = v == null ? '' : v;
+            const overrideCb = isOverrideField ? renderOverrideCheckbox(f, hasOverride) : '';
+            return `<div class="detail-row${missingClass}${extClass}" data-field="${f}"${titleAttr}>
+                ${labelHtml}
+                <span class="detail-value"${overrideStyle}><input type="text" value="${esc(inputVal)}" onblur="saveField('${f}', this.value)" style="flex:1">${overrideCb}</span>
+            </div>`;
+        }
+
+        // ── OVERRIDE-only fields (not text or dropdown) — show value with override checkbox ──
+        if (isOverrideField) {
+            const display = missing ? '<span style="color:var(--text-secondary);">—</span>' : `<span${overrideStyle}>${esc(v)}</span>`;
+            const overrideCb = renderOverrideCheckbox(f, hasOverride);
+            return `<div class="detail-row${missingClass}${extClass}" data-field="${f}"${titleAttr}>
+                ${labelHtml}
+                <span class="detail-value readonly">${display}${overrideCb}</span>
+            </div>`;
+        }
+
+        // ── Default: plain read-only ──
+        const display = missing ? '<span style="color:var(--text-secondary);">—</span>' : esc(v);
+        return `<div class="detail-row${missingClass}" data-field="${f}"${titleAttr}>
+            ${labelHtml}<span class="detail-value readonly">${display}</span>
+        </div>`;
+    }
+
+    function renderOverrideCheckbox(f, isOverridden) {
+        const checked = isOverridden ? 'checked' : '';
+        return `<input type="checkbox" class="override-check" ${checked} onchange="toggleOverride('${f}', this.checked)" title="Override: prevent system from overwriting" style="margin-left:8px;flex-shrink:0;">`;
+    }
+
+    function toggleOverride(field, enabled) {
+        if (!detailPropertyKey) return;
+        fetch('/pdm/api/overrides/' + detailPropertyKey, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({field, enabled})
+        });
+        if (enabled) detailOverrides.add(field);
+        else detailOverrides.delete(field);
+        if (detailCurrentRow) renderDetail(detailCurrentRow);
+    }
+
+    function saveField(field, value) {
+        if (!detailPropertyKey) return;
+        fetch('/pdm/api/properties/' + detailPropertyKey, {
+            method: 'PATCH', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({[field]: value || null})
+        });
+        const row = propData.find(r => r.PROPERTY_KEY === detailPropertyKey);
+        if (row) row[field] = value || null;
+    }
+
+    function saveFlag(field, checked) {
+        const val = checked ? 1 : 0;
+        saveField(field, val);
+        const label = document.querySelector(`label[for="flag_${field}"]`);
+        if (label) label.className = checked ? 'checked' : 'unchecked';
+    }
+
+    function saveStaffField(nameField, emailField, codeField, empCode) {
+        if (!detailPropertyKey) return;
+        const emp = empList.find(e => e.EMPLOYEE_CODE === empCode);
+        const update = {};
+        update[nameField] = emp ? emp.NAME_FULL : null;
+        if (emailField) update[emailField] = emp ? emp.EMAIL : null;
+        update[codeField] = emp ? emp.EMPLOYEE_CODE : null;
+
+        fetch('/pdm/api/properties/' + detailPropertyKey, {
+            method: 'PATCH', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(update)
+        });
+        const row = propData.find(r => r.PROPERTY_KEY === detailPropertyKey);
+        if (row) {
+            Object.assign(row, update);
+            renderDetail(row);
+        }
+    }
+
+    // Save staff by name and cascade to email/code tied fields
+    window.saveStaffByName = function(nameField, selectedName) {
+        if (!detailPropertyKey) return;
+        // Find the STAFF_ROLES entry for this name field
+        const role = Object.values(STAFF_ROLES).find(r => r.name === nameField);
+        const emp = selectedName ? empList.find(e => e.NAME_FULL === selectedName) : null;
+        const update = {};
+        update[nameField] = emp ? emp.NAME_FULL : null;
+        if (role && role.email) update[role.email] = emp ? emp.EMAIL : null;
+        if (role && role.code) update[role.code] = emp ? emp.EMPLOYEE_CODE : null;
+
+        fetch('/pdm/api/properties/' + detailPropertyKey, {
+            method: 'PATCH', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(update)
+        });
+        const row = propData.find(r => r.PROPERTY_KEY === detailPropertyKey);
+        if (row) {
+            Object.assign(row, update);
+            renderDetail(row);  // re-render to show updated tied fields
+        }
+    };
+
+    // Jump-to: scroll WITHIN the detail panel content area
+    function jumpToField(query) {
+        const scroller = document.getElementById('propDetailScroll');
+        scroller.querySelectorAll('.highlighted').forEach(el => el.classList.remove('highlighted'));
+        const q = query.trim().toLowerCase().replace(/[_ ]/g, '');
+
+        // On clear, restore all sections to their stored state
+        if (q.length < 2) {
+            scroller.querySelectorAll('.detail-section-header').forEach(hdr => {
+                const id = hdr.dataset.section;
+                const isCollapsed = collapsedSections === null ? true : (collapsedSections[id] || false);
+                const body = document.getElementById('secBody_' + id);
+                if (isCollapsed) {
+                    hdr.classList.add('collapsed');
+                    if (body) body.classList.add('collapsed');
+                } else {
+                    hdr.classList.remove('collapsed');
+                    if (body) body.classList.remove('collapsed');
+                }
+            });
+            return;
+        }
+
+        // Find matching rows and which sections they live in
+        const rows = scroller.querySelectorAll('[data-field]');
+        const sectionsWithMatches = new Set();
+        let firstMatch = null;
+        for (const row of rows) {
+            const field = (row.dataset.field || '').toLowerCase().replace(/_/g, '');
+            const labelEl = row.querySelector('.detail-label') || row.querySelector('label');
+            const labelText = (labelEl ? labelEl.textContent : '').toLowerCase().replace(/[_ ]/g, '');
+            if (field.includes(q) || labelText.includes(q)) {
+                row.classList.add('highlighted');
+                if (!firstMatch) firstMatch = row;
+                // Walk up to find parent section body → header
+                const body = row.closest('.detail-section-body');
+                if (body) sectionsWithMatches.add(body.id.replace('secBody_', ''));
+            }
+        }
+
+        // Expand sections with matches, collapse all others
+        scroller.querySelectorAll('.detail-section-header').forEach(hdr => {
+            const id = hdr.dataset.section;
+            const body = document.getElementById('secBody_' + id);
+            if (!body) return;
+            if (sectionsWithMatches.has(id)) {
+                hdr.classList.remove('collapsed');
+                body.classList.remove('collapsed');
+            } else {
+                hdr.classList.add('collapsed');
+                body.classList.add('collapsed');
+            }
+        });
+
+        if (firstMatch) {
+            const rowTop = firstMatch.getBoundingClientRect().top;
+            const scrollerTop = scroller.getBoundingClientRect().top;
+            scroller.scrollTop += (rowTop - scrollerTop) - 50;
+        }
+    }
+
+    function closeDetail() {
+        document.getElementById('propDetail').classList.remove('open');
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
+    document.addEventListener('mousedown', e => {
+        const panel = document.getElementById('propDetail');
+        const settingsModal = document.getElementById('pdmSettingsModal');
+        if (!panel.classList.contains('open')) return;
+        if (panel.contains(e.target)) return;
+        if (settingsModal && settingsModal.contains(e.target)) return;
+        closeDetail();
+    });
+
+    // ─── Resizable popout (sticky for session) ──────────────────────────────
+    (function initResize() {
+        const overlay = document.getElementById('propDetail');
+        const handle = document.getElementById('resizeHandle');
+        const savedWidth = sessionStorage.getItem('pdm_popout_width');
+        if (savedWidth) overlay.style.width = savedWidth + 'px';
+
+        let isResizing = false;
+        handle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            handle.classList.add('active');
+            document.body.style.cursor = 'ew-resize';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            const newWidth = window.innerWidth - e.clientX;
+            const clamped = Math.max(400, Math.min(newWidth, window.innerWidth * 0.9));
+            overlay.style.width = clamped + 'px';
+        });
+        document.addEventListener('mouseup', () => {
+            if (!isResizing) return;
+            isResizing = false;
+            handle.classList.remove('active');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            sessionStorage.setItem('pdm_popout_width', parseInt(overlay.style.width));
+        });
+    })();
+
+    // Search/filter debounce
+    let propTimer;
+    document.getElementById('propSearch').addEventListener('input', () => {
+        clearTimeout(propTimer);
+        propTimer = setTimeout(loadProperties, 300);
+    });
+    document.getElementById('propStatus').addEventListener('change', loadProperties);
+    document.getElementById('propGroup').addEventListener('change', loadProperties);
+    document.getElementById('propMarket').addEventListener('change', loadProperties);
+
+    // Load filter options
+    fetch('/pdm/api/properties/filter-options')
+        .then(r => r.json())
+        .then(d => {
+            const gSel = document.getElementById('propGroup');
+            const pgList = d.property_groups || [];
+            pgList.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g; opt.textContent = g;
+                gSel.appendChild(opt);
+            });
+            DROPDOWN_OPTIONS['PROPERTY_GROUP'] = pgList;
+            const mSel = document.getElementById('propMarket');
+            (d.markets || []).forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m; opt.textContent = m;
+                mSel.appendChild(opt);
+            });
+        });
+
+    // Initial load
+    loadProperties();
+
+    // ─── Property Groups tab ───────────────────────────────────────────────────
+    let groupData = [], groupSorted = [], groupSortCol = 'PROPERTY_GROUP_NAME', groupSortAsc = true;
+
+    function loadGroups() {
+        fetch('/pdm/api/property-groups')
+            .then(r => r.json())
+            .then(d => {
+                groupData = d.groups || [];
+                groupsLoaded = true;
+                sortAndRenderGroups();
+            });
+    }
+
+    function sortGroups(col) {
+        if (groupSortCol === col) groupSortAsc = !groupSortAsc;
+        else { groupSortCol = col; groupSortAsc = true; }
+        sortAndRenderGroups();
+    }
+
+    function sortAndRenderGroups() {
+        const filter = (document.getElementById('groupFilter').value || '').toLowerCase();
+        groupSorted = groupData.filter(r => {
+            if (!filter) return true;
+            return (r.PROPERTY_GROUP_NAME || '').toLowerCase().includes(filter);
+        }).sort((a, b) => {
+            let va = a[groupSortCol], vb = b[groupSortCol];
+            if (va == null) va = '';
+            if (vb == null) vb = '';
+            if (typeof va === 'string') va = va.toLowerCase();
+            if (typeof vb === 'string') vb = vb.toLowerCase();
+            if (va < vb) return groupSortAsc ? -1 : 1;
+            if (va > vb) return groupSortAsc ? 1 : -1;
+            return 0;
+        });
+        renderGroupTable();
+    }
+
+    function renderGroupTable() {
+        const tbody = document.querySelector('#groupTable tbody');
+        tbody.innerHTML = groupSorted.map(r => {
+            const statusBadge = r.FLAG_ACTIVE == 1
+                ? '<span class="badge managed" style="cursor:pointer" onclick="event.stopPropagation();toggleGroupStatus('+r.PROPERTY_GROUP_KEY+',0)">Active</span>'
+                : '<span class="badge dispositioned" style="cursor:pointer" onclick="event.stopPropagation();toggleGroupStatus('+r.PROPERTY_GROUP_KEY+',1)">Inactive</span>';
+            return `<tr>
+                <td>${r.PROPERTY_GROUP_KEY}</td>
+                <td><span class="editable" onclick="event.stopPropagation();editGroupName(this,${r.PROPERTY_GROUP_KEY})">${esc(r.PROPERTY_GROUP_NAME)}</span></td>
+                <td>${statusBadge}</td>
+            </tr>`;
+        }).join('');
+        document.getElementById('groupCount').textContent = `${groupSorted.length} groups`;
+    }
+
+    function editGroupName(el, key) {
+        const current = el.textContent;
+        el.innerHTML = `<input value="${esc(current)}" onblur="saveGroupName(this,${key})" onkeydown="if(event.key==='Enter')this.blur()">`;
+        el.querySelector('input').focus();
+    }
+
+    function saveGroupName(input, key) {
+        const val = input.value.trim();
+        if (!val) { sortAndRenderGroups(); return; }
+        fetch('/pdm/api/property-groups/' + key, {
+            method: 'PATCH', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({PROPERTY_GROUP_NAME: val})
+        }).then(() => {
+            const r = groupData.find(g => g.PROPERTY_GROUP_KEY === key);
+            if (r) r.PROPERTY_GROUP_NAME = val;
+            sortAndRenderGroups();
+        });
+    }
+
+    function toggleGroupStatus(key, newStatus) {
+        fetch('/pdm/api/property-groups/' + key, {
+            method: 'PATCH', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({FLAG_ACTIVE: newStatus})
+        }).then(() => {
+            const r = groupData.find(g => g.PROPERTY_GROUP_KEY === key);
+            if (r) r.FLAG_ACTIVE = newStatus;
+            sortAndRenderGroups();
+        });
+    }
+
+    function addGroup() {
+        const name = document.getElementById('newGroupName').value.trim();
+        if (!name) return;
+        fetch('/pdm/api/property-groups', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({PROPERTY_GROUP_NAME: name})
+        }).then(r => {
+            if (r.ok) { document.getElementById('newGroupName').value = ''; loadGroups(); }
+            else r.json().then(d => alert(d.error || 'Error'));
+        });
+    }
+
+    document.getElementById('groupFilter').addEventListener('input', () => sortAndRenderGroups());
+
+    // ─── Markets tab ───────────────────────────────────────────────────────────
+    let marketData = [], marketSorted = [], marketSortCol = 'MARKET_CITY_STATE', marketSortAsc = true;
+
+    function loadMarkets() {
+        fetch('/pdm/api/markets')
+            .then(r => r.json())
+            .then(d => {
+                marketData = d.markets || [];
+                marketsLoaded = true;
+                sortAndRenderMarkets();
+            });
+    }
+
+    function sortMarkets(col) {
+        if (marketSortCol === col) marketSortAsc = !marketSortAsc;
+        else { marketSortCol = col; marketSortAsc = true; }
+        sortAndRenderMarkets();
+    }
+
+    function sortAndRenderMarkets() {
+        const filter = (document.getElementById('marketFilter').value || '').toLowerCase();
+        marketSorted = marketData.filter(r => {
+            if (!filter) return true;
+            return (r.MARKET_CITY_STATE || '').toLowerCase().includes(filter)
+                || (r.MARKET_CITY || '').toLowerCase().includes(filter)
+                || (r.MARKET_STATE || '').toLowerCase().includes(filter);
+        }).sort((a, b) => {
+            let va = a[marketSortCol], vb = b[marketSortCol];
+            if (va == null) va = '';
+            if (vb == null) vb = '';
+            if (typeof va === 'string') va = va.toLowerCase();
+            if (typeof vb === 'string') vb = vb.toLowerCase();
+            if (va < vb) return marketSortAsc ? -1 : 1;
+            if (va > vb) return marketSortAsc ? 1 : -1;
+            return 0;
+        });
+        renderMarketTable();
+    }
+
+    function renderMarketTable() {
+        const tbody = document.querySelector('#marketTable tbody');
+        tbody.innerHTML = marketSorted.map(r => {
+            return `<tr>
+                <td>${r.MARKET_KEY}</td>
+                <td><span class="editable" onclick="editMarketCell(this,${r.MARKET_KEY},'MARKET_CITY')">${esc(r.MARKET_CITY)}</span></td>
+                <td><span class="editable" onclick="editMarketCell(this,${r.MARKET_KEY},'MARKET_STATE')">${esc(r.MARKET_STATE)}</span></td>
+                <td>${esc(r.MARKET_CITY_STATE)}</td>
+            </tr>`;
+        }).join('');
+        document.getElementById('marketCount').textContent = `${marketSorted.length} markets`;
+    }
+
+    function editMarketCell(el, key, col) {
+        const current = el.textContent;
+        el.innerHTML = `<input value="${esc(current)}" onblur="saveMarketCell(this,${key},'${col}')" onkeydown="if(event.key==='Enter')this.blur()">`;
+        el.querySelector('input').focus();
+    }
+
+    function saveMarketCell(input, key, col) {
+        const val = input.value.trim();
+        if (!val) { sortAndRenderMarkets(); return; }
+        const r = marketData.find(m => m.MARKET_KEY === key);
+        const update = {[col]: val};
+        // Auto-update city_state
+        if (col === 'MARKET_CITY') update.MARKET_CITY_STATE = val + ', ' + (r ? r.MARKET_STATE : '');
+        if (col === 'MARKET_STATE') update.MARKET_CITY_STATE = (r ? r.MARKET_CITY : '') + ', ' + val;
+        fetch('/pdm/api/markets/' + key, {
+            method: 'PATCH', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(update)
+        }).then(() => {
+            if (r) { Object.assign(r, update); }
+            sortAndRenderMarkets();
+        });
+    }
+
+    function addMarket() {
+        const city = document.getElementById('newMarketCity').value.trim();
+        const state = document.getElementById('newMarketState').value.trim().toUpperCase();
+        if (!city || !state) return;
+        fetch('/pdm/api/markets', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({MARKET_CITY: city, MARKET_STATE: state})
+        }).then(r => {
+            if (r.ok) {
+                document.getElementById('newMarketCity').value = '';
+                document.getElementById('newMarketState').value = '';
+                loadMarkets();
+            } else r.json().then(d => alert(d.error || 'Error'));
+        });
+    }
+
+    document.getElementById('marketFilter').addEventListener('input', () => sortAndRenderMarkets());
+
+    // ─── New Property Panel ────────────────────────────────────────────────────
+
+    function openNewPropertyWizard() {
+        // Fetch next key and display it
+        document.getElementById('npKeyDisplay').textContent = '…';
+        fetch('/pdm/api/properties/next_key').then(r => r.json()).then(d => {
+            document.getElementById('npKeyDisplay').textContent = d.next_key ?? '—';
+        }).catch(() => { document.getElementById('npKeyDisplay').textContent = '—'; });
+        // Reset all fields
+        ['npName','npAddr1','npAddr2','npCity','npZip','npCompany','npLegalEntity',
+         'npOwner','npPhone','npEmail','npEntityNumber'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        ['npAptCount','npBedCount','npBuildYear','npBuildingCount'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        document.getElementById('npState').value = '';
+        document.getElementById('npSource').value = 'INTERNAL';
+        const btn = document.getElementById('npBtnCreate');
+        btn.disabled = false;
+        btn.textContent = '✓ Create Stub Record';
+        document.getElementById('newPropOverlay').classList.add('open');
+        setTimeout(() => document.getElementById('npName').focus(), 80);
+    }
+
+    function closeNewPropertyWizard() {
+        document.getElementById('newPropOverlay').classList.remove('open');
+    }
+
+    function npSubmit() {
+        const btn = document.getElementById('npBtnCreate');
+        btn.disabled = true;
+        btn.textContent = 'Creating…';
+
+        const payload = {
+            PROPERTY_NAME:   (document.getElementById('npName').value || '').trim().toUpperCase(),
+            ADDRESS_1:       document.getElementById('npAddr1').value.trim() || null,
+            ADDRESS_2:       document.getElementById('npAddr2').value.trim() || null,
+            ADDRESS_CITY:    document.getElementById('npCity').value.trim() || null,
+            ADDRESS_STATE:   document.getElementById('npState').value || null,
+            ADDRESS_ZIP:     document.getElementById('npZip').value.trim() || null,
+            SOURCE_SYSTEM:   document.getElementById('npSource').value || 'INTERNAL',
+            APARTMENT_COUNT: document.getElementById('npAptCount').value ? parseInt(document.getElementById('npAptCount').value) : null,
+            BED_COUNT_STATIC: document.getElementById('npBedCount').value ? parseInt(document.getElementById('npBedCount').value) : null,
+            BUILD_YEAR:      document.getElementById('npBuildYear').value ? parseInt(document.getElementById('npBuildYear').value) : null,
+            BUILDING_COUNT:  document.getElementById('npBuildingCount').value ? parseInt(document.getElementById('npBuildingCount').value) : null,
+            COMPANY:         document.getElementById('npCompany').value.trim() || null,
+            LEGAL_ENTITY:    document.getElementById('npLegalEntity').value.trim() || null,
+            OWNER:           document.getElementById('npOwner').value.trim() || null,
+            PHONE_1:         document.getElementById('npPhone').value.trim() || null,
+            EMAIL:           document.getElementById('npEmail').value.trim() || null,
+            ENTITY_NUMBER:   document.getElementById('npEntityNumber').value.trim() || null,
+        };
+
+        fetch('/pdm/api/properties/create', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        })
+        .then(r => r.json())
+        .then(d => {
+            btn.disabled = false;
+            btn.textContent = '✓ Create Stub Record';
+            if (d.error) {
+                alert('Error: ' + d.error);
+                return;
+            }
+            closeNewPropertyWizard();
+            // Reload property list and open the new property in the detail panel
+            const newKey = d.PROPERTY_KEY;
+            const newName = d.PROPERTY_NAME;
+            loadProperties();
+            // Brief delay to let render complete, then try to open the new row
+            setTimeout(() => {
+                const newRow = propData.find(p => p.PROPERTY_KEY === newKey);
+                if (newRow) openDetail(newRow);
+            }, 600);
+            // Toast notification
+            const toast = document.createElement('div');
+            toast.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#00bcd4;color:#fff;padding:12px 28px;border-radius:8px;font-weight:700;font-size:0.95rem;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.4);';
+            toast.textContent = `✓ Stub created — Property Key: ${d.PROPERTY_KEY}`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.textContent = '✓ Create Stub Record';
+            alert('Network error: ' + err);
+        });
+    }
+
+    // Close wizard on backdrop click
+    document.getElementById('newPropOverlay').addEventListener('click', function(e) {
+        if (e.target === this) closeNewPropertyWizard();
+    });
+
+    // Show/hide New Property button based on admin status
+    fetch('/pdm/api/is_admin').then(r => r.json()).then(d => {
+        if (d.is_admin) {
+            document.getElementById('btnNewProperty').classList.add('visible');
+        }
+    }).catch(() => {});
+
+    </script>
+{% endblock %}
