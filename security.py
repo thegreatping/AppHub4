@@ -8,7 +8,6 @@ Resolution order:
 4. baseline (*) grants
 """
 import sys
-sys.path.insert(0, r"C:\Users\cpell\OneDrive - PeakMade Real Estate\VS_Code_Files\Help Ticket Triage\bi-triage-agent\scripts")
 from helpers import load_env, SafeConnection
 
 _env = None

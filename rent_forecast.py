@@ -7,7 +7,6 @@ import sys
 import datetime
 from decimal import Decimal
 
-sys.path.insert(0, r"C:\Users\cpell\OneDrive - PeakMade Real Estate\VS_Code_Files\Help Ticket Triage\bi-triage-agent\scripts")
 from helpers import load_env, SafeConnection
 
 rfs_bp = Blueprint("rfs", __name__, url_prefix="/rfs")

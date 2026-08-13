@@ -5,7 +5,6 @@ from flask import Blueprint, render_template, session, jsonify, request
 from auth import login_required
 from modules import MODULES, APP_ID_MAP
 
-sys.path.insert(0, r"C:\Users\cpell\OneDrive - PeakMade Real Estate\VS_Code_Files\Help Ticket Triage\bi-triage-agent\scripts")
 from helpers import load_env, SafeConnection
 
 milestones_bp = Blueprint("milestones", __name__, url_prefix="/milestones")

@@ -2,7 +2,6 @@
 import sys
 import re
 from flask import Blueprint, render_template, jsonify, request, session
-sys.path.insert(0, r"C:\Users\cpell\OneDrive - PeakMade Real Estate\VS_Code_Files\Help Ticket Triage\bi-triage-agent\scripts")
 from helpers import load_env, SafeConnection
 from auth import login_required
 from modules import MODULES, APP_ID_MAP

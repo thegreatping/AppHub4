@@ -3,7 +3,6 @@ from flask import Blueprint, render_template, session, jsonify, request
 from auth import login_required
 from modules import MODULES, APP_ID_MAP
 import sys
-sys.path.insert(0, r"C:\Users\cpell\OneDrive - PeakMade Real Estate\VS_Code_Files\Help Ticket Triage\bi-triage-agent\scripts")
 from helpers import load_env, SafeConnection
 
 maintenance_bp = Blueprint("maintenance", __name__, url_prefix="/maintenance")
