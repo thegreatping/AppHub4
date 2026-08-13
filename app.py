@@ -1,6 +1,7 @@
 """Peak AppHub 4.0 - Flask Shell"""
 import os
 from flask import Flask, redirect, url_for, session, request
+from werkzeug.middleware.proxy_fix import ProxyFix
 from config import Config
 from auth import auth_bp, login_required
 from routes import main_bp
@@ -25,6 +26,8 @@ from usage_log import log_request
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    # Trust Azure App Service's X-Forwarded-Proto/Host so redirect URIs use https://
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
     # Register blueprints
     app.register_blueprint(auth_bp, url_prefix="/auth")

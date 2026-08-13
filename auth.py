@@ -41,13 +41,22 @@ def login_required(f):
     return decorated_function
 
 
+def _redirect_uri():
+    """Build redirect URI from the current request host (works locally and on Azure)."""
+    configured = current_app.config.get("AZURE_REDIRECT_URI", "")
+    if configured and not configured.startswith("http://localhost"):
+        return configured
+    proto = request.headers.get("X-Forwarded-Proto", request.scheme)
+    return f"{proto}://{request.host}/auth/callback"
+
+
 @auth_bp.route("/login")
 def login():
     """Initiate Entra ID login flow."""
     app_msal = _build_msal_app()
     auth_url = app_msal.get_authorization_request_url(
         scopes=current_app.config["AZURE_SCOPE"],
-        redirect_uri=current_app.config["AZURE_REDIRECT_URI"],
+        redirect_uri=_redirect_uri(),
     )
     return redirect(auth_url)
 
@@ -66,7 +75,7 @@ def callback():
     result = app_msal.acquire_token_by_authorization_code(
         code,
         scopes=current_app.config["AZURE_SCOPE"],
-        redirect_uri=current_app.config["AZURE_REDIRECT_URI"],
+        redirect_uri=_redirect_uri(),
     )
 
     if "error" in result:
