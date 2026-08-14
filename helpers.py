@@ -60,10 +60,12 @@ DB_MAP_REVERSE = {v: k for k, v in DB_MAP.items()}
 # ---------------------------------------------------------------------------
 
 def load_env():
-    """Load C:\\helpdesk\\.env and return a dict of key=value pairs."""
+    """Load .env file and return a dict of key=value pairs.
+
+    Falls back to os.environ when no .env file exists (e.g. Azure App Service).
+    """
     if not os.path.exists(ENV_PATH):
-        print(f"ERROR: {ENV_PATH} not found. Create it with your credentials.")
-        sys.exit(1)
+        return dict(os.environ)
     env = {}
     with open(ENV_PATH) as f:
         for line in f:
