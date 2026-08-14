@@ -100,11 +100,12 @@ def callback():
         session["user_modules"] = access["modules"]
         session["is_developer"] = access["is_developer"]
         session["security_level"] = 100 if access["is_developer"] else 1
-    except Exception:
-        # Non-fatal — user gets no module access until DB is reachable
+        session["_access_error"] = None
+    except Exception as exc:
         session["user_modules"] = []
         session["is_developer"] = False
         session["security_level"] = 0
+        session["_access_error"] = str(exc)
 
     return redirect(url_for("main.index"))
 
@@ -118,3 +119,17 @@ def logout():
         f"{authority}/oauth2/v2.0/logout"
         f"?post_logout_redirect_uri={url_for('auth.login', _external=True)}"
     )
+
+
+@auth_bp.route("/debug")
+def debug_session():
+    """Temporary: show session state to diagnose access issues."""
+    import json
+    user = session.get("user", {})
+    return f"""<pre>
+email: {user.get('email')}
+is_developer: {session.get('is_developer')}
+module_count: {len(session.get('user_modules', []))}
+access_error: {session.get('_access_error')}
+modules: {json.dumps(session.get('user_modules', []), indent=2)}
+</pre>"""
