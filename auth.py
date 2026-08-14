@@ -83,12 +83,28 @@ def callback():
 
     # Store user info in session
     id_claims = result.get("id_token_claims", {})
+    email = id_claims.get("preferred_username", "")
     session["user"] = {
         "name": id_claims.get("name", "Unknown"),
-        "email": id_claims.get("preferred_username", ""),
+        "email": email,
         "oid": id_claims.get("oid", ""),
     }
     session["is_dev_mode"] = False
+
+    # Resolve module access and developer flag from DB
+    try:
+        from security import get_employee_info, resolve_access
+        emp = get_employee_info(email)
+        title_group = emp["title_group"] if emp else ""
+        access = resolve_access(title_group, email)
+        session["user_modules"] = access["modules"]
+        session["is_developer"] = access["is_developer"]
+        session["security_level"] = 100 if access["is_developer"] else 1
+    except Exception:
+        # Non-fatal — user gets no module access until DB is reachable
+        session["user_modules"] = []
+        session["is_developer"] = False
+        session["security_level"] = 0
 
     return redirect(url_for("main.index"))
 
