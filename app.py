@@ -1,7 +1,7 @@
 """Peak AppHub 4.0 - Flask Shell"""
 import os
+import traceback
 from flask import Flask, redirect, url_for, session, request
-from werkzeug.middleware.proxy_fix import ProxyFix
 from config import Config
 from auth import auth_bp, login_required
 from routes import main_bp
@@ -26,8 +26,6 @@ from usage_log import log_request
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
-    # Trust Azure App Service's X-Forwarded-Proto/Host so redirect URIs use https://
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
     # Register blueprints
     app.register_blueprint(auth_bp, url_prefix="/auth")
@@ -82,6 +80,13 @@ def create_app():
 
 
 app = create_app()
+
+@app.errorhandler(500)
+def _tmp_show_error(e):
+    """Temporary: expose traceback to diagnose production crash."""
+    tb = traceback.format_exc()
+    return f"<pre>{tb}\n\n{e}</pre>", 500
+
 
 if __name__ == "__main__":
     import os
