@@ -64,6 +64,15 @@ def login():
 @auth_bp.route("/callback")
 def callback():
     """Handle Entra ID callback after login."""
+    import traceback as _tb
+    try:
+        return _callback_inner()
+    except Exception as exc:
+        return f"<pre>CALLBACK CRASH:\n{_tb.format_exc()}\n\nredirect_uri used: {_redirect_uri()}\n\nconfig AZURE_REDIRECT_URI: {current_app.config.get('AZURE_REDIRECT_URI')}\n</pre>", 500
+
+
+def _callback_inner():
+    """Actual callback logic — wrapped so exceptions are visible."""
     if request.args.get("error"):
         return f"Auth error: {request.args.get('error_description')}", 403
 
