@@ -72,14 +72,19 @@ def callback():
         return redirect(url_for("auth.login"))
 
     app_msal = _build_msal_app()
-    result = app_msal.acquire_token_by_authorization_code(
-        code,
-        scopes=current_app.config["AZURE_SCOPE"],
-        redirect_uri=_redirect_uri(),
-    )
+    try:
+        result = app_msal.acquire_token_by_authorization_code(
+            code,
+            scopes=current_app.config["AZURE_SCOPE"],
+            redirect_uri=_redirect_uri(),
+        )
+    except Exception:
+        # Stale/expired code — restart login
+        return redirect(url_for("auth.login"))
 
     if "error" in result:
-        return f"Token error: {result.get('error_description')}", 403
+        # Redeemed code or other MSAL error — restart login
+        return redirect(url_for("auth.login"))
 
     # Store user info in session
     id_claims = result.get("id_token_claims", {})
