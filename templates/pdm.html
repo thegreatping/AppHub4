@@ -4,8 +4,8 @@
         .pdm-container { padding: 24px; max-width: 100%; }
         .pdm-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
         .pdm-header h1 { font-size: 1.4rem; color: var(--text-primary); margin: 0; }
-        .pdm-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border-medium); }
-        .pdm-tab { padding: 10px 20px; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+        .pdm-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 3px solid var(--border-medium); }
+        .pdm-tab { padding: 10px 20px; font-size: 1.275rem; font-weight: 600; color: var(--text-primary); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -3px; transition: all 0.2s; }
         .pdm-tab:hover { color: var(--text-primary); }
         .pdm-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
         .pdm-panel { display: none; }
@@ -221,11 +221,14 @@
     </style>
 {% endblock %}
 {% block content %}
+<div class="content-header">
+    <div class="header-left">
+        <i class="fa-solid fa-house" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
+        <span class="page-title">Property Data Manager</span>
+        <span class="page-subtitle">v1.6</span>
+    </div>
+</div>
     <div class="pdm-container">
-        <div class="pdm-header">
-            <i class="fa-solid fa-house" style="font-size: 1.5rem; color: var(--accent-cyan);"></i>
-            <h1>Property Data Manager <span style="font-size:0.6rem;color:var(--text-secondary);vertical-align:super;">v1.6</span></h1>
-        </div>
 
         <div class="pdm-tabs">
             <div class="pdm-tab active" data-panel="properties">Properties</div>

@@ -2,10 +2,8 @@
 {% block head %}
     <style>
         .maint-container { padding: 24px; max-width: 1400px; }
-        .maint-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
-        .maint-header h1 { font-size: 1.4rem; color: var(--text-primary); margin: 0; }
-        .maint-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border-medium); }
-        .maint-tab { padding: 10px 20px; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+        .maint-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 3px solid var(--border-medium); }
+        .maint-tab { padding: 10px 20px; font-size: 1.275rem; font-weight: 600; color: var(--text-primary); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -3px; transition: all 0.2s; }
         .maint-tab:hover { color: var(--text-primary); }
         .maint-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
         .maint-panel { display: none; }
@@ -143,11 +141,14 @@
     </style>
 {% endblock %}
 {% block content %}
-    <div class="maint-container">
-        <div class="maint-header">
-            <i class="fa-solid fa-gears" style="font-size: 1.5rem; color: var(--accent-cyan);"></i>
-            <h1>AppHub Maintenance</h1>
+    <div class="content-header">
+        <div class="header-left">
+            <i class="fa-solid fa-gears" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
+            <span class="page-title">AppHub Maintenance</span>
+            <span class="page-subtitle">Module registry, access control &amp; diagnostics</span>
         </div>
+    </div>
+    <div class="maint-container">
 
         <div class="maint-tabs">
             <div class="maint-tab active" data-panel="modules">Module Registry</div>
@@ -181,6 +182,8 @@
                     <tr>
                         <th style="width:50px" data-col="id" onclick="sortModules(this)">ID</th>
                         <th style="width:60%" data-col="name" onclick="sortModules(this)" class="sort-asc">Module Name</th>
+                        <th style="width:60px">Fav</th>
+                        <th style="width:60px" title="Receives global Theme Studio settings">Theme</th>
                         <th style="width:100px">Status</th>
                     </tr>
                 </thead>
@@ -474,6 +477,29 @@
     // ─── MODULE REGISTRY ────────────────────────────────────────────────────────
     let modulesCache = [];
     let _modSortCol = 'name', _modSortDir = 'asc';
+    let _favSet = new Set();
+
+    async function loadFavoritesForTable() {
+        try {
+            const resp = await fetch('/maintenance/api/favorites');
+            const ids = await resp.json();
+            _favSet = new Set(ids);
+        } catch(e) { _favSet = new Set(); }
+    }
+
+    async function _maintToggleFav(moduleId, btn) {
+        try {
+            const resp = await fetch('/maintenance/api/favorites/toggle', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({module_id: moduleId})
+            });
+            const data = await resp.json();
+            if (data.favorited) { _favSet.add(moduleId); } else { _favSet.delete(moduleId); }
+            renderModules();
+            if (window._setNavFavIds) window._setNavFavIds([..._favSet]);
+        } catch(e) {}
+    }
     function _sortMods(arr) {
         return arr.slice().sort(function(a, b) {
             var cmp = _modSortCol === 'id' ? (a.id - b.id) : a.name.localeCompare(b.name);
@@ -489,6 +515,31 @@
         renderModules();
     }
 
+    let _themeFlags = {};  // {string_module_id: bool}
+
+    async function loadModuleFlags() {
+        try {
+            const resp = await fetch('/maintenance/api/module-flags');
+            _themeFlags = await resp.json();
+        } catch(e) { _themeFlags = {}; }
+    }
+
+    async function toggleThemeFlag(stringId, btn) {
+        if (!stringId) return;
+        const current = (_themeFlags[stringId] !== false);  // default true
+        const next = !current;
+        _themeFlags[stringId] = next;
+        btn.style.color = next ? 'var(--accent-cyan)' : '#64748b';
+        btn.title = next ? 'Receiving Theme Studio settings (click to disable)' : 'Not using Theme Studio settings (click to enable)';
+        try {
+            await fetch(`/maintenance/api/module-flags/${stringId}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({enabled: next})
+            });
+        } catch(e) { /* revert on failure */ _themeFlags[stringId] = current; renderModules(); }
+    }
+
     async function loadModules() {
         const resp = await fetch('/maintenance/api/modules');
         modulesCache = await resp.json();
@@ -501,13 +552,35 @@
         const active = _sortMods(modulesCache.filter(m => m.active));
         const inactive = _sortMods(modulesCache.filter(m => !m.active));
 
-        let html = `<tr><td colspan="3" class="section-header">Active (${active.length})</td></tr>`;
+        const heartCell = m => {
+            const isFav = _favSet.has(m.id);
+            return `<td style="text-align:center">
+                <button onclick="_maintToggleFav(${m.id}, this)" style="background:none;border:none;cursor:pointer;font-size:1rem;color:${isFav ? '#f87171' : '#64748b'}" title="${isFav ? 'Remove from favorites' : 'Add to favorites'}">
+                    <i class="fa-${isFav ? 'solid' : 'regular'} fa-heart"></i>
+                </button></td>`;
+        };
+
+        const themeCell = m => {
+            const sid = m.string_id;
+            // Default = opted in; only false if explicitly set to false
+            const enabled = sid ? (_themeFlags[sid] !== false) : false;
+            const color = enabled ? 'var(--accent-cyan)' : '#64748b';
+            const tip = enabled ? 'Receiving Theme Studio settings (click to disable)' : 'Not using Theme Studio settings (click to enable)';
+            return `<td style="text-align:center">
+                <button onclick="toggleThemeFlag('${sid}', this)" style="background:none;border:none;cursor:pointer;font-size:1rem;color:${color}" title="${tip}" ${!sid ? 'disabled' : ''}>
+                    <i class="fa-solid fa-palette"></i>
+                </button></td>`;
+        };
+
+        let html = `<tr><td colspan="5" class="section-header">Active (${active.length})</td></tr>`;
         html += active.map(m => `
             <tr data-id="${m.id}">
                 <td style="color: var(--text-secondary)">${m.id}</td>
                 <td>
                     <span class="editable" data-field="name" data-id="${m.id}">${m.name}</span>
                 </td>
+                ${heartCell(m)}
+                ${themeCell(m)}
                 <td>
                     <span class="toggle-active" data-id="${m.id}">
                         <span class="badge on">Active</span>
@@ -517,13 +590,15 @@
         `).join('');
 
         if (inactive.length) {
-            html += `<tr><td colspan="3" class="section-header inactive" style="padding-top:24px">Inactive (${inactive.length})</td></tr>`;
+            html += `<tr><td colspan="5" class="section-header inactive" style="padding-top:24px">Inactive (${inactive.length})</td></tr>`;
             html += inactive.map(m => `
                 <tr data-id="${m.id}">
                     <td style="color: var(--text-secondary)">${m.id}</td>
                     <td>
                         <span class="editable" data-field="name" data-id="${m.id}">${m.name}</span>
                     </td>
+                    ${heartCell(m)}
+                    ${themeCell(m)}
                     <td>
                         <span class="toggle-active" data-id="${m.id}">
                             <span class="badge off">Inactive</span>
@@ -1092,6 +1167,6 @@
     document.getElementById('ulUser').addEventListener('change', () => { _ulLoaded = false; loadUsageLog(); });
 
     // ─── INIT ───────────────────────────────────────────────────────────────────
-    loadModules();
+    (async () => { await Promise.all([loadFavoritesForTable(), loadModuleFlags()]); loadModules(); })();
     </script>
 {% endblock %}

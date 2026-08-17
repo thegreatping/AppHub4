@@ -5,10 +5,10 @@
         .ft-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
         .ft-header h1 { font-size: 1.4rem; color: var(--text-primary); margin: 0; }
         .ft-header-icon { width: 40px; height: 40px; border-radius: 10px; background: #f59e0b; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.1rem; }
-        .ft-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border-medium); }
-        .ft-tab { padding: 10px 20px; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+        .ft-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 3px solid var(--border-medium); }
+        .ft-tab { padding: 10px 20px; font-size: 1.275rem; font-weight: 600; color: var(--text-primary); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -3px; transition: all 0.2s; }
         .ft-tab:hover { color: var(--text-primary); }
-        .ft-tab.active { color: #f59e0b; border-bottom-color: #f59e0b; }
+        .ft-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
         .ft-panel { display: none; }
         .ft-panel.active { display: block; }
 
@@ -79,11 +79,13 @@
 {% endblock %}
 
 {% block content %}
-<div class="ft-container">
-    <div class="ft-header">
-        <div class="ft-header-icon"><i class="fa-solid fa-forward-fast"></i></div>
-        <h1>FastTrack Recommendation</h1>
+<div class="content-header">
+    <div class="header-left">
+        <i class="fa-solid fa-forward-fast" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
+        <span class="page-title">FastTrack Recommendation</span>
     </div>
+</div>
+<div class="ft-container">
     <div class="info-blurb" id="blurb-fasttrack">
         <div class="blurb-header" onclick="toggleBlurb('fasttrack')">
             <span class="blurb-title">About FastTrack Recommendation</span>

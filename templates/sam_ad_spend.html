@@ -27,10 +27,10 @@
     .sam-qtab-year.active { background: rgba(236,72,153,.12); color: #ec4899; border-color: #ec4899; }
 
     /* Tabs (main module tabs) */
-    .sam-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border-medium); }
-    .sam-tab { padding: 10px 20px; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+    .sam-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 3px solid var(--border-medium); }
+    .sam-tab { padding: 10px 20px; font-size: 1.275rem; font-weight: 600; color: var(--text-primary); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -3px; transition: all 0.2s; }
     .sam-tab:hover { color: var(--text-primary); }
-    .sam-tab.active { color: #ec4899; border-bottom-color: #ec4899; }
+    .sam-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
     .sam-panel { display: none; }
     .sam-panel.active { display: block; }
 
@@ -106,11 +106,13 @@
 {% endblock %}
 
 {% block content %}
-<div class="sam-container">
-    <div class="sam-header">
-        <div class="sam-header-icon"><i class="fa-solid fa-rectangle-ad"></i></div>
-        <h1>SAM Ad Spend Planning</h1>
+<div class="content-header">
+    <div class="header-left">
+        <i class="fa-solid fa-rectangle-ad" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
+        <span class="page-title">SAM Ad Spend Planning</span>
     </div>
+</div>
+<div class="sam-container">
 
     <div class="info-blurb" id="blurb-sam">
         <div class="blurb-header" onclick="toggleBlurb('sam')">

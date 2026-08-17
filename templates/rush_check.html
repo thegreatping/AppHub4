@@ -7,10 +7,10 @@
     .rc-header-icon { width: 40px; height: 40px; border-radius: 10px; background: #f59e0b; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.1rem; }
 
     /* Tabs */
-    .rc-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border-medium); }
-    .rc-tab { padding: 10px 20px; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+    .rc-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 3px solid var(--border-medium); }
+    .rc-tab { padding: 10px 20px; font-size: 1.275rem; font-weight: 600; color: var(--text-primary); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -3px; transition: all 0.2s; }
     .rc-tab:hover { color: var(--text-primary); }
-    .rc-tab.active { color: #f59e0b; border-bottom-color: #f59e0b; }
+    .rc-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
     .rc-panel { display: none; }
     .rc-panel.active { display: block; }
 
@@ -121,11 +121,13 @@
 {% endblock %}
 
 {% block content %}
-<div class="rc-container">
-    <div class="rc-header">
-        <div class="rc-header-icon"><i class="fa-solid fa-money-check-dollar"></i></div>
-        <h1>Rush Check Request</h1>
+<div class="content-header">
+    <div class="header-left">
+        <i class="fa-solid fa-money-check-dollar" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
+        <span class="page-title">Rush Check Request</span>
     </div>
+</div>
+<div class="rc-container">
 
     <div class="info-blurb" id="blurb-rush-check">
         <div class="blurb-header" onclick="toggleBlurb('rush-check')">

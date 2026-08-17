@@ -5,10 +5,10 @@
         .mc-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
         .mc-header h1 { font-size: 1.4rem; color: var(--text-primary); margin: 0; }
         .mc-header-icon { width: 40px; height: 40px; border-radius: 10px; background: #06b6d4; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.1rem; }
-        .mc-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border-medium); }
-        .mc-tab { padding: 10px 20px; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+        .mc-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 3px solid var(--border-medium); }
+        .mc-tab { padding: 10px 20px; font-size: 1.275rem; font-weight: 600; color: var(--text-primary); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -3px; transition: all 0.2s; }
         .mc-tab:hover { color: var(--text-primary); }
-        .mc-tab.active { color: #06b6d4; border-bottom-color: #06b6d4; }
+        .mc-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
         .mc-panel { display: none; }
         .mc-panel.active { display: block; }
 
@@ -69,11 +69,13 @@
 {% endblock %}
 
 {% block content %}
-<div class="mc-container">
-    <div class="mc-header">
-        <div class="mc-header-icon"><i class="fa-solid fa-location-dot"></i></div>
-        <h1>Mentor Certification</h1>
+<div class="content-header">
+    <div class="header-left">
+        <i class="fa-solid fa-location-dot" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
+        <span class="page-title">Mentor Certification</span>
     </div>
+</div>
+<div class="mc-container">
     <div class="info-blurb" id="blurb-mentor-cert">
         <div class="blurb-header" onclick="toggleBlurb('mentor-cert')">
             <span class="blurb-title">About Mentor Certification</span>

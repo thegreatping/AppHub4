@@ -74,7 +74,8 @@ def get_modules():
         """)
         return jsonify([{
             "id": r[0], "name": r[1], "level": r[2],
-            "security_level": r[3], "active": r[4]
+            "security_level": r[3], "active": r[4],
+            "string_id": APP_ID_MAP.get(r[0])
         } for r in rows])
     finally:
         conn.close()
@@ -460,6 +461,133 @@ def get_title_groups():
             ORDER BY TITLE_GROUP
         """)
         return jsonify([r[0] for r in rows])
+    finally:
+        conn.close()
+
+
+# ─── MODULE FLAGS API ────────────────────────────────────────────────────────────
+
+def _ensure_module_flags_table(conn):
+    conn.execute("""
+        IF NOT EXISTS (
+            SELECT 1 FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_SCHEMA='dbo' AND TABLE_NAME='APPHUB_MODULE_FLAGS'
+        )
+        CREATE TABLE dbo.APPHUB_MODULE_FLAGS (
+            module_id            NVARCHAR(100) NOT NULL PRIMARY KEY,
+            theme_studio_enabled BIT           NOT NULL DEFAULT 1,
+            updated_at           DATETIME2     DEFAULT GETDATE()
+        )
+    """)
+
+@maintenance_bp.route("/api/module-flags", methods=["GET"])
+@login_required
+def get_module_flags():
+    """Return {string_module_id: theme_studio_enabled} for all known modules."""
+    check = _require_admin()
+    if check:
+        return check
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        _ensure_module_flags_table(conn)
+        rows = conn.fetchall("SELECT module_id, theme_studio_enabled FROM dbo.APPHUB_MODULE_FLAGS")
+        # Rows only exist for modules that have been explicitly set; default = 1
+        flags = {r[0]: bool(r[1]) for r in rows}
+        return jsonify(flags)
+    finally:
+        conn.close()
+
+@maintenance_bp.route("/api/module-flags/<string:module_id>", methods=["POST"])
+@login_required
+def set_module_flag(module_id):
+    """Set theme_studio_enabled for a module. Body: {enabled: bool}"""
+    check = _require_admin()
+    if check:
+        return check
+    data = request.get_json() or {}
+    enabled = 1 if data.get("enabled", True) else 0
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        _ensure_module_flags_table(conn)
+        conn.execute("""
+            MERGE dbo.APPHUB_MODULE_FLAGS AS tgt
+            USING (SELECT ? AS module_id) AS src ON tgt.module_id = src.module_id
+            WHEN MATCHED THEN
+                UPDATE SET theme_studio_enabled = ?, updated_at = GETDATE()
+            WHEN NOT MATCHED THEN
+                INSERT (module_id, theme_studio_enabled) VALUES (?, ?);
+        """, (module_id, enabled, module_id, enabled))
+        return jsonify({"ok": True, "module_id": module_id, "enabled": bool(enabled)})
+    finally:
+        conn.close()
+
+# ─── FAVORITES API ───────────────────────────────────────────────────────────────
+
+def _ensure_favorites_table(conn):
+    conn.execute("""
+        IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'USER_MODULE_FAVORITES')
+        CREATE TABLE dbo.USER_MODULE_FAVORITES (
+            ID INT IDENTITY(1,1) PRIMARY KEY,
+            USER_EMAIL NVARCHAR(200) NOT NULL,
+            MODULE_ID INT NOT NULL,
+            CREATED_AT DATETIME DEFAULT GETDATE()
+        )
+    """)
+
+
+@maintenance_bp.route("/api/favorites", methods=["GET"])
+@login_required
+def get_favorites():
+    email = session.get("user", {}).get("email", "")
+    if not email:
+        return jsonify([])
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        _ensure_favorites_table(conn)
+        rows = conn.fetchall(
+            "SELECT MODULE_ID FROM dbo.USER_MODULE_FAVORITES WHERE USER_EMAIL = ? ORDER BY CREATED_AT",
+            (email,)
+        )
+        return jsonify([r[0] for r in rows])
+    except Exception as e:
+        return jsonify([])
+    finally:
+        conn.close()
+
+
+@maintenance_bp.route("/api/favorites/toggle", methods=["POST"])
+@login_required
+def toggle_favorite():
+    email = session.get("user", {}).get("email", "")
+    data = request.get_json() or {}
+    module_id = data.get("module_id")
+    if not email or not module_id:
+        return jsonify({"error": "missing params"}), 400
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        _ensure_favorites_table(conn)
+        existing = conn.fetchall(
+            "SELECT ID FROM dbo.USER_MODULE_FAVORITES WHERE USER_EMAIL = ? AND MODULE_ID = ?",
+            (email, module_id)
+        )
+        if existing:
+            conn.execute(
+                "DELETE FROM dbo.USER_MODULE_FAVORITES WHERE USER_EMAIL = ? AND MODULE_ID = ?",
+                (email, module_id)
+            )
+            return jsonify({"favorited": False})
+        else:
+            conn.execute(
+                "INSERT INTO dbo.USER_MODULE_FAVORITES (USER_EMAIL, MODULE_ID) VALUES (?, ?)",
+                (email, module_id)
+            )
+            return jsonify({"favorited": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
     finally:
         conn.close()
 

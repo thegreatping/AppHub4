@@ -1,15 +1,16 @@
 {% extends "shell.html" %}
 {% block head %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/market_benchmark.css') }}?v=14">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/market_benchmark.css') }}?v=16">
 {% endblock %}
 {% block content %}
 <div class="mrb-wrapper">
 
-    <!-- Module Header -->
-    <div class="mrb-header">
-        <i class="fa-solid fa-chart-line" style="font-size: 1.5rem; color: var(--accent-cyan);"></i>
-        <h1>Market Benchmark</h1>
+<div class="content-header">
+    <div class="header-left">
+        <i class="fa-solid fa-chart-line" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
+        <span class="page-title">Market Benchmark</span>
     </div>
+</div>
 
     <!-- Tab Bar -->
     <nav class="mrb-tab-bar">

@@ -231,10 +231,11 @@ def _get_fabric_token(env):
     Priority:
       1. In-memory cache (not expired)
       2. .fabric_token.json (not expired)
-      3. MSAL silent refresh (.msal_cache.json refresh token)
-      4. az cli  (az account get-access-token) — silent, works in local dev
-      5. azure.identity silent refresh (.auth_record.json)
-      6. Interactive browser login
+      3. MSAL client credentials (AZURE_CLIENT_ID/SECRET/TENANT_ID) — works on Azure App Service
+      4. MSAL silent refresh (.msal_cache.json refresh token)
+      5. az cli  (az account get-access-token) — silent, works in local dev
+      6. azure.identity silent refresh (.auth_record.json)
+      7. Interactive browser login
     """
     import time as _time
 
@@ -260,6 +261,36 @@ def _get_fabric_token(env):
                 return cached['token']
         except Exception:
             pass
+
+    # Client credentials: works on Azure App Service (no browser/az CLI needed)
+    try:
+        import msal as _msal
+        import time as _time_cc
+        _cc_id = env.get("AZURE_CLIENT_ID")
+        _cc_secret = env.get("AZURE_CLIENT_SECRET")
+        _cc_tenant = env.get("AZURE_TENANT_ID")
+        if _cc_id and _cc_secret and _cc_tenant:
+            _cc_app = _msal.ConfidentialClientApplication(
+                _cc_id,
+                client_credential=_cc_secret,
+                authority=f"https://login.microsoftonline.com/{_cc_tenant}",
+            )
+            _cc_result = _cc_app.acquire_token_for_client(
+                scopes=["https://database.windows.net/.default"]
+            )
+            if _cc_result and "access_token" in _cc_result:
+                _cc_exp = int(_time_cc.time()) + int(_cc_result.get("expires_in", 3600))
+                class _TCC:
+                    def __init__(self, t, e): self.token = t; self.expires_on = e
+                _fabric_token_cache[cache_key] = _TCC(_cc_result["access_token"], _cc_exp)
+                try:
+                    with open(_TOKEN_CACHE_PATH, "w", encoding="utf-8") as f:
+                        json.dump({"token": _cc_result["access_token"], "expires_on": _cc_exp}, f)
+                except Exception:
+                    pass
+                return _cc_result["access_token"]
+    except Exception:
+        pass
 
     silent = _msal_silent_refresh(env)
     if silent:

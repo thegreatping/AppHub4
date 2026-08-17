@@ -5,10 +5,10 @@
         .cult-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
         .cult-header h1 { font-size: 1.4rem; color: var(--text-primary); margin: 0; }
         .cult-header-icon { width: 40px; height: 40px; border-radius: 10px; background: #a855f7; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.1rem; }
-        .cult-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border-medium); }
-        .cult-tab { padding: 10px 20px; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+        .cult-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 3px solid var(--border-medium); }
+        .cult-tab { padding: 10px 20px; font-size: 1.275rem; font-weight: 600; color: var(--text-primary); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -3px; transition: all 0.2s; }
         .cult-tab:hover { color: var(--text-primary); }
-        .cult-tab.active { color: #a855f7; border-bottom-color: #a855f7; }
+        .cult-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
         .cult-panel { display: none; }
         .cult-panel.active { display: block; }
 
@@ -80,11 +80,13 @@
 {% endblock %}
 
 {% block content %}
-<div class="cult-container">
-    <div class="cult-header">
-        <div class="cult-header-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
-        <h1>Cultivate Nomination</h1>
+<div class="content-header">
+    <div class="header-left">
+        <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
+        <span class="page-title">Cultivate Nomination</span>
     </div>
+</div>
+<div class="cult-container">
     <div class="info-blurb" id="blurb-cultivate">
         <div class="blurb-header" onclick="toggleBlurb('cultivate')">
             <span class="blurb-title">About Cultivate Nomination</span>

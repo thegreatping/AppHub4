@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Peak AppHub 4.0</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/apphub.css') }}?v=30">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/apphub.css') }}?v=49">
     <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('apphub_theme') || 'dark');</script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/fontawesome.min.css') }}?v=2">
     {% block head %}{% endblock %}
@@ -15,11 +15,14 @@
         <nav class="apphub-nav">
             <div class="nav-header">
                 <div class="nav-logo">
-                    <img src="{{ url_for('static', filename='img/apphub_logo.png') }}" alt="AppHub Logo" class="logo-img">
-                    <span class="version-badge">v{{ version }}</span>
+                    <img src="{{ url_for('static', filename='img/apphub_icon.png') }}" alt="AppHub Logo" class="logo-img">
+                    <div class="logo-text-block">
+                        <div class="logo-text"><span class="logo-bold">APP</span><span class="logo-light">HUB</span></div>
+                        <span class="version-badge">v{{ version }}</span>
+                    </div>
                 </div>
                 <button class="nav-toggle-btn" id="navToggleBtn" title="Collapse navigation">
-                    <i class="fa-solid fa-chevron-left" id="navToggleIcon"></i>
+                    <i class="fa-solid fa-angles-left" id="navToggleIcon"></i>
                 </button>
             </div>
 
@@ -30,6 +33,15 @@
                         <span>Dashboard</span>
                     </a>
                 </li>
+
+                <!-- divider always shown below Dashboard -->
+                <li class="nav-section-divider"></li>
+
+                <!-- FAVORITES section — populated by JS -->
+                <li class="nav-section-label" id="navFavLabel" style="display:none">Favorites</li>
+                <li class="nav-section-divider" id="navFavDivider" style="display:none"></li>
+
+                <li class="nav-section-label" id="navAppsLabel">Apps</li>
                 {% for mod in modules %}
                 <li class="nav-item {% if mod.id == active_module %}active{% endif %}"
                     data-module-id="{{ mod.id }}"
@@ -38,6 +50,9 @@
                         <span class="nav-icon-dot" style="background: {{ mod.color | default('#64748b') }}"><i class="{{ mod.icon }}"></i></span>
                         <span>{{ mod.name }}</span>
                     </a>
+                    <button class="fav-btn" data-module-id="{{ mod.app_id }}" title="Toggle favorite" onclick="_toggleFav({{ mod.app_id }}, event)">
+                        <i class="fa-regular fa-heart"></i>
+                    </button>
                 </li>
                 {% endfor %}
             </ul>
@@ -99,14 +114,24 @@
         <!-- ── Theme Studio Panel (dev only) ───────────────────────────────── -->
         {% if is_developer %}
         <div id="themeStudio" class="ts-panel" style="display:none;">
+            <div class="ts-resize-handle" id="tsResizeHandle"></div>
             <div class="ts-titlebar" id="tsHandle">
                 <span><i class="fa-solid fa-palette"></i> Theme Studio</span>
-                <button class="ts-close" id="tsClose">✕</button>
+                <button class="ts-close" id="tsClose">&#x2715;</button>
             </div>
-            <div class="ts-tabs">
-                <button class="ts-tab active" data-ts-theme="dark"><i class="fa-solid fa-moon"></i> Dark</button>
-                <button class="ts-tab" data-ts-theme="medium"><i class="fa-solid fa-circle-half-stroke"></i> Mid</button>
-                <button class="ts-tab" data-ts-theme="light"><i class="fa-solid fa-sun"></i> Light</button>
+            <div class="ts-col-header">
+                <span>Element</span>
+                <span><i class="fa-solid fa-sun"></i> Light</span>
+                <span><i class="fa-solid fa-circle-half-stroke"></i> Mid</span>
+                <span><i class="fa-solid fa-moon"></i> Dark</span>
+            </div>
+            <div class="ts-presets-bar">
+                <select id="tsPresetSelect"><option value="">-- saved presets --</option></select>
+                <button class="ts-preset-btn ts-preset-load" id="tsPresetLoad">Load</button>
+                <button class="ts-preset-btn ts-preset-delete" id="tsPresetDelete">Delete</button>
+                <div class="ts-preset-sep"></div>
+                <input type="text" id="tsPresetName" placeholder="Preset name..." maxlength="60">
+                <button class="ts-preset-btn ts-preset-save" id="tsPresetSave">Save As</button>
             </div>
             <div class="ts-body">
                 <div class="ts-group-label">Navigation</div>
@@ -135,7 +160,7 @@
             </div>
             <div class="ts-footer">
                 <button class="ts-btn ts-apply" id="tsApply" title="Save to this browser only"><i class="fa-solid fa-eye"></i> Preview</button>
-                <button class="ts-btn ts-publish" id="tsPublish" title="Publish to all users of this app"><i class="fa-solid fa-globe"></i> Publish</button>
+                <button class="ts-btn ts-publish" id="tsPublish" title="Publish to all users"><i class="fa-solid fa-globe"></i> Publish</button>
                 <button class="ts-btn ts-copy" id="tsCopy"><i class="fa-solid fa-copy"></i> Copy CSS</button>
                 <button class="ts-btn ts-reset" id="tsReset"><i class="fa-solid fa-rotate-left"></i> Reset</button>
             </div>
@@ -178,7 +203,7 @@
 
             function setCollapsed(collapsed) {
                 nav.classList.toggle('nav-collapsed', collapsed);
-                icon.className = collapsed ? 'fa-solid fa-chevron-right' : 'fa-solid fa-chevron-left';
+                icon.className = collapsed ? 'fa-solid fa-angles-right' : 'fa-solid fa-angles-left';
                 btn.title = collapsed ? 'Expand navigation' : 'Collapse navigation';
                 localStorage.setItem(KEY, collapsed ? '1' : '0');
             }
@@ -273,6 +298,146 @@
             });
         }
 
+        // ── Favorites ─────────────────────────────────────────────────────────
+        (function() {
+            const NAV_MODULES = {{ modules | tojson }};
+            let favIds = [];
+
+            async function loadFavorites() {
+                try {
+                    const resp = await fetch('/maintenance/api/favorites');
+                    favIds = await resp.json();
+                } catch(e) { favIds = []; }
+                renderFavSection();
+                updateHearts();
+            }
+
+            function renderFavSection() {
+                const label   = document.getElementById('navFavLabel');
+                const divider = document.getElementById('navFavDivider');
+                document.querySelectorAll('.fav-nav-item').forEach(el => el.remove());
+                if (!favIds.length) {
+                    label.style.display = divider.style.display = 'none';
+                    return;
+                }
+                label.style.display = divider.style.display = '';
+                favIds.slice().reverse().forEach(id => {
+                    const mod = NAV_MODULES.find(m => m.app_id === id);
+                    if (!mod) return;
+                    const li = document.createElement('li');
+                    li.className = 'nav-item fav-nav-item';
+                    li.dataset.moduleId = mod.id;
+                    li.dataset.moduleType = mod.type || 'powerapps';
+                    li.innerHTML = `<a href="/module/${mod.id}" title="${mod.name}" data-tooltip="${mod.name}">`
+                        + `<span class="nav-icon-dot" style="background:${mod.color||'#64748b'}"><i class="${mod.icon}"></i></span>`
+                        + `<span>${mod.name}</span></a>`
+                        + `<button class="fav-btn favorited" data-module-id="${mod.app_id}" title="Remove from favorites" onclick="_toggleFav(${mod.app_id},event)"><i class="fa-solid fa-heart"></i></button>`;
+                    label.after(li);
+                });
+            }
+
+            function updateHearts() {
+                document.querySelectorAll('.fav-btn').forEach(btn => {
+                    const id = parseInt(btn.dataset.moduleId);
+                    const icon = btn.querySelector('i');
+                    if (favIds.includes(id)) {
+                        icon.className = 'fa-solid fa-heart';
+                        btn.classList.add('favorited');
+                    } else {
+                        icon.className = 'fa-regular fa-heart';
+                        btn.classList.remove('favorited');
+                    }
+                });
+            }
+
+            window._toggleFav = async function(moduleId, event) {
+                event.preventDefault();
+                event.stopPropagation();
+                try {
+                    const resp = await fetch('/maintenance/api/favorites/toggle', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({module_id: moduleId})
+                    });
+                    const data = await resp.json();
+                    favIds = data.favorited ? [...favIds, moduleId] : favIds.filter(id => id !== moduleId);
+                    renderFavSection();
+                    updateHearts();
+                } catch(e) {}
+            };
+
+            window._setNavFavIds = function(ids) {
+                favIds = ids.slice();
+                renderFavSection();
+                updateHearts();
+            };
+
+            loadFavorites();
+        })();
+
+        // ── Popout panel framework ─────────────────────────────────────────────
+        /**
+         * initPopout({ overlayId, handleId, storageKey, minWidth, onClose })
+         * Wires resize drag, outside-click dismiss, and Escape for any .popout-overlay.
+         */
+        window.initPopout = function(opts) {
+            const overlay = document.getElementById(opts.overlayId);
+            const handle  = document.getElementById(opts.handleId);
+            if (!overlay || !handle) return;
+            const key = opts.storageKey || (opts.overlayId + '_w');
+            const min = opts.minWidth || 360;
+            const dismiss = opts.onClose || (() => overlay.classList.remove('open'));
+
+            const saved = sessionStorage.getItem(key);
+            if (saved) overlay.style.width = saved + 'px';
+
+            let dragging = false;
+            handle.addEventListener('mousedown', e => {
+                dragging = true; handle.classList.add('active');
+                document.body.style.cursor = 'ew-resize';
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            });
+            document.addEventListener('mousemove', e => {
+                if (!dragging) return;
+                overlay.style.width = Math.max(min, Math.min(window.innerWidth - e.clientX, window.innerWidth * 0.9)) + 'px';
+            });
+            document.addEventListener('mouseup', () => {
+                if (!dragging) return;
+                dragging = false; handle.classList.remove('active');
+                document.body.style.cursor = ''; document.body.style.userSelect = '';
+                sessionStorage.setItem(key, parseInt(overlay.style.width));
+            });
+            document.addEventListener('mousedown', e => {
+                if (overlay.classList.contains('open') && !overlay.contains(e.target)) dismiss();
+            });
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape' && overlay.classList.contains('open')) dismiss();
+            });
+            return { open: () => overlay.classList.add('open'), close: dismiss };
+        };
+
+        /** Highlight + scroll-to the first .popout-row whose label contains query. */
+        window.popoutJumpTo = function(contentId, query) {
+            const content = document.getElementById(contentId);
+            if (!content) return;
+            content.querySelectorAll('.popout-row').forEach(r => r.classList.remove('highlighted'));
+            if (!query.trim()) return;
+            const q = query.toLowerCase();
+            const match = [...content.querySelectorAll('.popout-row')].find(r => {
+                const lbl = r.querySelector('.popout-label');
+                return lbl && lbl.textContent.toLowerCase().includes(q);
+            });
+            if (match) { match.classList.add('highlighted'); match.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+        };
+
+        /** Toggle collapse on a .popout-section-header and its sibling .popout-section-body. */
+        window.popoutToggleSection = function(el) {
+            el.classList.toggle('collapsed');
+            const body = el.nextElementSibling;
+            if (body) body.classList.toggle('collapsed');
+        };
+
         // Active nav highlighting (for SPA-like behavior later)
         document.querySelectorAll('.nav-item a').forEach(link => {
             link.addEventListener('click', function(e) {
@@ -344,13 +509,314 @@
     // THEME STUDIO
     // ══════════════════════════════════════════════════════════════════════════
     (function() {
-        const LS_KEY  = 'apphub_theme_overrides';
-        const APP_ID  = '{{ active_module }}';
+        const LS_KEY = 'apphub_theme_overrides';
+        const APP_ID = '{{ active_module }}';
+        const THEMES = ['light', 'medium', 'dark'];
         const VARS = [
             '--nav-bg','--nav-active-border','--nav-hover',
             '--content-bg','--content-header','--surface-raised','--card-bg',
             '--section-hd-bg','--section-hd-border',
             '--text-primary','--text-secondary',
+            '--accent-cyan','--accent-blue','--accent-gold'
+        ];
+
+        const DEFAULTS = {};
+
+        function getDefaultsForTheme(theme) {
+            if (DEFAULTS[theme]) return DEFAULTS[theme];
+            const prev = document.documentElement.getAttribute('data-theme');
+            document.documentElement.setAttribute('data-theme', theme);
+            const style = getComputedStyle(document.documentElement);
+            const vals = {};
+            VARS.forEach(v => { vals[v] = style.getPropertyValue(v).trim(); });
+            document.documentElement.setAttribute('data-theme', prev);
+            DEFAULTS[theme] = vals;
+            return vals;
+        }
+
+        let _serverOverrides = {};
+
+        function loadServerOverrides() {
+            fetch(`/api/theme-settings/${APP_ID}`)
+                .then(r => r.ok ? r.json() : {})
+                .then(data => { _serverOverrides = data || {}; applyOverrides(); })
+                .catch(() => {});
+        }
+
+        function loadOverrides() {
+            try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
+        }
+
+        function applyOverrides() {
+            const all   = loadOverrides();
+            const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+            const merged = Object.assign({}, (_serverOverrides[theme] || {}), (all[theme] || {}));
+            VARS.forEach(v => {
+                if (merged[v]) document.documentElement.style.setProperty(v, merged[v]);
+                else document.documentElement.style.removeProperty(v);
+            });
+        }
+        loadServerOverrides();
+
+        document.querySelectorAll('.theme-btn').forEach(btn => {
+            btn.addEventListener('click', () => setTimeout(applyOverrides, 50));
+        });
+
+        const panel      = document.getElementById('themeStudio');
+        const openBtn    = document.getElementById('themeStudioBtn');
+        const closeBtn   = document.getElementById('tsClose');
+        const applyBtn   = document.getElementById('tsApply');
+        const publishBtn = document.getElementById('tsPublish');
+        const copyBtn    = document.getElementById('tsCopy');
+        const resetBtn   = document.getElementById('tsReset');
+
+        openBtn.addEventListener('click', () => {
+            panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+            if (panel.style.display === 'flex') { renderRows(); loadPresets(); }
+        });
+        closeBtn.addEventListener('click', () => { panel.style.display = 'none'; });
+
+        // ── Presets ─────────────────────────────────────────────────────────────
+        const presetSelect = document.getElementById('tsPresetSelect');
+        const presetName   = document.getElementById('tsPresetName');
+        const presetLoad   = document.getElementById('tsPresetLoad');
+        const presetDel    = document.getElementById('tsPresetDelete');
+        const presetSave   = document.getElementById('tsPresetSave');
+
+        async function loadPresets() {
+            try {
+                const names = await fetch('/api/theme-presets').then(r => r.json());
+                const prev = presetSelect.value;
+                presetSelect.innerHTML = '<option value="">-- saved presets --</option>' +
+                    names.map(n => `<option value="${n}"${n === prev ? ' selected' : ''}>${n}</option>`).join('');
+            } catch(e) {}
+        }
+
+        presetLoad.addEventListener('click', async () => {
+            const name = presetSelect.value;
+            if (!name) return;
+            presetLoad.textContent = 'Loading…';
+            try {
+                const data = await fetch(`/api/theme-settings/_preset_${encodeURIComponent(name)}`).then(r => r.json());
+                // Fill all swatches from preset values, then live-preview current theme
+                document.querySelectorAll('.ts-row').forEach(row => {
+                    const varName = row.dataset.var;
+                    THEMES.forEach(theme => {
+                        const col = row.querySelector(`.ts-theme-col[data-ts-theme="${theme}"]`);
+                        if (!col) return;
+                        const val = (data[theme] || {})[varName];
+                        if (!val) return;
+                        const hex = toHex(val);
+                        col.querySelector('.ts-swatch').value = hex;
+                        col.querySelector('.ts-hex').value = hex;
+                        livePreview(varName, hex, theme);
+                    });
+                });
+            } catch(e) {}
+            presetLoad.textContent = 'Load';
+        });
+
+        presetDel.addEventListener('click', async () => {
+            const name = presetSelect.value;
+            if (!name || !confirm(`Delete preset "${name}"?`)) return;
+            presetDel.textContent = '…';
+            await fetch(`/api/theme-presets/${encodeURIComponent(name)}`, { method: 'DELETE' }).catch(() => {});
+            presetSelect.value = '';
+            await loadPresets();
+            presetDel.textContent = 'Delete';
+        });
+
+        presetSave.addEventListener('click', async () => {
+            const name = presetName.value.trim();
+            if (!name) { presetName.focus(); return; }
+            presetSave.textContent = 'Saving…';
+            presetSave.disabled = true;
+            const appId = '_preset_' + name;
+            try {
+                await Promise.all(THEMES.map(theme => {
+                    const payload = {};
+                    document.querySelectorAll(`.ts-theme-col[data-ts-theme="${theme}"] .ts-hex`).forEach(inp => {
+                        const varName = inp.closest('.ts-row').dataset.var;
+                        if (inp.value) payload[varName] = inp.value;
+                    });
+                    return fetch('/api/theme-settings', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ app_id: appId, theme, overrides: payload })
+                    });
+                }));
+                presetName.value = '';
+                await loadPresets();
+                // Select the newly saved preset
+                presetSelect.value = name;
+                presetSave.textContent = 'Saved!';
+            } catch(e) { presetSave.textContent = 'Error'; }
+            setTimeout(() => { presetSave.textContent = 'Save As'; presetSave.disabled = false; }, 1500);
+        });
+
+        // ── Render all 3 theme columns per row ─────────────────────────────────
+        function renderRows() {
+            const saved = loadOverrides();
+            document.querySelectorAll('.ts-row').forEach(row => {
+                const varName = row.dataset.var;
+                row.querySelectorAll('.ts-theme-col').forEach(c => c.remove());
+                THEMES.forEach(theme => {
+                    const defaults = getDefaultsForTheme(theme);
+                    const hex = toHex((saved[theme] || {})[varName] || defaults[varName] || '#000000');
+                    const col = document.createElement('div');
+                    col.className = 'ts-theme-col';
+                    col.dataset.tsTheme = theme;
+                    col.innerHTML =
+                        `<input type="color" class="ts-swatch" value="${hex}">` +
+                        `<input type="text" class="ts-hex" value="${hex}" maxlength="9" spellcheck="false">`;
+                    col.querySelector('.ts-swatch').addEventListener('input', function() {
+                        col.querySelector('.ts-hex').value = this.value;
+                        livePreview(varName, this.value, theme);
+                    });
+                    col.querySelector('.ts-hex').addEventListener('input', function() {
+                        const v = this.value.trim();
+                        if (/^#[0-9a-fA-F]{3,8}$/.test(v)) {
+                            col.querySelector('.ts-swatch').value = v.length > 7 ? v.slice(0,7) : v;
+                            livePreview(varName, v, theme);
+                        }
+                    });
+                    row.appendChild(col);
+                });
+            });
+        }
+
+        function livePreview(varName, value, theme) {
+            if (document.documentElement.getAttribute('data-theme') === theme) {
+                document.documentElement.style.setProperty(varName, value);
+            }
+        }
+
+        // ── Preview — saves all 3 themes to localStorage ────────────────────────
+        applyBtn.addEventListener('click', () => {
+            const all = loadOverrides();
+            THEMES.forEach(theme => {
+                all[theme] = all[theme] || {};
+                document.querySelectorAll(`.ts-theme-col[data-ts-theme="${theme}"] .ts-hex`).forEach(inp => {
+                    const varName = inp.closest('.ts-row').dataset.var;
+                    if (inp.value) all[theme][varName] = inp.value;
+                });
+            });
+            localStorage.setItem(LS_KEY, JSON.stringify(all));
+            applyOverrides();
+            applyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Previewing…';
+            setTimeout(() => { applyBtn.innerHTML = '<i class="fa-solid fa-eye"></i> Preview'; }, 1500);
+        });
+
+        // ── Publish — saves all 3 themes to server ──────────────────────────────
+        publishBtn.addEventListener('click', () => {
+            publishBtn.disabled = true;
+            publishBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publishing…';
+            const calls = THEMES.map(theme => {
+                const payload = {};
+                document.querySelectorAll(`.ts-theme-col[data-ts-theme="${theme}"] .ts-hex`).forEach(inp => {
+                    const varName = inp.closest('.ts-row').dataset.var;
+                    if (inp.value) payload[varName] = inp.value;
+                });
+                return fetch('/api/theme-settings', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ app_id: '_global', theme, overrides: payload })
+                }).then(r => r.json()).then(data => { if (data.ok) _serverOverrides[theme] = payload; });
+            });
+            Promise.all(calls)
+                .then(() => { applyOverrides(); publishBtn.innerHTML = '<i class="fa-solid fa-check"></i> Published!'; })
+                .catch(() => { publishBtn.innerHTML = '<i class="fa-solid fa-xmark"></i> Error'; })
+                .finally(() => { setTimeout(() => { publishBtn.disabled = false; publishBtn.innerHTML = '<i class="fa-solid fa-globe"></i> Publish'; }, 2000); });
+        });
+
+        // ── Copy CSS — all 3 themes ─────────────────────────────────────────────
+        copyBtn.addEventListener('click', () => {
+            const all = loadOverrides();
+            let out = '';
+            ['dark','medium','light'].forEach(theme => {
+                const merged = Object.assign({}, getDefaultsForTheme(theme), all[theme] || {});
+                const selector = theme === 'dark' ? ':root, [data-theme="dark"]' : `[data-theme="${theme}"]`;
+                out += `/* ${theme.toUpperCase()} */\n${selector} {\n`;
+                VARS.forEach(v => { out += `    ${v}: ${merged[v]};\n`; });
+                out += '}\n\n';
+            });
+            navigator.clipboard.writeText(out).then(() => {
+                copyBtn.textContent = '✓ Copied!';
+                setTimeout(() => { copyBtn.innerHTML = '<i class="fa-solid fa-copy"></i> Copy CSS'; }, 2000);
+            });
+        });
+
+        // ── Reset — clears all 3 themes from localStorage and server ───────────
+        resetBtn.addEventListener('click', () => {
+            const all = loadOverrides();
+            THEMES.forEach(t => { delete all[t]; });
+            localStorage.setItem(LS_KEY, JSON.stringify(all));
+            THEMES.forEach(t => {
+                fetch('/api/theme-settings', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ app_id: '_global', theme: t, overrides: {} })
+                }).catch(() => {});
+                delete _serverOverrides[t];
+                delete DEFAULTS[t];
+            });
+            VARS.forEach(v => document.documentElement.style.removeProperty(v));
+            renderRows();
+        });
+
+        // ── Drag titlebar ───────────────────────────────────────────────────────
+        const dragHandle = document.getElementById('tsHandle');
+        let dragging = false, ox = 0, oy = 0;
+        dragHandle.addEventListener('mousedown', e => {
+            dragging = true;
+            ox = e.clientX - panel.getBoundingClientRect().left;
+            oy = e.clientY - panel.getBoundingClientRect().top;
+        });
+        document.addEventListener('mousemove', e => {
+            if (!dragging) return;
+            panel.style.left  = (e.clientX - ox) + 'px';
+            panel.style.top   = (e.clientY - oy) + 'px';
+            panel.style.right = 'auto';
+        });
+        document.addEventListener('mouseup', () => { dragging = false; });
+
+        // ── Resize left edge ────────────────────────────────────────────────────
+        const resizeHandle = document.getElementById('tsResizeHandle');
+        let resizing = false, rEdge = 0;
+        resizeHandle.addEventListener('mousedown', e => {
+            resizing = true;
+            rEdge = panel.getBoundingClientRect().right;
+            resizeHandle.classList.add('active');
+            document.body.style.cursor = 'ew-resize';
+            document.body.style.userSelect = 'none';
+            e.preventDefault(); e.stopPropagation();
+        });
+        document.addEventListener('mousemove', e => {
+            if (!resizing) return;
+            const newW = Math.max(480, Math.min(rEdge - e.clientX, window.innerWidth * 0.9));
+            panel.style.width = newW + 'px';
+            if (panel.style.right === 'auto') panel.style.left = (rEdge - newW) + 'px';
+        });
+        document.addEventListener('mouseup', () => {
+            if (!resizing) return;
+            resizing = false;
+            resizeHandle.classList.remove('active');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        });
+
+        function toHex(color) {
+            if (!color) return '#000000';
+            if (color.startsWith('#')) return color.length === 4
+                ? '#' + color[1]+color[1]+color[2]+color[2]+color[3]+color[3]
+                : color.slice(0, 7);
+            const m = color.match(/\d+/g);
+            if (m && m.length >= 3)
+                return '#' + [m[0],m[1],m[2]].map(n => parseInt(n).toString(16).padStart(2,'0')).join('');
+            return '#000000';
+        }
+    })();
+    </script>
             '--accent-cyan','--accent-blue','--accent-gold'
         ];
 
@@ -399,199 +865,11 @@
                 else document.documentElement.style.removeProperty(v);
             });
         }
-        loadServerOverrides();  // fetch from server, then applies
+        loadServerOverrides();
 
-        // Re-apply when theme toggle fires
         document.querySelectorAll('.theme-btn').forEach(btn => {
             btn.addEventListener('click', () => setTimeout(applyOverrides, 50));
         });
-
-        // ── Panel state ───────────────────────────────────────────────────────
-        const panel      = document.getElementById('themeStudio');
-        const openBtn    = document.getElementById('themeStudioBtn');
-        const closeBtn   = document.getElementById('tsClose');
-        const applyBtn   = document.getElementById('tsApply');
-        const publishBtn = document.getElementById('tsPublish');
-        const copyBtn    = document.getElementById('tsCopy');
-        const resetBtn   = document.getElementById('tsReset');
-        let activeTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-
-        // ── Open / close ──────────────────────────────────────────────────────
-        openBtn.addEventListener('click', () => {
-            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-            if (panel.style.display === 'block') renderRows();
-        });
-        closeBtn.addEventListener('click', () => { panel.style.display = 'none'; });
-
-        // ── Tab switching ─────────────────────────────────────────────────────
-        document.querySelectorAll('.ts-tab').forEach(tab => {
-            tab.addEventListener('click', function() {
-                document.querySelectorAll('.ts-tab').forEach(t => t.classList.remove('active'));
-                this.classList.add('active');
-                activeTheme = this.dataset.tsTheme;
-                renderRows();
-            });
-        });
-
-        // ── Render color rows ─────────────────────────────────────────────────
-        function renderRows() {
-            const defaults = getDefaultsForTheme(activeTheme);
-            const saved    = (loadOverrides()[activeTheme] || {});
-            document.querySelectorAll('.ts-row').forEach(row => {
-                const varName = row.dataset.var;
-                const current = saved[varName] || defaults[varName] || '#000000';
-                const hex = toHex(current);
-                // Clear and rebuild controls
-                let ctrl = row.querySelector('.ts-row-controls');
-                if (!ctrl) {
-                    ctrl = document.createElement('div');
-                    ctrl.className = 'ts-row-controls';
-                    row.appendChild(ctrl);
-                }
-                ctrl.innerHTML =
-                    `<input type="color" class="ts-swatch" value="${hex}" data-var="${varName}">` +
-                    `<input type="text"  class="ts-hex"   value="${hex}" data-var="${varName}" maxlength="9" spellcheck="false">`;
-
-                // Live preview on swatch change
-                ctrl.querySelector('.ts-swatch').addEventListener('input', function() {
-                    const v = this.value;
-                    ctrl.querySelector('.ts-hex').value = v;
-                    livePreview(varName, v);
-                });
-                // Live preview on hex input
-                ctrl.querySelector('.ts-hex').addEventListener('input', function() {
-                    const v = this.value.trim();
-                    if (/^#[0-9a-fA-F]{3,8}$/.test(v)) {
-                        ctrl.querySelector('.ts-swatch').value = v.length > 7 ? v.slice(0,7) : v;
-                        livePreview(varName, v);
-                    }
-                });
-            });
-        }
-
-        function livePreview(varName, value) {
-            // Only preview if this theme is currently active
-            if (document.documentElement.getAttribute('data-theme') === activeTheme) {
-                document.documentElement.style.setProperty(varName, value);
-            }
-        }
-
-        // ── Preview (localStorage only — this browser only) ──────────────────
-        applyBtn.addEventListener('click', () => {
-            const all = loadOverrides();
-            all[activeTheme] = all[activeTheme] || {};
-            document.querySelectorAll('.ts-row').forEach(row => {
-                const varName = row.dataset.var;
-                const hex = row.querySelector('.ts-hex')?.value;
-                if (hex) all[activeTheme][varName] = hex;
-            });
-            localStorage.setItem(LS_KEY, JSON.stringify(all));
-            applyOverrides();
-            applyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Previewing…';
-            setTimeout(() => { applyBtn.innerHTML = '<i class="fa-solid fa-eye"></i> Preview'; }, 1500);
-        });
-
-        // ── Publish (save to server → all users) ─────────────────────────────
-        publishBtn.addEventListener('click', () => {
-            const payload = {};
-            document.querySelectorAll('.ts-row').forEach(row => {
-                const varName = row.dataset.var;
-                const hex = row.querySelector('.ts-hex')?.value;
-                if (hex) payload[varName] = hex;
-            });
-            publishBtn.disabled = true;
-            publishBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publishing…';
-            fetch('/api/theme-settings', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ app_id: APP_ID, theme: activeTheme, overrides: payload })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.ok) {
-                    _serverOverrides[activeTheme] = payload;
-                    applyOverrides();
-                    publishBtn.innerHTML = '<i class="fa-solid fa-check"></i> Published!';
-                } else {
-                    publishBtn.innerHTML = '<i class="fa-solid fa-xmark"></i> Error';
-                }
-            })
-            .catch(() => { publishBtn.innerHTML = '<i class="fa-solid fa-xmark"></i> Failed'; })
-            .finally(() => {
-                setTimeout(() => {
-                    publishBtn.disabled = false;
-                    publishBtn.innerHTML = '<i class="fa-solid fa-globe"></i> Publish';
-                }, 2000);
-            });
-        });
-
-        // ── Copy CSS ──────────────────────────────────────────────────────────
-        copyBtn.addEventListener('click', () => {
-            const all = loadOverrides();
-            const themes = ['dark','medium','light'];
-            let out = '';
-            themes.forEach(theme => {
-                const defaults = getDefaultsForTheme(theme);
-                const saved    = all[theme] || {};
-                const merged   = Object.assign({}, defaults, saved);
-                const selector = theme === 'dark' ? ':root, [data-theme="dark"]' : `[data-theme="${theme}"]`;
-                out += `/* ${theme.toUpperCase()} */\n${selector} {\n`;
-                VARS.forEach(v => { out += `    ${v}: ${merged[v]};\n`; });
-                out += '}\n\n';
-            });
-            navigator.clipboard.writeText(out).then(() => {
-                copyBtn.textContent = '✓ Copied!';
-                setTimeout(() => { copyBtn.innerHTML = '<i class="fa-solid fa-copy"></i> Copy CSS'; }, 2000);
-            });
-        });
-
-        // ── Reset ─────────────────────────────────────────────────────────────
-        resetBtn.addEventListener('click', () => {
-            // Clear localStorage for this theme
-            const all = loadOverrides();
-            delete all[activeTheme];
-            localStorage.setItem(LS_KEY, JSON.stringify(all));
-            // Also clear server-side for this theme (publishes an empty override set)
-            fetch('/api/theme-settings', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ app_id: APP_ID, theme: activeTheme, overrides: {} })
-            }).catch(() => {});
-            delete _serverOverrides[activeTheme];
-            VARS.forEach(v => document.documentElement.style.removeProperty(v));
-            delete DEFAULTS[activeTheme];
-            renderRows();
-        });
-
-        // ── Drag ─────────────────────────────────────────────────────────────
-        const handle = document.getElementById('tsHandle');
-        let dragging = false, ox = 0, oy = 0;
-        handle.addEventListener('mousedown', e => {
-            dragging = true;
-            ox = e.clientX - panel.getBoundingClientRect().left;
-            oy = e.clientY - panel.getBoundingClientRect().top;
-        });
-        document.addEventListener('mousemove', e => {
-            if (!dragging) return;
-            panel.style.left = (e.clientX - ox) + 'px';
-            panel.style.top  = (e.clientY - oy) + 'px';
-            panel.style.right = 'auto';
-        });
-        document.addEventListener('mouseup', () => { dragging = false; });
-
-        // ── Helpers ───────────────────────────────────────────────────────────
-        function toHex(color) {
-            if (!color) return '#000000';
-            if (color.startsWith('#')) return color.length === 4
-                ? '#' + color[1]+color[1]+color[2]+color[2]+color[3]+color[3]
-                : color.slice(0, 7);
-            // rgb(r,g,b) or rgba(...)
-            const m = color.match(/\d+/g);
-            if (m && m.length >= 3) {
-                return '#' + [m[0],m[1],m[2]].map(n => parseInt(n).toString(16).padStart(2,'0')).join('');
-            }
-            return '#000000';
-        }
     })();
     </script>
     {% endif %}

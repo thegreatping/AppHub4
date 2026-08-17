@@ -4,8 +4,8 @@
         .edm-container { padding: 24px; max-width: 1400px; }
         .edm-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
         .edm-header h1 { font-size: 1.4rem; color: var(--text-primary); margin: 0; }
-        .edm-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border-medium); }
-        .edm-tab { padding: 10px 20px; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+        .edm-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 3px solid var(--border-medium); }
+        .edm-tab { padding: 10px 20px; font-size: 1.275rem; font-weight: 600; color: var(--text-primary); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -3px; transition: all 0.2s; }
         .edm-tab:hover { color: var(--text-primary); }
         .edm-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
         .edm-panel { display: none; }
@@ -104,16 +104,8 @@
         .col-selector-panel .col-reset { display: block; margin: 6px 14px 4px; padding: 5px 10px; font-size: 0.75rem; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-secondary); border-radius: 4px; cursor: pointer; text-align: center; }
         .col-selector-panel .col-reset:hover { color: var(--accent-cyan); border-color: var(--accent-cyan); }
 
-        /* Employee detail panel */
-        .emp-detail-overlay { display: none; position: fixed; top: 0; right: 0; bottom: 0; width: 420px; background: var(--surface-raised); border-left: 2px solid var(--accent-cyan); z-index: 200; overflow-y: auto; padding: 20px 24px; box-shadow: -8px 0 32px var(--shadow-overlay); }
-        .emp-detail-overlay.open { display: block; }
-        .emp-detail-overlay h3 { margin: 0 0 16px; color: var(--text-primary); font-size: 1.1rem; }
-        .emp-detail-overlay .detail-close { position: absolute; top: 12px; right: 16px; background: none; border: none; color: var(--text-secondary); font-size: 1.2rem; cursor: pointer; }
-        .emp-detail-overlay .detail-close:hover { color: var(--accent-cyan); }
-        .emp-detail-table { width: 100%; font-size: 0.78rem; }
-        .emp-detail-table td { padding: 4px 8px; border-bottom: 1px solid var(--border-subtle); vertical-align: top; }
-        .emp-detail-table td:first-child { color: var(--text-secondary); font-weight: 600; white-space: nowrap; width: 40%; }
-        .emp-detail-table td:last-child { color: var(--text-primary); word-break: break-word; }
+        /* Employee detail panel — uses shared .popout-overlay framework from apphub.css */
+        .emp-detail-overlay { width: 560px; }
 
         /* Bulk assign bar */
         .bulk-bar { display: none; background: rgba(0,188,212,0.08); border: 1px solid rgba(0,188,212,0.2); border-radius: 6px; padding: 8px 14px; margin-bottom: 10px; align-items: center; gap: 10px; font-size: 0.8rem; color: var(--text-primary); }
@@ -160,11 +152,13 @@
     </style>
 {% endblock %}
 {% block content %}
+<div class="content-header">
+    <div class="header-left">
+        <i class="fa-solid fa-users-gear" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
+        <span class="page-title">Employee Data Manager</span>
+    </div>
+</div>
     <div class="edm-container">
-        <div class="edm-header">
-            <i class="fa-solid fa-users-gear" style="font-size: 1.5rem; color: var(--accent-cyan);"></i>
-            <h1>Employee Data Manager</h1>
-        </div>
 
         <div class="edm-tabs">
             <div class="edm-tab active" data-panel="employees">Employees</div>
@@ -216,10 +210,24 @@
         </div>
 
         <!-- Employee Detail Side Panel -->
-        <div class="emp-detail-overlay" id="empDetailPanel">
-            <button class="detail-close" onclick="closeEmpDetail()">&times;</button>
-            <h3 id="empDetailName"></h3>
-            <table class="emp-detail-table"><tbody id="empDetailBody"></tbody></table>
+        <div class="popout-overlay emp-detail-overlay" id="empDetailPanel">
+            <div class="popout-resize-handle" id="empDetailResize"></div>
+            <button class="popout-close-btn" onclick="closeEmpDetail()">&times;</button>
+            <div class="popout-sticky-header">
+                <div class="popout-title" id="empDetailName"></div>
+                <div class="popout-subtitle" id="empDetailSub"></div>
+                <div class="popout-toolbar">
+                    <span class="popout-jump-label">Jump To</span>
+                    <input class="popout-jump-input" id="empJumpInput" placeholder="field name..." oninput="popoutJumpTo('empDetailContent', this.value)">
+                    <div class="popout-sort-toggle">
+                        <button id="empSortCat" class="active" onclick="setEmpDetailSort('category')">Category</button>
+                        <button id="empSortAZ" onclick="setEmpDetailSort('alpha')">A-Z</button>
+                    </div>
+                </div>
+            </div>
+            <div class="popout-scroll">
+                <div id="empDetailContent"></div>
+            </div>
         </div>
 
         <!-- TITLE ASSIGNMENTS PANEL -->
@@ -1051,28 +1059,92 @@
     }
 
     // ─── EMPLOYEE DETAIL PANEL ─────────────────────────────────────────────────
+    const EMP_CATEGORIES = {
+        'Identity':   ['employee_code','status','gender','ethnicity','citizenship'],
+        'Employment': ['title','title_group','property','property_name','supervisor','supervisor_email',
+                       'employment_type','department','cost_center','region','market','city','state'],
+        'Dates':      ['date_hired','date_terminated','date_rehired','date_added'],
+        'Contact':    ['email','email_ad','email_paycom','phone','phone_mobile','phone_work','phone_home'],
+        'System':     ['entrata_id','paycom_id','ad_username','source','leo_'],
+    };
+
+    function empFieldCategory(key) {
+        for (const [cat, patterns] of Object.entries(EMP_CATEGORIES)) {
+            if (patterns.some(p => key === p || key.startsWith(p))) return cat;
+        }
+        if (key.startsWith('flag_')) return 'Flags';
+        if (key.startsWith('date_') || key.startsWith('datetime_')) return 'Dates';
+        if (key.includes('email') || key.includes('phone')) return 'Contact';
+        return 'General';
+    }
+
+    let _empDetailRow = null, _empDetailSortMode = 'category';
+
+    function setEmpDetailSort(mode) {
+        _empDetailSortMode = mode;
+        document.getElementById('empSortCat').classList.toggle('active', mode === 'category');
+        document.getElementById('empSortAZ').classList.toggle('active', mode === 'alpha');
+        if (_empDetailRow) renderEmpDetailContent(_empDetailRow);
+    }
+
+    function renderEmpDetailContent(r) {
+        const content = document.getElementById('empDetailContent');
+        const allKeys = Object.keys(r).filter(k =>
+            !EMP_HIDDEN_KEYS.includes(k) && k !== 'name_first' && k !== 'name_last'
+        );
+
+        function fmtVal(key, val) {
+            if (EMP_DATE_KEYS.includes(key)) return fmtDateInt(val);
+            if (key.startsWith(EMP_FLAG_PREFIX)) return val ? 'Yes' : (val === 0 ? 'No' : '');
+            if (key.startsWith('datetime_') && val) return val.slice(0, 19).replace('T', ' ');
+            return val != null ? String(val) : '—';
+        }
+
+        function makeRow(key) {
+            return `<div class="popout-row">
+                <span class="popout-label">${prettyLabel(key)}</span>
+                <span class="popout-value">${esc(fmtVal(key, r[key]))}</span>
+            </div>`;
+        }
+
+        if (_empDetailSortMode === 'alpha') {
+            content.innerHTML = allKeys.slice().sort().map(makeRow).join('');
+        } else {
+            const cats = {};
+            allKeys.forEach(key => {
+                const c = empFieldCategory(key);
+                (cats[c] = cats[c] || []).push(key);
+            });
+            const ORDER = ['Identity','Employment','Dates','Contact','Flags','System','General'];
+            const sorted = [...new Set([...ORDER, ...Object.keys(cats)])].filter(c => cats[c]);
+            content.innerHTML = sorted.map(cat => {
+                const rows = cats[cat].map(makeRow).join('');
+                return `<div class="popout-section">
+                    <div class="popout-section-header" onclick="popoutToggleSection(this)">
+                        <span class="popout-section-chevron">&#9660;</span>
+                        <span class="popout-section-title">${cat}</span>
+                        <span class="popout-section-count">${cats[cat].length}</span>
+                    </div>
+                    <div class="popout-section-body">${rows}</div>
+                </div>`;
+            }).join('');
+        }
+    }
+
     function showEmpDetail(idx) {
         const r = empSorted[idx];
         if (!r) return;
-        document.getElementById('empDetailName').textContent = (r.name_first||'') + ' ' + (r.name_last||'');
-        const tbody = document.getElementById('empDetailBody');
-        const allKeys = Object.keys(r).filter(k => !EMP_HIDDEN_KEYS.includes(k) && k !== 'name_first' && k !== 'name_last');
-        tbody.innerHTML = allKeys.map(key => {
-            let val = r[key];
-            if (EMP_DATE_KEYS.includes(key)) val = fmtDateInt(val);
-            else if (key.startsWith(EMP_FLAG_PREFIX)) val = val ? 'Yes' : (val === 0 ? 'No' : '');
-            else if (key.startsWith('datetime_') && val) val = val.slice(0, 19).replace('T', ' ');
-            else val = val != null ? String(val) : '—';
-            return `<tr><td>${prettyLabel(key)}</td><td>${esc(val)}</td></tr>`;
-        }).join('');
+        _empDetailRow = r;
+        document.getElementById('empDetailName').textContent = ((r.name_first||'') + ' ' + (r.name_last||'')).trim();
+        document.getElementById('empDetailSub').textContent = [r.title, r.title_group, r.property_name || r.property].filter(Boolean).join(' · ');
+        document.getElementById('empJumpInput').value = '';
+        renderEmpDetailContent(r);
         document.getElementById('empDetailPanel').classList.add('open');
     }
 
     function closeEmpDetail() {
         document.getElementById('empDetailPanel').classList.remove('open');
     }
-    // Close on Escape
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEmpDetail(); });
 
     // ─── BULK ASSIGN (Title Assignments) ───────────────────────────────────────
     let bulkSelectedTitles = new Set();
@@ -1162,4 +1234,11 @@
         }
     }
     </script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // initPopout must run after shell.html defines window.initPopout
+    initPopout({ overlayId: 'empDetailPanel', handleId: 'empDetailResize', storageKey: 'edm_detail_w', minWidth: 380, onClose: closeEmpDetail });
+</script>
 {% endblock %}

@@ -168,7 +168,6 @@ def _stop_impersonation():
 # ── Theme Settings (server-side, per-app per-theme) ───────────────────────────
 
 def _ensure_theme_table(conn):
-    """Create APPHUB_THEME_SETTINGS if it doesn't exist."""
     conn.execute("""
         IF NOT EXISTS (
             SELECT 1 FROM INFORMATION_SCHEMA.TABLES
@@ -184,15 +183,39 @@ def _ensure_theme_table(conn):
         )
     """)
 
+def _ensure_module_flags_table(conn):
+    conn.execute("""
+        IF NOT EXISTS (
+            SELECT 1 FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_SCHEMA='dbo' AND TABLE_NAME='APPHUB_MODULE_FLAGS'
+        )
+        CREATE TABLE dbo.APPHUB_MODULE_FLAGS (
+            module_id            NVARCHAR(100) NOT NULL PRIMARY KEY,
+            theme_studio_enabled BIT           NOT NULL DEFAULT 1,
+            updated_at           DATETIME2     DEFAULT GETDATE()
+        )
+    """)
+
 
 @main_bp.route("/api/theme-settings/<app_id>")
 @login_required
 def get_theme_settings(app_id):
-    """Return saved theme overrides for an app. {dark:{...}, medium:{...}, light:{...}}"""
+    """Return theme overrides for a module. Non-global IDs return the _global settings if opted in."""
     try:
         env = _get_env()
         conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
         _ensure_theme_table(conn)
+        # Presets and _global are fetched directly; other IDs check the module opt-in flag
+        if app_id != '_global' and not app_id.startswith('_preset_'):
+            _ensure_module_flags_table(conn)
+            flag_row = conn.fetchone(
+                "SELECT theme_studio_enabled FROM dbo.APPHUB_MODULE_FLAGS WHERE module_id = ?",
+                (app_id,)
+            )
+            opted_in = (flag_row is None) or bool(flag_row[0])
+            if not opted_in:
+                return jsonify({})
+            app_id = '_global'
         rows = conn.fetchall(
             "SELECT theme, overrides FROM dbo.APPHUB_THEME_SETTINGS WHERE app_id = ?",
             (app_id,)
@@ -211,11 +234,15 @@ def get_theme_settings(app_id):
 @main_bp.route("/api/theme-settings", methods=["POST"])
 @login_required
 def save_theme_settings():
-    """Save theme overrides for an app. Developer-only."""
+    """Save theme overrides for _global or a named preset. Developer-only."""
     if not session.get("is_developer"):
         return jsonify({"error": "unauthorized"}), 403
     data = request.get_json() or {}
-    app_id    = (data.get("app_id") or "").strip()[:100]
+    raw_id  = (data.get("app_id") or "_global").strip()
+    # Only allow _global or _preset_<name>
+    if raw_id != '_global' and not raw_id.startswith('_preset_'):
+        raw_id = '_global'
+    app_id    = raw_id[:100]
     theme     = (data.get("theme") or "").strip()
     overrides = data.get("overrides") or {}
     if not app_id or theme not in ("dark", "medium", "light"):
@@ -239,6 +266,40 @@ def save_theme_settings():
                 INSERT (app_id, theme, overrides, updated_by)
                 VALUES (?, ?, ?, ?);
         """, (app_id, theme, overrides_json, user_email, app_id, theme, overrides_json, user_email))
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@main_bp.route("/api/theme-presets", methods=["GET"])
+@login_required
+def list_theme_presets():
+    """Return list of saved preset names (strips _preset_ prefix)."""
+    try:
+        env = _get_env()
+        conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+        _ensure_theme_table(conn)
+        rows = conn.fetchall(
+            "SELECT DISTINCT app_id FROM dbo.APPHUB_THEME_SETTINGS WHERE app_id LIKE '_preset_%'"
+        )
+        names = sorted(set(r[0][len('_preset_'):] for r in rows if r[0].startswith('_preset_')))
+        return jsonify(names)
+    except Exception:
+        return jsonify([])
+
+
+@main_bp.route("/api/theme-presets/<name>", methods=["DELETE"])
+@login_required
+def delete_theme_preset(name):
+    """Delete all theme rows for a named preset. Developer-only."""
+    if not session.get("is_developer"):
+        return jsonify({"error": "unauthorized"}), 403
+    app_id = '_preset_' + name.strip()[:90]
+    try:
+        env = _get_env()
+        conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+        _ensure_theme_table(conn)
+        conn.execute("DELETE FROM dbo.APPHUB_THEME_SETTINGS WHERE app_id = ?", (app_id,))
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500

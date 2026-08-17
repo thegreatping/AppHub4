@@ -256,6 +256,10 @@ MODULES = [
     },
 ]
 
+# Inject integer App_ID into each module for DB/favorites lookups
+for _m in MODULES:
+    _m["app_id"] = STRING_ID_TO_APP_ID.get(_m["id"])
+
 
 def get_module(module_id):
     """Get a module by its ID."""
