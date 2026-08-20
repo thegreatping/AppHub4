@@ -1244,7 +1244,11 @@ body,
     display: grid; grid-template-columns: 160px 1fr 1fr 1fr;
     align-items: center; margin-bottom: 5px; gap: 8px;
 }
-.ts-row > span { color: #94a3b8; font-size: 0.975rem; }
+.ts-row > span {
+    color: #94a3b8; font-size: 0.975rem;
+    cursor: pointer; transition: color 0.15s;
+}
+.ts-row > span:hover { color: #67e8e0; text-decoration: underline; text-decoration-style: dotted; }
 .ts-theme-col { display: flex; align-items: center; gap: 5px; justify-content: center; }
 .ts-swatch {
     width: 30px; height: 30px; border-radius: 5px; border: 2px solid rgba(255,255,255,0.15);
@@ -1285,6 +1289,19 @@ body,
 .ts-copy:hover  { background: rgba(96,165,250,0.22); }
 .ts-reset { background: rgba(248,113,113,0.1); color: #f87171; border: 1px solid rgba(248,113,113,0.2); }
 .ts-reset:hover { background: rgba(248,113,113,0.2); }
+
+/* Click-to-highlight: pulsing outline when a Theme Studio label is clicked */
+@keyframes ts-elem-flash {
+    0%   { outline-color: #f43f5e; }
+    50%  { outline-color: #fbbf24; }
+    100% { outline-color: #f43f5e; }
+}
+.ts-elem-highlight {
+    outline: 3px solid #f43f5e !important;
+    outline-offset: 3px !important;
+    animation: ts-elem-flash 0.55s ease-in-out 4 !important;
+    z-index: 100 !important;
+}
 
 .dash-card-banner {
     height: 4px;

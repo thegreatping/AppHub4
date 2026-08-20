@@ -1,0 +1,861 @@
+{% extends "shell.html" %}
+{% block head %}
+<style>
+    .sh-container { padding: 24px; max-width: 1100px; }
+
+    /* Tabs */
+    .sh-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 3px solid var(--border-medium); }
+    .sh-tab { padding: 10px 20px; font-size: 1.275rem; font-weight: 600; color: var(--text-primary); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -3px; transition: all 0.2s; }
+    .sh-tab:hover { color: var(--text-primary); }
+    .sh-tab.active { color: #f43f5e; border-bottom-color: #f43f5e; }
+    .sh-panel { display: none; }
+    .sh-panel.active { display: block; }
+
+    /* Form */
+    .sh-form { max-width: 900px; }
+    .form-section { margin-bottom: 28px; padding: 20px; background: var(--surface-raised); border: 1px solid var(--border-light); border-radius: 10px; }
+    .form-section-title { font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .form-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border-subtle); }
+    .form-row { display: grid; gap: 14px; margin-bottom: 14px; }
+    .form-row.cols-2 { grid-template-columns: 1fr 1fr; }
+    .form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .form-row.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group label { font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-group label .req { color: #ef4444; margin-left: 2px; }
+    .form-group input, .form-group select, .form-group textarea {
+        background: var(--input-bg); border: 1px solid var(--border-input);
+        color: var(--text-primary); padding: 9px 12px; border-radius: 6px;
+        font-size: 0.875rem; font-family: inherit; width: 100%;
+    }
+    .form-group input[readonly] { opacity: 0.6; cursor: default; }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .form-group select { cursor: pointer; }
+    .form-group select option { background: var(--surface-raised); color: var(--text-primary); }
+    .form-group input::placeholder, .form-group textarea::placeholder { color: var(--text-muted, #6b7280); }
+
+    /* Vendor typeahead */
+    .vendor-wrap { position: relative; }
+    .vendor-dropdown { display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 220px; overflow-y: auto; background: var(--surface-raised); border: 1px solid var(--border-medium); border-radius: 6px; z-index: 200; box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+    .vendor-dropdown.show { display: block; }
+    .vendor-option { padding: 7px 12px; cursor: pointer; font-size: 0.82rem; color: var(--text-primary); border-bottom: 1px solid var(--border-subtle); }
+    .vendor-option:hover { background: var(--hover-bg); }
+    .vendor-option .vendor-opt-name { font-weight: 600; }
+    .vendor-opt-meta { font-size: 0.72rem; color: var(--text-secondary); }
+
+    /* GL Code searchable select */
+    .gl-wrap { position: relative; }
+    .gl-dropdown { display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 220px; overflow-y: auto; background: var(--surface-raised); border: 1px solid var(--border-medium); border-radius: 6px; z-index: 200; box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+    .gl-dropdown.show { display: block; }
+    .gl-option { padding: 7px 12px; cursor: pointer; font-size: 0.82rem; color: var(--text-primary); border-bottom: 1px solid var(--border-subtle); }
+    .gl-option:hover, .gl-option.highlighted { background: var(--hover-bg); }
+
+    /* Total display */
+    .total-bar { display: flex; align-items: center; gap: 20px; padding: 14px 16px; background: var(--hover-bg); border: 1px solid var(--border-light); border-radius: 8px; margin-top: 12px; }
+    .total-bar .total-label { font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; }
+    .total-bar .total-val { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); }
+    .total-bar .total-match { font-size: 0.78rem; padding: 3px 10px; border-radius: 12px; font-weight: 600; }
+    .total-bar .total-match.ok { background: rgba(16,185,129,.15); color: #10b981; }
+    .total-bar .total-match.err { background: rgba(239,68,68,.15); color: #ef4444; }
+
+    /* Attachment zone */
+    .attach-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .attach-box { border: 2px dashed var(--border-medium); border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; transition: border-color 0.2s; }
+    .attach-box:hover { border-color: #f43f5e; }
+    .attach-box.has-file { border-color: #10b981; border-style: solid; }
+    .attach-box input[type=file] { display: none; }
+    .attach-box .attach-label { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .attach-box .attach-req { color: #ef4444; }
+    .attach-box .attach-opt { color: var(--text-secondary); font-size: 0.7rem; }
+    .attach-box .attach-filename { font-size: 0.8rem; color: #10b981; margin-top: 4px; word-break: break-all; }
+    .attach-box .attach-icon { font-size: 1.4rem; color: var(--text-secondary); margin-bottom: 6px; }
+
+    /* Authorization */
+    .auth-check-wrap { display: flex; gap: 12px; align-items: flex-start; padding: 14px; background: rgba(244,63,94,.05); border: 1px solid rgba(244,63,94,.25); border-radius: 8px; }
+    .auth-check-wrap input[type=checkbox] { margin-top: 3px; width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; }
+    .auth-check-wrap label { font-size: 0.82rem; color: var(--text-primary); line-height: 1.5; cursor: pointer; }
+
+    /* FedEx warning */
+    .fedex-warn { display: none; padding: 8px 12px; background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); border-radius: 6px; color: #ef4444; font-size: 0.78rem; margin-top: 6px; }
+    .fedex-warn.show { display: block; }
+
+    /* Buttons */
+    .btn { padding: 10px 20px; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: #f43f5e; color: #fff; }
+    .btn-primary:hover { background: #e11d48; }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-secondary { background: var(--hover-bg); color: var(--text-primary); border: 1px solid var(--border-light); }
+    .btn-secondary:hover { background: var(--border-light); }
+    .btn-danger { background: rgba(244,67,54,.2); color: #e57373; border: none; padding: 6px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+    .btn-danger:hover { background: rgba(244,67,54,.4); }
+
+    /* Data table */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .data-table th { text-align: left; padding: 9px 10px; background: var(--surface-raised); color: var(--text-secondary); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-medium); white-space: nowrap; cursor: pointer; user-select: none; }
+    .data-table th::after { content: ' \2195'; opacity: 0.3; font-size: 0.65rem; }
+    .data-table th.sort-asc::after { content: ' \2191'; opacity: 1; }
+    .data-table th.sort-desc::after { content: ' \2193'; opacity: 1; }
+    .data-table th.no-sort { cursor: default; }
+    .data-table th.no-sort::after { content: ''; }
+    .data-table td { padding: 8px 10px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); vertical-align: top; }
+    .data-table tr:hover td { background: var(--hover-bg); }
+    .table-scroll { max-height: calc(100vh - 280px); overflow-y: auto; border: 1px solid var(--border-light); border-radius: 8px; }
+
+    /* Status badges */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 700; }
+    .badge-pending  { background: rgba(245,158,11,.15); color: #f59e0b; }
+    .badge-complete { background: rgba(16,185,129,.15); color: #10b981; }
+    .badge-void     { background: rgba(156,163,175,.15); color: #9ca3af; }
+
+    /* Inline edit */
+    .inline-edit { background: transparent; border: none; border-bottom: 1px dashed var(--border-medium); color: var(--text-primary); font-size: 0.82rem; width: 100%; padding: 2px 4px; font-family: inherit; }
+    .inline-edit:focus { outline: none; border-bottom-color: #f43f5e; }
+
+    /* Admin add */
+    .admin-add { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; padding: 12px; background: var(--hover-bg); border: 1px solid var(--border-light); border-radius: 8px; }
+    .admin-add input { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; min-width: 300px; }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 8px; font-size: 0.85rem; color: #fff; z-index: 9999; transition: opacity 0.3s; pointer-events: none; }
+    .toast-success { background: rgba(16,185,129,.9); }
+    .toast-error { background: rgba(239,68,68,.9); }
+    .toast-warn { background: rgba(245,158,11,.9); color: #000; }
+    .empty-state { text-align: center; padding: 40px; color: var(--text-secondary); font-size: 0.9rem; }
+    .loading-row td { text-align: center; padding: 32px; color: var(--text-secondary); font-size: 0.85rem; }
+    .submit-wrap { margin-top: 24px; display: flex; align-items: center; gap: 12px; }
+    .submit-error { font-size: 0.82rem; color: #ef4444; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="header-left">
+        <i class="fa-solid fa-house" style="color: #f43f5e; font-size: 1.1rem; margin-right: 4px;"></i>
+        <span class="page-title">Special Handling Form</span>
+    </div>
+</div>
+<div class="sh-container">
+
+    <div class="info-blurb" id="blurb-special-handling">
+        <div class="blurb-header" onclick="toggleBlurb('special-handling')">
+            <span class="blurb-title">About Special Handling</span>
+            <span class="blurb-toggle" id="blurbToggle-special-handling">&#9660;</span>
+        </div>
+        <div class="blurb-body" id="blurbBody-special-handling">
+            Submit a special handling payment request for vendor invoices that require routing outside the standard
+            AvidXchange cycle. Two attachments are required: (1) invoice copy, (2) RM approval. A spreadsheet of
+            account numbers and amounts to be paid may be attached optionally. Check Amount must equal the sum
+            of all GL line item amounts before submission is allowed.
+        </div>
+    </div>
+
+    <div class="sh-tabs">
+        <div class="sh-tab active" onclick="switchTab('submit')">Submit Request</div>
+        {% if is_admin %}
+        <div class="sh-tab" onclick="switchTab('submissions')">All Submissions</div>
+        <div class="sh-tab" onclick="switchTab('admins')">Admins</div>
+        {% endif %}
+    </div>
+
+    <!-- ── SUBMIT TAB ─────────────────────────────────────────────────────────── -->
+    <div id="tab-submit" class="sh-panel active">
+        <form id="shForm" class="sh-form" enctype="multipart/form-data" onsubmit="return false;">
+
+            <!-- SECTION 1: REQUEST INFO -->
+            <div class="form-section">
+                <div class="form-section-title">Request Info</div>
+                <div class="form-row cols-2">
+                    <div class="form-group">
+                        <label>Submitted By</label>
+                        <input type="text" value="{{ user.name }}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Submission Type <span class="req">*</span></label>
+                        <select id="submission_type" name="submission_type" required>
+                            <option value="">-- Select Type --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row cols-2">
+                    <div class="form-group">
+                        <label>Property <span class="req">*</span></label>
+                        <select id="property" name="property" onchange="onPropertyChange()" required>
+                            <option value="">-- Select Property --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Property Accountant</label>
+                        <input type="text" id="accountant" name="accountant" readonly placeholder="Auto-populated">
+                    </div>
+                </div>
+                <div class="form-row cols-2">
+                    <div class="form-group">
+                        <label>RM</label>
+                        <input type="text" id="rm_name" name="rm_name" readonly placeholder="Auto-populated">
+                        <input type="hidden" id="rm_email" name="rm_email">
+                    </div>
+                    <div class="form-group">
+                        <label>RVP</label>
+                        <input type="text" id="rvp_name" name="rvp_name" readonly placeholder="Auto-populated">
+                        <input type="hidden" id="rvp_email" name="rvp_email">
+                    </div>
+                </div>
+                <input type="hidden" id="entity_id1" name="entity_id1">
+            </div>
+
+            <!-- SECTION 2: VENDOR INFO -->
+            <div class="form-section">
+                <div class="form-section-title">Vendor Information</div>
+                <div class="form-row cols-2">
+                    <div class="form-group">
+                        <label>Vendor Name <span class="req">*</span></label>
+                        <div class="vendor-wrap">
+                            <input type="text" id="vendor_name_search" name="vendor_name"
+                                   placeholder="Search or type vendor name..." autocomplete="off"
+                                   oninput="onVendorSearch()" onfocus="showVendorDrop()" onblur="hideVendorDrop()">
+                            <div class="vendor-dropdown" id="vendor-dropdown"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Vendor ID</label>
+                        <input type="text" id="vendor_id" name="vendor_id" placeholder="Auto-filled from vendor search">
+                    </div>
+                </div>
+                <div class="form-row cols-2">
+                    <div class="form-group">
+                        <label>Street Address <span class="req">*</span></label>
+                        <input type="text" id="street_address" name="street_address" placeholder="No PO Boxes for FedEx" required>
+                    </div>
+                    <div class="form-group">
+                        <label>City <span class="req">*</span></label>
+                        <input type="text" id="vendor_city" name="vendor_city" required>
+                    </div>
+                </div>
+                <div class="form-row cols-3">
+                    <div class="form-group">
+                        <label>State <span class="req">*</span></label>
+                        <select id="vendor_state" name="vendor_state" required>
+                            <option value="">-- State --</option>
+                            {% for s in us_states %}
+                            <option value="{{ s }}">{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Zip / Postal Code <span class="req">*</span></label>
+                        <input type="text" id="vendor_zip" name="vendor_zip" maxlength="10" required>
+                    </div>
+                    <div></div>
+                </div>
+            </div>
+
+            <!-- SECTION 3: ATTACHMENTS -->
+            <div class="form-section">
+                <div class="form-section-title">Attachments</div>
+                <div class="attach-grid">
+                    <div class="attach-box" id="box-invoice" onclick="document.getElementById('attach_invoice').click()">
+                        <input type="file" id="attach_invoice" name="attach_invoice" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                               onchange="onFileChosen(this,'box-invoice','fname-invoice')">
+                        <div class="attach-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                        <div class="attach-label">Invoice <span class="attach-req">*</span></div>
+                        <div class="attach-filename" id="fname-invoice">Click to attach</div>
+                    </div>
+                    <div class="attach-box" id="box-rm-approval" onclick="document.getElementById('attach_rm_approval').click()">
+                        <input type="file" id="attach_rm_approval" name="attach_rm_approval" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.msg,.eml"
+                               onchange="onFileChosen(this,'box-rm-approval','fname-rm-approval')">
+                        <div class="attach-icon"><i class="fa-solid fa-signature"></i></div>
+                        <div class="attach-label">RM Approval <span class="attach-req">*</span></div>
+                        <div class="attach-filename" id="fname-rm-approval">Click to attach</div>
+                    </div>
+                    <div class="attach-box" id="box-spreadsheet" onclick="document.getElementById('attach_spreadsheet').click()">
+                        <input type="file" id="attach_spreadsheet" name="attach_spreadsheet" accept=".pdf,.xls,.xlsx,.csv,.doc,.docx"
+                               onchange="onFileChosen(this,'box-spreadsheet','fname-spreadsheet')">
+                        <div class="attach-icon"><i class="fa-solid fa-table"></i></div>
+                        <div class="attach-label">
+                            Acct Numbers &amp; Amounts
+                            <span class="attach-opt">(optional)</span>
+                        </div>
+                        <div class="attach-filename" id="fname-spreadsheet">Click to attach</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 4: INVOICE INFO -->
+            <div class="form-section">
+                <div class="form-section-title">Invoice Information</div>
+                <div class="form-row cols-4">
+                    <div class="form-group">
+                        <label>Invoice Number <span class="req">*</span></label>
+                        <input type="text" id="invoice_number" name="invoice_number" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Date Needed <span class="req">*</span></label>
+                        <input type="date" id="date_needed" name="date_needed" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Shipping Method <span class="req">*</span></label>
+                        <select id="shipping_method" name="shipping_method" onchange="onShippingChange()" required>
+                            <option value="">-- Select --</option>
+                            {% for m in shipping_methods %}
+                            <option value="{{ m }}">{{ m }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="fedex-warn" id="fedex-warn">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            FedEx requires a street address -- no PO Boxes.
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Check Amount ($) <span class="req">*</span></label>
+                        <input type="number" id="check_amount" name="check_amount" step="0.01" min="0" required
+                               oninput="updateTotalMatch()">
+                    </div>
+                </div>
+                <div class="form-row cols-2">
+                    <div class="form-group">
+                        <label>Special Instructions</label>
+                        <textarea id="special_instructions" name="special_instructions"
+                                  placeholder="Delivery notes, handling instructions, etc." rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 5: GL CODING -->
+            <div class="form-section">
+                <div class="form-section-title">GL Coding (up to 4 line items)</div>
+                <div style="display:grid;grid-template-columns:1.3fr 2fr 2.5fr 1fr;gap:8px;margin-bottom:6px;">
+                    <div style="font-size:0.68rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;">Entity ID <span class="req">*</span></div>
+                    <div style="font-size:0.68rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;">GL Code <span class="req">*</span></div>
+                    <div style="font-size:0.68rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;">Description <span class="req">*</span></div>
+                    <div style="font-size:0.68rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;text-align:right;">Amount ($) <span class="req">*</span></div>
+                </div>
+                {% for i in range(1, 5) %}
+                <div style="display:grid;grid-template-columns:1.3fr 2fr 2.5fr 1fr;gap:8px;margin-bottom:8px;align-items:start;">
+                    <div class="form-group" style="margin:0;">
+                        <input type="text" id="entity_id{{ i }}" name="entity_id{{ i }}"
+                               placeholder="Entity #" style="font-size:0.82rem;"
+                               {% if i == 1 %}oninput="syncEntityIds()"{% endif %}>
+                    </div>
+                    <div class="form-group gl-wrap" style="margin:0;">
+                        <input type="text" class="gl-input" id="gl_search{{ i }}" placeholder="Search GL code..."
+                               style="font-size:0.82rem;" autocomplete="off"
+                               oninput="filterGL({{ i }})" onfocus="showGLDrop({{ i }})" onblur="hideGLDrop({{ i }})">
+                        <input type="hidden" id="gl_code{{ i }}" name="gl_code{{ i }}">
+                        <div class="gl-dropdown" id="gl-drop-{{ i }}"></div>
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <input type="text" id="description{{ i }}" name="description{{ i }}"
+                               placeholder="Description" style="font-size:0.82rem;">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <input type="number" id="amount{{ i }}" name="amount{{ i }}" value="0"
+                               step="0.01" min="0" style="font-size:0.82rem;text-align:right;"
+                               oninput="updateRunningTotal()">
+                    </div>
+                </div>
+                {% endfor %}
+                <div class="total-bar">
+                    <span class="total-label">Line Total:</span>
+                    <span class="total-val" id="running-total">$0.00</span>
+                    <span class="total-match" id="total-match-badge"></span>
+                    <span style="flex:1;"></span>
+                    <span style="font-size:0.78rem;color:var(--text-secondary);">Check Amount and Line Total must match to submit.</span>
+                </div>
+            </div>
+
+            <!-- SECTION 6: AUTHORIZATION -->
+            <div class="form-section">
+                <div class="form-section-title">Authorization</div>
+                <div class="auth-check-wrap">
+                    <input type="checkbox" id="auth_check" onchange="updateSubmitBtn()">
+                    <label for="auth_check">
+                        I acknowledge that I have verified this invoice was not submitted through AvidXchange,
+                        and I have ensured that it has not already been paid via AvidPay. If this invoice was
+                        previously submitted to AvidXchange, I have disputed it and requested that it be voided.
+                    </label>
+                </div>
+                <input type="hidden" id="authorization" name="authorization">
+            </div>
+
+            <div class="submit-wrap">
+                <button type="button" class="btn btn-primary" id="submitBtn" disabled onclick="submitForm()">
+                    <i class="fa-solid fa-paper-plane"></i> Submit Special Handling Request
+                </button>
+                <span class="submit-error" id="submit-error"></span>
+            </div>
+
+        </form>
+    </div>
+
+    <!-- ── SUBMISSIONS TAB (admin) ────────────────────────────────────────────── -->
+    {% if is_admin %}
+    <div id="tab-submissions" class="sh-panel">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+            <input type="text" id="subSearch" placeholder="Search submissions..."
+                   style="background:var(--input-bg);border:1px solid var(--border-input);color:var(--text-primary);padding:8px 12px;border-radius:6px;font-size:0.85rem;width:280px;"
+                   oninput="filterSubs()">
+            <button class="btn btn-secondary" style="margin-left:auto;" onclick="loadSubmissions()">
+                <i class="fa-solid fa-rotate"></i> Refresh
+            </button>
+        </div>
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th onclick="sortSubs(this,'id')">ID</th>
+                        <th onclick="sortSubs(this,'created')">Submitted</th>
+                        <th onclick="sortSubs(this,'submitted_by')">By</th>
+                        <th onclick="sortSubs(this,'property')">Property</th>
+                        <th onclick="sortSubs(this,'vendor')">Vendor</th>
+                        <th onclick="sortSubs(this,'submission_type')">Type</th>
+                        <th onclick="sortSubs(this,'invoice_number')">Invoice #</th>
+                        <th onclick="sortSubs(this,'check_amount')">Amount</th>
+                        <th class="no-sort">Status</th>
+                        <th class="no-sort">Tracking / Comments</th>
+                        <th class="no-sort">Processed By</th>
+                        <th class="no-sort"></th>
+                    </tr>
+                </thead>
+                <tbody id="subTableBody">
+                    <tr class="loading-row"><td colspan="12">Loading submissions...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── ADMINS TAB ──────────────────────────────────────────────────────────── -->
+    <div id="tab-admins" class="sh-panel">
+        <div class="admin-add">
+            <input type="email" id="newAdminEmail" placeholder="email@peakmade.com">
+            <button class="btn btn-primary" onclick="addAdmin()"><i class="fa-solid fa-plus"></i> Add Admin</button>
+        </div>
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Email</th>
+                        <th>Added</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="adminTableBody">
+                    <tr class="loading-row"><td colspan="4">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+const GL_CODES = {{ gl_codes | tojson }};
+let allProperties = [];
+let allVendors = [];
+let allSubs = [];
+let subsSort = { col: 'created', dir: -1 };
+let vendorHideTimer = null;
+let glHideTimers = {};
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+function switchTab(name) {
+    document.querySelectorAll('.sh-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.sh-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    const idx = ['submit', 'submissions', 'admins'].indexOf(name);
+    document.querySelectorAll('.sh-tab')[idx] && document.querySelectorAll('.sh-tab')[idx].classList.add('active');
+    if (name === 'submissions') loadSubmissions();
+    if (name === 'admins') loadAdmins();
+}
+
+// ── Submission Types ──────────────────────────────────────────────────────────
+fetch('/special-handling/api/submission-types')
+    .then(r => r.json())
+    .then(types => {
+        const sel = document.getElementById('submission_type');
+        types.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t; opt.textContent = t;
+            sel.appendChild(opt);
+        });
+    });
+
+// ── Properties dropdown ───────────────────────────────────────────────────────
+fetch('/special-handling/api/properties')
+    .then(r => r.json())
+    .then(data => {
+        allProperties = data;
+        const sel = document.getElementById('property');
+        data.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.name; opt.textContent = p.name;
+            sel.appendChild(opt);
+        });
+    });
+
+function onPropertyChange() {
+    const name = document.getElementById('property').value;
+    const p = allProperties.find(x => x.name === name);
+    if (p) {
+        document.getElementById('rm_name').value = p.rm_name;
+        document.getElementById('rm_email').value = p.rm_email;
+        document.getElementById('rvp_name').value = p.rvp_name;
+        document.getElementById('rvp_email').value = p.rvp_email;
+        document.getElementById('accountant').value = p.accountant;
+        document.getElementById('entity_id1').value = p.entity_number;
+        syncEntityIds();
+    }
+    updateSubmitBtn();
+}
+
+function syncEntityIds() {
+    const base = document.getElementById('entity_id1').value;
+    for (let i = 1; i <= 4; i++) {
+        const el = document.getElementById('entity_id' + i);
+        if (el && !el.dataset.manuallyEdited) el.value = base;
+    }
+}
+for (let i = 2; i <= 4; i++) {
+    const el = document.getElementById('entity_id' + i);
+    if (el) el.addEventListener('input', () => { el.dataset.manuallyEdited = '1'; });
+}
+
+// ── Vendor typeahead ──────────────────────────────────────────────────────────
+function onVendorSearch() {
+    const q = document.getElementById('vendor_name_search').value;
+    clearTimeout(vendorHideTimer);
+    if (q.length < 2) {
+        document.getElementById('vendor-dropdown').classList.remove('show');
+        return;
+    }
+    fetch('/special-handling/api/vendors?q=' + encodeURIComponent(q))
+        .then(r => r.json())
+        .then(data => {
+            allVendors = data;
+            renderVendorDrop(data);
+        });
+}
+
+function renderVendorDrop(vendors) {
+    const drop = document.getElementById('vendor-dropdown');
+    if (!vendors.length) { drop.classList.remove('show'); return; }
+    drop.innerHTML = vendors.map(v => `
+        <div class="vendor-option" onmousedown="selectVendor(${v.vendor_key})">
+            <div class="vendor-opt-name">${esc(v.vendor_name)}</div>
+            <div class="vendor-opt-meta">${esc([v.address, v.city, v.state].filter(Boolean).join(', '))}</div>
+        </div>
+    `).join('');
+    drop.classList.add('show');
+}
+
+function showVendorDrop() {
+    clearTimeout(vendorHideTimer);
+    const q = document.getElementById('vendor_name_search').value;
+    if (q.length >= 2 && allVendors.length) renderVendorDrop(allVendors);
+}
+
+function hideVendorDrop() {
+    vendorHideTimer = setTimeout(() => {
+        document.getElementById('vendor-dropdown').classList.remove('show');
+    }, 180);
+}
+
+function selectVendor(vendorKey) {
+    const v = allVendors.find(x => x.vendor_key === vendorKey);
+    if (!v) return;
+    document.getElementById('vendor_name_search').value = v.vendor_name;
+    document.getElementById('vendor_id').value = v.vendor_key;
+    document.getElementById('street_address').value = v.address;
+    document.getElementById('vendor_city').value = v.city;
+    const stateEl = document.getElementById('vendor_state');
+    if (v.state) stateEl.value = v.state;
+    document.getElementById('vendor_zip').value = v.zip;
+    document.getElementById('vendor-dropdown').classList.remove('show');
+    updateSubmitBtn();
+}
+
+// ── GL Code searchable dropdown ───────────────────────────────────────────────
+function filterGL(n) {
+    const q = document.getElementById('gl_search' + n).value.toLowerCase();
+    const drop = document.getElementById('gl-drop-' + n);
+    drop.innerHTML = '';
+    const filtered = q ? GL_CODES.filter(c => c.toLowerCase().includes(q)) : GL_CODES;
+    filtered.slice(0, 100).forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'gl-option';
+        div.textContent = c;
+        div.onmousedown = () => selectGL(n, c);
+        drop.appendChild(div);
+    });
+    drop.classList.toggle('show', filtered.length > 0);
+}
+
+function showGLDrop(n) { clearTimeout(glHideTimers[n]); filterGL(n); }
+function hideGLDrop(n) {
+    glHideTimers[n] = setTimeout(() => document.getElementById('gl-drop-' + n).classList.remove('show'), 180);
+}
+function selectGL(n, val) {
+    document.getElementById('gl_search' + n).value = val;
+    document.getElementById('gl_code' + n).value = val;
+    document.getElementById('gl-drop-' + n).classList.remove('show');
+    updateSubmitBtn();
+}
+
+// ── Attachments ───────────────────────────────────────────────────────────────
+function onFileChosen(input, boxId, fnameId) {
+    const box = document.getElementById(boxId);
+    const fname = document.getElementById(fnameId);
+    if (input.files && input.files[0]) {
+        fname.textContent = input.files[0].name;
+        box.classList.add('has-file');
+    } else {
+        fname.textContent = 'Click to attach';
+        box.classList.remove('has-file');
+    }
+    updateSubmitBtn();
+}
+
+// ── Shipping ──────────────────────────────────────────────────────────────────
+function onShippingChange() {
+    const val = document.getElementById('shipping_method').value;
+    document.getElementById('fedex-warn').classList.toggle('show', val.toLowerCase().includes('fedex'));
+    updateSubmitBtn();
+}
+
+// ── Running total ─────────────────────────────────────────────────────────────
+function updateRunningTotal() {
+    let sum = 0;
+    for (let i = 1; i <= 4; i++) sum += parseFloat(document.getElementById('amount' + i).value) || 0;
+    document.getElementById('running-total').textContent = '$' + sum.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    updateTotalMatch();
+    updateSubmitBtn();
+}
+
+function updateTotalMatch() {
+    const total = getLineTotal();
+    const check = parseFloat(document.getElementById('check_amount').value) || 0;
+    const badge = document.getElementById('total-match-badge');
+    if (total === 0 && check === 0) { badge.textContent = ''; badge.className = 'total-match'; return; }
+    const match = Math.abs(total - check) < 0.01;
+    badge.textContent = match ? 'Match' : 'Mismatch';
+    badge.className = 'total-match ' + (match ? 'ok' : 'err');
+    updateSubmitBtn();
+}
+
+function getLineTotal() {
+    let sum = 0;
+    for (let i = 1; i <= 4; i++) sum += parseFloat(document.getElementById('amount' + i).value) || 0;
+    return Math.round(sum * 100) / 100;
+}
+
+// ── Submit button state ───────────────────────────────────────────────────────
+function updateSubmitBtn() {
+    const btn = document.getElementById('submitBtn');
+    const authOk     = document.getElementById('auth_check').checked;
+    const invoiceOk  = !!document.getElementById('attach_invoice').files.length;
+    const rmOk       = !!document.getElementById('attach_rm_approval').files.length;
+    const propertyOk = !!document.getElementById('property').value;
+    const typeOk     = !!document.getElementById('submission_type').value;
+    const totalOk    = Math.abs(getLineTotal() - (parseFloat(document.getElementById('check_amount').value) || 0)) < 0.01 && getLineTotal() > 0;
+    btn.disabled = !(authOk && invoiceOk && rmOk && propertyOk && typeOk && totalOk);
+}
+
+document.getElementById('auth_check').addEventListener('change', updateSubmitBtn);
+document.getElementById('check_amount').addEventListener('input', updateTotalMatch);
+document.getElementById('submission_type').addEventListener('change', updateSubmitBtn);
+
+// ── Form submit ───────────────────────────────────────────────────────────────
+function submitForm() {
+    const authText = "I acknowledge that I have verified this invoice was not submitted through AvidXchange, and I have ensured that it has not already been paid via AvidPay. If this invoice was previously submitted to AvidXchange, I have disputed it and requested that it be voided.";
+    document.getElementById('authorization').value = document.getElementById('auth_check').checked ? authText : '';
+
+    const errEl = document.getElementById('submit-error');
+    errEl.textContent = '';
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Submitting...';
+
+    fetch('/special-handling/api/submit', { method: 'POST', body: new FormData(document.getElementById('shForm')) })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Special Handling Request';
+            if (data.success) {
+                showToast(data.warning || data.message, data.warning ? 'warn' : 'success');
+                if (!data.warning) resetForm();
+            } else {
+                errEl.textContent = data.error || 'Submission failed.';
+                updateSubmitBtn();
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Special Handling Request';
+            errEl.textContent = 'Network error -- please try again.';
+            updateSubmitBtn();
+        });
+}
+
+function resetForm() {
+    document.getElementById('shForm').reset();
+    ['rm_name','rvp_name','accountant'].forEach(id => document.getElementById(id).value = '');
+    ['rm_email','rvp_email','entity_id1'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('vendor_id').value = '';
+    for (let i = 1; i <= 4; i++) {
+        document.getElementById('gl_search' + i).value = '';
+        document.getElementById('gl_code' + i).value = '';
+        const eid = document.getElementById('entity_id' + i);
+        if (eid) delete eid.dataset.manuallyEdited;
+    }
+    ['box-invoice','box-rm-approval','box-spreadsheet'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('has-file');
+    });
+    ['fname-invoice','fname-rm-approval','fname-spreadsheet'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = 'Click to attach';
+    });
+    document.getElementById('running-total').textContent = '$0.00';
+    const badge = document.getElementById('total-match-badge');
+    badge.textContent = ''; badge.className = 'total-match';
+    document.getElementById('fedex-warn').classList.remove('show');
+    updateSubmitBtn();
+}
+
+// ── Submissions table ─────────────────────────────────────────────────────────
+function loadSubmissions() {
+    document.getElementById('subTableBody').innerHTML = '<tr class="loading-row"><td colspan="12">Loading...</td></tr>';
+    fetch('/special-handling/api/submissions')
+        .then(r => r.json())
+        .then(data => { allSubs = data; renderSubs(data); })
+        .catch(() => {
+            document.getElementById('subTableBody').innerHTML = '<tr class="loading-row"><td colspan="12">Failed to load submissions.</td></tr>';
+        });
+}
+
+function renderSubs(rows) {
+    const q = (document.getElementById('subSearch') || {}).value || '';
+    let filtered = q ? rows.filter(r => Object.values(r).join(' ').toLowerCase().includes(q.toLowerCase())) : rows;
+    if (!filtered.length) {
+        document.getElementById('subTableBody').innerHTML = '<tr><td colspan="12" class="empty-state">No submissions found.</td></tr>';
+        return;
+    }
+    document.getElementById('subTableBody').innerHTML = filtered.map(r => {
+        const statusBadge = r.status
+            ? (r.status.toLowerCase().includes('void') ? `<span class="badge badge-void">${esc(r.status)}</span>`
+               : `<span class="badge badge-complete">${esc(r.status)}</span>`)
+            : `<span class="badge badge-pending">Pending</span>`;
+        return `<tr>
+            <td>${r.id}</td>
+            <td>${fmtDate(r.created)}</td>
+            <td title="${esc(r.submitted_email)}">${esc(r.submitted_by)}</td>
+            <td>${esc(r.property)}</td>
+            <td>${esc(r.vendor)}</td>
+            <td>${esc(r.submission_type)}</td>
+            <td>${esc(r.invoice_number)}</td>
+            <td>$${Number(r.check_amount||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}</td>
+            <td>
+                <select class="inline-edit" onchange="patchSub('${r.id}','status',this.value)" style="width:110px;">
+                    ${['','Pending','Processed','Voided'].map(s =>
+                        `<option value="${s}" ${r.status===s?'selected':''}>${s||'--'}</option>`
+                    ).join('')}
+                </select>
+            </td>
+            <td><input class="inline-edit" type="text" value="${esc(r.tracking_comments)}"
+                 onblur="patchSub('${r.id}','tracking_comments',this.value)"
+                 style="min-width:140px;" placeholder="Tracking # / notes"></td>
+            <td><input class="inline-edit" type="text" value="${esc(r.processed_by)}"
+                 onblur="patchSub('${r.id}','processed_by',this.value)"
+                 style="min-width:100px;" placeholder="Name"></td>
+            <td><a href="https://peakcampus.sharepoint.com/sites/BaseCampApps" target="_blank"
+                   title="View in SharePoint" style="color:var(--accent-cyan);font-size:0.78rem;">
+                   <i class="fa-solid fa-arrow-up-right-from-square"></i></a></td>
+        </tr>`;
+    }).join('');
+}
+
+function filterSubs() { renderSubs(allSubs); }
+
+window.sortSubs = function(th, col) {
+    if (subsSort.col === col) subsSort.dir *= -1;
+    else { subsSort.col = col; subsSort.dir = 1; }
+    document.querySelectorAll('#tab-submissions th').forEach(t => t.classList.remove('sort-asc','sort-desc'));
+    th.classList.add(subsSort.dir === 1 ? 'sort-asc' : 'sort-desc');
+    allSubs.sort((a, b) => {
+        let av = a[col] || '', bv = b[col] || '';
+        if (!isNaN(av) && !isNaN(bv)) { av = +av; bv = +bv; }
+        return av < bv ? -subsSort.dir : av > bv ? subsSort.dir : 0;
+    });
+    renderSubs(allSubs);
+};
+
+function patchSub(itemId, field, value) {
+    fetch('/special-handling/api/submissions/' + itemId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value })
+    }).then(r => r.json()).then(d => {
+        if (!d.success) showToast('Save failed: ' + (d.error || 'unknown error'), 'error');
+        else {
+            const sub = allSubs.find(s => s.id === itemId);
+            if (sub) sub[field] = value;
+        }
+    }).catch(() => showToast('Network error saving changes.', 'error'));
+}
+
+// ── Admins table ──────────────────────────────────────────────────────────────
+function loadAdmins() {
+    fetch('/special-handling/api/admins')
+        .then(r => r.json())
+        .then(data => {
+            if (!data.length) {
+                document.getElementById('adminTableBody').innerHTML = '<tr><td colspan="4" class="empty-state">No admins configured.</td></tr>';
+                return;
+            }
+            document.getElementById('adminTableBody').innerHTML = data.map(a => `
+                <tr>
+                    <td>${a.id}</td>
+                    <td>${esc(a.email)}</td>
+                    <td>${fmtDate(a.created)}</td>
+                    <td><button class="btn-danger" onclick="removeAdmin(${a.id})"><i class="fa-solid fa-trash"></i></button></td>
+                </tr>
+            `).join('');
+        });
+}
+
+function addAdmin() {
+    const email = document.getElementById('newAdminEmail').value.trim();
+    if (!email) return;
+    fetch('/special-handling/api/admins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+    }).then(r => r.json()).then(d => {
+        if (d.success) { document.getElementById('newAdminEmail').value = ''; loadAdmins(); showToast('Admin added.', 'success'); }
+        else showToast(d.error || 'Error.', 'error');
+    });
+}
+
+function removeAdmin(id) {
+    if (!confirm('Remove this admin?')) return;
+    fetch('/special-handling/api/admins/' + id, { method: 'DELETE' })
+        .then(() => { loadAdmins(); showToast('Admin removed.', 'success'); });
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtDate(s) {
+    if (!s) return '';
+    try { const d = new Date(s); return d.toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}); }
+    catch { return s; }
+}
+function showToast(msg, type) {
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 350); }, 4000);
+}
+</script>
+{% endblock %}

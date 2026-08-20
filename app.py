@@ -21,6 +21,7 @@ from milestones import milestones_bp
 from promotion_transfer import paf_bp
 from rush_check import rush_check_bp
 from sam_ad_spend import sam_ad_spend_bp
+from special_handling import special_handling_bp
 from usage_log import log_request
 
 def create_app():
@@ -46,6 +47,7 @@ def create_app():
     app.register_blueprint(paf_bp)
     app.register_blueprint(rush_check_bp)
     app.register_blueprint(sam_ad_spend_bp)
+    app.register_blueprint(special_handling_bp)
 
     # ── Usage logging (fire-and-forget, never blocks response) ──────────────────
     _SKIP_PREFIXES = ("/static/", "/auth/", "/api/", "/favicon")

@@ -23,6 +23,7 @@ Improvements over Power Apps version:
 from flask import Blueprint, render_template, session, jsonify, request
 from auth import login_required
 from modules import MODULES, APP_ID_MAP
+from nav import build_nav_modules
 import sys
 from helpers import load_env, SafeConnection
 from datetime import datetime
@@ -634,13 +635,7 @@ def _is_admin():
 
 def _get_shell_context():
     from config import APP_VERSION
-    user_modules = session.get("user_modules", [])
-    allowed_string_ids = set()
-    for m in user_modules:
-        string_id = APP_ID_MAP.get(m["id"])
-        if string_id:
-            allowed_string_ids.add(string_id)
-    visible = [m for m in MODULES if m["id"] in allowed_string_ids] if user_modules else MODULES
+    visible = build_nav_modules()
     return dict(
         modules=visible,
         active_module="rush_check_request",

@@ -3,6 +3,7 @@ import json
 from flask import Blueprint, render_template, session, jsonify, request, redirect
 from auth import login_required
 from modules import MODULES, get_module, get_visible_modules, APP_ID_MAP
+from nav import build_nav_modules
 from security import resolve_access, get_employee_info, get_all_active_employees
 from config import APP_VERSION
 import sys
@@ -26,18 +27,7 @@ def _get_user_modules():
 
 def _get_template_context(active_module=None):
     """Build common template context."""
-    user_modules = _get_user_modules()
-    # Map numeric App_IDs from session to string module IDs used in MODULES
-    allowed_string_ids = set()
-    for m in user_modules:
-        app_id = m["id"]  # numeric App_ID from resolve_access
-        string_id = APP_ID_MAP.get(app_id)
-        if string_id:
-            allowed_string_ids.add(string_id)
-    
-    # Always include rent_forecasting_2 regardless of DB module permissions
-    _always_visible = {"rent_forecasting_2"}
-    visible = [m for m in MODULES if m["id"] in allowed_string_ids or m["id"] in _always_visible] if user_modules else MODULES
+    visible = build_nav_modules()
     
     if not active_module and visible:
         active_module = visible[0]["id"]
@@ -142,6 +132,13 @@ def stop_impersonation():
     if not session.get("is_developer"):
         return jsonify({"error": "unauthorized"}), 403
     _stop_impersonation()
+    return jsonify({"success": True})
+
+
+@main_bp.route("/api/refresh-nav", methods=["POST"])
+@login_required
+def refresh_nav():
+    """No-op: nav now always reads Flag_Active from DB at render time."""
     return jsonify({"success": True})
 
 

@@ -3,11 +3,32 @@ import os
 import msal
 from functools import wraps
 from flask import Blueprint, redirect, url_for, session, request, current_app
+from helpers import load_env, SafeConnection
+from modules import APP_ID_MAP
 
 auth_bp = Blueprint("auth", __name__)
 
 _DEV_BYPASS = os.environ.get("DEV_BYPASS", "").lower() == "true"
 _DEV_USER = {"email": "dev@peakmade.com", "name": "Dev User", "security_level": 100}
+_env = None
+
+
+def _get_env():
+    global _env
+    if _env is None:
+        _env = load_env()
+    return _env
+
+
+def _dev_user_modules():
+    """Load user_modules for dev bypass from DB active state."""
+    try:
+        conn = SafeConnection(_get_env(), "DB_APP_SUPPORT", None, direct=True)
+        rows = conn.fetchall("SELECT App_ID FROM dbo.APP_LIST WHERE Flag_Active=1")
+        return [{"id": r[0]} for r in rows if r[0] in APP_ID_MAP]
+    except Exception:
+        # Fall back to full list if DB unavailable
+        return [{"id": i} for i in APP_ID_MAP]
 
 
 def _build_msal_app(cache=None):
@@ -29,11 +50,7 @@ def login_required(f):
                 session["user"] = _DEV_USER
                 session["is_developer"] = True
                 session["security_level"] = 100
-                # All known App_IDs from APP_ID_MAP — keep in sync with modules.py
-                session["user_modules"] = [{"id": i} for i in [
-                    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17,
-                    18, 19, 20, 21, 22, 24, 25, 26, 27, 35
-                ]]
+                session["user_modules"] = _dev_user_modules()
             return f(*args, **kwargs)
         if not session.get("user"):
             return redirect(url_for("auth.login"))
@@ -133,6 +150,15 @@ def logout():
         f"{authority}/oauth2/v2.0/logout"
         f"?post_logout_redirect_uri={url_for('auth.login', _external=True)}"
     )
+
+
+@auth_bp.route("/dev-reset")
+def dev_reset():
+    """Dev bypass only: clear session and return to home so login_required re-initializes it."""
+    if not _DEV_BYPASS:
+        return "Not available", 404
+    session.clear()
+    return redirect("/")
 
 
 @auth_bp.route("/debug")

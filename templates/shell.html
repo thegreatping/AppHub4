@@ -136,13 +136,17 @@
             <div class="ts-body">
                 <div class="ts-group-label">Navigation</div>
                 <div class="ts-row" data-var="--nav-bg"><span>Nav background</span></div>
-                <div class="ts-row" data-var="--nav-active-border"><span>Active / accent</span></div>
-                <div class="ts-row" data-var="--nav-hover"><span>Hover background</span></div>
+                <div class="ts-row" data-var="--nav-bg-dark"><span>Nav dark shade</span></div>
+                <div class="ts-row" data-var="--nav-text"><span>Nav link text</span></div>
+                <div class="ts-row" data-var="--nav-active-bg"><span>Active item fill</span></div>
+                <div class="ts-row" data-var="--nav-active-border"><span>Active item accent</span></div>
+                <div class="ts-row" data-var="--nav-hover"><span>Nav hover bg</span></div>
+                <div class="ts-row" data-var="--nav-border"><span>Nav border</span></div>
 
                 <div class="ts-group-label">Content</div>
                 <div class="ts-row" data-var="--content-bg"><span>Page background</span></div>
                 <div class="ts-row" data-var="--content-header"><span>Header strip</span></div>
-                <div class="ts-row" data-var="--surface-raised"><span>Card / raised surface</span></div>
+                <div class="ts-row" data-var="--surface-raised"><span>Raised surface</span></div>
                 <div class="ts-row" data-var="--card-bg"><span>Card fill</span></div>
 
                 <div class="ts-group-label">Section Headers &amp; Panels</div>
@@ -151,12 +155,30 @@
 
                 <div class="ts-group-label">Text</div>
                 <div class="ts-row" data-var="--text-primary"><span>Primary text</span></div>
-                <div class="ts-row" data-var="--text-secondary"><span>Secondary text</span></div>
+                <div class="ts-row" data-var="--text-secondary"><span>Secondary / muted text</span></div>
 
                 <div class="ts-group-label">Accents</div>
                 <div class="ts-row" data-var="--accent-cyan"><span>Cyan</span></div>
                 <div class="ts-row" data-var="--accent-blue"><span>Blue</span></div>
                 <div class="ts-row" data-var="--accent-gold"><span>Gold</span></div>
+                <div class="ts-row" data-var="--accent-yellow"><span>Yellow</span></div>
+
+                <div class="ts-group-label">Form Controls &amp; Tables</div>
+                <div class="ts-row" data-var="--input-bg"><span>Input / select background</span></div>
+                <div class="ts-row" data-var="--border-input"><span>Input / select border</span></div>
+                <div class="ts-row" data-var="--border-input-heavy"><span>Input border (heavy)</span></div>
+                <div class="ts-row" data-var="--hover-bg"><span>Row hover bg</span></div>
+                <div class="ts-row" data-var="--hover-bg-strong"><span>Button / strong hover bg</span></div>
+
+                <div class="ts-group-label">Borders</div>
+                <div class="ts-row" data-var="--border"><span>General border</span></div>
+                <div class="ts-row" data-var="--border-subtle"><span>Subtle border</span></div>
+                <div class="ts-row" data-var="--border-light"><span>Light border</span></div>
+                <div class="ts-row" data-var="--border-medium"><span>Medium border</span></div>
+
+                <div class="ts-group-label">Misc</div>
+                <div class="ts-row" data-var="--shadow-overlay"><span>Modal / overlay shadow</span></div>
+                <div class="ts-row" data-var="--code-bg"><span>Code block bg</span></div>
             </div>
             <div class="ts-footer">
                 <button class="ts-btn ts-apply" id="tsApply" title="Save to this browser only"><i class="fa-solid fa-eye"></i> Preview</button>
@@ -513,12 +535,83 @@
         const APP_ID = '{{ active_module }}';
         const THEMES = ['light', 'medium', 'dark'];
         const VARS = [
-            '--nav-bg','--nav-active-border','--nav-hover',
+            '--nav-bg','--nav-bg-dark','--nav-text','--nav-active-bg','--nav-active-border','--nav-hover','--nav-border',
             '--content-bg','--content-header','--surface-raised','--card-bg',
             '--section-hd-bg','--section-hd-border',
             '--text-primary','--text-secondary',
-            '--accent-cyan','--accent-blue','--accent-gold'
+            '--accent-cyan','--accent-blue','--accent-gold','--accent-yellow',
+            '--input-bg','--border-input','--border-input-heavy','--hover-bg','--hover-bg-strong',
+            '--border','--border-subtle','--border-light','--border-medium',
+            '--shadow-overlay','--code-bg'
         ];
+
+        // CSS selectors for each var — used by click-to-highlight (scope: document.body)
+        const INPUTS = 'input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="file"])';
+        const BTNS   = 'button:not(.ts-btn):not(.ts-swatch):not(.ts-preset-btn):not(.ts-close)';
+        const VAR_SELECTORS = {
+            '--nav-bg':            ['.apphub-nav'],
+            '--nav-bg-dark':       ['.apphub-nav'],
+            '--nav-text':          ['.nav-item a', '.nav-item .nav-label', '.nav-item span'],
+            '--nav-active-bg':     ['.nav-item.active'],
+            '--nav-active-border': ['.nav-item.active', '.nav-item.active a'],
+            '--nav-hover':         ['.nav-item a', '.nav-item'],
+            '--nav-border':        ['.apphub-nav'],
+            '--content-bg':        ['.apphub-content', '.main-wrapper'],
+            '--content-header':    ['.content-header', '.page-header', '.module-header'],
+            '--surface-raised':    ['[class*="surface"]', '[class*="raised"]', '.apphub-card'],
+            '--card-bg':           ['.apphub-card', '.card', '.launcher-card', '[class*="card"]'],
+            '--section-hd-bg':     ['[class*="section-hd"]', '[class*="section-header"]', 'thead', 'th'],
+            '--section-hd-border': ['[class*="section-hd"]', '[class*="section-header"]', 'thead', 'th'],
+            '--text-primary':      ['h1','h2','h3','h4','p','td','label','li'],
+            '--text-secondary':    ['[class*="muted"]','[class*="secondary"]','[class*="hint"]','small'],
+            '--accent-cyan':       ['.nav-item.active','[class*="cyan"]','[class*="teal"]','.ts-apply'],
+            '--accent-blue':       ['[class*="btn-primary"]','[class*="blue"]','[class*="info"]','.ts-copy'],
+            '--accent-gold':       ['[class*="gold"]','[class*="warn"]','[class*="badge"]'],
+            '--accent-yellow':     ['[class*="yellow"]','[class*="accent-yellow"]'],
+            '--input-bg':          [INPUTS, 'select', 'textarea'],
+            '--border-input':      [INPUTS, 'select', 'textarea'],
+            '--border-input-heavy':[INPUTS, 'select', 'textarea'],
+            '--hover-bg':          ['tbody tr', '[class*="list-item"]', '[class*="table-row"]'],
+            '--hover-bg-strong':   [BTNS, '[class*="btn"]:not(.ts-btn)', '[class*="action"]'],
+            '--border':            ['.apphub-card', '.card', 'table', '[class*="panel"]'],
+            '--border-subtle':     ['[class*="surface"]','[class*="panel"]','[class*="blurb"]'],
+            '--border-light':      ['[class*="info-blurb"]','[class*="blurb"]','[class*="well"]'],
+            '--border-medium':     ['.apphub-card','[class*="card"]','[class*="section"]'],
+            '--shadow-overlay':    ['[class*="modal"]','[class*="overlay"]','[class*="dialog"]'],
+            '--code-bg':           ['code','pre','[class*="code"]','[class*="mono"]'],
+        };
+
+        let _flashTimer = null;
+        function flashElements(varName) {
+            if (_flashTimer) clearTimeout(_flashTimer);
+            document.querySelectorAll('.ts-elem-highlight').forEach(el => el.classList.remove('ts-elem-highlight'));
+            const selectors = VAR_SELECTORS[varName];
+            if (!selectors) return;
+            const matched = new Set();
+            selectors.forEach(sel => {
+                try {
+                    document.body.querySelectorAll(sel).forEach(el => {
+                        // exclude Theme Studio panel itself
+                        if (!el.closest('#themeStudio')) matched.add(el);
+                    });
+                } catch(e) {}
+            });
+            matched.forEach(el => el.classList.add('ts-elem-highlight'));
+            if (!matched.size) {
+                // briefly flash the clicked span to signal "none on this page"
+                const row = document.querySelector(`.ts-row[data-var="${varName}"]`);
+                if (row) { const s = row.querySelector('span'); if (s) { s.style.color='#f87171'; setTimeout(()=>s.style.color='',800); } }
+            }
+            _flashTimer = setTimeout(() => {
+                matched.forEach(el => el.classList.remove('ts-elem-highlight'));
+            }, 2500);
+        }
+
+        // Attach click-to-highlight to all label spans once
+        document.querySelectorAll('.ts-row').forEach(row => {
+            const span = row.querySelector('span');
+            if (span) span.addEventListener('click', () => flashElements(row.dataset.var));
+        });
 
         const DEFAULTS = {};
 
@@ -815,61 +908,6 @@
                 return '#' + [m[0],m[1],m[2]].map(n => parseInt(n).toString(16).padStart(2,'0')).join('');
             return '#000000';
         }
-    })();
-    </script>
-            '--accent-cyan','--accent-blue','--accent-gold'
-        ];
-
-        // ── Defaults baked into CSS (read on first open per theme) ──────────
-        const DEFAULTS = {};
-
-        function getDefaultsForTheme(theme) {
-            if (DEFAULTS[theme]) return DEFAULTS[theme];
-            // Temporarily apply theme to root to read computed values
-            const prev = document.documentElement.getAttribute('data-theme');
-            document.documentElement.setAttribute('data-theme', theme);
-            const style = getComputedStyle(document.documentElement);
-            const vals = {};
-            VARS.forEach(v => { vals[v] = style.getPropertyValue(v).trim(); });
-            document.documentElement.setAttribute('data-theme', prev);
-            DEFAULTS[theme] = vals;
-            return vals;
-        }
-
-        // ── Server-side overrides (set by admin, apply to all users) ────────
-        let _serverOverrides = {};
-
-        function loadServerOverrides() {
-            fetch(`/api/theme-settings/${APP_ID}`)
-                .then(r => r.ok ? r.json() : {})
-                .then(data => { _serverOverrides = data || {}; applyOverrides(); })
-                .catch(() => {});
-        }
-
-        // ── Load saved overrides from localStorage ───────────────────────────
-        function loadOverrides() {
-            try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
-        }
-
-        // ── Apply overrides for current theme ────────────────────────────────
-        // Priority: localStorage (dev preview) → server (published) → CSS defaults
-        function applyOverrides() {
-            const all    = loadOverrides();
-            const theme  = document.documentElement.getAttribute('data-theme') || 'dark';
-            const server = (_serverOverrides[theme] || {});
-            const local  = (all[theme] || {});
-            // Apply server first, then local on top (local can override for dev preview)
-            const merged = Object.assign({}, server, local);
-            VARS.forEach(v => {
-                if (merged[v]) document.documentElement.style.setProperty(v, merged[v]);
-                else document.documentElement.style.removeProperty(v);
-            });
-        }
-        loadServerOverrides();
-
-        document.querySelectorAll('.theme-btn').forEach(btn => {
-            btn.addEventListener('click', () => setTimeout(applyOverrides, 50));
-        });
     })();
     </script>
     {% endif %}

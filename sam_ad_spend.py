@@ -29,6 +29,7 @@ Improvements over Power Apps version:
 from flask import Blueprint, render_template, session, jsonify, request
 from auth import login_required
 from modules import MODULES, APP_ID_MAP
+from nav import build_nav_modules
 import sys
 from helpers import load_env, SafeConnection
 
@@ -74,7 +75,7 @@ def index():
     return render_template(
         "sam_ad_spend.html",
         user=user,
-        modules=MODULES,
+        modules=build_nav_modules(),
         active_module="sam_ad_spend_planning",
         is_admin=is_admin,
         month_names=MONTH_NAMES,
@@ -130,7 +131,7 @@ def api_worktable():
         return jsonify({"error": "property_key and year are required"}), 400
 
     COL_NAMES = [
-        "ID","GL_KEY","GL_CODE","GL_NAME","GL_NAME_NUMBER",
+        "GL_KEY","GL_CODE","GL_NAME","GL_NAME_NUMBER",
         "GL_TYPE","GL_SUB_0","GL_SUB_1","GL_SUB_2",
         "GL_COORDINATES","ROW_HEADER","ROW_HEADER_INDENTED","ROW_HEADER_LEVEL",
         "BUD_1","BUD_2","BUD_3","BUD_4","BUD_5","BUD_6",
@@ -142,7 +143,7 @@ def api_worktable():
         "Q_VARIANCE_1","Q_VARIANCE_2","Q_VARIANCE_3","Q_VARIANCE_4",
         "YEAR_BUD","YEAR_NEW","YEAR_VARIANCE",
     ]
-    STR_COLS = {"ID","GL_KEY","GL_CODE","GL_NAME","GL_NAME_NUMBER",
+    STR_COLS = {"GL_KEY","GL_CODE","GL_NAME","GL_NAME_NUMBER",
                 "GL_TYPE","GL_SUB_0","GL_SUB_1","GL_SUB_2",
                 "GL_COORDINATES","ROW_HEADER","ROW_HEADER_INDENTED"}
 
@@ -151,7 +152,7 @@ def api_worktable():
     try:
         rows = conn.fetchall("""
             SELECT
-                ID, GL_KEY, GL_CODE, GL_NAME, GL_NAME_NUMBER,
+                GL_KEY, GL_CODE, GL_NAME, GL_NAME_NUMBER,
                 GL_TYPE, GL_SUB_0, GL_SUB_1, GL_SUB_2,
                 GL_COORDINATES, ROW_HEADER, ROW_HEADER_INDENTED, ROW_HEADER_LEVEL,
                 BUD_1,  BUD_2,  BUD_3,  BUD_4,  BUD_5,  BUD_6,

@@ -5,6 +5,7 @@ from decimal import Decimal
 from flask import Blueprint, render_template, session, jsonify, request
 from auth import login_required
 from modules import MODULES, APP_ID_MAP
+from nav import build_nav_modules
 import sys
 
 from helpers import load_env, SafeConnection
@@ -56,13 +57,7 @@ def index():
     if check:
         return check
     from config import APP_VERSION
-    is_dev = session.get("is_developer", False)
-    user_modules = session.get("user_modules", [])
-    if is_dev or not user_modules:
-        visible = MODULES
-    else:
-        allowed = {APP_ID_MAP[m["id"]] for m in user_modules if m["id"] in APP_ID_MAP}
-        visible = [m for m in MODULES if m["id"] in allowed]
+    visible = build_nav_modules()
     return render_template(
         "rent_forecast2.html",
         modules=visible,

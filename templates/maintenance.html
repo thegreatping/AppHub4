@@ -663,6 +663,9 @@
         });
         mod.active = newVal;
         renderModules();
+        // Refresh session so nav reflects new active state, then reload
+        await fetch('/api/refresh-nav', { method: 'POST' });
+        location.reload();
     }
 
     // ─── AUDIENCE MANAGER ───────────────────────────────────────────────────────
