@@ -755,13 +755,14 @@
                 row.querySelectorAll('.ts-theme-col').forEach(c => c.remove());
                 THEMES.forEach(theme => {
                     const defaults = getDefaultsForTheme(theme);
-                    const hex = toHex((saved[theme] || {})[varName] || defaults[varName] || '#000000');
+                    const rawVal = (saved[theme] || {})[varName] || defaults[varName] || '#000000';
+                    const hexSwatch = toHex(rawVal);
                     const col = document.createElement('div');
                     col.className = 'ts-theme-col';
                     col.dataset.tsTheme = theme;
                     col.innerHTML =
-                        `<input type="color" class="ts-swatch" value="${hex}">` +
-                        `<input type="text" class="ts-hex" value="${hex}" maxlength="9" spellcheck="false">`;
+                        `<input type="color" class="ts-swatch" value="${hexSwatch}">` +
+                        `<input type="text" class="ts-hex" value="${rawVal}" maxlength="30" spellcheck="false">`;
                     col.querySelector('.ts-swatch').addEventListener('input', function() {
                         col.querySelector('.ts-hex').value = this.value;
                         livePreview(varName, this.value, theme);
@@ -770,6 +771,9 @@
                         const v = this.value.trim();
                         if (/^#[0-9a-fA-F]{3,8}$/.test(v)) {
                             col.querySelector('.ts-swatch').value = v.length > 7 ? v.slice(0,7) : v;
+                            livePreview(varName, v, theme);
+                        } else if (/^rgba?\(/.test(v)) {
+                            col.querySelector('.ts-swatch').value = toHex(v);
                             livePreview(varName, v, theme);
                         }
                     });
@@ -800,16 +804,18 @@
             setTimeout(() => { applyBtn.innerHTML = '<i class="fa-solid fa-eye"></i> Preview'; }, 1500);
         });
 
-        // ── Publish — saves all 3 themes to server ──────────────────────────────
+        // ── Publish — saves all 3 themes to server and syncs localStorage ─────
         publishBtn.addEventListener('click', () => {
             publishBtn.disabled = true;
             publishBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publishing…';
+            const payloads = {};
             const calls = THEMES.map(theme => {
                 const payload = {};
                 document.querySelectorAll(`.ts-theme-col[data-ts-theme="${theme}"] .ts-hex`).forEach(inp => {
                     const varName = inp.closest('.ts-row').dataset.var;
                     if (inp.value) payload[varName] = inp.value;
                 });
+                payloads[theme] = payload;
                 return fetch('/api/theme-settings', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -817,7 +823,12 @@
                 }).then(r => r.json()).then(data => { if (data.ok) _serverOverrides[theme] = payload; });
             });
             Promise.all(calls)
-                .then(() => { applyOverrides(); publishBtn.innerHTML = '<i class="fa-solid fa-check"></i> Published!'; })
+                .then(() => {
+                    // Sync localStorage to match what was published so stale local overrides can't win
+                    localStorage.setItem(LS_KEY, JSON.stringify(payloads));
+                    applyOverrides();
+                    publishBtn.innerHTML = '<i class="fa-solid fa-check"></i> Published!';
+                })
                 .catch(() => { publishBtn.innerHTML = '<i class="fa-solid fa-xmark"></i> Error'; })
                 .finally(() => { setTimeout(() => { publishBtn.disabled = false; publishBtn.innerHTML = '<i class="fa-solid fa-globe"></i> Publish'; }, 2000); });
         });

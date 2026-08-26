@@ -240,8 +240,8 @@ MODULES = [
         "icon": "fa-solid fa-lightbulb",
         "color": "#f59e0b",
         "description": "The Pitch idea submission and approval workflow.",
-        "type": "powerapps",
-        "route": None,
+        "type": "flask",
+        "route": "/pitch/",
         "admin_only": False,
     },
     {
@@ -250,8 +250,8 @@ MODULES = [
         "icon": "fa-solid fa-handshake",
         "color": "#059669",
         "description": "Vendor onboarding and setup form management.",
-        "type": "powerapps",
-        "route": None,
+        "type": "flask",
+        "route": "/vendor-setup/",
         "admin_only": False,
     },
     {
