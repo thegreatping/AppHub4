@@ -1,5 +1,7 @@
 """Development runner - bypasses Entra ID auth for local testing."""
 import os
+from dotenv import load_dotenv
+load_dotenv()  # load .env so GRAPH_* and other credentials are available
 os.environ.setdefault("FLASK_SECRET_KEY", "dev-local-testing-key")
 
 from app import app

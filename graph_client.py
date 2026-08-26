@@ -188,6 +188,20 @@ def add_sp_attachment(site_base_url: str, list_guid: str, item_id: str, filename
     return r.json()
 
 
+def update_item(site_id: str, list_id: str, item_id: str, fields: dict) -> None:
+    """PATCH SharePoint list item fields."""
+    url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/lists/{list_id}/items/{item_id}/fields"
+    r = requests.patch(url, headers=_headers(), json=fields, timeout=15)
+    r.raise_for_status()
+
+
+def delete_item(site_id: str, list_id: str, item_id: str) -> None:
+    """DELETE a SharePoint list item."""
+    url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/lists/{list_id}/items/{item_id}"
+    r = requests.delete(url, headers=_headers(), timeout=15)
+    r.raise_for_status()
+
+
 def get_list_columns(site_id: str, list_id: str) -> list[dict]:
     """Fetch column definitions for a SharePoint list (for introspection/debugging)."""
     url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/lists/{list_id}/columns"

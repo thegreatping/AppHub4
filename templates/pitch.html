@@ -157,19 +157,12 @@
   <div class="pitch-tab-panel active" id="tab-browse">
     <div class="pitch-filters">
       <select id="filterStatus">
-        <option value="">All Statuses</option>
-        {% for s in statuses %}
-        <option value="{{ s }}">{{ s }}</option>
-        {% endfor %}
-      </select>
-      <select id="filterCategory">
-        <option value="">All Categories</option>
-        {% for c in categories %}
-        <option value="{{ c }}">{{ c }}</option>
-        {% endfor %}
+        <option value="">All Submissions</option>
+        <option value="Pending Review">Pending Review</option>
+        <option value="Reviewed">Reviewed</option>
       </select>
       {% if is_admin %}
-      <label><input type="checkbox" id="filterMine"> My Pitches Only</label>
+      <label><input type="checkbox" id="filterMine"> Mine Only</label>
       {% endif %}
     </div>
 
@@ -180,48 +173,22 @@
     </div>
   </div>
 
-  <!-- Submit tab -->
   <div class="pitch-tab-panel" id="tab-submit">
-    <form class="pitch-form" id="pitchForm" enctype="multipart/form-data">
-      <div class="pf-group">
-        <label class="pf-label">Pitch Title <span class="req">*</span></label>
-        <input class="pf-input" name="title" id="pTitle" maxlength="255" placeholder="A clear, compelling title for your idea" required>
-      </div>
+    <form class="pitch-form" id="pitchForm">
       <div class="pf-row2">
         <div class="pf-group">
-          <label class="pf-label">Category <span class="req">*</span></label>
-          <select class="pf-input" name="category" id="pCategory">
-            {% for c in categories %}
-            <option value="{{ c }}">{{ c }}</option>
-            {% endfor %}
-          </select>
+          <label class="pf-label">Property / Location</label>
+          <input class="pf-input" name="property_location" id="pProp" maxlength="255" placeholder="Property name or 'Company-Wide'">
         </div>
         <div class="pf-group">
-          <label class="pf-label">Property / Location</label>
-          <input class="pf-input" name="property" id="pProp" maxlength="255" placeholder="Property name or 'Company-Wide'">
+          <label class="pf-label">Your Position / Job Title</label>
+          <input class="pf-input" name="position" id="pPosition" maxlength="255" placeholder="e.g. Property Manager">
         </div>
       </div>
       <div class="pf-group">
-        <label class="pf-label">Description &amp; Business Case <span class="req">*</span></label>
-        <textarea class="pf-input pf-textarea" name="comments" id="pComments" maxlength="2500"
+        <label class="pf-label">Idea for Improvement <span class="req">*</span></label>
+        <textarea class="pf-input pf-textarea" name="idea" id="pIdea" maxlength="4000"
                   placeholder="Describe your idea, the problem it solves, and the expected benefit..."></textarea>
-      </div>
-      <div class="pf-group">
-        <label class="pf-label">Supporting Documents <span style="color:var(--text-secondary);font-weight:400;font-size:0.78rem">(up to 3 files)</span></label>
-        <div class="pf-file-group">
-          <div class="pf-file-item">
-            <label class="pf-label" style="text-transform:none">Document 1</label>
-            <input class="pf-file-input" type="file" name="doc_1">
-          </div>
-          <div class="pf-file-item">
-            <label class="pf-label" style="text-transform:none">Document 2</label>
-            <input class="pf-file-input" type="file" name="doc_2">
-          </div>
-          <div class="pf-file-item">
-            <label class="pf-label" style="text-transform:none">Document 3</label>
-            <input class="pf-file-input" type="file" name="doc_3">
-          </div>
-        </div>
       </div>
       <div class="pf-err" id="pErr"></div>
       <div>
@@ -260,13 +227,9 @@
 <script>
 (function() {
     const IS_ADMIN = {{ 'true' if is_admin else 'false' }};
-    const STATUSES = {{ statuses | tojson }};
     const STATUS_BADGE = {
-        'Submitted':    'badge-cyan',
-        'Under Review': 'badge-gold',
-        'Approved':     'badge-green',
-        'Rejected':     'badge-red',
-        'On Hold':      'badge-gray',
+        'Pending Review': 'badge-gold',
+        'Reviewed':       'badge-green',
     };
 
     // ── Tabs ────────────────────────────────────────────────────────────────
@@ -288,10 +251,8 @@
         grid.innerHTML = '<div class="pitch-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>';
         const p = new URLSearchParams();
         const st = document.getElementById('filterStatus').value;
-        const ct = document.getElementById('filterCategory').value;
         const mine = document.getElementById('filterMine');
-        if (st) p.set('status', st);
-        if (ct) p.set('category', ct);
+        if (st) p.set('reviewed', st === 'Reviewed' ? 'true' : st === 'Pending Review' ? 'false' : '');
         if (mine && mine.checked) p.set('mine', '1');
         try {
             const data = await fetch('/pitch/api/pitches?' + p.toString()).then(r => r.json());
@@ -317,11 +278,12 @@
     function renderStats(data) {
         const stats = document.getElementById('pitchStats');
         if (!stats || !IS_ADMIN) return;
-        const counts = {};
-        STATUSES.forEach(s => counts[s] = 0);
-        data.forEach(r => { if (r.PITCH_STATUS in counts) counts[r.PITCH_STATUS]++; });
-        stats.innerHTML = `<div class="pitch-stat"><div class="pitch-stat-val">${data.length}</div><div class="pitch-stat-lbl">Total</div></div>` +
-            STATUSES.map(s => `<div class="pitch-stat"><div class="pitch-stat-val">${counts[s]}</div><div class="pitch-stat-lbl">${s}</div></div>`).join('');
+        const reviewed = data.filter(r => r.reviewed).length;
+        const pending  = data.length - reviewed;
+        stats.innerHTML = `
+            <div class="pitch-stat"><div class="pitch-stat-val">${data.length}</div><div class="pitch-stat-lbl">Total</div></div>
+            <div class="pitch-stat"><div class="pitch-stat-val">${pending}</div><div class="pitch-stat-lbl">Pending Review</div></div>
+            <div class="pitch-stat"><div class="pitch-stat-val">${reviewed}</div><div class="pitch-stat-lbl">Reviewed</div></div>`;
     }
 
     function renderGrid(grid, data) {
@@ -330,32 +292,30 @@
             return;
         }
         grid.innerHTML = data.map(r => {
-            const badge = STATUS_BADGE[r.PITCH_STATUS] || 'badge-gray';
-            const docBadges = [r.DOCUMENT_NAME_1, r.DOCUMENT_NAME_2, r.DOCUMENT_NAME_3]
-                .filter(Boolean).map(n => `<span class="badge badge-gray" title="${escHtml(n)}"><i class="fa-solid fa-paperclip"></i></span>`).join(' ');
-            return `<div class="pitch-card" data-id="${r.ID}">
+            const badge    = STATUS_BADGE[r.status] || 'badge-gray';
+            const dateStr  = r.created ? new Date(r.created).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+            const attBadge = r.has_attachments ? `<span class="badge badge-gray"><i class="fa-solid fa-paperclip"></i></span>` : '';
+            return `<div class="pitch-card" data-id="${escHtml(r.id)}">
                 <div class="pitch-card-top">
-                    <div class="pitch-card-title">${escHtml(r.PITCH_TITLE || '(Untitled)')}</div>
-                    <span class="badge ${badge}">${escHtml(r.PITCH_STATUS || '—')}</span>
+                    <div class="pitch-card-title">${escHtml(r.name || '—')}</div>
+                    <span class="badge ${badge}">${r.status}</span>
                 </div>
-                ${r.PITCH_CATEGORY ? `<div class="pitch-card-cat"><span class="badge badge-cat">${escHtml(r.PITCH_CATEGORY)}</span></div>` : ''}
-                <div class="pitch-card-desc">${escHtml(r.COMMENTS || '')}</div>
+                ${r.position ? `<div class="pitch-card-cat">${escHtml(r.position)}</div>` : ''}
+                <div class="pitch-card-desc">${escHtml(r.idea || '')}</div>
                 <div class="pitch-card-meta">
-                    <span><i class="fa-solid fa-user"></i> ${escHtml(r.EMPLOYEE_NAME_FULL || r.MODIFIED_BY || '—')}</span>
-                    ${r.PROPERTY_OR_LOCATION ? `<span><i class="fa-solid fa-building"></i> ${escHtml(r.PROPERTY_OR_LOCATION)}</span>` : ''}
-                    ${r.DATE_CREATED ? `<span><i class="fa-regular fa-calendar"></i> ${String(r.DATE_CREATED).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')}</span>` : ''}
+                    ${r.property_location ? `<span><i class="fa-solid fa-building"></i> ${escHtml(r.property_location)}</span>` : ''}
+                    ${dateStr ? `<span><i class="fa-regular fa-calendar"></i> ${dateStr}</span>` : ''}
                 </div>
-                ${docBadges ? `<div class="pitch-card-docs">${docBadges}</div>` : ''}
+                ${attBadge ? `<div class="pitch-card-docs">${attBadge}</div>` : ''}
             </div>`;
         }).join('');
         grid.querySelectorAll('.pitch-card').forEach(c => {
-            c.addEventListener('click', () => openPanel(parseInt(c.dataset.id)));
+            c.addEventListener('click', () => openPanel(c.dataset.id));
         });
     }
 
     // ── Filters ─────────────────────────────────────────────────────────────
     document.getElementById('filterStatus').addEventListener('change', loadBrowse);
-    document.getElementById('filterCategory').addEventListener('change', loadBrowse);
     const filterMine = document.getElementById('filterMine');
     if (filterMine) filterMine.addEventListener('change', loadBrowse);
 
@@ -377,34 +337,31 @@
     }
 
     function renderPanelView(r) {
-        document.getElementById('ppTitle').textContent = r.PITCH_TITLE || '(Untitled)';
-        const badge = STATUS_BADGE[r.PITCH_STATUS] || 'badge-gray';
-        const dateStr = r.DATE_CREATED ? String(r.DATE_CREATED).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') : '—';
-        const docs = [1,2,3].filter(i => r[`has_doc_${i}`]).map(i =>
-            `<a class="pp-doc-link" href="/pitch/api/pitch/${r.ID}/doc/${i}"><i class="fa-solid fa-file-arrow-down"></i> ${escHtml(r[`DOCUMENT_NAME_${i}`] || `Document ${i}`)}</a>`
-        ).join('');
+        document.getElementById('ppTitle').textContent = r.name || '—';
+        const badge   = STATUS_BADGE[r.status] || 'badge-gray';
+        const dateStr = r.created ? new Date(r.created).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
 
         document.getElementById('ppBody').innerHTML = `
             <div class="pp-row2">
-                <div class="pp-field"><div class="pp-lbl">Status</div><div class="pp-val"><span class="badge ${badge}">${escHtml(r.PITCH_STATUS || '—')}</span></div></div>
-                <div class="pp-field"><div class="pp-lbl">Category</div><div class="pp-val">${r.PITCH_CATEGORY ? `<span class="badge badge-cat">${escHtml(r.PITCH_CATEGORY)}</span>` : '—'}</div></div>
-            </div>
-            <div class="pp-row2">
-                <div class="pp-field"><div class="pp-lbl">Submitted By</div><div class="pp-val">${escHtml(r.EMPLOYEE_NAME_FULL || r.MODIFIED_BY || '—')}</div></div>
+                <div class="pp-field"><div class="pp-lbl">Status</div><div class="pp-val"><span class="badge ${badge}">${r.status}</span></div></div>
                 <div class="pp-field"><div class="pp-lbl">Date Submitted</div><div class="pp-val">${dateStr}</div></div>
             </div>
-            ${r.PROPERTY_OR_LOCATION ? `<div class="pp-field"><div class="pp-lbl">Property / Location</div><div class="pp-val">${escHtml(r.PROPERTY_OR_LOCATION)}</div></div>` : ''}
-            <div class="pp-field"><div class="pp-lbl">Description &amp; Business Case</div><div class="pp-desc">${escHtml(r.COMMENTS || '—')}</div></div>
-            ${docs ? `<div class="pp-field"><div class="pp-lbl">Attachments</div><div class="pp-val" style="display:flex;flex-direction:column;gap:5px">${docs}</div></div>` : ''}
-            ${r.REVIEW_COMMENTS ? `<div class="pp-field"><div class="pp-lbl">Review Comments</div><div class="pp-desc" style="border-color:rgba(245,158,11,.25)">${escHtml(r.REVIEW_COMMENTS)}</div></div>` : ''}
-            ${r.REVIEWED_BY ? `<div class="pp-field"><div class="pp-lbl">Reviewed By</div><div class="pp-val" style="font-size:.8rem;color:var(--text-secondary)">${escHtml(r.REVIEWED_BY)}</div></div>` : ''}
+            <div class="pp-row2">
+                <div class="pp-field"><div class="pp-lbl">Submitted By</div><div class="pp-val">${escHtml(r.name || '—')}</div></div>
+                <div class="pp-field"><div class="pp-lbl">Position</div><div class="pp-val">${escHtml(r.position || '—')}</div></div>
+            </div>
+            ${r.property_location ? `<div class="pp-field"><div class="pp-lbl">Property / Location</div><div class="pp-val">${escHtml(r.property_location)}</div></div>` : ''}
+            <div class="pp-field"><div class="pp-lbl">Idea for Improvement</div><div class="pp-desc">${escHtml(r.idea || '—')}</div></div>
+            ${r.has_attachments ? `<div class="pp-field"><div class="pp-lbl">Attachments</div><div class="pp-val"><a href="https://peakcampus.sharepoint.com/sites/BaseCampApps" target="_blank" style="color:var(--accent-cyan);font-size:.85rem;"><i class="fa-solid fa-paperclip"></i> View in SharePoint</a></div></div>` : ''}
+            ${r.review_comments ? `<div class="pp-field"><div class="pp-lbl">Review Comments</div><div class="pp-desc" style="border-color:rgba(245,158,11,.25)">${escHtml(r.review_comments)}</div></div>` : ''}
+            ${r.reviewed_by ? `<div class="pp-field"><div class="pp-lbl">Reviewed By</div><div class="pp-val" style="font-size:.8rem;color:var(--text-secondary)">${escHtml(r.reviewed_by)}</div></div>` : ''}
             ${IS_ADMIN ? `
             <div class="pp-review-area">
-                <div class="pp-lbl" style="margin-bottom:2px">Update Review</div>
-                <select class="pp-review-select" id="ppStatusSel">
-                    ${STATUSES.map(s => `<option value="${s}"${r.PITCH_STATUS===s?' selected':''}>${s}</option>`).join('')}
-                </select>
-                <textarea class="pp-review-textarea" id="ppReviewTxt" placeholder="Add review comments...">${escHtml(r.REVIEW_COMMENTS || '')}</textarea>
+                <div class="pp-lbl" style="margin-bottom:2px">Review Decision</div>
+                <label style="display:flex;align-items:center;gap:8px;font-size:.875rem;cursor:pointer">
+                    <input type="checkbox" id="ppReviewedChk" ${r.reviewed?'checked':''}> Mark as Reviewed
+                </label>
+                <textarea class="pp-review-textarea" id="ppReviewTxt" placeholder="Review comments...">${escHtml(r.review_comments || '')}</textarea>
             </div>` : ''}
         `;
 
@@ -414,21 +371,21 @@
                 <button class="btn-pp btn-save-review" id="ppSaveBtn"><i class="fa-solid fa-floppy-disk"></i> Save Review</button>
                 <button class="btn-pp btn-del-pitch" id="ppDelBtn"><i class="fa-solid fa-trash"></i> Delete</button>
             `;
-            footer.querySelector('#ppSaveBtn').addEventListener('click', () => saveReview(r.ID));
-            footer.querySelector('#ppDelBtn').addEventListener('click', () => deletePitch(r.ID, r.PITCH_TITLE));
+            footer.querySelector('#ppSaveBtn').addEventListener('click', () => saveReview(r.id));
+            footer.querySelector('#ppDelBtn').addEventListener('click', () => deletePitch(r.id, r.name));
         }
     }
 
     async function saveReview(id) {
-        const status  = document.getElementById('ppStatusSel').value;
-        const review  = document.getElementById('ppReviewTxt').value.trim();
-        const btn     = document.getElementById('ppSaveBtn');
+        const reviewed = document.getElementById('ppReviewedChk').checked;
+        const review   = document.getElementById('ppReviewTxt').value.trim();
+        const btn      = document.getElementById('ppSaveBtn');
         btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
         try {
             const res = await fetch(`/pitch/api/pitch/${id}`, {
                 method: 'PATCH',
                 headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({ PITCH_STATUS: status, REVIEW_COMMENTS: review })
+                body: JSON.stringify({ reviewed, review_comments: review })
             });
             if (!res.ok) throw new Error('Save failed');
             await loadBrowse();
@@ -439,8 +396,8 @@
         }
     }
 
-    async function deletePitch(id, title) {
-        if (!confirm(`Delete "${title}"?\nThis cannot be undone.`)) return;
+    async function deletePitch(id, name) {
+        if (!confirm(`Delete pitch from "${name}"?\nThis cannot be undone.`)) return;
         try {
             const res = await fetch(`/pitch/api/pitch/${id}`, {method:'DELETE'});
             if (!res.ok) throw new Error('Delete failed');
@@ -464,7 +421,7 @@
             const data = await res.json();
             if (!res.ok || data.error) throw new Error(data.error || 'Submit failed');
             e.target.reset();
-            succEl.textContent = `Pitch submitted successfully (ID #${data.ID}). Thank you!`;
+            succEl.textContent = `Pitch submitted successfully (ID #${data.id}). Thank you!`;
             succEl.style.display = '';
             await loadBrowse();
         } catch(err) {

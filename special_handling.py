@@ -423,7 +423,7 @@ def api_submissions():
             "shipping_method":  shipping.get("Value", "") if isinstance(shipping, dict) else str(shipping or ""),
             "check_amount":     row.get("CheckAmounr", 0),
             "total":            row.get("Total", 0),
-            "status":           row.get("Status", ""),
+            "status":           str(row.get("Status") or ""),
             "tracking_comments": row.get("TrackingNumber_x002f_Comments", ""),
             "processed_by":     row.get("ProcessedBy", ""),
             "rm":               row.get("RM", ""),
