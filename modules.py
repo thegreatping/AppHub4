@@ -210,8 +210,8 @@ MODULES = [
         "icon": "fa-solid fa-file-contract",
         "color": "#84cc16",
         "description": "Manage SAM vendor contracts and agreements.",
-        "type": "powerapps",
-        "route": None,
+        "type": "flask",
+        "route": "/sam-contracts/",
         "admin_only": False,
     },
     {

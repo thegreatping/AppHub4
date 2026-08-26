@@ -1,0 +1,481 @@
+{% extends "shell.html" %}
+{% block content %}
+<style>
+/* ── SAM Contract Manager ──────────────────────────────────────────────────── */
+.scm-wrap         { display:flex; flex-direction:column; height:100%; padding:20px 24px; gap:16px; }
+.scm-header       { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+.scm-title        { display:flex; align-items:center; gap:10px; }
+.scm-title h2     { font-size:1.3rem; font-weight:700; color:var(--text-primary); margin:0; }
+.scm-title i      { color:#84cc16; font-size:1.1rem; }
+
+/* Filters */
+.scm-filters      { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.scm-filters select,
+.scm-filters input { padding:6px 10px; border-radius:6px; border:1px solid var(--border-input);
+                     background:var(--input-bg); color:var(--text-primary);
+                     font-size:0.875rem; min-width:140px; }
+.scm-filters select option { background:var(--surface-raised); color:var(--text-primary); }
+.scm-filters input[type="search"] { min-width:180px; }
+.scm-filters input[type="search"]::placeholder { color:var(--text-secondary); }
+
+/* Stats bar */
+.scm-stats        { display:flex; gap:12px; flex-wrap:wrap; }
+.scm-stat         { background:var(--surface-raised); border:1px solid var(--border-light);
+                    border-radius:8px; padding:10px 16px; min-width:130px; }
+.scm-stat-val     { font-size:1.25rem; font-weight:700; color:var(--accent-cyan); }
+.scm-stat-lbl     { font-size:0.75rem; color:var(--text-secondary); margin-top:2px; }
+
+/* Table */
+.scm-table-wrap   { flex:1; overflow:auto; border-radius:8px;
+                    border:1px solid var(--border-light); }
+.scm-table        { width:100%; border-collapse:collapse; font-size:0.875rem; }
+.scm-table thead  { position:sticky; top:0; z-index:2;
+                    background:var(--section-hd-bg); color:var(--text-primary); }
+.scm-table th     { padding:9px 12px; text-align:left; font-weight:600;
+                    font-size:0.78rem; text-transform:uppercase; letter-spacing:.4px;
+                    border-bottom:2px solid var(--section-hd-border); white-space:nowrap; cursor:pointer; }
+.scm-table th:hover { color:var(--accent-cyan); }
+.scm-table td     { padding:8px 12px; border-bottom:1px solid var(--border-subtle);
+                    color:var(--text-primary); vertical-align:middle; }
+.scm-table tbody tr { cursor:pointer; transition:background .12s; }
+.scm-table tbody tr:hover { background:var(--hover-bg); }
+.scm-table tbody tr.selected { background:rgba(132,204,22,.08); }
+
+/* Badges */
+.badge { display:inline-block; padding:2px 9px; border-radius:12px;
+         font-size:0.74rem; font-weight:600; white-space:nowrap; }
+.badge-active   { background:rgba(34,197,94,.15); color:#22c55e; }
+.badge-inactive { background:rgba(100,116,139,.15); color:#94a3b8; }
+.badge-onhold   { background:rgba(251,191,36,.15); color:#fbbf24; }
+.badge-level    { background:rgba(132,204,22,.12); color:#84cc16; border:1px solid rgba(132,204,22,.25); }
+
+/* Amount */
+.amt-cell       { font-family:monospace; text-align:right; }
+
+/* Detail panel */
+.scm-panel      { position:fixed; top:0; right:0; height:100%; width:480px; max-width:95vw;
+                  background:var(--content-header); border-left:1px solid var(--border-medium);
+                  box-shadow:-4px 0 24px rgba(0,0,0,.35); z-index:800;
+                  display:flex; flex-direction:column; transform:translateX(100%);
+                  transition:transform .25s cubic-bezier(.4,0,.2,1); }
+.scm-panel.open { transform:translateX(0); }
+.scm-panel-header { display:flex; align-items:center; justify-content:space-between;
+                    padding:14px 18px; border-bottom:1px solid var(--border-medium); flex-shrink:0; }
+.scm-panel-header h3 { font-size:1rem; font-weight:700; color:var(--text-primary); margin:0; }
+.scm-panel-close { background:none; border:none; color:var(--text-secondary);
+                   font-size:1.1rem; cursor:pointer; padding:4px; border-radius:4px; }
+.scm-panel-close:hover { color:var(--text-primary); background:var(--hover-bg); }
+.scm-panel-body  { flex:1; overflow-y:auto; padding:16px 18px; display:flex; flex-direction:column; gap:14px; }
+.scm-panel-footer { padding:12px 18px; border-top:1px solid var(--border-medium);
+                    display:flex; gap:8px; flex-shrink:0; }
+
+/* Form fields in panel */
+.fp-group       { display:flex; flex-direction:column; gap:4px; }
+.fp-label       { font-size:0.78rem; font-weight:600; color:var(--text-secondary);
+                  text-transform:uppercase; letter-spacing:.4px; }
+.fp-value       { font-size:0.9rem; color:var(--text-primary); }
+.fp-input       { padding:7px 10px; border-radius:6px; border:1px solid var(--border-input);
+                  background:var(--input-bg); color:var(--text-primary);
+                  font-size:0.875rem; width:100%; }
+.fp-input:focus { outline:none; border-color:var(--accent-cyan); }
+.fp-input option { background:var(--surface-raised); color:var(--text-primary); }
+.fp-row2        { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.fp-link        { color:var(--accent-cyan); text-decoration:none; font-size:0.85rem;
+                  display:inline-flex; align-items:center; gap:5px; }
+.fp-link:hover  { text-decoration:underline; }
+
+/* Buttons */
+.btn-scm        { padding:7px 16px; border:none; border-radius:6px; font-size:0.875rem;
+                  font-weight:600; cursor:pointer; transition:.15s; display:inline-flex;
+                  align-items:center; gap:6px; }
+.btn-save       { background:rgba(132,204,22,.15); color:#84cc16; border:1px solid rgba(132,204,22,.35); }
+.btn-save:hover { background:rgba(132,204,22,.28); }
+.btn-del        { background:rgba(239,68,68,.1); color:#ef4444; border:1px solid rgba(239,68,68,.25); }
+.btn-del:hover  { background:rgba(239,68,68,.2); }
+.btn-add        { background:rgba(132,204,22,.12); color:#84cc16; border:1px solid rgba(132,204,22,.3);
+                  padding:7px 14px; border-radius:6px; font-size:0.875rem; font-weight:600;
+                  cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+.btn-add:hover  { background:rgba(132,204,22,.22); }
+.btn-cancel     { background:rgba(100,116,139,.1); color:var(--text-secondary);
+                  border:1px solid var(--border-medium); }
+.btn-cancel:hover { background:rgba(100,116,139,.2); }
+.scm-empty      { text-align:center; color:var(--text-secondary); padding:40px 0; font-size:0.9rem; }
+.scm-sort-icon  { font-size:.7rem; margin-left:4px; opacity:.5; }
+</style>
+
+<div class="scm-wrap">
+
+  <!-- Header -->
+  <div class="scm-header">
+    <div class="scm-title">
+      <i class="fa-solid fa-file-contract"></i>
+      <h2>SAM Contract Manager</h2>
+    </div>
+    {% if is_admin %}
+    <button class="btn-add" id="scmAddBtn">
+      <i class="fa-solid fa-plus"></i> Add Contract
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- Filters -->
+  <div class="scm-filters">
+    <select id="scmVendor">
+      <option value="">All Vendors</option>
+      {% for v in vendors %}
+      <option value="{{ v }}">{{ v }}</option>
+      {% endfor %}
+    </select>
+    <select id="scmStatus">
+      <option value="">All Statuses</option>
+      <option value="1">Active</option>
+      <option value="0">Inactive</option>
+      <option value="2">On Hold</option>
+    </select>
+    <select id="scmLevel">
+      <option value="">All Levels</option>
+      {% for lv in levels %}
+      <option value="{{ lv }}">{{ lv }}</option>
+      {% endfor %}
+    </select>
+    <input type="search" id="scmProp" placeholder="Search property..." autocomplete="off">
+  </div>
+
+  <!-- Stats -->
+  <div class="scm-stats" id="scmStats"></div>
+
+  <!-- Table -->
+  <div class="scm-table-wrap">
+    <table class="scm-table" id="scmTable">
+      <thead>
+        <tr>
+          <th data-col="VENDOR_NAME">Vendor <span class="scm-sort-icon">&#8597;</span></th>
+          <th data-col="PROPERTY_NAME">Property <span class="scm-sort-icon">&#8597;</span></th>
+          <th data-col="CONTRACT_LEVEL">Level <span class="scm-sort-icon">&#8597;</span></th>
+          <th data-col="CONTRACT_AMOUNT">Amount <span class="scm-sort-icon">&#8597;</span></th>
+          <th data-col="CONTRACT_BILLING_FREQUENCY">Freq <span class="scm-sort-icon">&#8597;</span></th>
+          <th data-col="DATETIME_BEGIN">Begin <span class="scm-sort-icon">&#8597;</span></th>
+          <th data-col="DATETIME_END">End <span class="scm-sort-icon">&#8597;</span></th>
+          <th data-col="FLAG_ACTIVE">Status <span class="scm-sort-icon">&#8597;</span></th>
+          <th>Links</th>
+        </tr>
+      </thead>
+      <tbody id="scmTbody">
+        <tr><td colspan="9" class="scm-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Detail / Edit panel -->
+<div class="scm-panel" id="scmPanel">
+  <div class="scm-panel-header">
+    <h3 id="scmPanelTitle">Contract Detail</h3>
+    <button class="scm-panel-close" id="scmPanelClose">&#x2715;</button>
+  </div>
+  <div class="scm-panel-body" id="scmPanelBody"></div>
+  <div class="scm-panel-footer" id="scmPanelFooter"></div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    const IS_ADMIN = {{ 'true' if is_admin else 'false' }};
+    const STATUS_LABELS = {0:'Inactive', 1:'Active', 2:'On Hold'};
+    const STATUS_BADGE  = {0:'badge-inactive', 1:'badge-active', 2:'badge-onhold'};
+
+    let _data = [], _sortCol = 'PROPERTY_NAME', _sortAsc = true, _selectedKey = null;
+
+    // ── Filters ────────────────────────────────────────────────────────────
+    function buildQuery() {
+        const p = new URLSearchParams();
+        const v = document.getElementById('scmVendor').value;
+        const s = document.getElementById('scmStatus').value;
+        const l = document.getElementById('scmLevel').value;
+        const q = document.getElementById('scmProp').value.trim();
+        if (v) p.set('vendor', v);
+        if (s !== '') p.set('status', s);
+        if (l) p.set('level', l);
+        if (q) p.set('prop', q);
+        return p.toString();
+    }
+
+    async function load() {
+        const tbody = document.getElementById('scmTbody');
+        tbody.innerHTML = '<tr><td colspan="9" class="scm-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</td></tr>';
+        try {
+            const res  = await fetch('/sam-contracts/api/contracts?' + buildQuery());
+            _data = await res.json();
+        } catch(e) {
+            tbody.innerHTML = '<tr><td colspan="9" class="scm-empty">Error loading data.</td></tr>';
+            return;
+        }
+        renderStats();
+        renderTable();
+    }
+
+    // ── Stats ───────────────────────────────────────────────────────────────
+    function renderStats() {
+        const active   = _data.filter(r => r.FLAG_ACTIVE === 1).length;
+        const monthly  = _data.filter(r => r.FLAG_ACTIVE===1 && r.CONTRACT_BILLING_FREQUENCY && r.CONTRACT_BILLING_FREQUENCY.toUpperCase()==='MONTHLY' && r.CONTRACT_AMOUNT).reduce((s,r)=>s+r.CONTRACT_AMOUNT,0);
+        const annual   = _data.filter(r => r.FLAG_ACTIVE===1 && r.CONTRACT_BILLING_FREQUENCY && r.CONTRACT_BILLING_FREQUENCY.toUpperCase()==='ANNUALLY' && r.CONTRACT_AMOUNT).reduce((s,r)=>s+r.CONTRACT_AMOUNT,0);
+        const total    = _data.length;
+        const stats = document.getElementById('scmStats');
+        stats.innerHTML = `
+            <div class="scm-stat"><div class="scm-stat-val">${total}</div><div class="scm-stat-lbl">Total Contracts</div></div>
+            <div class="scm-stat"><div class="scm-stat-val">${active}</div><div class="scm-stat-lbl">Active</div></div>
+            <div class="scm-stat"><div class="scm-stat-val">$${monthly.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="scm-stat-lbl">Active Monthly</div></div>
+            <div class="scm-stat"><div class="scm-stat-val">$${annual.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="scm-stat-lbl">Active Annual</div></div>
+        `;
+    }
+
+    // ── Table ───────────────────────────────────────────────────────────────
+    function sortedData() {
+        return [..._data].sort((a, b) => {
+            let av = a[_sortCol] ?? '', bv = b[_sortCol] ?? '';
+            if (typeof av === 'number' && typeof bv === 'number') return _sortAsc ? av-bv : bv-av;
+            av = String(av).toLowerCase(); bv = String(bv).toLowerCase();
+            return _sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+        });
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('scmTbody');
+        const rows  = sortedData();
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="9" class="scm-empty">No contracts match the current filters.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = rows.map(r => {
+            const amt   = r.CONTRACT_AMOUNT != null ? '$' + r.CONTRACT_AMOUNT.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+            const freq  = r.CONTRACT_BILLING_FREQUENCY ? r.CONTRACT_BILLING_FREQUENCY.toUpperCase().replace('ANNUALLY','Annual').replace('MONTHLY','Monthly') : '—';
+            const begin = r.DATETIME_BEGIN ? r.DATETIME_BEGIN.slice(0,10) : '—';
+            const end   = r.DATETIME_END   ? r.DATETIME_END.slice(0,10)   : '—';
+            const badge = `<span class="badge ${STATUS_BADGE[r.FLAG_ACTIVE] || 'badge-inactive'}">${STATUS_LABELS[r.FLAG_ACTIVE] ?? r.FLAG_ACTIVE}</span>`;
+            const lvl   = r.CONTRACT_LEVEL ? `<span class="badge badge-level">${r.CONTRACT_LEVEL}</span>` : '—';
+            const links = [
+                r.CONTRACT_FOLDER ? `<a class="fp-link" href="${escHtml(r.CONTRACT_FOLDER)}" target="_blank" rel="noopener" title="Contract Folder"><i class="fa-solid fa-folder"></i></a>` : '',
+                r.LISTING_URL     ? `<a class="fp-link" href="${escHtml(r.LISTING_URL)}" target="_blank" rel="noopener" title="Listing"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : '',
+            ].join(' ');
+            const sel = r.CONTRACT_KEY === _selectedKey ? ' selected' : '';
+            return `<tr class="scm-row${sel}" data-key="${r.CONTRACT_KEY}">
+                <td>${escHtml(r.VENDOR_NAME||'')}</td>
+                <td>${escHtml(r.PROPERTY_NAME||'')}</td>
+                <td>${lvl}</td>
+                <td class="amt-cell">${amt}</td>
+                <td>${freq}</td>
+                <td>${begin}</td>
+                <td>${end}</td>
+                <td>${badge}</td>
+                <td>${links || '—'}</td>
+            </tr>`;
+        }).join('');
+
+        tbody.querySelectorAll('tr.scm-row').forEach(tr => {
+            tr.addEventListener('click', (e) => {
+                if (e.target.closest('a')) return; // let links through
+                openPanel(parseInt(tr.dataset.key));
+            });
+        });
+    }
+
+    // ── Sort headers ────────────────────────────────────────────────────────
+    document.getElementById('scmTable').querySelectorAll('th[data-col]').forEach(th => {
+        th.addEventListener('click', () => {
+            const col = th.dataset.col;
+            if (_sortCol === col) _sortAsc = !_sortAsc;
+            else { _sortCol = col; _sortAsc = true; }
+            renderTable();
+        });
+    });
+
+    // ── Panel ───────────────────────────────────────────────────────────────
+    let _editing = false;
+
+    function closePanel() {
+        document.getElementById('scmPanel').classList.remove('open');
+        _selectedKey = null;
+        document.querySelectorAll('tr.scm-row.selected').forEach(r => r.classList.remove('selected'));
+    }
+    document.getElementById('scmPanelClose').addEventListener('click', closePanel);
+
+    async function openPanel(key) {
+        _selectedKey = key;
+        document.querySelectorAll('tr.scm-row').forEach(r => r.classList.toggle('selected', parseInt(r.dataset.key) === key));
+        const panel = document.getElementById('scmPanel');
+        panel.classList.add('open');
+        document.getElementById('scmPanelTitle').textContent = 'Loading...';
+        document.getElementById('scmPanelBody').innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        document.getElementById('scmPanelFooter').innerHTML = '';
+        _editing = false;
+        try {
+            const r = await fetch(`/sam-contracts/api/contract/${key}`).then(r => r.json());
+            renderPanelView(r);
+        } catch(e) {
+            document.getElementById('scmPanelBody').innerHTML = 'Error loading contract.';
+        }
+    }
+
+    function renderPanelView(r) {
+        document.getElementById('scmPanelTitle').textContent = r.PROPERTY_NAME || r.CONTRACT_NAME || 'Contract Detail';
+        const amt   = r.CONTRACT_AMOUNT != null ? '$' + r.CONTRACT_AMOUNT.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+        const body  = document.getElementById('scmPanelBody');
+        body.innerHTML = `
+            <div class="fp-row2">
+                <div class="fp-group"><div class="fp-label">Vendor</div><div class="fp-value">${escHtml(r.VENDOR_NAME||'—')}</div></div>
+                <div class="fp-group"><div class="fp-label">Status</div><div class="fp-value"><span class="badge ${STATUS_BADGE[r.FLAG_ACTIVE]||'badge-inactive'}">${STATUS_LABELS[r.FLAG_ACTIVE]??r.FLAG_ACTIVE}</span></div></div>
+            </div>
+            <div class="fp-group"><div class="fp-label">Property</div><div class="fp-value">${escHtml(r.PROPERTY_NAME||'—')}</div></div>
+            <div class="fp-group"><div class="fp-label">Contract Name</div><div class="fp-value">${escHtml(r.CONTRACT_NAME||'—')}</div></div>
+            <div class="fp-row2">
+                <div class="fp-group"><div class="fp-label">Level</div><div class="fp-value">${r.CONTRACT_LEVEL ? `<span class="badge badge-level">${escHtml(r.CONTRACT_LEVEL)}</span>` : '—'}</div></div>
+                <div class="fp-group"><div class="fp-label">Amount</div><div class="fp-value">${amt} / ${escHtml((r.CONTRACT_BILLING_FREQUENCY||'').toUpperCase().replace('MONTHLY','mo').replace('ANNUALLY','yr') || '?')}</div></div>
+            </div>
+            <div class="fp-row2">
+                <div class="fp-group"><div class="fp-label">Begin Date</div><div class="fp-value">${r.DATETIME_BEGIN||'—'}</div></div>
+                <div class="fp-group"><div class="fp-label">End Date</div><div class="fp-value">${r.DATETIME_END||'—'}</div></div>
+            </div>
+            ${r.CONTRACT_FOLDER ? `<div class="fp-group"><div class="fp-label">Contract Folder</div><div class="fp-value"><a class="fp-link" href="${escHtml(r.CONTRACT_FOLDER)}" target="_blank" rel="noopener"><i class="fa-solid fa-folder"></i> Open Folder</a></div></div>` : ''}
+            ${r.LISTING_URL ? `<div class="fp-group"><div class="fp-label">Listing URL</div><div class="fp-value"><a class="fp-link" href="${escHtml(r.LISTING_URL)}" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Listing</a></div></div>` : ''}
+            ${r.CONTRACT_TERMS ? `<div class="fp-group"><div class="fp-label">Contract Terms</div><div class="fp-value" style="white-space:pre-wrap;font-size:.82rem">${escHtml(r.CONTRACT_TERMS)}</div></div>` : ''}
+            ${r.NOTES ? `<div class="fp-group"><div class="fp-label">Notes</div><div class="fp-value" style="white-space:pre-wrap;font-size:.82rem">${escHtml(r.NOTES)}</div></div>` : ''}
+            <div class="fp-group"><div class="fp-label">Last Modified By</div><div class="fp-value" style="font-size:.8rem;color:var(--text-secondary)">${escHtml(r.MODIFIED_BY||'—')}</div></div>
+        `;
+        const footer = document.getElementById('scmPanelFooter');
+        if (IS_ADMIN) {
+            footer.innerHTML = `
+                <button class="btn-scm btn-save" id="scmEditBtn"><i class="fa-solid fa-pen"></i> Edit</button>
+                <button class="btn-scm btn-del" id="scmDelBtn"><i class="fa-solid fa-trash"></i> Delete</button>
+            `;
+            footer.querySelector('#scmEditBtn').addEventListener('click', () => renderPanelEdit(r));
+            footer.querySelector('#scmDelBtn').addEventListener('click', () => deleteContract(r.CONTRACT_KEY, r.PROPERTY_NAME));
+        } else {
+            footer.innerHTML = '';
+        }
+    }
+
+    function renderPanelEdit(r) {
+        document.getElementById('scmPanelTitle').textContent = r.CONTRACT_KEY ? 'Edit Contract' : 'New Contract';
+        const statusOpts = [0,1,2].map(v => `<option value="${v}"${r.FLAG_ACTIVE===v?' selected':''}>${STATUS_LABELS[v]}</option>`).join('');
+        const levelOpts = ['','Diamond Plus','Diamond','Platinum','Gold Plus','Gold','Silver','Off'].map(v => `<option value="${v}"${r.CONTRACT_LEVEL===v?' selected':''}>${v||'-- none --'}</option>`).join('');
+        const freqOpts  = ['MONTHLY','ANNUALLY'].map(v => `<option value="${v}"${(r.CONTRACT_BILLING_FREQUENCY||'').toUpperCase()===v?' selected':''}>${v}</option>`).join('');
+        document.getElementById('scmPanelBody').innerHTML = `
+            <div class="fp-row2">
+                <div class="fp-group"><div class="fp-label">Vendor</div><input class="fp-input" id="fe_vendor" value="${escAttr(r.VENDOR_NAME||'')}"></div>
+                <div class="fp-group"><div class="fp-label">Status</div><select class="fp-input" id="fe_status">${statusOpts}</select></div>
+            </div>
+            <div class="fp-group"><div class="fp-label">Property</div><input class="fp-input" id="fe_prop" value="${escAttr(r.PROPERTY_NAME||'')}"></div>
+            <div class="fp-group"><div class="fp-label">Contract Name</div><input class="fp-input" id="fe_name" value="${escAttr(r.CONTRACT_NAME||'')}"></div>
+            <div class="fp-row2">
+                <div class="fp-group"><div class="fp-label">Level</div><select class="fp-input" id="fe_level">${levelOpts}</select></div>
+                <div class="fp-group"><div class="fp-label">Amount</div><input class="fp-input" id="fe_amt" type="number" step="0.01" min="0" value="${r.CONTRACT_AMOUNT!=null?r.CONTRACT_AMOUNT:''}"></div>
+            </div>
+            <div class="fp-row2">
+                <div class="fp-group"><div class="fp-label">Billing Freq</div><select class="fp-input" id="fe_freq">${freqOpts}</select></div>
+                <div class="fp-group"><!-- spacer --></div>
+            </div>
+            <div class="fp-row2">
+                <div class="fp-group"><div class="fp-label">Begin Date</div><input class="fp-input" id="fe_begin" type="date" value="${r.DATETIME_BEGIN||''}"></div>
+                <div class="fp-group"><div class="fp-label">End Date</div><input class="fp-input" id="fe_end" type="date" value="${r.DATETIME_END||''}"></div>
+            </div>
+            <div class="fp-group"><div class="fp-label">Contract Folder URL</div><input class="fp-input" id="fe_folder" value="${escAttr(r.CONTRACT_FOLDER||'')}"></div>
+            <div class="fp-group"><div class="fp-label">Listing URL</div><input class="fp-input" id="fe_listing" value="${escAttr(r.LISTING_URL||'')}"></div>
+            <div class="fp-group"><div class="fp-label">Contract Terms</div><textarea class="fp-input" id="fe_terms" rows="3">${escHtml(r.CONTRACT_TERMS||'')}</textarea></div>
+            <div class="fp-group"><div class="fp-label">Notes</div><textarea class="fp-input" id="fe_notes" rows="3">${escHtml(r.NOTES||'')}</textarea></div>
+            <div id="fe_err" style="color:#ef4444;font-size:.82rem;display:none;"></div>
+        `;
+        const footer = document.getElementById('scmPanelFooter');
+        footer.innerHTML = `
+            <button class="btn-scm btn-save" id="scmSaveBtn"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+            <button class="btn-scm btn-cancel" id="scmCancelBtn">Cancel</button>
+        `;
+        footer.querySelector('#scmCancelBtn').addEventListener('click', () => {
+            if (r.CONTRACT_KEY) openPanel(r.CONTRACT_KEY); else closePanel();
+        });
+        footer.querySelector('#scmSaveBtn').addEventListener('click', () => saveContract(r.CONTRACT_KEY || null));
+    }
+
+    async function saveContract(key) {
+        const payload = {
+            VENDOR_NAME:                document.getElementById('fe_vendor').value.trim(),
+            FLAG_ACTIVE:                parseInt(document.getElementById('fe_status').value),
+            PROPERTY_NAME:              document.getElementById('fe_prop').value.trim(),
+            CONTRACT_NAME:              document.getElementById('fe_name').value.trim(),
+            CONTRACT_LEVEL:             document.getElementById('fe_level').value,
+            CONTRACT_AMOUNT:            document.getElementById('fe_amt').value || null,
+            CONTRACT_BILLING_FREQUENCY: document.getElementById('fe_freq').value,
+            DATETIME_BEGIN:             document.getElementById('fe_begin').value || null,
+            DATETIME_END:               document.getElementById('fe_end').value   || null,
+            CONTRACT_FOLDER:            document.getElementById('fe_folder').value.trim() || null,
+            LISTING_URL:                document.getElementById('fe_listing').value.trim() || null,
+            CONTRACT_TERMS:             document.getElementById('fe_terms').value.trim() || null,
+            NOTES:                      document.getElementById('fe_notes').value.trim() || null,
+        };
+        const btn = document.getElementById('scmSaveBtn');
+        btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+        const errEl = document.getElementById('fe_err');
+        try {
+            const url    = key ? `/sam-contracts/api/contract/${key}` : '/sam-contracts/api/contract';
+            const method = key ? 'PATCH' : 'POST';
+            const res    = await fetch(url, { method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+            const data   = await res.json();
+            if (!res.ok || data.error) throw new Error(data.error || 'Save failed');
+            await load();
+            openPanel(data.CONTRACT_KEY);
+        } catch(e) {
+            errEl.textContent = e.message; errEl.style.display = '';
+            btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save';
+        }
+    }
+
+    async function deleteContract(key, name) {
+        if (!confirm(`Delete contract for "${name}"?\nThis cannot be undone.`)) return;
+        try {
+            const res = await fetch(`/sam-contracts/api/contract/${key}`, {method:'DELETE'});
+            if (!res.ok) throw new Error('Delete failed');
+            closePanel();
+            await load();
+        } catch(e) { alert('Delete failed: ' + e.message); }
+    }
+
+    // ── Add new ─────────────────────────────────────────────────────────────
+    const addBtn = document.getElementById('scmAddBtn');
+    if (addBtn) {
+        addBtn.addEventListener('click', () => {
+            _selectedKey = null;
+            document.getElementById('scmPanel').classList.add('open');
+            renderPanelEdit({
+                CONTRACT_KEY:null, VENDOR_NAME:'', FLAG_ACTIVE:1,
+                PROPERTY_NAME:'', CONTRACT_NAME:'', CONTRACT_LEVEL:'',
+                CONTRACT_AMOUNT:null, CONTRACT_BILLING_FREQUENCY:'MONTHLY',
+                DATETIME_BEGIN:null, DATETIME_END:null,
+                CONTRACT_FOLDER:null, LISTING_URL:null,
+                CONTRACT_TERMS:null, NOTES:null
+            });
+            document.getElementById('scmPanelTitle').textContent = 'New Contract';
+        });
+    }
+
+    // ── Filter listeners ────────────────────────────────────────────────────
+    let _debounce = null;
+    ['scmVendor','scmStatus','scmLevel'].forEach(id => {
+        document.getElementById(id).addEventListener('change', load);
+    });
+    document.getElementById('scmProp').addEventListener('input', () => {
+        clearTimeout(_debounce);
+        _debounce = setTimeout(load, 300);
+    });
+
+    // ── Utility ─────────────────────────────────────────────────────────────
+    function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function escAttr(s) { return escHtml(s); }
+
+    // Initial load
+    load();
+})();
+</script>
+{% endblock %}
