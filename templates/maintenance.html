@@ -969,23 +969,27 @@
                 return;
             }
             container.innerHTML = matches.map(m => `
-                <div class="lookup-match-item" data-email="${m.email}" style="padding:10px 12px; cursor:pointer; border-bottom:1px solid var(--border-subtle); display:flex; gap:12px; align-items:center; border-radius:4px;">
+                <div class="lookup-match-item" data-email="${m.email}" data-name="${m.name}" style="padding:10px 12px; cursor:pointer; border-bottom:1px solid var(--border-subtle); display:flex; gap:12px; align-items:center; border-radius:4px;">
                     <span style="font-weight:600; color:var(--text-primary); min-width:180px;">${m.name}</span>
                     <span style="font-size:0.8rem; color:var(--text-secondary);">${m.title_group}</span>
                     <span style="font-size:0.75rem; color:var(--text-secondary); margin-left:auto;">${m.property}</span>
                 </div>
             `).join('');
-            container.querySelectorAll('.lookup-match-item').forEach(item => {
-                item.addEventListener('click', function() {
-                    container.querySelectorAll('.lookup-match-item').forEach(i => i.style.background = '');
-                    this.style.background = 'rgba(0,188,212,0.1)';
-                    lookupSelectedEmail = this.dataset.email;
-                    document.getElementById('lookupBtn').disabled = false;
-                    // Immediately perform the lookup
-                    performLookup(lookupSelectedEmail);
-                });
-            });
         }, 300);
+    });
+
+    document.getElementById('lookupMatches').addEventListener('pointerdown', function(event) {
+        const item = event.target.closest('.lookup-match-item');
+        if (!item) return;
+
+        event.preventDefault();
+        this.querySelectorAll('.lookup-match-item').forEach(i => i.style.background = '');
+        item.style.background = 'rgba(0,188,212,0.1)';
+        lookupSelectedEmail = item.dataset.email;
+        document.getElementById('lookupName').value = item.dataset.name;
+        document.getElementById('lookupBtn').disabled = false;
+        this.innerHTML = '';
+        performLookup(lookupSelectedEmail);
     });
 
     document.getElementById('lookupBtn').addEventListener('click', function() {
