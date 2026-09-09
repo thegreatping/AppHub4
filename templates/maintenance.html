@@ -174,6 +174,8 @@
                         <li><strong>Edit name</strong> — Click a module name to rename it inline.</li>
                     </ul>
                     <br>
+                    <strong>Source tables:</strong> <code>DB_APP_SUPPORT.dbo.APP_LIST</code>; favorites indicator uses <code>DB_APP_SUPPORT.dbo.USER_MODULE_FAVORITES</code>.
+                    <br><br>
                     <strong>Note:</strong> Disabling a module hides it from the sidebar for ALL users, regardless of audience grants.
                 </div>
             </div>
@@ -208,6 +210,8 @@
                         <li><strong>Remove a grant</strong> — Click the × button next to any grant to revoke it immediately.</li>
                     </ul>
                     <br>
+                    <strong>Source tables:</strong> grants are stored in <code>DB_APP_SUPPORT.dbo.MODULE_AUDIENCE</code>; module names/status come from <code>DB_APP_SUPPORT.dbo.APP_LIST</code>; employee/title/property suggestions come from <code>WH_STAGING.dbo.EMPLOYEE_F</code>.
+                    <br><br>
                     <strong>Grant types:</strong> Title Group (all employees in that group), Email (individual user), Property (all employees at that property). "Admin" grants give elevated permissions within the module.
                 </div>
             </div>
@@ -236,6 +240,8 @@
                         <li><strong>Module grid</strong> — Shows all modules with access status: <span style="color:#81c784">✓</span> has access, <span style="color:#e57373">✗</span> excluded, ☐ no access.</li>
                         <li><strong>Toggle access</strong> — Click any module box to grant or revoke individual access for that user. Changes take effect immediately.</li>
                     </ul>
+                    <br>
+                    <strong>Source tables:</strong> employee search uses <code>WH_STAGING.dbo.EMPLOYEE_F</code>; access rules are evaluated from <code>DB_APP_SUPPORT.dbo.MODULE_AUDIENCE</code>, <code>DB_APP_SUPPORT.dbo.APP_LIST</code>, and developer/admin grants in <code>DB_APP_SUPPORT.dbo.APP_ADMINS</code>.
                 </div>
             </div>
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
@@ -256,6 +262,18 @@
 
         <!-- USAGE LOG PANEL -->
         <div class="maint-panel" id="panel-usagelog">
+
+            <div class="info-blurb" id="blurb-usagelog">
+                <div class="blurb-header" onclick="toggleBlurb('usagelog')">
+                    <span class="blurb-title">Usage Log</span>
+                    <span class="blurb-toggle" id="blurbToggle-usagelog">&#9660;</span>
+                </div>
+                <div class="blurb-body" id="blurbBody-usagelog">
+                    Shows recent AppHub requests by day, module, route, user, and response status.
+                    <br><br>
+                    <strong>Source tables:</strong> usage events are read from <code>DB_APP_SUPPORT.dbo.APPHUB_USAGE_LOG</code>; module display names are resolved from <code>DB_APP_SUPPORT.dbo.APP_LIST</code>.
+                </div>
+            </div>
 
             <!-- Filter bar -->
             <div class="ul-filters">
@@ -352,6 +370,17 @@
 
     <!-- DIAGNOSTICS PANEL -->
     <div class="maint-panel" id="panel-diagnostics">
+        <div class="info-blurb" id="blurb-diagnostics">
+            <div class="blurb-header" onclick="toggleBlurb('diagnostics')">
+                <span class="blurb-title">Diagnostics</span>
+                <span class="blurb-toggle" id="blurbToggle-diagnostics">&#9660;</span>
+            </div>
+            <div class="blurb-body" id="blurbBody-diagnostics">
+                Runs on-demand connectivity and row-count probes for AppHub data sources.
+                <br><br>
+                <strong>Source tables:</strong> diagnostics probe <code>DB_APP_SUPPORT.dbo.APP_LIST</code>, <code>DB_APP_SUPPORT.dbo.APP_ADMINS</code>, <code>DB_APP_SUPPORT.dbo.MODULE_AUDIENCE</code>, <code>WH_STAGING.dbo.EMPLOYEE_F</code>, and other configured module data sources reported in each diagnostic card.
+            </div>
+        </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
             <div>
                 <div style="font-size:0.95rem;font-weight:700;color:var(--text-primary);margin-bottom:4px;">Connection &amp; Data Source Diagnostics</div>
@@ -455,7 +484,7 @@
         toggle.innerHTML = collapsed ? '&#9654;' : '&#9660;';
         localStorage.setItem('maint_blurb_' + id, collapsed ? '1' : '0');
     }
-    ['modules','audience','lookup','usagelog'].forEach(id => {
+    ['modules','audience','lookup','usagelog','diagnostics'].forEach(id => {
         const state = localStorage.getItem('maint_blurb_' + id);
         if (state === '1') {
             const body = document.getElementById('blurbBody-' + id);

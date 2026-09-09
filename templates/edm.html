@@ -112,11 +112,39 @@
         .bulk-bar.visible { display: flex; }
         .bulk-bar select, .bulk-bar input { background: var(--surface-raised); border: 1px solid var(--border-input-heavy); color: var(--text-primary); padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; }
 
+        /* Entrata Users add row */
+        .eag-add-form { flex-wrap: nowrap; gap: 6px; overflow: visible; align-items: flex-start; position: relative; z-index: 70; }
+        .eag-lookup-field { position: relative; display: flex; gap: 3px; align-items: center; }
+        .eag-lookup-field input { min-width: 0; width: 210px; }
+        .entrata-combo-wide input { width: 280px; }
+        .entrata-combo-mid input { width: 235px; }
+        .entrata-combo-small input { width: 150px; }
+        .data-table .entrata-combo { min-width: 260px; }
+        .data-table .entrata-combo input { width: 260px; }
+        #entrataAssignTable th:nth-child(3), #entrataAssignTable td:nth-child(3) { min-width: 190px; }
+        #entrataAssignTable th:nth-child(4), #entrataAssignTable td:nth-child(4) { min-width: 150px; }
+        #entrataAssignTable th:nth-child(5), #entrataAssignTable td:nth-child(5) { min-width: 230px; }
+        #entrataAssignTable th:nth-child(6), #entrataAssignTable td:nth-child(6) { min-width: 120px; }
+        #entrataTable th:nth-child(2), #entrataTable td:nth-child(2) { min-width: 190px; }
+        #entrataTable th:nth-child(3), #entrataTable td:nth-child(3) { min-width: 240px; }
+        .entrata-option-menu { display:none; position:absolute; top:100%; left:0; right:0; min-width:320px; z-index:500; max-height:300px; overflow:auto; background:var(--surface-raised); border:1px solid var(--border-input); border-radius:6px; box-shadow:0 8px 24px var(--shadow-overlay); margin-top:3px; }
+        .entrata-option-menu.open { display:block; }
+        .entrata-option-row { display:flex; align-items:center; gap:6px; padding:5px 7px; border-bottom:1px solid var(--border-subtle); cursor:pointer; font-size:0.68rem; line-height:1.18; }
+        .entrata-option-row:hover { background:var(--hover-bg-strong); }
+        .entrata-option-row span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-primary); }
+        .entrata-option-delete { border:none; background:rgba(244,67,54,0.14); color:#e57373; border-radius:4px; padding:2px 4px; cursor:pointer; flex:0 0 auto; font-size:0.6rem; line-height:1.05; }
+        .entrata-option-empty { padding:7px; font-size:0.72rem; color:var(--text-secondary); }
+        .eag-add-form input[type="date"] { min-width: 0; width: 118px; }
+        .eag-add-form #eagType { min-width: 0; width: 88px; }
+        .eag-add-form .eag-employee-wrap { flex: 0 0 220px; }
+
         /* Validation warnings */
         .validation-warnings { background: rgba(255,152,0,0.08); border: 1px solid rgba(255,152,0,0.25); border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; font-size: 0.78rem; color: #ffb74d; }
         .validation-warnings strong { color: #ffa726; }
         .validation-warnings ul { margin: 6px 0 0 16px; padding: 0; }
-        .validation-warnings li { margin-bottom: 3px; }
+        .validation-warnings li { margin-bottom: 6px; }
+        .validation-action { margin-left: 8px; padding: 2px 7px; border: 1px solid rgba(255,180,50,0.45); border-radius: 4px; background: rgba(255,180,50,0.12); color: #ffca6a; font-size: 0.68rem; font-weight: 600; cursor: pointer; }
+        .validation-action:hover { background: rgba(255,180,50,0.22); }
 
         /* Info blurb - collapsible */
         .info-blurb { background: rgba(0,188,212,0.05); border: 1px solid rgba(0,188,212,0.15); border-radius: 8px; margin-bottom: 16px; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; }
@@ -163,7 +191,8 @@
         <div class="edm-tabs">
             <div class="edm-tab active" data-panel="employees">Employees</div>
             <div class="edm-tab" data-panel="titles">Title Assignments</div>
-            <div class="edm-tab" data-panel="entrata">Entrata Mapping</div>
+            <div class="edm-tab" data-panel="entrata">Entrata Groups</div>
+            <div class="edm-tab" data-panel="entrataassign">Entrata Users</div>
             <div class="edm-tab" data-panel="softterm">Soft Terminations</div>
         </div>
 
@@ -186,6 +215,8 @@
                         <li><strong>💾 Export</strong> — Download the current filtered view as a CSV file with your selected columns.</li>
                         <li><strong>Detail View</strong> — Click any employee row to open a side panel showing ALL fields for that person. Press Escape or × to close.</li>
                     </ul>
+                    <br>
+                    <strong>Source tables:</strong> employee rows come from <code>WH_STAGING.dbo.EMPLOYEE_F</code>; LEO fields come from <code>WH_STAGING.dbo.LEO_USERS_EXPORT</code>.
                 </div>
             </div>
             <div class="emp-filters">
@@ -251,6 +282,8 @@
                         <li><strong>Validation warnings</strong> — Orange alerts show Title Groups missing Entrata mappings, or orphaned Entrata entries.</li>
                     </ul>
                     <br>
+                    <strong>Source tables:</strong> mappings are read from and written to <code>DB_APP_SUPPORT.dbo.EMP_TITLE_GROUP_MGMT</code>; validation compares against <code>DB_APP_SUPPORT.dbo.EMP_ENTRATA_TITLE_GROUP_MAPPING</code>.
+                    <br><br>
                     <strong>Rules:</strong> Each Title must be unique (one mapping per title). Multiple titles can share the same Title Group. Changes take effect on the next Employee Update cycle (hourly).
                 </div>
             </div>
@@ -281,6 +314,7 @@
             <div class="validation-warnings" id="titleValidationWarnings" style="display:none"></div>
             <div class="filter-bar">
                 <input type="text" id="titleFilter" placeholder="Filter titles...">
+                <button class="btn btn-sm" onclick="exportTitleAssignmentsExcel()" style="color:var(--text-secondary)" title="Export Title Assignments to Excel">&#128190; Export</button>
                 <span class="count-label" id="titleCount"></span>
             </div>
             <div class="table-scroll">
@@ -303,7 +337,7 @@
         <div class="edm-panel" id="panel-entrata">
             <div class="info-blurb" id="blurb-entrata">
                 <div class="blurb-header" onclick="toggleBlurb('entrata')">
-                    <span class="blurb-title">Entrata Mapping</span>
+                    <span class="blurb-title">Entrata Groups</span>
                     <span class="blurb-toggle" id="blurbToggle-entrata">&#9660;</span>
                 </div>
                 <div class="blurb-body" id="blurbBody-entrata">
@@ -319,19 +353,22 @@
                         <li><strong>Delete</strong> — Click Delete to remove a mapping. Employees in that group will lose Entrata provisioning on the next cycle.</li>
                     </ul>
                     <br>
+                    <strong>Source tables:</strong> group mappings are read from and written to <code>DB_APP_SUPPORT.dbo.EMP_ENTRATA_TITLE_GROUP_MAPPING</code>; Department and Permission Group options use <code>DB_APP_SUPPORT.dbo.EMP_ENTRATA_DEPARTMENT</code> and <code>DB_APP_SUPPORT.dbo.EMP_ENTRATA_PERMISSION_GROUP</code>.
+                    <br><br>
                     <strong>Rule:</strong> Each Title Group should have exactly one row. If a Title Group has no mapping here, employees in that group won't receive Entrata assignments.
                 </div>
             </div>
             <div class="add-form" id="addEntrataForm">
                 <label>New:</label>
-                <input type="text" id="newEntrataGroup" placeholder="Title Group" list="titleGroupList2" style="min-width:180px">
-                <input type="text" id="newEntrataDept" placeholder="Entrata Department" style="min-width:180px">
-                <input type="text" id="newEntrataPerm" placeholder="Entrata Permission Group" style="min-width:200px">
+                <input type="text" id="newEntrataGroup" placeholder="Title Group" list="titleGroupList2" oninput="uppercaseInput(this)" style="min-width:180px">
+                <div class="eag-lookup-field entrata-combo entrata-combo-mid"><input type="text" id="newEntrataDept" placeholder="Entrata Department" data-entrata-option="department" oninput="uppercaseInput(this)"><div class="entrata-option-menu"></div></div>
+                <div class="eag-lookup-field entrata-combo entrata-combo-wide"><input type="text" id="newEntrataPerm" placeholder="Entrata Permission Group" data-entrata-option="permission_group" oninput="uppercaseInput(this)"><div class="entrata-option-menu"></div></div>
                 <button class="btn btn-primary" onclick="addEntrataMapping()">Add</button>
                 <datalist id="titleGroupList2"></datalist>
             </div>
             <div class="filter-bar">
                 <input type="text" id="entrataFilter" placeholder="Filter...">
+                <button class="btn btn-sm" onclick="exportEntrataGroupsExcel()" style="color:var(--text-secondary)" title="Export Entrata Groups to Excel">&#128190; Export</button>
                 <span class="count-label" id="entrataCount"></span>
             </div>
             <div class="table-scroll">
@@ -341,6 +378,65 @@
                             <th class="sortable" onclick="sortEntrataCol('title_group')">Title Group <span class="sort-arrow" id="entrataArrow_title_group"></span></th>
                             <th class="sortable" onclick="sortEntrataCol('entrata_department')">Entrata Department <span class="sort-arrow" id="entrataArrow_entrata_department"></span></th>
                             <th class="sortable" onclick="sortEntrataCol('entrata_permission_group')">Entrata Permission Group <span class="sort-arrow" id="entrataArrow_entrata_permission_group"></span></th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ENTRATA ASSIGNMENTS PANEL -->
+        <div class="edm-panel" id="panel-entrataassign">
+            <div class="info-blurb" id="blurb-entrataassign">
+                <div class="blurb-header" onclick="toggleBlurb('entrataassign')">
+                    <span class="blurb-title">Entrata Users</span>
+                    <span class="blurb-toggle" id="blurbToggle-entrataassign">&#9660;</span>
+                </div>
+                <div class="blurb-body" id="blurbBody-entrataassign">
+                    Manages employee-level Entrata permission rows in <code>EMP_ENTRATA_GROUP_ASSIGNMENTS</code>.
+                    Use this for explicit employee permission, department, and property group assignments outside the title-group mapping defaults.
+                    <br><br>
+                    <strong>Source tables:</strong> user assignments are read from and written to <code>DB_APP_SUPPORT.dbo.EMP_ENTRATA_GROUP_ASSIGNMENTS</code>; employee lookup uses <code>WH_STAGING.dbo.EMPLOYEE_F</code>; dropdown options use <code>DB_APP_SUPPORT.dbo.EMP_ENTRATA_PERMISSION_GROUP</code>, <code>DB_APP_SUPPORT.dbo.EMP_ENTRATA_DEPARTMENT</code>, and <code>DB_APP_SUPPORT.dbo.EMP_ENTRATA_PROPERTY_GROUP</code> plus existing assignment values.
+                </div>
+            </div>
+            <div class="add-form eag-add-form" id="addEntrataAssignForm">
+                <label>New:</label>
+                <div class="eag-employee-wrap" style="position:relative; min-width:220px;">
+                    <input type="text" id="eagEmployeeSearch" placeholder="Employee name or code" style="width:100%;" autocomplete="off">
+                    <div id="eagEmployeeMatches" style="position:absolute; top:100%; left:0; right:0; z-index:50; background:var(--surface-raised); border:1px solid var(--border-input); border-radius:4px; max-height:220px; overflow:auto; display:none;"></div>
+                </div>
+                <input type="hidden" id="eagEmployeeCode">
+                <div class="eag-lookup-field entrata-combo"><input type="text" id="eagPermissionGroup" placeholder="Permission Group" data-entrata-option="permission_group" oninput="uppercaseInput(this)"><div class="entrata-option-menu"></div></div>
+                <div class="eag-lookup-field entrata-combo entrata-combo-small"><input type="text" id="eagDepartment" placeholder="Department" data-entrata-option="department" oninput="uppercaseInput(this)"><div class="entrata-option-menu"></div></div>
+                <div class="eag-lookup-field entrata-combo entrata-combo-mid"><input type="text" id="eagPropertyGroup" placeholder="Property Group" data-entrata-option="property_group" oninput="uppercaseInput(this)"><div class="entrata-option-menu"></div></div>
+                <div class="eag-lookup-field entrata-combo entrata-combo-small"><input type="text" id="eagType" placeholder="Type" data-entrata-option="type" oninput="uppercaseInput(this)"><div class="entrata-option-menu"></div></div>
+                <input type="date" id="eagDateStart" title="Date Start">
+                <input type="date" id="eagDateEnd" title="Date End">
+                <button class="btn btn-primary" onclick="addEntrataAssignment()">Add</button>
+                <datalist id="eagPermissionList"></datalist>
+                <datalist id="eagDepartmentList"></datalist>
+                <datalist id="eagPropertyGroupList"></datalist>
+                <datalist id="eagTypeList"></datalist>
+            </div>
+            <div class="filter-bar">
+                <input type="text" id="eagFilter" placeholder="Filter assignments...">
+                <button class="btn btn-sm" onclick="exportEntrataUsersExcel()" style="color:var(--text-secondary)" title="Export Entrata Users to Excel">&#128190; Export</button>
+                <span class="count-label" id="eagCount"></span>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table" id="entrataAssignTable">
+                    <thead>
+                        <tr>
+                            <th class="sortable" onclick="sortEagCol('name')">Employee <span class="sort-arrow" id="eagArrow_name"></span></th>
+                            <th class="sortable" onclick="sortEagCol('employee_code')">Code <span class="sort-arrow" id="eagArrow_employee_code"></span></th>
+                            <th class="sortable" onclick="sortEagCol('entrata_permission_group')">Permission Group <span class="sort-arrow" id="eagArrow_entrata_permission_group"></span></th>
+                            <th class="sortable" onclick="sortEagCol('entrata_department')">Department <span class="sort-arrow" id="eagArrow_entrata_department"></span></th>
+                            <th class="sortable" onclick="sortEagCol('entrata_property_group')">Property Group <span class="sort-arrow" id="eagArrow_entrata_property_group"></span></th>
+                            <th class="sortable" onclick="sortEagCol('type')">Type <span class="sort-arrow" id="eagArrow_type"></span></th>
+                            <th class="sortable" onclick="sortEagCol('date_start')">Start <span class="sort-arrow" id="eagArrow_date_start"></span></th>
+                            <th class="sortable" onclick="sortEagCol('date_end')">End <span class="sort-arrow" id="eagArrow_date_end"></span></th>
+                            <th class="sortable" onclick="sortEagCol('flag_active')">Status <span class="sort-arrow" id="eagArrow_flag_active"></span></th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -370,12 +466,18 @@
                         <li><strong>Show Inactive</strong> — Check the box to reveal deactivated overrides (shown at 50% opacity).</li>
                     </ul>
                     <br>
+                    <strong>Source tables:</strong> overrides are read from and written to <code>DB_APP_SUPPORT.dbo.EMPLOYEE_SOFT_TERMINATION_OVERRIDES</code>; employee code/name search uses <code>WH_STAGING.dbo.EMPLOYEE_F</code>.
+                    <br><br>
                     <strong>How it works:</strong> The Active Employees for AD export checks this list. Anyone flagged here stays in the "Active" AD export instead of being moved to "Terminated."
                 </div>
             </div>
             <div class="add-form" id="addSoftTermForm">
                 <label>Add Override:</label>
-                <input type="text" id="stEmpCode" placeholder="Employee Code" style="min-width:120px">
+                <div style="position:relative; min-width:260px;">
+                    <input type="text" id="stEmpCode" placeholder="Employee Code or Name" style="width:100%;" autocomplete="off">
+                    <div id="stEmployeeMatches" style="position:absolute; top:100%; left:0; right:0; z-index:55; background:var(--surface-raised); border:1px solid var(--border-input); border-radius:4px; max-height:220px; overflow:auto; display:none;"></div>
+                </div>
+                <input type="hidden" id="stSelectedEmpCode">
                 <input type="text" id="stReason" placeholder="Reason" style="min-width:250px">
                 <label style="font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:4px;">Expires: <input type="date" id="stExpires" style="min-width:140px"></label>
                 <button class="btn btn-primary" onclick="addSoftTermination()">Add</button>
@@ -384,6 +486,7 @@
                 <label style="font-size:0.75rem; color:var(--text-secondary);">
                     <input type="checkbox" id="stShowInactive"> Show Inactive
                 </label>
+                <button class="btn btn-sm" onclick="exportSoftTerminationsExcel()" style="color:var(--text-secondary)" title="Export Soft Terminations to Excel">&#128190; Export</button>
                 <span class="count-label" id="stCount"></span>
             </div>
             <div class="table-scroll">
@@ -415,7 +518,7 @@
         toggle.innerHTML = collapsed ? '&#9654;' : '&#9660;';
         localStorage.setItem('edm_blurb_' + id, collapsed ? '1' : '0');
     }
-    ['employees','titles','entrata','softterm'].forEach(id => {
+    ['employees','titles','entrata','entrataassign','softterm'].forEach(id => {
         const state = localStorage.getItem('edm_blurb_' + id);
         if (state === '1') {
             const body = document.getElementById('blurbBody-' + id);
@@ -434,6 +537,7 @@
             // Load data on first visit
             if (tab.dataset.panel === 'titles' && !titlesLoaded) loadTitleAssignments();
             if (tab.dataset.panel === 'entrata' && !entrataLoaded) loadEntrataMapping();
+            if (tab.dataset.panel === 'entrataassign' && !entrataAssignLoaded) loadEntrataAssignments();
             if (tab.dataset.panel === 'softterm' && !softTermLoaded) loadSoftTerminations();
         });
     });
@@ -694,7 +798,7 @@
                 <td>${esc(r.title)}${isUn ? ' <span class="unassigned-badge">NEEDS ASSIGNMENT</span>' : ''}</td>
                 <td class="editable" onclick="editTitleCell(this,'${esc(r.title)}','title_group','${esc(r.title_group||'')}')">${esc(r.title_group||'')}</td>
                 <td class="editable" onclick="editTitleCell(this,'${esc(r.title)}','title_type','${esc(r.title_type||'')}')">${esc(r.title_type||'—')}</td>
-                <td><button class="btn btn-danger btn-sm" onclick="deleteTitleAssignment('${esc(r.title)}')">Delete</button></td>
+                <td><button class="btn btn-danger btn-sm" onclick="deleteTitleAssignment('${esc(r.title)}')" title="Delete title assignment"><i class="fa-solid fa-trash"></i></button></td>
             </tr>`;
         }).join('');
     }
@@ -831,6 +935,7 @@
     }
 
     async function loadEntrataMapping() {
+        await loadEntrataAssignmentOptions();
         const res = await fetch('/edm/api/entrata-mapping');
         entrataData = await res.json();
         entrataLoaded = true;
@@ -860,7 +965,7 @@
                 <td>${esc(r.title_group)}</td>
                 <td class="editable" onclick="editEntrataCell(this,'${esc(r.title_group)}','entrata_department','${esc(r.entrata_department||'')}')">${esc(r.entrata_department||'—')}</td>
                 <td class="editable" onclick="editEntrataCell(this,'${esc(r.title_group)}','entrata_permission_group','${esc(r.entrata_permission_group||'')}')">${esc(r.entrata_permission_group||'—')}</td>
-                <td><button class="btn btn-danger btn-sm" onclick="deleteEntrataMapping('${esc(r.title_group)}')">Delete</button></td>
+                <td><button class="btn btn-danger btn-sm" onclick="deleteEntrataMapping('${esc(r.title_group)}')" title="Delete mapping"><i class="fa-solid fa-trash"></i></button></td>
             </tr>
         `).join('');
     }
@@ -868,13 +973,25 @@
     document.getElementById('entrataFilter').addEventListener('input', renderEntrata);
 
     function editEntrataCell(td, tg, field, current) {
-        if (td.querySelector('input')) return;
-        td.innerHTML = `<input type="text" value="${esc(current)}" onblur="saveEntrataCell(this,'${esc(tg)}','${field}')" onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.dataset.cancel='1';this.blur();}">`;
-        td.querySelector('input').focus();
+        if (td.querySelector('select')) return;
+        const values = field === 'entrata_department'
+            ? entrataAssignOptions.departments
+            : entrataAssignOptions.permission_groups;
+        const options = current && !values.includes(current) ? [current, ...values] : values;
+        const select = document.createElement('select');
+        select.innerHTML = '<option value="">(blank)</option>' + options.map(v => `<option value="${esc(v)}"${v===current?' selected':''}>${esc(v)}</option>`).join('');
+        select.onchange = () => saveEntrataCell(select, tg, field);
+        select.onblur = () => { if (!select.dataset.saved) saveEntrataCell(select, tg, field); };
+        select.onkeydown = e => { if(e.key==='Escape'){ select.dataset.cancel='1'; loadEntrataMapping(); } };
+        td.textContent = '';
+        td.appendChild(select);
+        select.focus();
     }
 
     async function saveEntrataCell(input, tg, field) {
         if (input.dataset.cancel) { loadEntrataMapping(); return; }
+        if (input.dataset.saved) return;
+        input.dataset.saved = '1';
         const value = input.value.trim();
         const res = await fetch('/edm/api/entrata-mapping', {
             method: 'PATCH', headers: {'Content-Type':'application/json'},
@@ -885,6 +1002,7 @@
     }
 
     async function addEntrataMapping() {
+        ['newEntrataGroup','newEntrataDept','newEntrataPerm'].forEach(id => uppercaseInput(document.getElementById(id)));
         const title_group = document.getElementById('newEntrataGroup').value.trim();
         const entrata_department = document.getElementById('newEntrataDept').value.trim();
         const entrata_permission_group = document.getElementById('newEntrataPerm').value.trim();
@@ -907,6 +1025,288 @@
             body: JSON.stringify({title_group: tg})
         });
         if (res.ok) { toast('Deleted'); loadEntrataMapping(); }
+        else { const e = await res.json(); toast(e.error||'Error','error'); }
+    }
+
+    // ─── ENTRATA ASSIGNMENTS TAB ─────────────────────────────────────────────
+    let entrataAssignLoaded = false;
+    let entrataAssignData = [];
+    let entrataAssignOptions = { permission_groups: [], departments: [], property_groups: [], types: [] };
+    let eagSortCol = 'name';
+    let eagSortDir = 1;
+    let eagSearchTimer = null;
+
+    async function loadEntrataAssignments() {
+        await loadEntrataAssignmentOptions();
+        const res = await fetch('/edm/api/entrata-group-assignments');
+        entrataAssignData = await res.json();
+        entrataAssignLoaded = true;
+        renderEntrataAssignments();
+    }
+
+    async function loadEntrataAssignmentOptions() {
+        const res = await fetch('/edm/api/entrata-assignment-options');
+        entrataAssignOptions = await res.json();
+        document.getElementById('eagPermissionList').innerHTML = entrataAssignOptions.permission_groups.map(v => `<option value="${esc(v)}">`).join('');
+        document.getElementById('eagDepartmentList').innerHTML = entrataAssignOptions.departments.map(v => `<option value="${esc(v)}">`).join('');
+        document.getElementById('eagPropertyGroupList').innerHTML = entrataAssignOptions.property_groups.map(v => `<option value="${esc(v)}">`).join('');
+        document.getElementById('eagTypeList').innerHTML = (entrataAssignOptions.types || []).map(v => `<option value="${esc(v)}">`).join('');
+    }
+
+    function uppercaseInput(input) {
+        const pos = input.selectionStart;
+        input.value = input.value.toUpperCase();
+        if (pos !== null) input.setSelectionRange(pos, pos);
+    }
+
+    function entrataOptionConfig(kind) {
+        const config = {
+            permission_group: { key: 'permission_groups', label: 'Permission Group' },
+            department: { key: 'departments', label: 'Department' },
+            property_group: { key: 'property_groups', label: 'Property Group' },
+            type: { key: 'types', label: 'Type' }
+        };
+        return config[kind];
+    }
+
+    function renderEntrataOptionMenu(input) {
+        const kind = input.dataset.entrataOption;
+        const cfg = entrataOptionConfig(kind);
+        if (!cfg) return;
+        const menu = input.closest('.entrata-combo').querySelector('.entrata-option-menu');
+        closeEntrataOptionMenus(menu);
+        const q = input.value.trim().toUpperCase();
+        const values = (entrataAssignOptions[cfg.key] || []).filter(v => !q || String(v).toUpperCase().includes(q));
+        menu.innerHTML = values.length ? values.map(v => `
+            <div class="entrata-option-row" data-kind="${kind}" data-value="${esc(v)}">
+                <span title="${esc(v)}">${esc(v)}</span>
+                <button type="button" class="entrata-option-delete" data-kind="${kind}" data-value="${esc(v)}" title="Delete ${esc(cfg.label)}"><i class="fa-solid fa-trash"></i></button>
+            </div>
+        `).join('') : `<div class="entrata-option-empty">New value will be added automatically when saved.</div>`;
+        menu.classList.add('open');
+    }
+
+    function closeEntrataOptionMenus(exceptMenu=null) {
+        document.querySelectorAll('.entrata-option-menu.open').forEach(menu => {
+            if (menu !== exceptMenu) menu.classList.remove('open');
+        });
+    }
+
+    document.addEventListener('input', e => {
+        if (e.target.matches('input[data-entrata-option]')) renderEntrataOptionMenu(e.target);
+    });
+    document.addEventListener('focusin', e => {
+        if (e.target.matches('input[data-entrata-option]')) renderEntrataOptionMenu(e.target);
+    });
+    document.addEventListener('pointerdown', e => {
+        if (!e.target.closest('.entrata-combo')) closeEntrataOptionMenus();
+    }, true);
+    document.addEventListener('focusin', e => {
+        if (!e.target.closest('.entrata-combo')) closeEntrataOptionMenus();
+    });
+    document.addEventListener('focusout', e => {
+        if (!e.target.matches('input[data-entrata-option]')) return;
+        setTimeout(() => {
+            if (!document.activeElement.closest?.('.entrata-combo')) closeEntrataOptionMenus();
+        }, 160);
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeEntrataOptionMenus();
+    });
+    document.addEventListener('pointerdown', async e => {
+        const deleteBtn = e.target.closest('.entrata-option-delete');
+        if (deleteBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const input = deleteBtn.closest('.entrata-combo')?.querySelector('input[data-entrata-option]');
+            await deleteEntrataOption(deleteBtn.dataset.kind, deleteBtn.dataset.value, input);
+            return;
+        }
+        const row = e.target.closest('.entrata-option-row');
+        if (!row) return;
+        const input = row.closest('.entrata-combo').querySelector('input[data-entrata-option]');
+        input.value = row.dataset.value;
+        row.closest('.entrata-option-menu').classList.remove('open');
+    });
+
+    async function deleteEntrataOption(kind, value, activeInput) {
+        const cfg = entrataOptionConfig(kind);
+        if (!cfg || !confirm(`Delete ${cfg.label} "${value}"?`)) return;
+        const payload = { value };
+        let hadReplacement = false;
+        let res = await fetch('/edm/api/entrata-assignment-options/' + kind, {
+            method: 'DELETE', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+        });
+        if (res.status === 409) {
+            const detail = await res.json();
+            const options = (entrataAssignOptions[cfg.key] || []).filter(v => String(v).toUpperCase() !== String(value).toUpperCase());
+            const replacement = prompt(`${cfg.label} "${value}" is used by ${detail.usage_count} row(s). Enter an existing replacement value before deleting:`, options[0] || '');
+            if (!replacement) return;
+            const repl = replacement.trim().toUpperCase();
+            if (!options.some(v => String(v).toUpperCase() === repl)) {
+                toast('Replacement must be an existing dropdown value', 'error');
+                return;
+            }
+            res = await fetch('/edm/api/entrata-assignment-options/' + kind, {
+                method: 'DELETE', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ value, replacement: repl })
+            });
+            hadReplacement = true;
+        }
+        if (res.ok) {
+            toast('Deleted');
+            await loadEntrataAssignmentOptions();
+            if (activeInput && activeInput.isConnected) {
+                if (String(activeInput.value).toUpperCase() === String(value).toUpperCase()) activeInput.value = '';
+                renderEntrataOptionMenu(activeInput);
+            }
+            if (hadReplacement) {
+                if (entrataLoaded) loadEntrataMapping();
+                if (entrataAssignLoaded) loadEntrataAssignments();
+            }
+        } else {
+            const e = await res.json();
+            toast(e.error || 'Delete failed', 'error');
+        }
+    }
+
+    function sortEagCol(col) {
+        if (eagSortCol === col) { eagSortDir *= -1; }
+        else { eagSortCol = col; eagSortDir = 1; }
+        renderEntrataAssignments();
+    }
+
+    function renderEntrataAssignments() {
+        const filter = (document.getElementById('eagFilter').value || '').toUpperCase();
+        let filtered = filter ? entrataAssignData.filter(r => Object.values(r).join(' ').toUpperCase().includes(filter)) : [...entrataAssignData];
+        filtered.sort((a, b) => {
+            const aVal = eagSortCol === 'name' ? `${a.name_last||''} ${a.name_first||''}` : (a[eagSortCol] ?? '');
+            const bVal = eagSortCol === 'name' ? `${b.name_last||''} ${b.name_first||''}` : (b[eagSortCol] ?? '');
+            return String(aVal).toLowerCase().localeCompare(String(bVal).toLowerCase()) * eagSortDir;
+        });
+        ['name','employee_code','entrata_permission_group','entrata_department','entrata_property_group','type','date_start','date_end','flag_active'].forEach(col => {
+            const el = document.getElementById('eagArrow_' + col);
+            if (el) el.textContent = col === eagSortCol ? (eagSortDir === 1 ? ' ▲' : ' ▼') : '';
+        });
+        document.getElementById('eagCount').textContent = `${filtered.length} of ${entrataAssignData.length}`;
+        const tbody = document.querySelector('#entrataAssignTable tbody');
+        tbody.innerHTML = filtered.map(r => `
+            <tr>
+                <td>${esc(r.name_first || '')} ${esc(r.name_last || '')}</td>
+                <td style="font-family:monospace;font-size:0.8rem">${esc(r.employee_code)}</td>
+                <td class="editable" onclick="editEagCell(this,${r.id},'entrata_permission_group','${esc(r.entrata_permission_group||'')}','permission_group')">${esc(r.entrata_permission_group||'')}</td>
+                <td class="editable" onclick="editEagCell(this,${r.id},'entrata_department','${esc(r.entrata_department||'')}','department')">${esc(r.entrata_department||'')}</td>
+                <td class="editable" onclick="editEagCell(this,${r.id},'entrata_property_group','${esc(r.entrata_property_group||'')}','property_group')">${esc(r.entrata_property_group||'')}</td>
+                <td class="editable" onclick="editEagCell(this,${r.id},'type','${esc(r.type||'')}','type')">${esc(r.type||'')}</td>
+                <td class="editable" onclick="editEagCell(this,${r.id},'date_start','${fmtDateInput(r.date_start)}','date')">${fmtDateInt(r.date_start)}</td>
+                <td class="editable" onclick="editEagCell(this,${r.id},'date_end','${fmtDateInput(r.date_end)}','date')">${fmtDateInt(r.date_end)}</td>
+                <td class="editable" onclick="editEagCell(this,${r.id},'flag_active','${r.flag_active ? '1' : '0'}','status')">${r.flag_active ? '<span class="badge badge-active">Active</span>' : '<span class="badge badge-inactive">Inactive</span>'}</td>
+                <td><button class="btn btn-danger btn-sm" onclick="deleteEntrataAssignment(${r.id}, '${esc((r.name_first||'') + ' ' + (r.name_last||''))}')" title="Delete record"><i class="fa-solid fa-trash"></i></button></td>
+            </tr>
+        `).join('');
+    }
+
+    document.getElementById('eagFilter').addEventListener('input', renderEntrataAssignments);
+    document.getElementById('eagEmployeeSearch').addEventListener('input', function() {
+        clearTimeout(eagSearchTimer);
+        document.getElementById('eagEmployeeCode').value = '';
+        const q = this.value.trim();
+        if (q.length < 2) { document.getElementById('eagEmployeeMatches').style.display = 'none'; return; }
+        eagSearchTimer = setTimeout(async () => {
+            const res = await fetch('/edm/api/entrata-assignment-employees?q=' + encodeURIComponent(q));
+            const rows = await res.json();
+            const box = document.getElementById('eagEmployeeMatches');
+            box.innerHTML = rows.map(r => `
+                <div class="eag-employee-match" data-code="${esc(r.employee_code)}" data-name="${esc(r.name_first)} ${esc(r.name_last)}" style="padding:8px 10px; cursor:pointer; border-bottom:1px solid var(--border-subtle);">
+                    <div style="font-weight:600;color:var(--text-primary);">${esc(r.name_first)} ${esc(r.name_last)} <span style="font-family:monospace;color:var(--text-secondary);">${esc(r.employee_code)}</span></div>
+                    <div style="font-size:0.72rem;color:var(--text-secondary);">${esc(r.title)} ${r.property ? '- ' + esc(r.property) : ''}</div>
+                </div>`).join('');
+            box.style.display = rows.length ? 'block' : 'none';
+        }, 250);
+    });
+    document.getElementById('eagEmployeeMatches').addEventListener('pointerdown', function(e) {
+        const item = e.target.closest('.eag-employee-match');
+        if (!item) return;
+        e.preventDefault();
+        document.getElementById('eagEmployeeCode').value = item.dataset.code;
+        document.getElementById('eagEmployeeSearch').value = item.dataset.name;
+        this.style.display = 'none';
+    });
+
+    async function editEagCell(td, id, field, current, kind) {
+        if (td.querySelector('input,select')) return;
+        let input;
+        if (kind === 'status') {
+            input = document.createElement('select');
+            input.innerHTML = `<option value="1"${current==='1'?' selected':''}>Active</option><option value="0"${current==='0'?' selected':''}>Inactive</option>`;
+        } else if (['permission_group','department','property_group','type'].includes(kind)) {
+            const combo = document.createElement('div');
+            combo.className = 'eag-lookup-field entrata-combo';
+            input = document.createElement('input');
+            input.type = 'text';
+            input.value = current || '';
+            input.dataset.entrataOption = kind;
+            input.oninput = () => { uppercaseInput(input); renderEntrataOptionMenu(input); };
+            input.onfocus = () => renderEntrataOptionMenu(input);
+            const menu = document.createElement('div');
+            menu.className = 'entrata-option-menu';
+            combo.appendChild(input);
+            combo.appendChild(menu);
+            input.onblur = () => setTimeout(() => saveEagCell(input, id, field), 160);
+            input.onkeydown = e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') { input.dataset.cancel = '1'; input.blur(); } };
+            td.textContent = '';
+            td.appendChild(combo);
+            input.focus();
+            renderEntrataOptionMenu(input);
+            return;
+        } else {
+            input = document.createElement('input');
+            input.type = kind === 'date' ? 'date' : 'text';
+            input.value = current || '';
+        }
+        input.onblur = () => saveEagCell(input, id, field);
+        input.onkeydown = e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') { input.dataset.cancel = '1'; input.blur(); } };
+        td.textContent = '';
+        td.appendChild(input);
+        input.focus();
+    }
+
+    async function saveEagCell(input, id, field) {
+        if (input.dataset.cancel) { renderEntrataAssignments(); return; }
+        if (input.dataset.saved) return;
+        input.dataset.saved = '1';
+        const res = await fetch('/edm/api/entrata-group-assignments/' + id, {
+            method: 'PATCH', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({field, value: input.value})
+        });
+        if (res.ok) { toast('Updated'); loadEntrataAssignments(); }
+        else { const e = await res.json(); toast(e.error||'Error','error'); loadEntrataAssignments(); }
+    }
+
+    async function addEntrataAssignment() {
+        ['eagPermissionGroup','eagDepartment','eagPropertyGroup','eagType'].forEach(id => uppercaseInput(document.getElementById(id)));
+        const payload = {
+            employee_code: document.getElementById('eagEmployeeCode').value || document.getElementById('eagEmployeeSearch').value.trim(),
+            entrata_permission_group: document.getElementById('eagPermissionGroup').value.trim(),
+            entrata_department: document.getElementById('eagDepartment').value.trim(),
+            entrata_property_group: document.getElementById('eagPropertyGroup').value.trim(),
+            date_start: document.getElementById('eagDateStart').value,
+            date_end: document.getElementById('eagDateEnd').value,
+            type: document.getElementById('eagType').value.trim()
+        };
+        const res = await fetch('/edm/api/entrata-group-assignments', {
+            method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            toast('Assignment added');
+            ['eagEmployeeSearch','eagEmployeeCode','eagPermissionGroup','eagDepartment','eagPropertyGroup','eagDateStart','eagDateEnd','eagType'].forEach(id => document.getElementById(id).value = '');
+            loadEntrataAssignments();
+        } else { const e = await res.json(); toast(e.error||'Error','error'); }
+    }
+
+    async function deleteEntrataAssignment(id, name) {
+        if (!confirm(`Delete Entrata assignment for ${name || 'this employee'}?`)) return;
+        const res = await fetch('/edm/api/entrata-group-assignments/' + id, { method: 'DELETE' });
+        if (res.ok) { toast('Deleted'); loadEntrataAssignments(); }
         else { const e = await res.json(); toast(e.error||'Error','error'); }
     }
 
@@ -965,7 +1365,7 @@
                 <td style="font-family:monospace;font-size:0.8rem">${esc(r.employee_code)}</td>
                 <td>${esc(r.name_first||'')} ${esc(r.name_last||'')}</td>
                 <td style="font-size:0.8rem">${esc(r.reason||'')}</td>
-                <td style="font-size:0.8rem">${r.expires_on||'—'}</td>
+                <td class="editable" style="font-size:0.8rem" onclick="editSoftTermExpires(this,'${r.employee_code}','${r.expires_on||''}')">${r.expires_on||'—'}</td>
                 <td>${statusBadge}</td>
                 <td style="font-size:0.8rem">${r.added_by ? r.added_by.split('@')[0] : ''}</td>
                 <td style="font-size:0.8rem">${r.added_on ? r.added_on.split('T')[0] : ''}</td>
@@ -981,9 +1381,61 @@
     }
 
     document.getElementById('stShowInactive').addEventListener('change', renderSoftTerminations);
+    let stSearchTimer = null;
+    document.getElementById('stEmpCode').addEventListener('input', function() {
+        clearTimeout(stSearchTimer);
+        document.getElementById('stSelectedEmpCode').value = '';
+        const q = this.value.trim();
+        if (q.length < 2) { document.getElementById('stEmployeeMatches').style.display = 'none'; return; }
+        stSearchTimer = setTimeout(async () => {
+            const res = await fetch('/edm/api/soft-terminations/employees?q=' + encodeURIComponent(q));
+            const rows = await res.json();
+            const box = document.getElementById('stEmployeeMatches');
+            box.innerHTML = rows.map(r => `
+                <div class="st-employee-match" data-code="${esc(r.employee_code)}" data-name="${esc(r.name_first)} ${esc(r.name_last)}" style="padding:8px 10px; cursor:pointer; border-bottom:1px solid var(--border-subtle);">
+                    <div style="font-weight:600;color:var(--text-primary);">${esc(r.name_first)} ${esc(r.name_last)} <span style="font-family:monospace;color:var(--text-secondary);">${esc(r.employee_code)}</span></div>
+                    <div style="font-size:0.72rem;color:var(--text-secondary);">${esc(r.title)} ${r.property ? '- ' + esc(r.property) : ''} ${r.status ? '(' + esc(r.status) + ')' : ''}</div>
+                </div>`).join('');
+            box.style.display = rows.length ? 'block' : 'none';
+        }, 250);
+    });
+    document.getElementById('stEmpCode').addEventListener('blur', function() {
+        setTimeout(() => { document.getElementById('stEmployeeMatches').style.display = 'none'; }, 150);
+    });
+    document.getElementById('stEmployeeMatches').addEventListener('pointerdown', function(e) {
+        const item = e.target.closest('.st-employee-match');
+        if (!item) return;
+        e.preventDefault();
+        document.getElementById('stSelectedEmpCode').value = item.dataset.code;
+        document.getElementById('stEmpCode').value = `${item.dataset.name} (${item.dataset.code})`;
+        this.style.display = 'none';
+    });
+    document.addEventListener('pointerdown', function(e) {
+        if (!e.target.closest('#addSoftTermForm')) {
+            document.getElementById('stEmployeeMatches').style.display = 'none';
+        }
+    });
+
+    function editSoftTermExpires(td, code, current) {
+        if (td.querySelector('input')) return;
+        td.innerHTML = `<input type="date" value="${esc(current)}" onblur="saveSoftTermExpires(this,'${esc(code)}')" onchange="saveSoftTermExpires(this,'${esc(code)}')" onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.dataset.cancel='1';this.blur();}">`;
+        td.querySelector('input').focus();
+    }
+
+    async function saveSoftTermExpires(input, code) {
+        if (input.dataset.cancel) { loadSoftTerminations(); return; }
+        if (input.dataset.saved) return;
+        input.dataset.saved = '1';
+        const res = await fetch('/edm/api/soft-terminations/' + code, {
+            method: 'PATCH', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({expires_on: input.value || null})
+        });
+        if (res.ok) { toast('Expires updated'); loadSoftTerminations(); }
+        else { const e = await res.json(); toast(e.error||'Error','error'); loadSoftTerminations(); }
+    }
 
     async function addSoftTermination() {
-        const employee_code = document.getElementById('stEmpCode').value.trim();
+        const employee_code = document.getElementById('stSelectedEmpCode').value || document.getElementById('stEmpCode').value.trim().toUpperCase();
         const reason = document.getElementById('stReason').value.trim();
         const expires_on = document.getElementById('stExpires').value || null;
         if (!employee_code || !reason) { toast('Employee code and reason required','error'); return; }
@@ -994,6 +1446,7 @@
         if (res.ok) {
             toast('Override added');
             document.getElementById('stEmpCode').value='';
+            document.getElementById('stSelectedEmpCode').value='';
             document.getElementById('stReason').value='';
             document.getElementById('stExpires').value='';
             loadSoftTerminations();
@@ -1025,9 +1478,167 @@
         else { const e = await res.json(); toast(e.error||'Error','error'); }
     }
 
+    function titleExportRows() {
+        const filter = (document.getElementById('titleFilter').value || '').toUpperCase();
+        const rows = filter ? titleData.filter(r =>
+            r.title.includes(filter) || (r.title_group||'').includes(filter) || (r.title_type||'').includes(filter)
+        ) : [...titleData];
+        return rows.sort((a, b) => {
+            const aUn = (a.title_group||'') === '_UNASSIGNED' ? 0 : 1;
+            const bUn = (b.title_group||'') === '_UNASSIGNED' ? 0 : 1;
+            if (aUn !== bUn) return aUn - bUn;
+            return (a[titleSortCol]||'').toLowerCase().localeCompare((b[titleSortCol]||'').toLowerCase()) * titleSortDir;
+        });
+    }
+
+    function exportTitleAssignmentsExcel() {
+        downloadExcelCsv(
+            `edm_title_assignments_${exportDateStampET()}.csv`,
+            'Employee Data Manager - Title Assignments',
+            'DB_APP_SUPPORT.dbo.EMP_TITLE_GROUP_MGMT',
+            [
+                { label: 'Title', value: r => r.title || '' },
+                { label: 'Title Group', value: r => r.title_group || '' },
+                { label: 'Type', value: r => r.title_type || '' }
+            ],
+            titleExportRows()
+        );
+    }
+
+    function entrataGroupsExportRows() {
+        const filter = (document.getElementById('entrataFilter').value || '').toUpperCase();
+        const rows = filter ? entrataData.filter(r =>
+            (r.title_group||'').includes(filter) || (r.entrata_department||'').toUpperCase().includes(filter) ||
+            (r.entrata_permission_group||'').toUpperCase().includes(filter)
+        ) : [...entrataData];
+        return rows.sort((a, b) => {
+            const aVal = (a[entrataSortCol]||'').toLowerCase();
+            const bVal = (b[entrataSortCol]||'').toLowerCase();
+            return aVal.localeCompare(bVal) * entrataSortDir;
+        });
+    }
+
+    function exportEntrataGroupsExcel() {
+        downloadExcelCsv(
+            `edm_entrata_groups_${exportDateStampET()}.csv`,
+            'Employee Data Manager - Entrata Groups',
+            'DB_APP_SUPPORT.dbo.EMP_ENTRATA_TITLE_GROUP_MAPPING',
+            [
+                { label: 'Title Group', value: r => r.title_group || '' },
+                { label: 'Entrata Department', value: r => r.entrata_department || '' },
+                { label: 'Entrata Permission Group', value: r => r.entrata_permission_group || '' }
+            ],
+            entrataGroupsExportRows()
+        );
+    }
+
+    function entrataUsersExportRows() {
+        const filter = (document.getElementById('eagFilter').value || '').toUpperCase();
+        const rows = filter ? entrataAssignData.filter(r => Object.values(r).join(' ').toUpperCase().includes(filter)) : [...entrataAssignData];
+        return rows.sort((a, b) => {
+            const aVal = eagSortCol === 'name' ? `${a.name_last||''} ${a.name_first||''}` : (a[eagSortCol] ?? '');
+            const bVal = eagSortCol === 'name' ? `${b.name_last||''} ${b.name_first||''}` : (b[eagSortCol] ?? '');
+            return String(aVal).toLowerCase().localeCompare(String(bVal).toLowerCase()) * eagSortDir;
+        });
+    }
+
+    function exportEntrataUsersExcel() {
+        downloadExcelCsv(
+            `edm_entrata_users_${exportDateStampET()}.csv`,
+            'Employee Data Manager - Entrata Users',
+            'DB_APP_SUPPORT.dbo.EMP_ENTRATA_GROUP_ASSIGNMENTS',
+            [
+                { label: 'Employee', value: r => `${r.name_first || ''} ${r.name_last || ''}`.trim() },
+                { label: 'Employee Code', value: r => r.employee_code || '' },
+                { label: 'Entrata Permission Group', value: r => r.entrata_permission_group || '' },
+                { label: 'Entrata Department', value: r => r.entrata_department || '' },
+                { label: 'Entrata Property Group', value: r => r.entrata_property_group || '' },
+                { label: 'Date Start', value: r => fmtDateInt(r.date_start) },
+                { label: 'Date End', value: r => fmtDateInt(r.date_end) },
+                { label: 'Status', value: r => r.flag_active ? 'Active' : 'Inactive' },
+                { label: 'Type', value: r => r.type || '' }
+            ],
+            entrataUsersExportRows()
+        );
+    }
+
+    function softTermExportRows() {
+        const showInactive = document.getElementById('stShowInactive').checked;
+        const rows = showInactive ? [...softTermData] : softTermData.filter(r => r.is_active);
+        return rows.sort((a, b) => {
+            let aVal, bVal;
+            if (stSortCol === 'name') {
+                aVal = ((a.name_first||'') + ' ' + (a.name_last||'')).toLowerCase();
+                bVal = ((b.name_first||'') + ' ' + (b.name_last||'')).toLowerCase();
+            } else if (stSortCol === 'is_active') {
+                aVal = a.is_active ? '1' : '0';
+                bVal = b.is_active ? '1' : '0';
+            } else {
+                aVal = (a[stSortCol]||'').toString().toLowerCase();
+                bVal = (b[stSortCol]||'').toString().toLowerCase();
+            }
+            return aVal.localeCompare(bVal) * stSortDir;
+        });
+    }
+
+    function exportSoftTerminationsExcel() {
+        downloadExcelCsv(
+            `edm_soft_terminations_${exportDateStampET()}.csv`,
+            'Employee Data Manager - Soft Terminations',
+            'DB_APP_SUPPORT.dbo.EMPLOYEE_SOFT_TERMINATION_OVERRIDES',
+            [
+                { label: 'Employee Code', value: r => r.employee_code || '' },
+                { label: 'Name', value: r => `${r.name_first || ''} ${r.name_last || ''}`.trim() },
+                { label: 'Reason', value: r => r.reason || '' },
+                { label: 'Expires', value: r => r.expires_on || '' },
+                { label: 'Status', value: r => r.is_active ? 'Active' : 'Inactive' },
+                { label: 'Added By', value: r => r.added_by || '' },
+                { label: 'Added On', value: r => r.added_on || '' }
+            ],
+            softTermExportRows()
+        );
+    }
+
     // ─── Utility ───────────────────────────────────────────────────────────────
     function esc(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
     function fmtDateInt(v) { if (!v || v === 0) return ''; const s = String(v); if (s.length === 8) return s.slice(4,6)+'/'+s.slice(6,8)+'/'+s.slice(0,4); return esc(s); }
+    function fmtDateInput(v) { if (!v || v === 0) return ''; const s = String(v); if (s.length === 8) return s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8); return ''; }
+
+    function exportTimestampET() {
+        return new Date().toLocaleString('en-US', {
+            timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+        }) + ' ET';
+    }
+
+    function exportDateStampET() {
+        const parts = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit'
+        }).formatToParts(new Date()).reduce((a, p) => { a[p.type] = p.value; return a; }, {});
+        return `${parts.year}${parts.month}${parts.day}`;
+    }
+
+    function downloadExcelCsv(filename, title, sourceTable, columns, rows) {
+        if (!rows.length) { toast('No rows to export', 'error'); return; }
+        const csvEscape = value => '"' + String(value ?? '').replace(/"/g, '""') + '"';
+        const lines = [
+            [title],
+            ['Source Table', sourceTable],
+            ['Exported', exportTimestampET()],
+            [],
+            columns.map(c => c.label),
+            ...rows.map(r => columns.map(c => c.value(r)))
+        ];
+        const csv = lines.map(row => row.map(csvEscape).join(',')).join('\r\n');
+        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        URL.revokeObjectURL(link.href);
+        link.remove();
+    }
 
     // ─── CSV EXPORT ────────────────────────────────────────────────────────────
     function exportEmpCSV() {
@@ -1210,6 +1821,10 @@
     }
 
     // ─── VALIDATION WARNINGS ───────────────────────────────────────────────────
+    function warningActionButton(action, group, label) {
+        return `<button type="button" class="validation-action" data-action="${action}" data-group="${encodeURIComponent(group || '')}">${label}</button>`;
+    }
+
     function checkValidationWarnings() {
         const warnings = [];
         // Title groups in Title Assignments that have no Entrata mapping
@@ -1217,13 +1832,13 @@
         const entrataGroups = new Set(entrataData.map(r => r.title_group));
         const missingEntrata = titleGroups.filter(g => !entrataGroups.has(g));
         if (missingEntrata.length) {
-            warnings.push(`<strong>${missingEntrata.length} Title Group(s) have no Entrata Mapping:</strong><ul>${missingEntrata.map(g => `<li>${esc(g)}</li>`).join('')}</ul>`);
+            warnings.push(`<strong>${missingEntrata.length} Title Group(s) have no Entrata Mapping:</strong><ul>${missingEntrata.map(g => `<li>${esc(g)}${warningActionButton('createMapping', g, 'Create Mapping')}${warningActionButton('showTitles', g, 'Show Titles')}</li>`).join('')}</ul>`);
         }
         // Entrata mappings for groups that don't exist in Title Assignments
         const titleGroupSet = new Set(titleData.map(r => r.title_group));
         const orphanedEntrata = entrataData.filter(r => !titleGroupSet.has(r.title_group)).map(r => r.title_group);
         if (orphanedEntrata.length) {
-            warnings.push(`<strong>${orphanedEntrata.length} Entrata Mapping(s) reference non-existent Title Groups:</strong><ul>${orphanedEntrata.map(g => `<li>${esc(g)}</li>`).join('')}</ul>`);
+            warnings.push(`<strong>${orphanedEntrata.length} Entrata Mapping(s) reference non-existent Title Groups:</strong><ul>${orphanedEntrata.map(g => `<li>${esc(g || '(blank Title Group)')}${warningActionButton('showEntrataGroup', g, 'Show Mapping')}${warningActionButton('createTitle', g, 'Create Title Assignment')}</li>`).join('')}</ul>`);
         }
         const el = document.getElementById('titleValidationWarnings');
         if (warnings.length) {
@@ -1233,6 +1848,31 @@
             el.style.display = 'none';
         }
     }
+
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.validation-action');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const group = decodeURIComponent(btn.dataset.group || '').toUpperCase();
+        if (btn.dataset.action === 'createMapping') {
+            document.querySelector('.edm-tab[data-panel="entrata"]').click();
+            document.getElementById('newEntrataGroup').value = group;
+            document.getElementById('newEntrataDept').focus();
+            toast('Fill Department and Permission Group, then Add');
+        } else if (btn.dataset.action === 'showTitles') {
+            document.getElementById('titleFilter').value = group;
+            renderTitles();
+        } else if (btn.dataset.action === 'showEntrataGroup') {
+            document.querySelector('.edm-tab[data-panel="entrata"]').click();
+            document.getElementById('entrataFilter').value = group;
+            renderEntrata();
+        } else if (btn.dataset.action === 'createTitle') {
+            document.getElementById('newTitleGroup').value = group;
+            document.getElementById('newTitle').focus();
+            toast('Enter a Title for this Title Group, then Add');
+        }
+    });
     </script>
 {% endblock %}
 

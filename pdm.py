@@ -247,10 +247,61 @@ def get_property_groups():
     env = _get_env()
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
-        cur = conn.execute("SELECT * FROM dbo.PROPERTY_GROUP_0 ORDER BY PROPERTY_GROUP_NAME")
+        cur = conn.execute("""
+            SELECT g.*,
+                                     (SELECT COUNT(*) FROM dbo.PROPERTY_0 p WHERE p.PROPERTY_GROUP = g.PROPERTY_GROUP_NAME) AS PROPERTY_COUNT,
+                                     (SELECT COUNT(*)
+                                        FROM dbo.PROPERTY_0 p
+                                        WHERE p.PROPERTY_GROUP = g.PROPERTY_GROUP_NAME
+                                            AND p.FLAG_MANAGED = 1
+                                            AND (p.FLAG_DISPOSITIONED = 0 OR p.FLAG_DISPOSITIONED IS NULL)) AS ACTIVE_PROPERTY_COUNT
+            FROM dbo.PROPERTY_GROUP_0 g
+            ORDER BY g.PROPERTY_GROUP_NAME
+        """)
         cols = [d[0] for d in cur.description]
         rows = [dict(zip(cols, r)) for r in cur.fetchall()]
         return jsonify({"groups": rows})
+    finally:
+        conn.close()
+
+
+@pdm_bp.route("/api/property-groups/<int:key>/properties")
+@login_required
+def get_property_group_properties(key):
+    check = _require_access()
+    if check:
+        return check
+
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        group_rows = conn.fetchall("""
+            SELECT PROPERTY_GROUP_KEY, PROPERTY_GROUP_NAME, FLAG_ACTIVE
+            FROM dbo.PROPERTY_GROUP_0
+            WHERE PROPERTY_GROUP_KEY = ?
+        """, [key])
+        if not group_rows:
+            return jsonify({"error": "property group not found"}), 404
+        group_key, group_name, flag_active = group_rows[0]
+        cur = conn.execute("""
+            SELECT PROPERTY_KEY, PROPERTY_NAME, ADDRESS_CITY, ADDRESS_STATE,
+                   MARKET_CITY_STATE, PROPERTY_GROUP, PM_NAME, RM_NAME, STATUS
+            FROM dbo.PROPERTY_0
+            WHERE PROPERTY_GROUP = ?
+              AND FLAG_MANAGED = 1
+              AND (FLAG_DISPOSITIONED = 0 OR FLAG_DISPOSITIONED IS NULL)
+            ORDER BY PROPERTY_NAME
+        """, [group_name])
+        cols = [d[0] for d in cur.description]
+        properties = [dict(zip(cols, r)) for r in cur.fetchall()]
+        return jsonify({
+            "group": {
+                "PROPERTY_GROUP_KEY": group_key,
+                "PROPERTY_GROUP_NAME": group_name,
+                "FLAG_ACTIVE": flag_active,
+            },
+            "properties": properties,
+        })
     finally:
         conn.close()
 
@@ -289,9 +340,13 @@ def update_property_group(key):
 
     data = request.get_json()
     sets, vals = [], []
+    property_rows_updated = 0
     if "PROPERTY_GROUP_NAME" in data:
+        new_name = (data["PROPERTY_GROUP_NAME"] or "").strip()
+        if not new_name:
+            return jsonify({"error": "PROPERTY_GROUP_NAME required"}), 400
         sets.append("PROPERTY_GROUP_NAME = ?")
-        vals.append(data["PROPERTY_GROUP_NAME"])
+        vals.append(new_name)
     if "FLAG_ACTIVE" in data:
         sets.append("FLAG_ACTIVE = ?")
         vals.append(data["FLAG_ACTIVE"])
@@ -302,8 +357,26 @@ def update_property_group(key):
     env = _get_env()
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
+        old_name = None
+        if "PROPERTY_GROUP_NAME" in data:
+            rows = conn.fetchall("SELECT PROPERTY_GROUP_NAME FROM dbo.PROPERTY_GROUP_0 WHERE PROPERTY_GROUP_KEY = ?", [key])
+            if not rows:
+                return jsonify({"error": "property group not found"}), 404
+            old_name = rows[0][0]
+            if old_name != new_name:
+                dup = conn.fetchall("""
+                    SELECT 1 FROM dbo.PROPERTY_GROUP_0
+                    WHERE PROPERTY_GROUP_KEY <> ? AND UPPER(PROPERTY_GROUP_NAME) = UPPER(?)
+                """, [key, new_name])
+                if dup:
+                    return jsonify({"error": "duplicate"}), 409
         conn.execute(f"UPDATE dbo.PROPERTY_GROUP_0 SET {', '.join(sets)} WHERE PROPERTY_GROUP_KEY = ?", vals)
-        return jsonify({"ok": True})
+        if old_name is not None and old_name != new_name:
+            cur = conn.execute("UPDATE dbo.PROPERTY_0 SET PROPERTY_GROUP = ? WHERE PROPERTY_GROUP = ?", [new_name, old_name])
+            property_rows_updated = cur.rowcount if cur.rowcount is not None and cur.rowcount >= 0 else 0
+        if hasattr(conn, "commit"):
+            conn.commit()
+        return jsonify({"ok": True, "property_rows_updated": property_rows_updated})
     finally:
         conn.close()
 
@@ -320,10 +393,64 @@ def get_markets():
     env = _get_env()
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
-        cur = conn.execute("SELECT * FROM dbo.MARKETS ORDER BY MARKET_CITY_STATE")
+        cur = conn.execute("""
+            SELECT m.*,
+                   (SELECT COUNT(*)
+                    FROM dbo.PROPERTY_0 p
+                    WHERE UPPER(ISNULL(p.MARKET_CITY_STATE, '')) = UPPER(ISNULL(m.MARKET_CITY_STATE, ''))
+                      AND UPPER(ISNULL(p.MARKET_STATE, '')) = UPPER(ISNULL(m.MARKET_STATE, ''))
+                      AND p.FLAG_MANAGED = 1
+                      AND (p.FLAG_DISPOSITIONED = 0 OR p.FLAG_DISPOSITIONED IS NULL)) AS ACTIVE_PROPERTY_COUNT
+            FROM dbo.MARKETS m
+            ORDER BY m.MARKET_CITY_STATE
+        """)
         cols = [d[0] for d in cur.description]
         rows = [dict(zip(cols, r)) for r in cur.fetchall()]
         return jsonify({"markets": rows})
+    finally:
+        conn.close()
+
+
+@pdm_bp.route("/api/markets/<int:key>/properties")
+@login_required
+def get_market_properties(key):
+    check = _require_access()
+    if check:
+        return check
+
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        market_rows = conn.fetchall("""
+            SELECT MARKET_KEY, MARKET_CITY, MARKET_STATE, MARKET_CITY_STATE
+            FROM dbo.MARKETS
+            WHERE MARKET_KEY = ?
+        """, [key])
+        if not market_rows:
+            return jsonify({"error": "market not found"}), 404
+        market_key, city, state, city_state = market_rows[0]
+        cur = conn.execute("""
+            SELECT PROPERTY_KEY, PROPERTY_NAME, ADDRESS_CITY, ADDRESS_STATE,
+                   MARKET_CITY, MARKET_STATE, MARKET_CITY_STATE, PROPERTY_GROUP,
+                   PM_NAME, RM_NAME, STATUS
+            FROM dbo.PROPERTY_0
+            WHERE UPPER(ISNULL(MARKET_CITY_STATE, '')) = UPPER(ISNULL(?, ''))
+              AND UPPER(ISNULL(MARKET_STATE, '')) = UPPER(ISNULL(?, ''))
+              AND FLAG_MANAGED = 1
+              AND (FLAG_DISPOSITIONED = 0 OR FLAG_DISPOSITIONED IS NULL)
+            ORDER BY PROPERTY_NAME
+        """, [city_state, state])
+        cols = [d[0] for d in cur.description]
+        properties = [dict(zip(cols, r)) for r in cur.fetchall()]
+        return jsonify({
+            "market": {
+                "MARKET_KEY": market_key,
+                "MARKET_CITY": city,
+                "MARKET_STATE": state,
+                "MARKET_CITY_STATE": city_state,
+            },
+            "properties": properties,
+        })
     finally:
         conn.close()
 
