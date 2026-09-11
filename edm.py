@@ -261,6 +261,166 @@ def delete_title_assignment():
         conn.close()
 
 
+# ─── LEO MAPPING TAB ────────────────────────────────────────────────────────────
+
+@edm_bp.route("/api/leo-mapping", methods=["GET"])
+@login_required
+def get_leo_mapping():
+    """Get all rows from LEO_TITLE_PAYCOM_MAP."""
+    check = _require_access()
+    if check:
+        return check
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        rows = conn.fetchall("""
+            SELECT MAP_ID, TITLE_PAYCOM, LEO_ROLE_NAME, MATCH_TYPE, PRIORITY, ENABLED, NOTES
+            FROM dbo.LEO_TITLE_PAYCOM_MAP
+            ORDER BY TITLE_PAYCOM
+        """)
+        return jsonify([{
+            "map_id": r[0], "title_paycom": r[1], "leo_role_name": r[2],
+            "match_type": r[3], "priority": r[4], "enabled": bool(r[5]), "notes": r[6]
+        } for r in rows])
+    finally:
+        conn.close()
+
+
+@edm_bp.route("/api/leo-roles", methods=["GET"])
+@login_required
+def get_leo_roles():
+    """Get distinct LEO role names for the mapping datalist."""
+    check = _require_access()
+    if check:
+        return check
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        rows = conn.fetchall("""
+            SELECT DISTINCT LEO_ROLE_NAME FROM dbo.LEO_TITLE_PAYCOM_MAP ORDER BY LEO_ROLE_NAME
+        """)
+        return jsonify([r[0] for r in rows])
+    finally:
+        conn.close()
+
+
+@edm_bp.route("/api/leo-mapping", methods=["POST"])
+@login_required
+def add_leo_mapping():
+    """Add a new Paycom Title → LEO Role mapping."""
+    check = _require_access()
+    if check:
+        return check
+    data = request.get_json()
+    title_paycom = (data.get("title_paycom") or "").strip().upper()
+    leo_role_name = (data.get("leo_role_name") or "").strip().upper()
+    match_type = (data.get("match_type") or "EXACT").strip().upper()
+    notes = (data.get("notes") or "").strip() or None
+    if not title_paycom or not leo_role_name:
+        return jsonify({"error": "title_paycom and leo_role_name required"}), 400
+    if match_type not in ("EXACT", "LIKE"):
+        return jsonify({"error": "match_type must be EXACT or LIKE"}), 400
+    try:
+        priority = int(data.get("priority")) if data.get("priority") not in (None, "") else 100
+    except (TypeError, ValueError):
+        return jsonify({"error": "priority must be a number"}), 400
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        existing = conn.fetchall(
+            "SELECT 1 FROM dbo.LEO_TITLE_PAYCOM_MAP WHERE TITLE_PAYCOM = ? AND MATCH_TYPE = ?",
+            (title_paycom, match_type))
+        if existing:
+            return jsonify({"error": f"A {match_type} mapping for that title already exists"}), 409
+        conn.execute("""
+            INSERT INTO dbo.LEO_TITLE_PAYCOM_MAP
+                (TITLE_PAYCOM, LEO_ROLE_NAME, MATCH_TYPE, PRIORITY, ENABLED, NOTES)
+            VALUES (?, ?, ?, ?, 1, ?)
+        """, (title_paycom, leo_role_name, match_type, priority, notes))
+        conn.commit()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
+@edm_bp.route("/api/leo-mapping", methods=["PATCH"])
+@login_required
+def update_leo_mapping():
+    """Update a single field on a LEO mapping row, keyed by map_id."""
+    check = _require_access()
+    if check:
+        return check
+    data = request.get_json()
+    map_id = data.get("map_id")
+    field = data.get("field")
+    value = data.get("value")
+    allowed = {
+        "title_paycom": "TITLE_PAYCOM", "leo_role_name": "LEO_ROLE_NAME",
+        "match_type": "MATCH_TYPE", "priority": "PRIORITY",
+        "enabled": "ENABLED", "notes": "NOTES"
+    }
+    if not map_id or field not in allowed:
+        return jsonify({"error": "invalid request"}), 400
+    col = allowed[field]
+    if field in ("title_paycom", "leo_role_name", "match_type"):
+        value = (value or "").strip().upper()
+        if not value:
+            return jsonify({"error": f"{field} cannot be blank"}), 400
+        if field == "match_type" and value not in ("EXACT", "LIKE"):
+            return jsonify({"error": "match_type must be EXACT or LIKE"}), 400
+    elif field == "priority":
+        try:
+            value = int(value)
+        except (TypeError, ValueError):
+            return jsonify({"error": "priority must be a number"}), 400
+    elif field == "enabled":
+        value = 1 if value in (True, "true", "1", 1) else 0
+    elif field == "notes":
+        value = (value or "").strip() or None
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        if field in ("title_paycom", "match_type"):
+            current = conn.fetchall(
+                "SELECT TITLE_PAYCOM, MATCH_TYPE FROM dbo.LEO_TITLE_PAYCOM_MAP WHERE MAP_ID = ?", (map_id,))
+            if not current:
+                return jsonify({"error": "mapping not found"}), 404
+            new_title = value if field == "title_paycom" else current[0][0]
+            new_match = value if field == "match_type" else current[0][1]
+            dupe = conn.fetchall(
+                "SELECT 1 FROM dbo.LEO_TITLE_PAYCOM_MAP WHERE TITLE_PAYCOM = ? AND MATCH_TYPE = ? AND MAP_ID <> ?",
+                (new_title, new_match, map_id))
+            if dupe:
+                return jsonify({"error": f"A {new_match} mapping for that title already exists"}), 409
+        conn.execute(f"UPDATE dbo.LEO_TITLE_PAYCOM_MAP SET [{col}] = ? WHERE MAP_ID = ?",
+                     (value, map_id))
+        conn.commit()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
+@edm_bp.route("/api/leo-mapping", methods=["DELETE"])
+@login_required
+def delete_leo_mapping():
+    """Delete a LEO mapping row."""
+    check = _require_access()
+    if check:
+        return check
+    data = request.get_json()
+    map_id = data.get("map_id")
+    if not map_id:
+        return jsonify({"error": "map_id required"}), 400
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        conn.execute("DELETE FROM dbo.LEO_TITLE_PAYCOM_MAP WHERE MAP_ID = ?", (map_id,))
+        conn.commit()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
 # ─── ENTRATA MAPPING TAB ───────────────────────────────────────────────────────
 
 @edm_bp.route("/api/entrata-mapping", methods=["GET"])

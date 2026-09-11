@@ -194,6 +194,7 @@
             <div class="edm-tab" data-panel="entrata">Entrata Groups</div>
             <div class="edm-tab" data-panel="entrataassign">Entrata Users</div>
             <div class="edm-tab" data-panel="softterm">Soft Terminations</div>
+            <div class="edm-tab" data-panel="leomap">LEO Mapping</div>
         </div>
 
         <!-- EMPLOYEES PANEL -->
@@ -217,6 +218,8 @@
                     </ul>
                     <br>
                     <strong>Source tables:</strong> employee rows come from <code>WH_STAGING.dbo.EMPLOYEE_F</code>; LEO fields come from <code>WH_STAGING.dbo.LEO_USERS_EXPORT</code>.
+                    <br><br>
+                    <strong>Consumed by:</strong> <code>EMPLOYEE_F</code> is rebuilt by the <code>EMPLOYEE_F_COMBO_SP</code> stored procedure, fed by the <code>NB_EMPLOYEE_SYNC_COMBO</code> notebook which syncs the DB_APP_SUPPORT config tables below into WH_STAGING. <code>LEO_USERS_EXPORT</code> is refreshed by the <code>NB_LEO_EXPORT</code> notebook. If a value here looks wrong, check those runs first.
                 </div>
             </div>
             <div class="emp-filters">
@@ -283,6 +286,8 @@
                     </ul>
                     <br>
                     <strong>Source tables:</strong> mappings are read from and written to <code>DB_APP_SUPPORT.dbo.EMP_TITLE_GROUP_MGMT</code>; validation compares against <code>DB_APP_SUPPORT.dbo.EMP_ENTRATA_TITLE_GROUP_MAPPING</code>.
+                    <br><br>
+                    <strong>Consumed by:</strong> the <code>NB_EMPLOYEE_SYNC_COMBO</code> notebook syncs this table to WH_STAGING, where the <code>EMPLOYEE_F_COMBO_SP</code> stored procedure uses it to set each employee's Title Group on <code>EMPLOYEE_F</code>/<code>EMPLOYEE_0</code>.
                     <br><br>
                     <strong>Rules:</strong> Each Title must be unique (one mapping per title). Multiple titles can share the same Title Group. Changes take effect on the next Employee Update cycle (hourly).
                 </div>
@@ -355,6 +360,8 @@
                     <br>
                     <strong>Source tables:</strong> group mappings are read from and written to <code>DB_APP_SUPPORT.dbo.EMP_ENTRATA_TITLE_GROUP_MAPPING</code>; Department and Permission Group options use <code>DB_APP_SUPPORT.dbo.EMP_ENTRATA_DEPARTMENT</code> and <code>DB_APP_SUPPORT.dbo.EMP_ENTRATA_PERMISSION_GROUP</code>.
                     <br><br>
+                    <strong>Consumed by:</strong> the <code>NB_EMPLOYEE_SYNC_COMBO</code> notebook syncs this table to WH_STAGING, where the <code>EMPLOYEE_F_COMBO_SP</code> stored procedure uses it to assign each employee's Entrata Department/Permission Group.
+                    <br><br>
                     <strong>Rule:</strong> Each Title Group should have exactly one row. If a Title Group has no mapping here, employees in that group won't receive Entrata assignments.
                 </div>
             </div>
@@ -398,6 +405,8 @@
                     Use this for explicit employee permission, department, and property group assignments outside the title-group mapping defaults.
                     <br><br>
                     <strong>Source tables:</strong> user assignments are read from and written to <code>DB_APP_SUPPORT.dbo.EMP_ENTRATA_GROUP_ASSIGNMENTS</code>; employee lookup uses <code>WH_STAGING.dbo.EMPLOYEE_F</code>; dropdown options use <code>DB_APP_SUPPORT.dbo.EMP_ENTRATA_PERMISSION_GROUP</code>, <code>DB_APP_SUPPORT.dbo.EMP_ENTRATA_DEPARTMENT</code>, and <code>DB_APP_SUPPORT.dbo.EMP_ENTRATA_PROPERTY_GROUP</code> plus existing assignment values.
+                    <br><br>
+                    <strong>Consumed by:</strong> the <code>NB_EMPLOYEE_SYNC_COMBO</code> notebook syncs this table into <code>WH_STAGING.dbo.EMP_ENTRATA_GROUP_ASSIGNMENTS_0</code>, where the <code>EMPLOYEE_F_COMBO_SP</code> stored procedure reads it for date-ranged Entrata overrides.
                 </div>
             </div>
             <div class="add-form eag-add-form" id="addEntrataAssignForm">
@@ -468,6 +477,8 @@
                     <br>
                     <strong>Source tables:</strong> overrides are read from and written to <code>DB_APP_SUPPORT.dbo.EMPLOYEE_SOFT_TERMINATION_OVERRIDES</code>; employee code/name search uses <code>WH_STAGING.dbo.EMPLOYEE_F</code>.
                     <br><br>
+                    <strong>Consumed by:</strong> the <code>NB_ACTIVE_EMPS_EXPORT_for_AD</code> notebook reads this table directly to build <code>ACTIVE_EMPS_FOR_AD.csv</code> / <code>TERMINATED_EMPS_FOR_AD.csv</code> for the AD account sync.
+                    <br><br>
                     <strong>How it works:</strong> The Active Employees for AD export checks this list. Anyone flagged here stays in the "Active" AD export instead of being moved to "Terminated."
                 </div>
             </div>
@@ -507,6 +518,68 @@
                 </table>
             </div>
         </div>
+
+        <!-- LEO MAPPING PANEL -->
+        <div class="edm-panel" id="panel-leomap">
+            <div class="info-blurb" id="blurb-leomap">
+                <div class="blurb-header" onclick="toggleBlurb('leomap')">
+                    <span class="blurb-title">LEO Mapping</span>
+                    <span class="blurb-toggle" id="blurbToggle-leomap">&#9660;</span>
+                </div>
+                <div class="blurb-body" id="blurbBody-leomap">
+                    Maps each Paycom <code>Title</code> to a <code>LEO Role</code> used to determine LEO access levels.
+                    <br><br>
+                    <strong>How to use:</strong>
+                    <ul style="margin:4px 0 0 16px;padding:0">
+                        <li><strong>Add a mapping</strong> — Enter the Paycom Title, select or type a LEO Role, choose a Match Type, optionally set Priority and Notes, then click Add.</li>
+                        <li><strong>Match Type</strong> — <code>EXACT</code> matches the title exactly; <code>LIKE</code> matches any title containing the text (wildcard match).</li>
+                        <li><strong>Priority</strong> — Lower numbers are evaluated first when multiple rows could match the same title. Default is 100.</li>
+                        <li><strong>Edit inline</strong> — Click any cell to change it directly.</li>
+                        <li><strong>Enabled</strong> — Uncheck to disable a mapping without deleting it.</li>
+                        <li><strong>Sort</strong> — Click column headers to sort.</li>
+                        <li><strong>Filter</strong> — Type in the filter box to search across all columns.</li>
+                    </ul>
+                    <br>
+                    <strong>Source tables:</strong> mappings are read from and written to <code>DB_APP_SUPPORT.dbo.LEO_TITLE_PAYCOM_MAP</code>.
+                    <br><br>
+                    <strong>Consumed by:</strong> the <code>NB_LEO_EXPORT</code> notebook (via its internal <code>LEO_USERS_EXPORT_SP</code> call) reads this table directly to resolve each Paycom title to a LEO role for the <code>users.csv</code> export to SharePoint.
+                </div>
+            </div>
+            <div class="add-form" id="addLeoMapForm">
+                <label>New:</label>
+                <input type="text" id="newLeoTitle" placeholder="Paycom Title" style="min-width:200px" oninput="uppercaseInput(this)">
+                <input type="text" id="newLeoRole" placeholder="LEO Role" list="leoRoleList" style="min-width:200px" oninput="uppercaseInput(this)">
+                <select id="newLeoMatchType" class="emp-filter-select" style="min-width:100px">
+                    <option value="EXACT">EXACT</option>
+                    <option value="LIKE">LIKE</option>
+                </select>
+                <input type="number" id="newLeoPriority" placeholder="Priority" value="100" style="min-width:90px">
+                <input type="text" id="newLeoNotes" placeholder="Notes (optional)" style="min-width:180px">
+                <button class="btn btn-primary" onclick="addLeoMapping()">Add</button>
+                <datalist id="leoRoleList"></datalist>
+            </div>
+            <div class="filter-bar">
+                <input type="text" id="leoMapFilter" placeholder="Filter...">
+                <button class="btn btn-sm" onclick="exportLeoMappingExcel()" style="color:var(--text-secondary)" title="Export LEO Mapping to Excel">&#128190; Export</button>
+                <span class="count-label" id="leoMapCount"></span>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table" id="leoMapTable">
+                    <thead>
+                        <tr>
+                            <th class="sortable" onclick="sortLeoMapCol('title_paycom')">Paycom Title <span class="sort-arrow" id="leoMapArrow_title_paycom"></span></th>
+                            <th class="sortable" onclick="sortLeoMapCol('leo_role_name')">LEO Role <span class="sort-arrow" id="leoMapArrow_leo_role_name"></span></th>
+                            <th class="sortable" onclick="sortLeoMapCol('match_type')">Match Type <span class="sort-arrow" id="leoMapArrow_match_type"></span></th>
+                            <th class="sortable" onclick="sortLeoMapCol('priority')">Priority <span class="sort-arrow" id="leoMapArrow_priority"></span></th>
+                            <th class="sortable" onclick="sortLeoMapCol('enabled')">Enabled <span class="sort-arrow" id="leoMapArrow_enabled"></span></th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -518,7 +591,7 @@
         toggle.innerHTML = collapsed ? '&#9654;' : '&#9660;';
         localStorage.setItem('edm_blurb_' + id, collapsed ? '1' : '0');
     }
-    ['employees','titles','entrata','entrataassign','softterm'].forEach(id => {
+    ['employees','titles','entrata','entrataassign','softterm','leomap'].forEach(id => {
         const state = localStorage.getItem('edm_blurb_' + id);
         if (state === '1') {
             const body = document.getElementById('blurbBody-' + id);
@@ -539,6 +612,7 @@
             if (tab.dataset.panel === 'entrata' && !entrataLoaded) loadEntrataMapping();
             if (tab.dataset.panel === 'entrataassign' && !entrataAssignLoaded) loadEntrataAssignments();
             if (tab.dataset.panel === 'softterm' && !softTermLoaded) loadSoftTerminations();
+            if (tab.dataset.panel === 'leomap' && !leoMapLoaded) loadLeoMapping();
         });
     });
 
@@ -1599,6 +1673,152 @@
         );
     }
 
+    // ─── LEO MAPPING TAB ────────────────────────────────────────────────────────
+    let leoMapLoaded = false;
+    let leoMapData = [];
+    let leoMapSortCol = 'title_paycom';
+    let leoMapSortDir = 1;
+
+    function sortLeoMapCol(col) {
+        if (leoMapSortCol === col) { leoMapSortDir *= -1; }
+        else { leoMapSortCol = col; leoMapSortDir = 1; }
+        renderLeoMap();
+    }
+
+    async function loadLeoMapping() {
+        const res = await fetch('/edm/api/leo-mapping');
+        leoMapData = await res.json();
+        leoMapLoaded = true;
+        renderLeoMap();
+        loadLeoRoleOptions();
+    }
+
+    async function loadLeoRoleOptions() {
+        const res = await fetch('/edm/api/leo-roles');
+        const roles = await res.json();
+        document.getElementById('leoRoleList').innerHTML = roles.map(r => `<option value="${esc(r)}">`).join('');
+    }
+
+    function leoMapFilteredSorted() {
+        const filter = (document.getElementById('leoMapFilter').value || '').toUpperCase();
+        const rows = filter ? leoMapData.filter(r => Object.values(r).join(' ').toUpperCase().includes(filter)) : [...leoMapData];
+        return rows.sort((a, b) => {
+            const aVal = a[leoMapSortCol];
+            const bVal = b[leoMapSortCol];
+            if (typeof aVal === 'number' || typeof bVal === 'number') return ((aVal||0) - (bVal||0)) * leoMapSortDir;
+            if (typeof aVal === 'boolean' || typeof bVal === 'boolean') return ((aVal?1:0) - (bVal?1:0)) * leoMapSortDir;
+            return String(aVal||'').toLowerCase().localeCompare(String(bVal||'').toLowerCase()) * leoMapSortDir;
+        });
+    }
+
+    function renderLeoMap() {
+        const filtered = leoMapFilteredSorted();
+        ['title_paycom','leo_role_name','match_type','priority','enabled'].forEach(col => {
+            const el = document.getElementById('leoMapArrow_' + col);
+            if (el) el.textContent = col === leoMapSortCol ? (leoMapSortDir === 1 ? ' \u25B2' : ' \u25BC') : '';
+        });
+        document.getElementById('leoMapCount').textContent = `${filtered.length} of ${leoMapData.length}`;
+        const tbody = document.querySelector('#leoMapTable tbody');
+        tbody.innerHTML = filtered.map(r => `
+            <tr style="${r.enabled ? '' : 'opacity:0.5'}">
+                <td class="editable" onclick="editLeoMapCell(this,${r.map_id},'title_paycom','${esc(r.title_paycom)}')">${esc(r.title_paycom)}</td>
+                <td class="editable" onclick="editLeoMapCell(this,${r.map_id},'leo_role_name','${esc(r.leo_role_name)}')">${esc(r.leo_role_name)}</td>
+                <td class="editable" onclick="editLeoMapCell(this,${r.map_id},'match_type','${esc(r.match_type)}')">${esc(r.match_type)}</td>
+                <td class="editable" onclick="editLeoMapCell(this,${r.map_id},'priority','${esc(r.priority)}')">${esc(r.priority)}</td>
+                <td><input type="checkbox" ${r.enabled?'checked':''} onchange="saveLeoMapCellDirect(${r.map_id},'enabled',this.checked)"></td>
+                <td class="editable" onclick="editLeoMapCell(this,${r.map_id},'notes','${esc(r.notes||'')}')">${esc(r.notes||'—')}</td>
+                <td><button class="btn btn-danger btn-sm" onclick="deleteLeoMapping(${r.map_id})" title="Delete mapping"><i class="fa-solid fa-trash"></i></button></td>
+            </tr>`).join('');
+    }
+
+    document.getElementById('leoMapFilter').addEventListener('input', renderLeoMap);
+
+    function editLeoMapCell(td, mapId, field, current) {
+        if (td.querySelector('input,select')) return;
+        if (field === 'match_type') {
+            const sel = document.createElement('select');
+            sel.style.cssText = 'width:100%;padding:4px;font-size:0.85rem;';
+            ['EXACT', 'LIKE'].forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t; opt.textContent = t;
+                if (t === current) opt.selected = true;
+                sel.appendChild(opt);
+            });
+            sel.onchange = function() { saveLeoMapCellDirect(mapId, field, this.value); };
+            sel.onkeydown = function(e) { if (e.key === 'Escape') loadLeoMapping(); };
+            td.textContent = '';
+            td.appendChild(sel);
+            sel.focus();
+        } else {
+            const inputType = field === 'priority' ? 'number' : 'text';
+            td.innerHTML = `<input type="${inputType}" value="${esc(current)}" onblur="saveLeoMapCell(this,${mapId},'${field}')" onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.dataset.cancel='1';this.blur();}">`;
+            td.querySelector('input').focus();
+        }
+    }
+
+    async function saveLeoMapCellDirect(mapId, field, value) {
+        const res = await fetch('/edm/api/leo-mapping', {
+            method: 'PATCH', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({map_id: mapId, field, value})
+        });
+        if (res.ok) { toast('Updated'); loadLeoMapping(); }
+        else { const e = await res.json(); toast(e.error||'Error','error'); loadLeoMapping(); }
+    }
+
+    async function saveLeoMapCell(input, mapId, field) {
+        if (input.dataset.cancel) { loadLeoMapping(); return; }
+        await saveLeoMapCellDirect(mapId, field, input.value.trim());
+    }
+
+    async function addLeoMapping() {
+        const title_paycom = document.getElementById('newLeoTitle').value.trim();
+        const leo_role_name = document.getElementById('newLeoRole').value.trim();
+        const match_type = document.getElementById('newLeoMatchType').value;
+        const priority = document.getElementById('newLeoPriority').value.trim();
+        const notes = document.getElementById('newLeoNotes').value.trim();
+        if (!title_paycom || !leo_role_name) { toast('Paycom Title and LEO Role required','error'); return; }
+        const res = await fetch('/edm/api/leo-mapping', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({title_paycom, leo_role_name, match_type, priority, notes})
+        });
+        if (res.ok) {
+            toast('Added');
+            document.getElementById('newLeoTitle').value = '';
+            document.getElementById('newLeoRole').value = '';
+            document.getElementById('newLeoMatchType').value = 'EXACT';
+            document.getElementById('newLeoPriority').value = '100';
+            document.getElementById('newLeoNotes').value = '';
+            loadLeoMapping();
+        } else { const e = await res.json(); toast(e.error||'Error','error'); }
+    }
+
+    async function deleteLeoMapping(mapId) {
+        if (!confirm('Delete this LEO mapping?')) return;
+        const res = await fetch('/edm/api/leo-mapping', {
+            method: 'DELETE', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({map_id: mapId})
+        });
+        if (res.ok) { toast('Deleted'); loadLeoMapping(); }
+        else { const e = await res.json(); toast(e.error||'Error','error'); }
+    }
+
+    function exportLeoMappingExcel() {
+        downloadExcelCsv(
+            `edm_leo_mapping_${exportDateStampET()}.csv`,
+            'Employee Data Manager - LEO Mapping',
+            'DB_APP_SUPPORT.dbo.LEO_TITLE_PAYCOM_MAP',
+            [
+                { label: 'Paycom Title', value: r => r.title_paycom || '' },
+                { label: 'LEO Role', value: r => r.leo_role_name || '' },
+                { label: 'Match Type', value: r => r.match_type || '' },
+                { label: 'Priority', value: r => r.priority ?? '' },
+                { label: 'Enabled', value: r => r.enabled ? 'Yes' : 'No' },
+                { label: 'Notes', value: r => r.notes || '' }
+            ],
+            leoMapFilteredSorted()
+        );
+    }
+
     // ─── Utility ───────────────────────────────────────────────────────────────
     function esc(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
     function fmtDateInt(v) { if (!v || v === 0) return ''; const s = String(v); if (s.length === 8) return s.slice(4,6)+'/'+s.slice(6,8)+'/'+s.slice(0,4); return esc(s); }
@@ -1690,12 +1910,28 @@
     }
 
     let _empDetailRow = null, _empDetailSortMode = 'category';
+    let _empCollapsedSections = {}; // category name -> collapsed bool (category mode only)
 
     function setEmpDetailSort(mode) {
         _empDetailSortMode = mode;
         document.getElementById('empSortCat').classList.toggle('active', mode === 'category');
         document.getElementById('empSortAZ').classList.toggle('active', mode === 'alpha');
+        if (mode === 'category' && _empDetailRow) {
+            _empCollapsedSections = {};
+            Object.keys(_empDetailRow)
+                .filter(k => !EMP_HIDDEN_KEYS.includes(k) && k !== 'name_first' && k !== 'name_last')
+                .forEach(key => { _empCollapsedSections[empFieldCategory(key)] = true; });
+        } else {
+            _empCollapsedSections = {};
+        }
         if (_empDetailRow) renderEmpDetailContent(_empDetailRow);
+    }
+
+    function toggleEmpSection(headerEl, cat) {
+        const collapsed = headerEl.classList.toggle('collapsed');
+        const body = headerEl.nextElementSibling;
+        if (body) body.classList.toggle('collapsed');
+        _empCollapsedSections[cat] = collapsed;
     }
 
     function renderEmpDetailContent(r) {
@@ -1730,13 +1966,14 @@
             const sorted = [...new Set([...ORDER, ...Object.keys(cats)])].filter(c => cats[c]);
             content.innerHTML = sorted.map(cat => {
                 const rows = cats[cat].map(makeRow).join('');
+                const isCollapsed = !!_empCollapsedSections[cat];
                 return `<div class="popout-section">
-                    <div class="popout-section-header" onclick="popoutToggleSection(this)">
+                    <div class="popout-section-header${isCollapsed ? ' collapsed' : ''}" onclick="toggleEmpSection(this,'${esc(cat)}')">
                         <span class="popout-section-chevron">&#9660;</span>
                         <span class="popout-section-title">${cat}</span>
                         <span class="popout-section-count">${cats[cat].length}</span>
                     </div>
-                    <div class="popout-section-body">${rows}</div>
+                    <div class="popout-section-body${isCollapsed ? ' collapsed' : ''}">${rows}</div>
                 </div>`;
             }).join('');
         }

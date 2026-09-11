@@ -45,7 +45,8 @@
                 {% for mod in modules %}
                 <li class="nav-item {% if mod.id == active_module %}active{% endif %}"
                     data-module-id="{{ mod.id }}"
-                    data-module-type="{{ mod.type }}">
+                    data-module-type="{{ mod.type }}"
+                    data-testing="{{ mod.testing_status | default('PENDING') }}">
                     <a href="{{ url_for('main.module', module_id=mod.id) }}" title="{{ mod.name }}" data-tooltip="{{ mod.name }}">
                         <span class="nav-icon-dot" style="background: {{ mod.color | default('#64748b') }}"><i class="{{ mod.icon }}"></i></span>
                         <span>{{ mod.name }}</span>
@@ -350,6 +351,7 @@
                     li.className = 'nav-item fav-nav-item';
                     li.dataset.moduleId = mod.id;
                     li.dataset.moduleType = mod.type || 'powerapps';
+                    li.dataset.testing = mod.testing_status || 'PENDING';
                     li.innerHTML = `<a href="/module/${mod.id}" title="${mod.name}" data-tooltip="${mod.name}">`
                         + `<span class="nav-icon-dot" style="background:${mod.color||'#64748b'}"><i class="${mod.icon}"></i></span>`
                         + `<span>${mod.name}</span></a>`
@@ -362,7 +364,8 @@
                 document.querySelectorAll('.fav-btn').forEach(btn => {
                     const id = parseInt(btn.dataset.moduleId);
                     const icon = btn.querySelector('i');
-                    if (favIds.includes(id)) {
+                    const inFavSection = !!btn.closest('.fav-nav-item');
+                    if (inFavSection && favIds.includes(id)) {
                         icon.className = 'fa-solid fa-heart';
                         btn.classList.add('favorited');
                     } else {

@@ -274,6 +274,8 @@
                     </ul>
                     <br>
                     <strong>Source tables:</strong> property rows are read from and updated in <code>DB_APP_SUPPORT.dbo.PROPERTY_0</code>; override tracking uses <code>DB_APP_SUPPORT.dbo.PDM_FIELD_OVERRIDES</code>; staff/security lookup uses <code>DB_APP_SUPPORT.dbo.EMPLOYEE_SECURITY_0</code>. New Property creation also writes related records to <code>DB_APP_SUPPORT.dbo.PARENT_PROPERTY</code>, <code>DB_APP_SUPPORT.dbo.COMP_PROPERTY</code>, <code>DB_APP_SUPPORT.dbo.COMP_ASSIGNMENTS</code>, and <code>DB_APP_SUPPORT.dbo.COMP_FACT</code>.
+                    <br><br>
+                    <strong>Consumed by:</strong> the <code>NB_PROPERTY_0_SYNC_COMBO</code> notebook syncs <code>PROPERTY_0</code> into WH_STAGING (<code>Property_KEYS_0</code>), and <code>PROPERTY_0_TO_STAGING_SP</code> propagates it onward. Edits here flow downstream on the next scheduled run.
                 </div>
             </div>
             <div class="filter-bar">
@@ -326,6 +328,8 @@
                     </ul>
                     <br>
                     <strong>Source tables:</strong> groups are read from and written to <code>DB_APP_SUPPORT.dbo.PROPERTY_GROUP_0</code>; property rows reference group names in <code>DB_APP_SUPPORT.dbo.PROPERTY_0.PROPERTY_GROUP</code>.
+                    <br><br>
+                    <strong>Consumed by:</strong> <code>PROPERTY_GROUP_F_SYNC_SP</code> and <code>PROPERTY_GROUP_0_SP</code> sync this table into WH_STAGING for downstream reporting.
                     <br><br>
                     <strong>Note:</strong> Each property in PROPERTY_0 references a group by name. Renaming a group here will update matching <code>DB_APP_SUPPORT.dbo.PROPERTY_0.PROPERTY_GROUP</code> values after you confirm the action.
                 </div>
@@ -1002,6 +1006,12 @@
     let detailSortMode = 'category';
     let detailCurrentRow = null;
 
+    // Authoritative market list (MARKETS table) for the property detail Market City dropdown
+    let marketsLookup = [];
+    fetch('/pdm/api/markets')
+        .then(r => r.json())
+        .then(d => { marketsLookup = d.markets || []; });
+
     window.setDetailSort = function(mode) {
         detailSortMode = mode;
         document.getElementById('sortCategory').classList.toggle('active', mode === 'category');
@@ -1507,6 +1517,25 @@
 
         // ── DROPDOWN fields ──
         if (DROPDOWN_FIELDS.has(f)) {
+            // MARKET_CITY is tied to the MARKETS table — selecting one sets
+            // MARKET_KEY/MARKET_CITY/MARKET_STATE/MARKET_CITY_STATE together
+            if (f === 'MARKET_CITY') {
+                const currentKey = row['MARKET_KEY'];
+                const currentCityState = row['MARKET_CITY_STATE'];
+                let matched = marketsLookup.find(m => m.MARKET_KEY === currentKey);
+                if (!matched && currentCityState) {
+                    matched = marketsLookup.find(m => (m.MARKET_CITY_STATE || '').toUpperCase() === String(currentCityState).toUpperCase());
+                }
+                let optHtml = `<option value="">— Select —</option>`;
+                marketsLookup.forEach(m => {
+                    const sel = matched && m.MARKET_KEY === matched.MARKET_KEY ? ' selected' : '';
+                    optHtml += `<option value="${m.MARKET_KEY}"${sel}>${esc(m.MARKET_CITY_STATE)}</option>`;
+                });
+                return `<div class="detail-row${missingClass}${extClass}" data-field="${f}"${titleAttr}>
+                    ${labelHtml}
+                    <span class="detail-value"${overrideStyle}><select onchange="saveMarketSelection(this.value)" style="flex:1">${optHtml}</select></span>
+                </div>`;
+            }
             // Staff dropdowns use empList
             const isStaff = Object.values(STAFF_ROLES).some(r => r.name === f);
             if (isStaff) {
@@ -1586,6 +1615,25 @@
         });
         const row = propData.find(r => r.PROPERTY_KEY === detailPropertyKey);
         if (row) row[field] = value || null;
+    }
+
+    function saveMarketSelection(marketKeyStr) {
+        if (!detailPropertyKey) return;
+        const marketKey = marketKeyStr ? parseInt(marketKeyStr) : null;
+        const m = marketKey ? marketsLookup.find(x => x.MARKET_KEY === marketKey) : null;
+        const update = {
+            MARKET_KEY: m ? m.MARKET_KEY : null,
+            MARKET_CITY: m ? m.MARKET_CITY : null,
+            MARKET_STATE: m ? m.MARKET_STATE : null,
+            MARKET_CITY_STATE: m ? m.MARKET_CITY_STATE : null,
+        };
+        fetch('/pdm/api/properties/' + detailPropertyKey, {
+            method: 'PATCH', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(update)
+        });
+        const row = propData.find(r => r.PROPERTY_KEY === detailPropertyKey);
+        if (row) Object.assign(row, update);
+        if (detailCurrentRow) { Object.assign(detailCurrentRow, update); renderDetail(detailCurrentRow); }
     }
 
     function saveFlag(field, checked) {

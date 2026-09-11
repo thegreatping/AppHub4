@@ -437,6 +437,7 @@ body {
 }
 
 .nav-item:hover .fav-btn { opacity: 1; }
+.fav-nav-item .fav-btn { opacity: 1; }  /* always visible in the Favorites section */
 .fav-btn.favorited { color: #f87171; }  /* color only, stays hidden until hover */
 .fav-btn:hover { color: #f87171; background: rgba(248,113,113,0.1); }
 
@@ -509,15 +510,11 @@ body {
     color: var(--nav-active-border);
 }
 
-/* Built (Flask) modules get a stark highlight — TEMPORARY, remove when directed */
-.nav-item[data-module-type="flask"] {
-    background: rgba(16, 185, 129, 0.18);
-    border-left: 3px solid rgba(16, 185, 129, 0.6);
-}
-[data-theme="light"] .nav-item[data-module-type="flask"] {
-    background: rgba(16, 185, 129, 0.12);
-    border-left: 3px solid rgba(16, 185, 129, 0.5);
-}
+/* Testing status indicator — thin border tied to Module Registry Testing column */
+.nav-item[data-testing="PASS"]    { border: 1px solid #16a34a; }
+.nav-item[data-testing="FAIL"]    { border: 1px solid #ef4444; }
+.nav-item[data-testing="PENDING"] { border: 1px solid #eab308; }
+.nav-item.active[data-testing]    { border-left: 3px solid var(--nav-active-border); }
 
 /* Nav Footer */
 .nav-footer {

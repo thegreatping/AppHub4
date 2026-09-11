@@ -28,6 +28,14 @@
         .toggle-active .badge.on { background: rgba(76,175,80,0.2); color: #81c784; }
         .toggle-active .badge.off { background: rgba(244,67,54,0.2); color: #e57373; }
 
+        /* Testing status 3-way toggle */
+        .testing-toggle { display: flex; gap: 3px; }
+        .testing-btn { width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--border-input); background: transparent; font-size: 0.65rem; font-weight: 700; cursor: pointer; color: var(--text-secondary); line-height: 1; }
+        .testing-btn:hover { opacity: 0.85; }
+        .testing-btn.pass.active    { background: #16a34a; color: #fff; border-color: #16a34a; }
+        .testing-btn.fail.active    { background: #ef4444; color: #fff; border-color: #ef4444; }
+        .testing-btn.pending.active { background: #eab308; color: #111; border-color: #eab308; }
+
         /* Editable cell */
         .editable { cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background 0.2s; }
         .editable:hover { background: var(--hover-bg-strong); }
@@ -172,6 +180,7 @@
                     <ul style="margin:4px 0 0 16px;padding:0">
                         <li><strong>Toggle status</strong> — Click the Active/Inactive badge to enable or disable a module site-wide.</li>
                         <li><strong>Edit name</strong> — Click a module name to rename it inline.</li>
+                        <li><strong>Testing</strong> — Click Pass/Fail/Pending to record where each module stands in testing. The left navigation border color for that module updates to match (green/red/yellow).</li>
                     </ul>
                     <br>
                     <strong>Source tables:</strong> <code>DB_APP_SUPPORT.dbo.APP_LIST</code>; favorites indicator uses <code>DB_APP_SUPPORT.dbo.USER_MODULE_FAVORITES</code>.
@@ -186,6 +195,7 @@
                         <th style="width:60%" data-col="name" onclick="sortModules(this)" class="sort-asc">Module Name</th>
                         <th style="width:60px">Fav</th>
                         <th style="width:60px" title="Receives global Theme Studio settings">Theme</th>
+                        <th style="width:90px">Testing</th>
                         <th style="width:100px">Status</th>
                     </tr>
                 </thead>
@@ -601,7 +611,17 @@
                 </button></td>`;
         };
 
-        let html = `<tr><td colspan="5" class="section-header">Active (${active.length})</td></tr>`;
+        const testingCell = m => {
+            const status = m.testing_status || 'PENDING';
+            return `<td>
+                <div class="testing-toggle" data-id="${m.id}">
+                    <button class="testing-btn pass${status==='PASS'?' active':''}" data-status="PASS" title="Pass">P</button>
+                    <button class="testing-btn fail${status==='FAIL'?' active':''}" data-status="FAIL" title="Fail">F</button>
+                    <button class="testing-btn pending${status==='PENDING'?' active':''}" data-status="PENDING" title="Pending">?</button>
+                </div></td>`;
+        };
+
+        let html = `<tr><td colspan="6" class="section-header">Active (${active.length})</td></tr>`;
         html += active.map(m => `
             <tr data-id="${m.id}">
                 <td style="color: var(--text-secondary)">${m.id}</td>
@@ -610,6 +630,7 @@
                 </td>
                 ${heartCell(m)}
                 ${themeCell(m)}
+                ${testingCell(m)}
                 <td>
                     <span class="toggle-active" data-id="${m.id}">
                         <span class="badge on">Active</span>
@@ -619,7 +640,7 @@
         `).join('');
 
         if (inactive.length) {
-            html += `<tr><td colspan="5" class="section-header inactive" style="padding-top:24px">Inactive (${inactive.length})</td></tr>`;
+            html += `<tr><td colspan="6" class="section-header inactive" style="padding-top:24px">Inactive (${inactive.length})</td></tr>`;
             html += inactive.map(m => `
                 <tr data-id="${m.id}">
                     <td style="color: var(--text-secondary)">${m.id}</td>
@@ -628,6 +649,7 @@
                     </td>
                     ${heartCell(m)}
                     ${themeCell(m)}
+                    ${testingCell(m)}
                     <td>
                         <span class="toggle-active" data-id="${m.id}">
                             <span class="badge off">Inactive</span>
@@ -646,6 +668,10 @@
         // Bind toggle
         tbody.querySelectorAll('.toggle-active').forEach(el => {
             el.addEventListener('click', toggleActive);
+        });
+        // Bind testing status buttons
+        tbody.querySelectorAll('.testing-btn').forEach(btn => {
+            btn.addEventListener('click', () => toggleTesting(btn));
         });
     }
 
@@ -693,6 +719,24 @@
         mod.active = newVal;
         renderModules();
         // Refresh session so nav reflects new active state, then reload
+        await fetch('/api/refresh-nav', { method: 'POST' });
+        location.reload();
+    }
+
+    async function toggleTesting(btn) {
+        const wrap = btn.closest('.testing-toggle');
+        const id = wrap.dataset.id;
+        const status = btn.dataset.status;
+        const mod = modulesCache.find(m => m.id == id);
+        if (!mod || mod.testing_status === status) return;
+        await fetch(`/maintenance/api/modules/${id}`, {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({testing_status: status})
+        });
+        mod.testing_status = status;
+        renderModules();
+        // Refresh session so the nav border color reflects the new status
         await fetch('/api/refresh-nav', { method: 'POST' });
         location.reload();
     }

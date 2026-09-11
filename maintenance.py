@@ -64,12 +64,13 @@ def get_modules():
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
         rows = conn.fetchall("""
-            SELECT App_ID, App_Name, App_Level, App_Security_Level, Flag_Active
+            SELECT App_ID, App_Name, App_Level, App_Security_Level, Flag_Active, Testing_Status
             FROM dbo.APP_LIST ORDER BY App_Name
         """)
         return jsonify([{
             "id": r[0], "name": r[1], "level": r[2],
             "security_level": r[3], "active": r[4],
+            "testing_status": r[5],
             "string_id": APP_ID_MAP.get(r[0])
         } for r in rows])
     finally:
@@ -84,11 +85,13 @@ def update_module(app_id):
     if check:
         return check
     data = request.get_json()
-    allowed_fields = {"name": "App_Name", "active": "Flag_Active"}
+    allowed_fields = {"name": "App_Name", "active": "Flag_Active", "testing_status": "Testing_Status"}
     updates = []
     params = []
     for key, col in allowed_fields.items():
         if key in data:
+            if key == "testing_status" and data[key] not in ("PASS", "FAIL", "PENDING"):
+                return jsonify({"error": "testing_status must be PASS, FAIL, or PENDING"}), 400
             updates.append(f"{col} = ?")
             params.append(data[key])
     if not updates:

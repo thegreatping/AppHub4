@@ -50,8 +50,12 @@ def api_parent_properties():
 
 @app.route("/api/weeks")
 def api_weeks():
-    """Return available weeks filtered by AY, only up to current week (< next Monday)."""
-    ay = request.args.get("ay", type=int, default=2026)
+    """Return available weeks filtered by AY, only up to current week (< next Monday).
+    AY is restricted to 2026/2027 and never returns weeks before the start of AY 2026
+    (DATE_KEY 20250907), regardless of what ay value is requested."""
+    ay = request.args.get("ay", type=int, default=2027)
+    if ay not in (2026, 2027):
+        ay = 2027
     conn = get_db()
     # Calculate next Monday as YYYYMMDD integer
     from datetime import date, timedelta
@@ -61,13 +65,15 @@ def api_weeks():
         days_until_monday = 7
     next_monday = today + timedelta(days=days_until_monday)
     next_monday_int = int(next_monday.strftime('%Y%m%d'))
+    AY_2026_BEGIN = 20250907  # floor — never show weeks before the start of AY 2026
     rows = conn.execute("""
         SELECT DISTINCT DATE_KEY, AY, RELATIVE_WEEK
         FROM dbo.WEEKS
-        WHERE AY = ? AND DATE_KEY < ?
+        WHERE AY = ? AND DATE_KEY < ? AND DATE_KEY >= ?
         ORDER BY DATE_KEY DESC
-    """, [ay, next_monday_int]).fetchall()
+    """, [ay, next_monday_int, AY_2026_BEGIN]).fetchall()
     return jsonify([{"date_key": r[0], "ay": r[1], "relative_week": r[2]} for r in rows])
+
 
 
 # ── API: Markets (for dropdowns) ────────────────────────────────────────────────

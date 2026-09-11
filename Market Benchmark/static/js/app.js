@@ -108,7 +108,7 @@
 
     // ── Load Weeks ──────────────────────────────────────────────────────────
     async function loadWeeks() {
-        const ay = document.getElementById('ddAY').value || '2026';
+        const ay = document.getElementById('ddAY').value || '2027';
         const resp = await fetch(`/api/weeks?ay=${ay}`);
         const data = await resp.json();
         ddWeeks.innerHTML = '<option value="">— Select Week —</option>' +
