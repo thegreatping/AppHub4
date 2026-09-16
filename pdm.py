@@ -156,7 +156,10 @@ def filter_options():
         cur = conn.execute("SELECT DISTINCT MARKET_CITY_STATE FROM dbo.PROPERTY_0 WHERE MARKET_CITY_STATE IS NOT NULL ORDER BY MARKET_CITY_STATE")
         markets = [r[0] for r in cur.fetchall()]
 
-        return jsonify({"property_groups": groups, "markets": markets})
+        cur = conn.execute("SELECT OWNER_GROUP FROM dbo.OWNER_GROUP_0 WHERE OWNER_GROUP IS NOT NULL ORDER BY OWNER_GROUP")
+        owner_groups = [r[0] for r in cur.fetchall()]
+
+        return jsonify({"property_groups": groups, "markets": markets, "owner_groups": owner_groups})
     finally:
         conn.close()
 
@@ -376,6 +379,113 @@ def update_property_group(key):
             property_rows_updated = cur.rowcount if cur.rowcount is not None and cur.rowcount >= 0 else 0
         if hasattr(conn, "commit"):
             conn.commit()
+        return jsonify({"ok": True, "property_rows_updated": property_rows_updated})
+    finally:
+        conn.close()
+
+
+# ─── OWNER GROUPS ───────────────────────────────────────────────────────────────
+
+@pdm_bp.route("/api/owner-groups")
+@login_required
+def get_owner_groups():
+    check = _require_access()
+    if check:
+        return check
+
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        cur = conn.execute("""
+            SELECT g.OWNER_GROUP_KEY, g.OWNER_GROUP, g.OWNER_GROUP_SHORT,
+                   (SELECT COUNT(*) FROM dbo.PROPERTY_0 p WHERE p.OWNER_GROUP = g.OWNER_GROUP) AS PROPERTY_COUNT,
+                   (SELECT COUNT(*)
+                    FROM dbo.PROPERTY_0 p
+                    WHERE p.OWNER_GROUP = g.OWNER_GROUP
+                      AND p.FLAG_MANAGED = 1
+                      AND (p.FLAG_DISPOSITIONED = 0 OR p.FLAG_DISPOSITIONED IS NULL)) AS ACTIVE_PROPERTY_COUNT
+            FROM dbo.OWNER_GROUP_0 g
+            ORDER BY g.OWNER_GROUP
+        """)
+        cols = [d[0] for d in cur.description]
+        rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+        return jsonify({"owner_groups": rows})
+    finally:
+        conn.close()
+
+
+@pdm_bp.route("/api/owner-groups", methods=["POST"])
+@login_required
+def add_owner_group():
+    check = _require_access()
+    if check:
+        return check
+
+    data = request.get_json()
+    name = (data.get("OWNER_GROUP") or "").strip() if data else ""
+    short = (data.get("OWNER_GROUP_SHORT") or "").strip() if data else ""
+    if not name:
+        return jsonify({"error": "name required"}), 400
+
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        cur = conn.execute("SELECT COUNT(*) FROM dbo.OWNER_GROUP_0 WHERE UPPER(OWNER_GROUP) = UPPER(?)", [name])
+        if cur.fetchone()[0] > 0:
+            return jsonify({"error": "duplicate"}), 409
+
+        conn.execute(
+            "INSERT INTO dbo.OWNER_GROUP_0 (OWNER_GROUP, OWNER_GROUP_SHORT) VALUES (?, ?)",
+            [name, short or name[:10]]
+        )
+        return jsonify({"ok": True}), 201
+    finally:
+        conn.close()
+
+
+@pdm_bp.route("/api/owner-groups/<int:key>", methods=["PATCH"])
+@login_required
+def update_owner_group(key):
+    check = _require_access()
+    if check:
+        return check
+
+    data = request.get_json() or {}
+    sets, vals = [], []
+    old_name = None
+    if "OWNER_GROUP" in data:
+        new_name = (data["OWNER_GROUP"] or "").strip()
+        if not new_name:
+            return jsonify({"error": "OWNER_GROUP required"}), 400
+        sets.append("OWNER_GROUP = ?")
+        vals.append(new_name)
+    if "OWNER_GROUP_SHORT" in data:
+        sets.append("OWNER_GROUP_SHORT = ?")
+        vals.append((data["OWNER_GROUP_SHORT"] or "").strip() or None)
+    if not sets:
+        return jsonify({"error": "no fields"}), 400
+
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        if "OWNER_GROUP" in data:
+            rows = conn.fetchall("SELECT OWNER_GROUP FROM dbo.OWNER_GROUP_0 WHERE OWNER_GROUP_KEY = ?", [key])
+            if not rows:
+                return jsonify({"error": "owner group not found"}), 404
+            old_name = rows[0][0]
+            dup = conn.fetchall("SELECT 1 FROM dbo.OWNER_GROUP_0 WHERE OWNER_GROUP_KEY <> ? AND UPPER(OWNER_GROUP) = UPPER(?)", [key, data["OWNER_GROUP"]])
+            if dup:
+                return jsonify({"error": "duplicate"}), 409
+
+        vals.append(key)
+        conn.execute(f"UPDATE dbo.OWNER_GROUP_0 SET {', '.join(sets)} WHERE OWNER_GROUP_KEY = ?", vals)
+
+        if old_name is not None and old_name != data["OWNER_GROUP"]:
+            cur = conn.execute("UPDATE dbo.PROPERTY_0 SET OWNER_GROUP = ? WHERE OWNER_GROUP = ?", [data["OWNER_GROUP"], old_name])
+            property_rows_updated = cur.rowcount if cur.rowcount is not None else 0
+        else:
+            property_rows_updated = 0
+
         return jsonify({"ok": True, "property_rows_updated": property_rows_updated})
     finally:
         conn.close()

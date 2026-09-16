@@ -250,6 +250,7 @@
         <div class="pdm-tabs">
             <div class="pdm-tab active" data-panel="properties">Properties</div>
             <div class="pdm-tab" data-panel="groups">Property Groups</div>
+            <div class="pdm-tab" data-panel="owner-groups">Owner Groups</div>
             <div class="pdm-tab" data-panel="markets">Markets</div>
         </div>
 
@@ -351,6 +352,52 @@
                             <th onclick="sortGroups('PROPERTY_GROUP_NAME')">Group Name</th>
                             <th onclick="sortGroups('FLAG_ACTIVE')">Status</th>
                             <th onclick="sortGroups('ACTIVE_PROPERTY_COUNT')">Active Properties</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- OWNER GROUPS PANEL -->
+        <div class="pdm-panel" id="panel-owner-groups">
+            <div class="info-blurb" id="blurb-owner-groups">
+                <div class="blurb-header" onclick="toggleBlurb('owner-groups')">
+                    <span class="blurb-title">Owner Groups</span>
+                    <span class="blurb-toggle" id="blurbToggle-owner-groups">&#9660;</span>
+                </div>
+                <div class="blurb-body" id="blurbBody-owner-groups">
+                    Manages the <code>OWNER_GROUP_0</code> lookup table. Owner Groups are the authoritative list used by <code>DB_APP_SUPPORT.dbo.PROPERTY_0.OWNER_GROUP</code>.
+                    <br><br>
+                    <strong>How to use:</strong>
+                    <ul style="margin:4px 0 0 16px;padding:0">
+                        <li><strong>Add a group</strong> — Enter the owner group name and optional short name, then click Add.</li>
+                        <li><strong>Edit inline</strong> — Click any value to rename it.</li>
+                        <li><strong>Sort</strong> — Click column headers to sort.</li>
+                        <li><strong>Filter</strong> — Type in the filter box to search.</li>
+                    </ul>
+                    <br>
+                    <strong>Source tables:</strong> owner groups are read from and written to <code>DB_APP_SUPPORT.dbo.OWNER_GROUP_0</code>; property rows reference owner group names in <code>DB_APP_SUPPORT.dbo.PROPERTY_0.OWNER_GROUP</code>.
+                </div>
+            </div>
+            <div class="add-form">
+                <label>New Owner Group:</label>
+                <input type="text" id="newOwnerGroupName" placeholder="Owner Group Name" style="min-width:240px">
+                <input type="text" id="newOwnerGroupShort" placeholder="Short Name" style="min-width:140px; max-width:160px;">
+                <button class="btn btn-primary" onclick="addOwnerGroup()">Add</button>
+            </div>
+            <div class="filter-bar">
+                <input type="text" id="ownerGroupFilter" placeholder="Filter owner groups...">
+                <span class="count-label" id="ownerGroupCount"></span>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table" id="ownerGroupTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortOwnerGroups('OWNER_GROUP_KEY')">Key</th>
+                            <th onclick="sortOwnerGroups('OWNER_GROUP')">Owner Group</th>
+                            <th onclick="sortOwnerGroups('OWNER_GROUP_SHORT')">Short Name</th>
+                            <th onclick="sortOwnerGroups('PROPERTY_COUNT')">Properties</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -594,7 +641,7 @@
         toggle.innerHTML = collapsed ? '&#9654;' : '&#9660;';
         localStorage.setItem('pdm_blurb_' + id, collapsed ? '1' : '0');
     }
-    ['properties','groups','markets'].forEach(id => {
+    ['properties','groups','owner-groups','markets'].forEach(id => {
         const state = localStorage.getItem('pdm_blurb_' + id);
         if (state === '1') {
             const body = document.getElementById('blurbBody-' + id);
@@ -604,7 +651,7 @@
     });
 
     // ─── Tab navigation ────────────────────────────────────────────────────────
-    let groupsLoaded = false, marketsLoaded = false;
+    let groupsLoaded = false, ownerGroupsLoaded = false, marketsLoaded = false;
     document.querySelectorAll('.pdm-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('.pdm-tab').forEach(t => t.classList.remove('active'));
@@ -612,6 +659,7 @@
             tab.classList.add('active');
             document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
             if (tab.dataset.panel === 'groups' && !groupsLoaded) loadGroups();
+            if (tab.dataset.panel === 'owner-groups' && !ownerGroupsLoaded) { loadOwnerGroups(); ownerGroupsLoaded = true; }
             if (tab.dataset.panel === 'markets' && !marketsLoaded) loadMarkets();
         });
     });
@@ -1799,28 +1847,39 @@
     document.getElementById('propGroup').addEventListener('change', loadProperties);
     document.getElementById('propMarket').addEventListener('change', loadProperties);
 
-    // Load filter options
-    fetch('/pdm/api/properties/filter-options')
-        .then(r => r.json())
-        .then(d => {
-            const gSel = document.getElementById('propGroup');
-            const pgList = d.property_groups || [];
-            pgList.forEach(g => {
-                const opt = document.createElement('option');
-                opt.value = g; opt.textContent = g;
-                gSel.appendChild(opt);
-            });
-            DROPDOWN_OPTIONS['PROPERTY_GROUP'] = pgList;
-            const mSel = document.getElementById('propMarket');
-            (d.markets || []).forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m; opt.textContent = m;
-                mSel.appendChild(opt);
-            });
-        });
+    function loadFilterOptions() {
+        fetch('/pdm/api/properties/filter-options')
+            .then(r => r.json())
+            .then(d => {
+                const gSel = document.getElementById('propGroup');
+                const pgList = d.property_groups || [];
+                gSel.innerHTML = '<option value="">All Groups</option>';
+                pgList.forEach(g => {
+                    const opt = document.createElement('option');
+                    opt.value = g; opt.textContent = g;
+                    gSel.appendChild(opt);
+                });
+                DROPDOWN_OPTIONS['PROPERTY_GROUP'] = pgList;
+
+                const ogList = d.owner_groups || [];
+                DROPDOWN_OPTIONS['OWNER_GROUP'] = ogList;
+
+                const mSel = document.getElementById('propMarket');
+                mSel.innerHTML = '<option value="">All Markets</option>';
+                (d.markets || []).forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m; opt.textContent = m;
+                    mSel.appendChild(opt);
+                });
+            })
+            .catch(() => {});
+    }
 
     // Initial load
+    loadFilterOptions();
     loadProperties();
+    loadOwnerGroups();
+    ownerGroupsLoaded = true;
 
     // ─── Property Groups tab ───────────────────────────────────────────────────
     let groupData = [], groupSorted = [], groupSortCol = 'PROPERTY_GROUP_NAME', groupSortAsc = true;
@@ -1983,6 +2042,121 @@
     }
 
     document.getElementById('groupFilter').addEventListener('input', () => sortAndRenderGroups());
+
+    // ─── Owner Groups tab ──────────────────────────────────────────────────────
+    let ownerGroupData = [], ownerGroupSorted = [], ownerGroupSortCol = 'OWNER_GROUP', ownerGroupSortAsc = true;
+
+    function loadOwnerGroups() {
+        fetch('/pdm/api/owner-groups')
+            .then(r => r.json())
+            .then(d => {
+                ownerGroupData = d.owner_groups || [];
+                sortAndRenderOwnerGroups();
+                const ogList = ownerGroupData.map(r => r.OWNER_GROUP).filter(Boolean);
+                DROPDOWN_OPTIONS['OWNER_GROUP'] = ogList;
+            });
+    }
+
+    function sortOwnerGroups(col) {
+        if (ownerGroupSortCol === col) ownerGroupSortAsc = !ownerGroupSortAsc;
+        else { ownerGroupSortCol = col; ownerGroupSortAsc = true; }
+        sortAndRenderOwnerGroups();
+    }
+
+    function sortAndRenderOwnerGroups() {
+        const filter = (document.getElementById('ownerGroupFilter').value || '').toLowerCase();
+        ownerGroupSorted = ownerGroupData.filter(r => {
+            if (!filter) return true;
+            return (r.OWNER_GROUP || '').toLowerCase().includes(filter)
+                || (r.OWNER_GROUP_SHORT || '').toLowerCase().includes(filter);
+        }).sort((a, b) => {
+            let va = a[ownerGroupSortCol], vb = b[ownerGroupSortCol];
+            if (va == null) va = '';
+            if (vb == null) vb = '';
+            if (typeof va === 'string') va = va.toLowerCase();
+            if (typeof vb === 'string') vb = vb.toLowerCase();
+            if (va < vb) return ownerGroupSortAsc ? -1 : 1;
+            if (va > vb) return ownerGroupSortAsc ? 1 : -1;
+            return 0;
+        });
+        renderOwnerGroupTable();
+    }
+
+    function renderOwnerGroupTable() {
+        const tbody = document.querySelector('#ownerGroupTable tbody');
+        tbody.innerHTML = ownerGroupSorted.map(r => `
+            <tr>
+                <td>${r.OWNER_GROUP_KEY}</td>
+                <td><span class="editable" onclick="event.stopPropagation();editOwnerGroupName(this,${r.OWNER_GROUP_KEY})">${esc(r.OWNER_GROUP || '')}</span></td>
+                <td><span class="editable" onclick="event.stopPropagation();editOwnerGroupShort(this,${r.OWNER_GROUP_KEY})">${esc(r.OWNER_GROUP_SHORT || '')}</span></td>
+                <td style="font-weight:700;color:var(--accent-cyan);">${r.PROPERTY_COUNT || 0}</td>
+            </tr>`).join('');
+        document.getElementById('ownerGroupCount').textContent = `${ownerGroupSorted.length} owner groups`;
+    }
+
+    function editOwnerGroupName(el, key) {
+        const current = el.textContent;
+        el.innerHTML = `<input value="${esc(current)}" data-original="${esc(current)}" onblur="saveOwnerGroupName(this,${key})" onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.dataset.cancel='1';this.blur();}">`;
+        el.querySelector('input').focus();
+    }
+
+    function editOwnerGroupShort(el, key) {
+        const current = el.textContent;
+        el.innerHTML = `<input value="${esc(current)}" data-original="${esc(current)}" onblur="saveOwnerGroupShort(this,${key})" onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.dataset.cancel='1';this.blur();}">`;
+        el.querySelector('input').focus();
+    }
+
+    function saveOwnerGroupName(input, key) {
+        if (input.dataset.cancel) { sortAndRenderOwnerGroups(); return; }
+        const val = input.value.trim();
+        const original = input.dataset.original || '';
+        if (!val || val === original) { sortAndRenderOwnerGroups(); return; }
+        fetch('/pdm/api/owner-groups/' + key, {
+            method: 'PATCH', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({OWNER_GROUP: val})
+        }).then(r => r.json().then(data => ({ok: r.ok, data}))).then(({ok, data}) => {
+            if (!ok || data.error) throw new Error(data.error || 'Rename failed');
+            const r = ownerGroupData.find(g => g.OWNER_GROUP_KEY === key);
+            if (r) r.OWNER_GROUP = val;
+            toast(`Updated owner group name; ${data.property_rows_updated || 0} property row(s) matched`);
+            sortAndRenderOwnerGroups();
+            loadFilterOptions();
+        }).catch(e => { toast(e.message || 'Rename failed'); sortAndRenderOwnerGroups(); });
+    }
+
+    function saveOwnerGroupShort(input, key) {
+        if (input.dataset.cancel) { sortAndRenderOwnerGroups(); return; }
+        const val = input.value.trim();
+        fetch('/pdm/api/owner-groups/' + key, {
+            method: 'PATCH', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({OWNER_GROUP_SHORT: val})
+        }).then(r => r.json().then(data => ({ok: r.ok, data}))).then(({ok, data}) => {
+            if (!ok || data.error) throw new Error(data.error || 'Short name update failed');
+            const r = ownerGroupData.find(g => g.OWNER_GROUP_KEY === key);
+            if (r) r.OWNER_GROUP_SHORT = val || null;
+            sortAndRenderOwnerGroups();
+            loadFilterOptions();
+        }).catch(e => { toast(e.message || 'Short name update failed'); sortAndRenderOwnerGroups(); });
+    }
+
+    function addOwnerGroup() {
+        const name = document.getElementById('newOwnerGroupName').value.trim();
+        const short = document.getElementById('newOwnerGroupShort').value.trim();
+        if (!name) return;
+        fetch('/pdm/api/owner-groups', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({OWNER_GROUP: name, OWNER_GROUP_SHORT: short})
+        }).then(r => {
+            if (r.ok) {
+                document.getElementById('newOwnerGroupName').value = '';
+                document.getElementById('newOwnerGroupShort').value = '';
+                loadOwnerGroups();
+                loadFilterOptions();
+            } else r.json().then(d => alert(d.error || 'Error'));
+        });
+    }
+
+    document.getElementById('ownerGroupFilter').addEventListener('input', () => sortAndRenderOwnerGroups());
 
     // ─── Markets tab ───────────────────────────────────────────────────────────
     let marketData = [], marketSorted = [], marketSortCol = 'MARKET_CITY_STATE', marketSortAsc = true;
