@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Employee System Topology -- Table-Level Data Flow</title>
+<style>
+  :root{
+    --bg:#1e1e2e;--surface:#181825;--surface2:#313244;--surface3:#45475a;
+    --text:#cdd6f4;--subtext:#a6adc8;
+    --blue:#89b4fa;--sky:#74c7ec;--green:#a6e3a1;--yellow:#f9e2af;
+    --orange:#fab387;--red:#f38ba8;--purple:#cba6f7;--teal:#94e2d5;--pink:#f5c2e7;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:13.5px;padding:24px 30px 90px;line-height:1.55}
+  h1{color:var(--blue);font-size:21px;margin-bottom:4px}
+  .meta{color:var(--subtext);font-size:12px;margin-bottom:8px}
+  .hint{background:var(--surface2);border-left:3px solid var(--yellow);padding:8px 13px;border-radius:0 6px 6px 0;font-size:12px;color:var(--subtext);margin-bottom:20px;max-width:900px}
+  .topology{display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding-bottom:20px}
+  .stage{display:flex;flex-direction:column;gap:8px;min-width:230px;flex-shrink:0}
+  .stage-header{font-size:11px;text-transform:uppercase;letter-spacing:.6px;font-weight:700;padding:8px 10px;border-radius:6px 6px 0 0;text-align:center}
+  .stage-sources .stage-header{background:#2e1a1d;color:var(--red);border:1px solid var(--red);border-bottom:none}
+  .stage-import .stage-header{background:#162535;color:var(--sky);border:1px solid var(--sky);border-bottom:none}
+  .stage-processing .stage-header{background:#221a2e;color:var(--purple);border:1px solid var(--purple);border-bottom:none}
+  .stage-core .stage-header{background:#2e2a18;color:var(--yellow);border:1px solid var(--yellow);border-bottom:none}
+  .stage-export .stage-header{background:#1a2e1f;color:var(--green);border:1px solid var(--green);border-bottom:none}
+  .stage-body{border:1px solid var(--surface3);border-top:none;border-radius:0 0 6px 6px;padding:10px;display:flex;flex-direction:column;gap:7px;background:var(--surface);flex:1}
+  .arrow-col{display:flex;align-items:center;justify-content:center;min-width:34px;flex-shrink:0;font-size:22px;color:var(--surface3);align-self:center;margin-top:60px}
+  .node{background:var(--surface2);border:1px solid var(--surface3);border-radius:6px;padding:8px 10px;cursor:pointer;transition:border-color .15s}
+  .node:hover{border-color:var(--blue)}
+  .node.open{border-color:var(--blue)}
+  .node .n-name{font-family:Consolas,monospace;font-size:11.5px;color:var(--sky);font-weight:600}
+  .node .n-role{font-size:11px;color:var(--subtext);margin-top:2px}
+  .node .n-detail{display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--surface3);font-size:11.5px;color:var(--text)}
+  .node.open .n-detail{display:block}
+  .core-node{background:linear-gradient(135deg,#2e2a18,#3b3620);border:2px solid var(--yellow)}
+  .core-node .n-name{color:var(--yellow);font-size:13px}
+  .badge{display:inline-block;padding:1px 7px;border-radius:9px;font-size:9.5px;font-weight:700;text-transform:uppercase;margin-left:4px}
+  .badge-green{background:rgba(166,227,161,.18);color:var(--green)}
+  .badge-orange{background:rgba(250,179,135,.18);color:var(--orange)}
+  .badge-purple{background:rgba(203,166,247,.18);color:var(--purple)}
+  .badge-gray{background:rgba(69,71,90,.6);color:var(--subtext)}
+  .badge-red{background:rgba(243,139,168,.18);color:var(--red)}
+  .group-label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--subtext);margin:8px 0 -2px;padding-left:2px}
+  .special-flow{background:var(--surface2);border:1px dashed var(--green);border-radius:6px;padding:8px 10px;margin-top:6px}
+  .special-flow .n-name{color:var(--green)}
+  code{background:var(--surface3);color:var(--orange);padding:0 4px;border-radius:3px;font-family:Consolas,monospace;font-size:11px}
+</style>
+</head>
+<body>
+
+<h1>Employee System Topology</h1>
+<div class="meta">Table-level data flow: sources &rarr; import &rarr; processing &rarr; Emp_Core &rarr; exports. Click any box to expand its detail.</div>
+<div class="hint">This is a different view than <code>NB_EMP_PIPELINE_DIAGRAM.html</code> -- that diagram shows notebook <i>steps/cells</i>; this one shows <i>table-to-table lineage</i>, independent of which cell touches which table. See <code>EMP_SYSTEM_REDESIGN_PLAN.html</code> for full narrative (Items #1-#17).</div>
+
+<div class="topology">
+
+  <!-- ═══ SOURCES ═══ -->
+  <div class="stage stage-sources">
+    <div class="stage-header">Sources (External)</div>
+    <div class="stage-body">
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">Paycom SFTP</div>
+        <div class="n-role">Main file + US prehire + CAN prehire</div>
+        <div class="n-detail">Downloaded fresh on every hourly run -- no skip-if-current logic. Three separate files, three separate SFTP downloads (Cells 3/4/5 of IMPORT).</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">DB_APP_SUPPORT.dbo.EMPLOYEE_SOFT_TERMINATION_OVERRIDES</div>
+        <div class="n-role">AppHub 4.0 EDM table <span class="badge badge-purple">EDM-managed</span></div>
+        <div class="n-detail">Real source for Emp_Core's FLAG_SOFT_TERMINATION (Plan Item #19) -- manual override with full audit trail (REASON, ADDED_BY/ON, UPDATED_BY/ON, EXPIRES_ON, IS_ACTIVE). 2 active overrides today.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">WH_STAGING.dbo.AD_EMPLOYEES_0</div>
+        <div class="n-role">Active Directory export <span class="badge badge-gray">external process</span></div>
+        <div class="n-detail">Populated by a SEPARATE, still-legacy process (<code>AD_EMPLOYEES_0_SP</code>) not part of this pipeline. IMPORT just reads whatever is there when it runs -- see Diagram Risk #2 (freshness not guaranteed).</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">DB_APP_SUPPORT.dbo.PROPERTY_0</div>
+        <div class="n-role">Property reference <span class="badge badge-gray">read-only</span></div>
+        <div class="n-detail">Joined during Processing for PROPERTY_NAME, PROPERTY_GROUP, address/flag lookups. Never written by this pipeline.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">Entrata Sync Tables (LEGACY, no longer a dependency)</div>
+        <div class="n-role">EMP_ENTRATA_AGENTS_0 / PROPERTY_ASSIGNMENTS_0 <span class="badge badge-green">i-3-28 RESOLVED 2026-09-16</span></div>
+        <div class="n-detail">Previously populated by <code>EMP_ENTRATA_AGENTS_0_SP</code> / <code>EMP_ENTRATA_PROPERTY_ASSIGNMENTS_0_SP</code>, both of which read legacy <code>EMPLOYEE_F</code> -- a circular dependency that would go stale at cutover. <b>Fixed (i-3-28):</b> <code>PROCESSING_LOAD_CONFIG</code> now computes both natively in Python (<code>_compute_entrata_agents()</code> / <code>_compute_entrata_property_assignments()</code>) directly from the <code>Emp_Core</code> snapshot, full-parity validated against the legacy SPs (property-assignments 100% match; agents match except 27 intentionally-normalized rows, see code comments). These 2 legacy SPs can now be disabled at cutover with no functional loss.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">DB_APP_SUPPORT.dbo.EMP_TITLE_GROUP_MGMT</div>
+        <div class="n-role">AppHub 4.0 EDM table <span class="badge badge-purple">EDM-managed</span></div>
+        <div class="n-detail">Title &rarr; Title Group + Type mapping (188 rows). Feeds Emp_Core.TITLE_GROUP. New titles with no mapping fall into _UNASSIGNED until an admin maps them in the EDM.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">DB_APP_SUPPORT.dbo.EMP_ENTRATA_TITLE_GROUP_MAPPING</div>
+        <div class="n-role">AppHub 4.0 EDM table <span class="badge badge-purple">EDM-managed</span></div>
+        <div class="n-detail">Title Group &rarr; Entrata Department + Permission Group default mapping (48 rows). Feeds Emp_Core.ENTRATA_DEPARTMENT/ENTRATA_PERMISSION_GROUP.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">DB_APP_SUPPORT.dbo.EMP_ENTRATA_GROUP_ASSIGNMENTS</div>
+        <div class="n-role">AppHub 4.0 EDM table, synced to WH_STAGING.*_0 <span class="badge badge-purple">EDM-managed</span></div>
+        <div class="n-detail">Employee-level, date-ranged Entrata overrides (DATE_START/DATE_END) that take precedence over the title-group default above. Processing reads the WH_STAGING-synced copy (<code>EMP_ENTRATA_GROUP_ASSIGNMENTS_0</code>), not this table directly.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">DB_APP_SUPPORT.dbo.LEO_TITLE_PAYCOM_MAP</div>
+        <div class="n-role">AppHub 4.0 EDM table <span class="badge badge-purple">EDM-managed</span></div>
+        <div class="n-detail">Paycom Title &rarr; LEO Role mapping (175 rows), EXACT/LIKE match with priority ordering. Feeds Emp_Core.LEO_ROLE_NAME/LEO_ROLE_ID.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-col">&#8594;</div>
+
+  <!-- ═══ IMPORT ═══ -->
+  <div class="stage stage-import">
+    <div class="stage-header">Import (Landing + Normalize)</div>
+    <div class="stage-body">
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">WH_ODS.dbo.Emp_Import_Paycom</div>
+        <div class="n-role">45 cols <span class="badge badge-green">Built</span></div>
+        <div class="n-detail">Dedicated landing table (Item #13) -- identical structure to legacy IMPORT_PAYCOM but isolated to avoid write collision with the still-active legacy chain.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">WH_ODS.dbo.Emp_Import_Prehire_US / CAN</div>
+        <div class="n-role">13 cols each <span class="badge badge-green">Built</span></div>
+        <div class="n-detail">Dedicated landing tables (Item #13), same isolation reasoning as Emp_Import_Paycom.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">WH_STAGING.dbo.Emp_Import_AD</div>
+        <div class="n-role"><span class="badge badge-green">Built</span></div>
+        <div class="n-detail">Snapshot of AD_EMPLOYEES_0 taken each run -- read-only copy, no transformation.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">WH_STAGING.dbo.Emp_Import_Staging</div>
+        <div class="n-role">44 cols, 1 row/EMPLOYEE_KEY <span class="badge badge-green">Built</span></div>
+        <div class="n-detail">Union of Paycom + US/CAN prehire (deduped), EMPLOYEE_KEY resolved from WH_STAGING.Emp_Employee_Keys (isolated clone, see below -- Item #25). <code>PROCESSING_KEY_RESOLUTION</code> now assigns/refreshes EMPLOYEE_KEY for genuinely new hires (built + tested 2026-09-12). This is the ONLY table Processing is allowed to read from.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">WH_STAGING.dbo.EMPLOYEE_KEYS</div>
+        <div class="n-role">Surrogate key registry <span class="badge badge-gray">read-only, isolated by Item #25</span></div>
+        <div class="n-detail">LIVE legacy table, still written 14x/day by legacy <code>EMPLOYEE_KEYS_SP</code>. This pipeline no longer writes here at all (Item #25) -- it only reads (once, to seed/sync the clone below).</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">WH_STAGING.dbo.Emp_Employee_Keys</div>
+        <div class="n-role">Isolated clone <span class="badge badge-green">Built 2026-09-14 (Item #25)</span></div>
+        <div class="n-detail">Exact schema clone of EMPLOYEE_KEYS, seeded with a full copy (7,451 rows). <code>PROCESSING_KEY_RESOLUTION</code> syncs legacy &rarr; here FIRST (legacy still authoritative during dev), then reads/writes new+updated keys entirely against this clone -- legacy is never written to. At cutover this gets promoted to be the real table and legacy EMPLOYEE_KEYS/EMPLOYEE_KEYS_SP are retired. Not the same table as the planned <code>xtemp.Emp_Employee_Keys</code> shadow further below (Group B) -- that one is a DB_APP_SUPPORT AppHub-read export target; this one is the WH_STAGING processing-time isolation clone.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">WH_STAGING.dbo.Emp_Key_Resolution_Staging</div>
+        <div class="n-role">2 cols (EMPLOYEE_KEY, DATE_HIRED) <span class="badge badge-green">Built 2026-09-12 (Item #23)</span></div>
+        <div class="n-detail">Small bulk-update staging table for PROCESSING_KEY_RESOLUTION: COPY INTO this, then one set-based UPDATE...FROM against EMPLOYEE_KEYS -- avoids a slow row-by-row executemany across ~7,300 rows every run.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-col">&#8594;</div>
+
+  <!-- ═══ PROCESSING ═══ -->
+  <div class="stage stage-processing">
+    <div class="stage-header">Processing (Business Logic)</div>
+    <div class="stage-body">
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">PROCESSING_LOAD_CONFIG</div>
+        <div class="n-role">26 reference tables <span class="badge badge-green">Built + tested (2026-09-12)</span></div>
+        <div class="n-detail">Parallel ThreadPoolExecutor read of every DB_APP_SUPPORT/WH_STAGING/DB_BI_SUPPORT.control reference table Processing needs (one short-lived connection per table). Tested live: 53,247 rows across 26 tables in 3.1s. Also validates Emp_Import_Staging is non-empty (aborts if not). <b>i-3-28 (2026-09-16):</b> after the parallel load, also computes <code>EMP_ENTRATA_AGENTS_0</code> / <code>EMP_ENTRATA_PROPERTY_ASSIGNMENTS_0</code> in-memory from the <code>EMP_CORE_SNAPSHOT</code> config entry (see Entrata Sync Tables node) -- removes the legacy-SP circular dependency entirely.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">PROCESSING_TITLE_OVERRIDES</div>
+        <div class="n-role"><span class="badge badge-green">Built + tested (2026-09-12)</span></div>
+        <div class="n-detail">EMP_TITLE_OVERRIDES 15-day TTL logic -- per-employee, most-recent-override-wins, replaces POSITION in-memory on the Emp_Import_Staging working set. Tested live: 15 active overrides applied.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">PROCESSING_KEY_RESOLUTION</div>
+        <div class="n-role"><span class="badge badge-green">Built + tested (2026-09-12)</span></div>
+        <div class="n-detail">Replicates the LIVE legacy <code>EMPLOYEE_KEYS_SP</code> exactly (matches on EMPLOYEE_CODE+NAME_FIRST+NAME_LAST, NOT the originally-planned name+hire_date -- corrected per user direction, Item #23). Tested live: 7,362 rows, 0 new keys, all existing refreshed in 2.8s.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">PROCESSING_MAIN_JOIN &#8594; PROCESSING_SUPERVISOR_KEY</div>
+        <div class="n-role">9 steps <span class="badge badge-green">Built + tested + FULL PARITY VALIDATED (2026-09-13/15, Item #27)</span></div>
+        <div class="n-detail">Main Join (the ~90-column Combo CTE from EMPLOYEE_F_COMBO_SP -- property/AD/Entrata/title/security joins), Apply Rules, Supervisor+Security (single-level, no 4-level coalesce -- corrected, Item #24), Entrata EPA (straight passthrough, no 6-source logic -- corrected, Item #24), LEO Fields (adapted from NB_EMPLOYEE_0_COMBO.py, Item #24), Assemble Core (+hash), Write Staging, Merge Core (lock-aware + stale-active retire pass, Item #24), Supervisor Key (post-merge). PROPERTY_KEY resolved via the real <code>PAYCOM_IMPORT_LOAD_SP</code> algorithm (Department field + Corp_Dept_Code map &#8594; PROPERTY_F.PROPERTY_KEY/ENTITY_NUMBER). <b>Item #27 (2026-09-14/15):</b> found+fixed a POSITION/PAYCOM_POSITION field swap, a ctx.cfg staleness bug dropping new hires, title-overrides never reaching Main Join, and two SQL-NULL-semantics mistranslations (FLAG_TITLE_MATCH, EMAIL). <b>Verified EXACT, byte-for-byte match vs legacy EMPLOYEE_F across every column checked</b>: row count 3,232=3,232, all 24 shared FLAG_* columns, NAME/EMAIL/DEPARTMENT/TITLE_GROUP, SECURITY_LEVEL/GROUP, ENTRATA_PROPERTY_ASSIGNMENTS, EMPLOYEE_KEY -- 0 mismatches on every check.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">DB_BI_SUPPORT.control.EMP_PROCESSING_RULES</div>
+        <div class="n-role">Config <span class="badge badge-gray">read-only</span></div>
+        <div class="n-detail">Simple column-derivation rules, editable in AppHub EDM without code access. Relocated here by Item #12.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">DB_APP_SUPPORT.dbo.Emp_Core_Staging</div>
+        <div class="n-role">~149 cols, TRUNCATE+INSERT every run <span class="badge badge-green">Built + in production use</span></div>
+        <div class="n-detail">This run's full output, audit trail before merge. Moved here from WH_STAGING by Item #17 so the merge below is a native SQL MERGE (same engine), not a cross-engine Python apply. Now also browsable read-only in AppHub 4.0 EDM &rarr; Emp Tables &rarr; Processing Output (i-3-27).</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-col">&#8594;</div>
+
+  <!-- ═══ EMP_CORE (central) ═══ -->
+  <div class="stage stage-core">
+    <div class="stage-header">The Central Table</div>
+    <div class="stage-body">
+      <div class="node core-node open" onclick="toggle(this)">
+        <div class="n-name">DB_APP_SUPPORT.dbo.Emp_Core</div>
+        <div class="n-role">149 cols, PK=EMPLOYEE_KEY <span class="badge badge-green">Built + Backfilled (7,185 rows)</span></div>
+        <div class="n-detail">
+          Single source of truth. Replaces <code>WH_STAGING.EMPLOYEE_F</code>, <code>WH_STAGING.EMPLOYEE_0</code>, <code>DB_APP_SUPPORT.xtemp.EMPLOYEE_F</code>, and <code>DB_APP_SUPPORT.dbo.EMPLOYEE_0</code> outright (Item #16) -- not a shadow of them.<br><br>
+          Adopts the existing per-field lock-bit convention (<code>*_LOCKED</code> columns) from the old EMPLOYEE_0, since Emp_Core is now the bidirectional/EDM table itself.<br><br>
+          <code>EMPLOYEE_METRICS</code> and <code>EMPLOYEE_FACTS</code> stay separate (date/vertical fact grain) -- Emp_Core feeds a daily snapshot into each, it does not absorb them.<br><br>
+          See <code>EMP_CORE_SCHEMA_DOC.html</code> for the full column-by-column source/update-type reference.
+        </div>
+      </div>
+      <div class="node special-flow" onclick="toggle(this)">
+        <div class="n-name">&#8594; AppHub EDM / Other Consumers</div>
+        <div class="n-role">Readers-first migration <span class="badge badge-purple">in progress</span></div>
+        <div class="n-detail">No shadow-then-flip for this path. Consumers of the old EMPLOYEE_F/EMPLOYEE_0 migrate to Emp_Core one at a time, lowest-risk first. AppHub's own login/security lookup migrates <b>last</b>, only after every other consumer has burned in. Legacy <code>EMPLOYEE_F_COMBO_SP</code> is disabled only once nothing reads its output anymore.</div>
+      </div>
+      <div class="node special-flow" onclick="toggle(this)">
+        <div class="n-name">&#8594; AppHub 4.0 EDM "Emp Tables" Module</div>
+        <div class="n-role">Read-only browser <span class="badge badge-green">i-3-26 / i-3-27 COMPLETE 2026-09-16/17</span></div>
+        <div class="n-detail">Dedicated EDM sub-module (Employee Data Manager &rarr; Emp Tables) with a PDM-style browsable table per pipeline table: sortable/multi-select-filterable columns, category+A-Z detail slideout, Excel export. Covers <code>Emp_Core</code>, <code>Emp_Core_Staging</code> (Processing Output), <code>control.EMP_PIPELINE_RUN_LOG</code> (Processing History), every <code>Emp_Import_*</code> landing/snapshot table, <code>Emp_Employee_Keys</code>, <code>Emp_Key_Resolution_Staging</code>, <code>Emp_Core_Retire_Staging</code>, <code>EMP_TITLE_OVERRIDES</code>, <code>EMP_PROPERTY_ASSIGNMENTS</code>, and <code>control.EMP_PROCESSING_RULES</code>. Also supports adding arbitrary new tables on-the-fly from the UI (validated against a DB-engine whitelist, persisted server-side) so new pipeline tables can be exposed without a code deploy.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-col">&#8594;</div>
+
+  <!-- ═══ EXPORT ═══ -->
+  <div class="stage stage-export">
+    <div class="stage-header">Exports (Final Outputs)</div>
+    <div class="stage-body">
+      <div class="group-label">Group A -- WH_PROD2 Production</div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">Emp_Employees &rarr; EMPLOYEES</div>
+        <div class="n-role">Shadow now <span class="badge badge-orange">planned</span></div>
+        <div class="n-detail">118 cols, FLAG_CURRENT=1. Shadow table until Phase 6 cutover renames it over the real <code>WH_PROD2.dbo.EMPLOYEES</code> and disables <code>EMPLOYEES_LOAD_SP</code> in the same step.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">Emp_Employee_Facts &rarr; EMPLOYEE_FACTS</div>
+        <div class="n-role">Shadow now <span class="badge badge-orange">planned</span></div>
+        <div class="n-detail">Daily DATE_KEY snapshot -- stays its own fact table forever, Emp_Core just feeds it (not absorbed, see Item #16).</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">Emp_Employee_Metrics &rarr; EMPLOYEE_METRICS</div>
+        <div class="n-role">Shadow now <span class="badge badge-orange">planned</span></div>
+        <div class="n-detail">Vertical fact table, metric list changes over time -- stays separate (Item #16 exception, same as EMPLOYEE_FACTS).</div>
+      </div>
+
+      <div class="group-label">Group B -- DB_APP_SUPPORT Companions (excluded from Emp_Core)</div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">xtemp.Emp_Employee_Keys &rarr; xtemp.EMPLOYEE_KEYS</div>
+        <div class="n-role"><span class="badge badge-orange">planned</span></div>
+        <div class="n-detail">Key registry sync -- different function than Emp_Core, stays its own shadow/cutover target. Not the same table as <code>WH_STAGING.dbo.Emp_Employee_Keys</code> (Item #25, already built) -- that one isolates PROCESSING_KEY_RESOLUTION from live legacy; this one is the future DB_APP_SUPPORT.xtemp AppHub-read export.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">xtemp.Emp_AD_Employees_0 &rarr; xtemp.AD_EMPLOYEES_0</div>
+        <div class="n-role"><span class="badge badge-orange">planned</span></div>
+        <div class="n-detail">Raw AD snapshot sync -- feeds Emp_Core upstream, but the xtemp copy itself is a separate export target.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">dbo.Emp_Milestones_Employees &rarr; dbo.MILESTONES_EMPLOYEES</div>
+        <div class="n-role"><span class="badge badge-orange">planned</span></div>
+        <div class="n-detail">Per-PROPERTY+EMPLOYEE bridge table (many-to-many grain) -- excluded from Emp_Core, own shadow/cutover.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">WH_STAGING.Emp_Employee_Security_0 &rarr; EMPLOYEE_SECURITY_0</div>
+        <div class="n-role">18-col subset <span class="badge badge-orange">planned</span></div>
+        <div class="n-detail">Only the WH_STAGING backward-compat table still needing a shadow/export step -- EMPLOYEE_F/EMPLOYEE_0 themselves no longer need one (readers-first migration instead, see the special flow above).</div>
+      </div>
+
+      <div class="group-label">Group C -- External File Exports</div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">AD Provisioning CSVs</div>
+        <div class="n-role">ACTIVE/TERMINATED_EMPS_FOR_AD_0 + Soft-Term + Terminations Log <span class="badge badge-orange">planned</span></div>
+        <div class="n-detail">Shadow tables: Emp_Active/Terminated_Emps_For_AD_0, Emp_Employee_Soft_Terminations, Emp_Terminations_Log. FLAG_SOFT_TERMINATION sourced from DB_APP_SUPPORT.dbo.EMPLOYEE_SOFT_TERMINATION_OVERRIDES (AppHub 4.0 EDM table, Plan Item #19). ADDRESS_* confirmed to be PROPERTY_F's address (not the employee's, Item #21) -- kept on Emp_Core, sourced from same-engine DB_APP_SUPPORT.dbo.PROPERTY_0 via PROPERTY_KEY (Item #22). EXT15_BASE/FLAG_NEW_TERMINATED confirmed computable from existing Emp_Core columns, kept stored.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">AD Security Groups CSV</div>
+        <div class="n-role">users*.csv <span class="badge badge-orange">planned</span></div>
+        <div class="n-detail">Two active legacy tables found this session (Plan Item #15): <code>AD_SECURITY_GROUPS_EXPORT</code> (confirmed consumer) and <code>EMPLOYEE_SECURITY_GROUPS_EXPORT_0</code> (consumer unconfirmed) -- both shadowed.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">CasaPerks CSVs</div>
+        <div class="n-role">Active + Terminated <span class="badge badge-orange">planned</span></div>
+        <div class="n-detail">Shadow tables Emp_Active/Terminated_Casaperks_0. No new Emp_Core fields needed -- pure filter of existing columns.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">LEO SFTP</div>
+        <div class="n-role">Direct from Emp_Core <span class="badge badge-orange">planned</span></div>
+        <div class="n-detail">Filter WHERE LEO_ELIGIBLE=1. No staging table -- reads Emp_Core directly, respects LEO_*_LOCKED bits.</div>
+      </div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">GraceHill CSV</div>
+        <div class="n-role">Direct from Emp_Core <span class="badge badge-orange">planned</span></div>
+        <div class="n-detail">Replaces NB_GRACEHILL_PEAKMADE_EMPLOYEE_EXPORT. Delivered to a TEST path until Phase 6 cutover.</div>
+      </div>
+
+      <div class="group-label">Deferred / Out of Scope</div>
+      <div class="node" onclick="toggle(this)">
+        <div class="n-name">WH_STAGING.dbo.AD_SECURITY_GROUPS_FINAL</div>
+        <div class="n-role"><span class="badge badge-red">excluded</span></div>
+        <div class="n-detail">Confirmed not registered in control.EXECUTION_PLAN -- appears orphaned. No shadow table, no Emp_Core fields, no Phase 4/6 action (Plan Item #15).</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function toggle(el) {
+  el.classList.toggle('open');
+}
+</script>
+</body>
+</html>

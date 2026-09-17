@@ -107,6 +107,49 @@
         /* Employee detail panel — uses shared .popout-overlay framework from apphub.css */
         .emp-detail-overlay { width: 560px; }
 
+        /* Emp Tables module: list-box nav (left) + PDM-style browsable table (right) */
+        .emp-tables-toolbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+        .emp-tables-layout { display: flex; gap: 16px; align-items: flex-start; }
+        .emp-tables-nav { width: 190px; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; }
+        .emp-tables-nav-item { padding: 10px 14px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--text-primary); }
+        .emp-tables-nav-item:hover { background: var(--input-bg); }
+        .emp-tables-nav-item.active { background: var(--accent-cyan); color: #fff; }
+        .emp-tables-nav-divider { padding: 10px 10px 4px; font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+        .emp-tables-nav-item { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+        .emp-nav-remove { font-size: 0.9rem; color: var(--text-secondary); line-height: 1; padding: 0 2px; }
+        .emp-nav-remove:hover { color: #f38ba8; }
+        .emp-add-table-overlay { display: none; position: fixed; inset: 0; z-index: 600; background: rgba(0,0,0,0.55); align-items: center; justify-content: center; }
+        .emp-add-table-overlay.open { display: flex; }
+        .emp-add-table-modal { width: 420px; max-width: 90vw; background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 8px; padding: 18px 20px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 12px 40px var(--shadow-overlay); }
+        .emp-add-table-modal-header { display: flex; align-items: center; justify-content: space-between; font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+        .emp-add-table-modal label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-secondary); margin-top: 6px; }
+        .emp-add-table-modal input, .emp-add-table-modal select { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 7px 10px; border-radius: 4px; font-size: 0.85rem; }
+        .emp-add-table-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+        .emp-add-table-error { font-size: 0.72rem; color: #f38ba8; min-height: 1em; margin-top: 4px; }
+        .emp-tables-content { flex: 1; min-width: 0; }
+        .emp-subpanel { display: none; }
+        .emp-subpanel.active { display: block; }
+        tr.col-search-row th { cursor: default; }
+        .col-search-wrap { position: relative; }
+        .col-filter-btn { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 4px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: normal; text-align: left; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+        .col-filter-btn:hover { border-color: var(--accent-cyan); }
+        .col-filter-caret { font-size: 0.6rem; color: var(--text-secondary); flex-shrink: 0; }
+        .col-filter-menu { display: none; position: fixed; z-index: 500; min-width: 200px; max-width: 320px; background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 4px; box-shadow: 0 8px 24px var(--shadow-overlay); text-transform: none; letter-spacing: normal; font-weight: normal; }
+        .col-filter-menu.open { display: block; }
+        .col-filter-search { padding: 6px; border-bottom: 1px solid var(--border-subtle); }
+        .col-filter-search input { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 4px 6px; border-radius: 4px; font-size: 0.7rem; }
+        .col-filter-all-row { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--border-subtle); cursor: pointer; font-size: 0.7rem; color: var(--text-primary); }
+        .col-filter-list { max-height: 220px; overflow-y: auto; }
+        .col-filter-item { display: flex; align-items: center; gap: 6px; padding: 4px 8px; font-size: 0.7rem; color: var(--text-primary); cursor: pointer; white-space: nowrap; }
+        .col-filter-item:hover { background: var(--hover-bg-strong); }
+        .col-filter-item input, .col-filter-all-row input { flex-shrink: 0; cursor: pointer; }
+        .col-filter-item span { overflow: hidden; text-overflow: ellipsis; }
+        .dataflow-subnav { display: flex; gap: 6px; margin-bottom: 12px; }
+        .dataflow-subnav-item { padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600; color: var(--text-primary); background: var(--input-bg); border: 1px solid var(--border-input); }
+        .dataflow-subnav-item:hover { border-color: var(--accent-cyan); }
+        .dataflow-subnav-item.active { background: var(--accent-cyan); color: #fff; border-color: var(--accent-cyan); }
+        .dataflow-iframe { width: 100%; height: calc(100vh - 260px); min-height: 500px; border: 1px solid var(--border-light); border-radius: 8px; background: #1e1e2e; }
+
         /* Bulk assign bar */
         .bulk-bar { display: none; background: rgba(0,188,212,0.08); border: 1px solid rgba(0,188,212,0.2); border-radius: 6px; padding: 8px 14px; margin-bottom: 10px; align-items: center; gap: 10px; font-size: 0.8rem; color: var(--text-primary); }
         .bulk-bar.visible { display: flex; }
@@ -189,61 +232,17 @@
     <div class="edm-container">
 
         <div class="edm-tabs">
-            <div class="edm-tab active" data-panel="employees">Employees</div>
-            <div class="edm-tab" data-panel="titles">Title Assignments</div>
+            <div class="edm-tab active" data-panel="titles">Title Assignments</div>
             <div class="edm-tab" data-panel="entrata">Entrata Groups</div>
             <div class="edm-tab" data-panel="entrataassign">Entrata Users</div>
             <div class="edm-tab" data-panel="softterm">Soft Terminations</div>
             <div class="edm-tab" data-panel="leomap">LEO Mapping</div>
+            <div class="edm-tab" data-panel="empTables">Emp Tables</div>
+            <div class="edm-tab" data-panel="dataflow">Emp Data Flow</div>
         </div>
 
         <!-- EMPLOYEES PANEL -->
-        <div class="edm-panel active" id="panel-employees">
-            <div class="info-blurb" id="blurb-employees">
-                <div class="blurb-header" onclick="toggleBlurb('employees')">
-                    <span class="blurb-title">Employee Directory</span>
-                    <span class="blurb-toggle" id="blurbToggle-employees">&#9660;</span>
-                </div>
-                <div class="blurb-body" id="blurbBody-employees">
-                    Read-only view of <code>EMPLOYEE_F</code> — the unified employee fact table rebuilt hourly from Paycom, AD, and Entrata sources. Returns up to 1,000 results.
-                    <br><br>
-                    <strong>How to use:</strong>
-                    <ul style="margin:4px 0 0 16px;padding:0">
-                        <li><strong>Search</strong> — Type a name, email, or employee code in the search box. Results filter as you type.</li>
-                        <li><strong>Filters</strong> — Use the Status, Title Group, and Property dropdowns to narrow results. Default shows Active/On Leave employees.</li>
-                        <li><strong>Sort</strong> — Click any column header to sort ascending/descending (▲/▼). Click again to reverse.</li>
-                        <li><strong>⚙ Columns</strong> — Add or remove any of 106 available columns (all EMPLOYEE_F fields + LEO data). Type in the search box to find columns quickly. Click "Reset to Default" to restore the original 7 columns.</li>
-                        <li><strong>💾 Export</strong> — Download the current filtered view as a CSV file with your selected columns.</li>
-                        <li><strong>Detail View</strong> — Click any employee row to open a side panel showing ALL fields for that person. Press Escape or × to close.</li>
-                    </ul>
-                    <br>
-                    <strong>Source tables:</strong> employee rows come from <code>WH_STAGING.dbo.EMPLOYEE_F</code>; LEO fields come from <code>WH_STAGING.dbo.LEO_USERS_EXPORT</code>.
-                    <br><br>
-                    <strong>Consumed by:</strong> <code>EMPLOYEE_F</code> is rebuilt by the <code>EMPLOYEE_F_COMBO_SP</code> stored procedure, fed by the <code>NB_EMPLOYEE_SYNC_COMBO</code> notebook which syncs the DB_APP_SUPPORT config tables below into WH_STAGING. <code>LEO_USERS_EXPORT</code> is refreshed by the <code>NB_LEO_EXPORT</code> notebook. If a value here looks wrong, check those runs first.
-                </div>
-            </div>
-            <div class="emp-filters">
-                <input type="text" id="empSearch" placeholder="Search name, email, or code..." class="emp-filter-search">
-                <select id="filterStatus" class="emp-filter-select" onchange="loadEmployees()"><option value="_ACTIVE">Active / On Leave</option><option value="">All Statuses</option></select>
-                <select id="filterTitleGroup" class="emp-filter-select" onchange="loadEmployees()"><option value="">All Title Groups</option></select>
-                <select id="filterProperty" class="emp-filter-select" onchange="loadEmployees()"><option value="">All Properties</option></select>
-                <div class="col-selector-wrap">
-                    <button class="col-selector-btn" onclick="toggleColSelector()">&#9881; Columns</button>
-                    <div class="col-selector-panel" id="colSelectorPanel"></div>
-                </div>
-                <button class="btn btn-sm" onclick="exportEmpCSV()" style="color:var(--text-secondary)" title="Export current view to CSV">&#128190; Export</button>
-                <button class="btn btn-sm" onclick="clearEmpFilters()" style="margin-left:2px;color:var(--text-secondary)">Clear</button>
-                <span class="count-label" id="empCount" style="margin-left:auto"></span>
-            </div>
-            <div class="table-scroll" style="overflow-x:auto">
-                <table class="data-table" id="empTable" style="width:100%">
-                    <thead><tr id="empTableHead"></tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Employee Detail Side Panel -->
+        <!-- Employee Detail Side Panel (shared, also used by Emp Tables > Employees) -->
         <div class="popout-overlay emp-detail-overlay" id="empDetailPanel">
             <div class="popout-resize-handle" id="empDetailResize"></div>
             <button class="popout-close-btn" onclick="closeEmpDetail()">&times;</button>
@@ -265,7 +264,7 @@
         </div>
 
         <!-- TITLE ASSIGNMENTS PANEL -->
-        <div class="edm-panel" id="panel-titles">
+        <div class="edm-panel active" id="panel-titles">
             <div class="info-blurb" id="blurb-titles">
                 <div class="blurb-header" onclick="toggleBlurb('titles')">
                     <span class="blurb-title">Title Assignments</span>
@@ -580,6 +579,210 @@
                 </table>
             </div>
         </div>
+
+        <!-- EMP TABLES PANEL -- list-box nav (like the AppHub sidebar) + PDM-style browsable tables -->
+        <div class="edm-panel" id="panel-empTables">
+            <div class="emp-tables-toolbar">
+                <button class="btn btn-sm btn-primary" onclick="toggleAddEmpTableForm()">+ Add Table</button>
+            </div>
+            <div class="emp-tables-layout">
+                <div class="emp-tables-nav">
+                    <div class="emp-tables-nav-item active" data-emptable="employees" onclick="switchEmpTable('employees')">Employees</div>
+                    <div class="emp-tables-nav-item" data-emptable="procHistory" onclick="switchEmpTable('procHistory')">Processing History</div>
+                    <div class="emp-tables-nav-item" data-emptable="procOutput" onclick="switchEmpTable('procOutput')">Processing Output</div>
+                    <div class="emp-tables-nav-item" data-emptable="empCore" onclick="switchEmpTable('empCore')">Emp_Core</div>
+                </div>
+                <div class="emp-tables-content">
+
+                    <!-- EMPLOYEES SUBPANEL (relocated from its own former top-level tab, unchanged) -->
+                    <div class="emp-subpanel active" id="subpanel-employees">
+                        <div class="info-blurb" id="blurb-employees">
+                            <div class="blurb-header" onclick="toggleBlurb('employees')">
+                                <span class="blurb-title">Employee Directory</span>
+                                <span class="blurb-toggle" id="blurbToggle-employees">&#9660;</span>
+                            </div>
+                            <div class="blurb-body" id="blurbBody-employees">
+                                Read-only view of <code>EMPLOYEE_F</code> — the unified employee fact table rebuilt hourly from Paycom, AD, and Entrata sources. Returns up to 3,000 results.
+                                <br><br>
+                                <strong>Source tables:</strong> employee rows come from <code>WH_STAGING.dbo.EMPLOYEE_F</code>; LEO fields come from <code>WH_STAGING.dbo.LEO_USERS_EXPORT</code>.
+                            </div>
+                        </div>
+                        <div class="emp-filters">
+                            <input type="text" id="empSearch" placeholder="Search name, email, or code..." class="emp-filter-search">
+                            <select id="filterStatus" class="emp-filter-select" onchange="loadEmployees()"><option value="_ACTIVE">Active / On Leave</option><option value="">All Statuses</option></select>
+                            <select id="filterTitleGroup" class="emp-filter-select" onchange="loadEmployees()"><option value="">All Title Groups</option></select>
+                            <select id="filterProperty" class="emp-filter-select" onchange="loadEmployees()"><option value="">All Properties</option></select>
+                            <div class="col-selector-wrap">
+                                <button class="col-selector-btn" onclick="toggleColSelector()">&#9881; Columns</button>
+                                <div class="col-selector-panel" id="colSelectorPanel"></div>
+                            </div>
+                            <button class="btn btn-sm" onclick="exportEmpCSV()" style="color:var(--text-secondary)" title="Export current view to CSV">&#128190; Export</button>
+                            <button class="btn btn-sm" onclick="clearEmpFilters()" style="margin-left:2px;color:var(--text-secondary)">Clear</button>
+                            <span class="count-label" id="empCount" style="margin-left:auto"></span>
+                        </div>
+                        <div class="table-scroll" style="overflow-x:auto">
+                            <table class="data-table" id="empTable" style="width:100%">
+                                <thead><tr id="empTableHead"></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- PROCESSING HISTORY SUBPANEL -->
+                    <div class="emp-subpanel" id="subpanel-procHistory">
+                        <div class="info-blurb" id="blurb-procHistory">
+                            <div class="blurb-header" onclick="toggleBlurb('procHistory')">
+                                <span class="blurb-title">Processing History</span>
+                                <span class="blurb-toggle" id="blurbToggle-procHistory">&#9660;</span>
+                            </div>
+                            <div class="blurb-body" id="blurbBody-procHistory">
+                                Read-only view of <code>control.EMP_PIPELINE_RUN_LOG</code> -- one row per step per <code>NB_EMP_PIPELINE</code> run. Shows the most recent 3,000 step-runs.
+                                <br><br>
+                                <strong>Source table:</strong> <code>DB_BI_SUPPORT.control.EMP_PIPELINE_RUN_LOG</code>, written automatically by every step of every <code>NB_EMP_PIPELINE</code> run.
+                            </div>
+                        </div>
+                        <div class="filter-bar">
+                            <select id="procHistoryStatusFilter" class="emp-filter-select">
+                                <option value="">All Statuses</option>
+                                <option value="COMPLETE">COMPLETE</option>
+                                <option value="FAILED">FAILED</option>
+                                <option value="SKIPPED">SKIPPED</option>
+                                <option value="RUNNING">RUNNING</option>
+                            </select>
+                            <div class="col-selector-wrap">
+                                <button class="col-selector-btn" onclick="toggleGenericColSelector('procHistory')">&#9881; Columns</button>
+                                <div class="col-selector-panel" id="colSelectorPanel_procHistory"></div>
+                            </div>
+                            <button class="btn btn-sm" onclick="exportGenericExcel('procHistory')" style="color:var(--text-secondary)" title="Export Processing History to Excel">&#128190; Export</button>
+                            <span class="count-label" id="procHistoryCount" style="margin-left:auto"></span>
+                        </div>
+                        <div class="table-scroll" style="overflow-x:auto">
+                            <table class="data-table" id="procHistoryTable" style="width:100%">
+                                <thead id="procHistoryTableHead"></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- PROCESSING OUTPUT SUBPANEL -->
+                    <div class="emp-subpanel" id="subpanel-procOutput">
+                        <div class="info-blurb" id="blurb-procOutput">
+                            <div class="blurb-header" onclick="toggleBlurb('procOutput')">
+                                <span class="blurb-title">Processing Output</span>
+                                <span class="blurb-toggle" id="blurbToggle-procOutput">&#9660;</span>
+                            </div>
+                            <div class="blurb-body" id="blurbBody-procOutput">
+                                Read-only view of <code>Emp_Core_Staging</code> -- this run's fully-assembled rows, BEFORE the lock-aware MERGE applies them to <code>Emp_Core</code>. Truncated and rebuilt every pipeline run, so this always reflects the most recent run only.
+                                <br><br>
+                                <strong>Source table:</strong> <code>DB_APP_SUPPORT.dbo.Emp_Core_Staging</code>, written by <code>PROCESSING_WRITE_STAGING</code> and read by <code>PROCESSING_MERGE_CORE</code>.
+                            </div>
+                        </div>
+                        <div class="filter-bar">
+                            <div class="col-selector-wrap">
+                                <button class="col-selector-btn" onclick="toggleGenericColSelector('procOutput')">&#9881; Columns</button>
+                                <div class="col-selector-panel" id="colSelectorPanel_procOutput"></div>
+                            </div>
+                            <button class="btn btn-sm" onclick="exportGenericExcel('procOutput')" style="color:var(--text-secondary)" title="Export Processing Output to Excel">&#128190; Export</button>
+                            <span class="count-label" id="procOutputCount" style="margin-left:auto"></span>
+                        </div>
+                        <div class="table-scroll" style="overflow-x:auto">
+                            <table class="data-table" id="procOutputTable" style="width:100%">
+                                <thead id="procOutputTableHead"></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- EMP_CORE SUBPANEL -->
+                    <div class="emp-subpanel" id="subpanel-empCore">
+                        <div class="info-blurb" id="blurb-empCore">
+                            <div class="blurb-header" onclick="toggleBlurb('empCore')">
+                                <span class="blurb-title">Emp_Core</span>
+                                <span class="blurb-toggle" id="blurbToggle-empCore">&#9660;</span>
+                            </div>
+                            <div class="blurb-body" id="blurbBody-empCore">
+                                Read-only browse of <code>Emp_Core</code> -- the new persistent, incrementally-merged employee table that is replacing legacy <code>EMPLOYEE_F</code>.
+                                <br><br>
+                                <strong>Source table:</strong> <code>DB_APP_SUPPORT.dbo.Emp_Core</code>, kept current by <code>NB_EMP_PIPELINE</code>'s <code>PROCESSING_MERGE_CORE</code> step.
+                            </div>
+                        </div>
+                        <div class="filter-bar">
+                            <div class="col-selector-wrap">
+                                <button class="col-selector-btn" onclick="toggleGenericColSelector('empCore')">&#9881; Columns</button>
+                                <div class="col-selector-panel" id="colSelectorPanel_empCore"></div>
+                            </div>
+                            <button class="btn btn-sm" onclick="exportGenericExcel('empCore')" style="color:var(--text-secondary)" title="Export Emp_Core to Excel">&#128190; Export</button>
+                            <span class="count-label" id="empCoreCount" style="margin-left:auto"></span>
+                        </div>
+                        <div class="table-scroll" style="overflow-x:auto">
+                            <table class="data-table" id="empCoreTable" style="width:100%">
+                                <thead id="empCoreTableHead"></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- EMP DATA FLOW PANEL -- diagram + process overview, kept current as the pipeline evolves -->
+        <div class="edm-panel" id="panel-dataflow">
+            <div class="dataflow-subnav">
+                <div class="dataflow-subnav-item active" data-flowview="topology_diagram" onclick="switchDataFlowView('topology_diagram')">Diagram / Flowchart</div>
+                <div class="dataflow-subnav-item" data-flowview="process_overview" onclick="switchDataFlowView('process_overview')">Process Overview</div>
+            </div>
+            <iframe id="dataFlowFrame" class="dataflow-iframe" src="/static/emp_data_flow/topology_diagram.html"></iframe>
+        </div>
+
+        <!-- Add-a-custom-table modal, launched from the Emp Tables toolbar -->
+        <div class="emp-add-table-overlay" id="addEmpTableOverlay" onclick="if(event.target===this) toggleAddEmpTableForm()">
+            <div class="emp-add-table-modal">
+                <div class="emp-add-table-modal-header">
+                    <span>Add a Table to Emp Tables</span>
+                    <button class="popout-close-btn" style="position:static" onclick="toggleAddEmpTableForm()">&times;</button>
+                </div>
+                <label>Display Name</label>
+                <input type="text" id="addEmpTableLabel" placeholder="e.g. Emp_Import_Paycom">
+                <label>Database</label>
+                <select id="addEmpTableDb">
+                    <option value="WH_ODS">WH_ODS (Warehouse)</option>
+                    <option value="WH_STAGING">WH_STAGING (Warehouse)</option>
+                    <option value="WH_PROD2">WH_PROD2 (Warehouse)</option>
+                    <option value="DB_APP_SUPPORT">DB_APP_SUPPORT (SQL Database)</option>
+                    <option value="DB_BI_SUPPORT">DB_BI_SUPPORT (SQL Database)</option>
+                </select>
+                <label>Schema</label>
+                <input type="text" id="addEmpTableSchema" placeholder="Schema" value="dbo">
+                <label>Table Name</label>
+                <input type="text" id="addEmpTableTable" placeholder="Table name...">
+                <div class="emp-add-table-error" id="addEmpTableError"></div>
+                <div class="emp-add-table-actions">
+                    <button class="btn btn-sm" onclick="toggleAddEmpTableForm()">Cancel</button>
+                    <button class="btn btn-sm btn-primary" onclick="saveEmpCustomTable()">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shared generic row-detail popout, reused by procHistory/procOutput/empCore -->
+        <div class="popout-overlay emp-detail-overlay" id="genericDetailPanel">
+            <div class="popout-resize-handle" id="genericDetailResize"></div>
+            <button class="popout-close-btn" onclick="closeGenericDetail()">&times;</button>
+            <div class="popout-sticky-header">
+                <div class="popout-title" id="genericDetailTitle">Row Detail</div>
+                <div class="popout-toolbar">
+                    <span class="popout-jump-label">Jump To</span>
+                    <input class="popout-jump-input" id="genericJumpInput" placeholder="field name..." oninput="popoutJumpTo('genericDetailContent', this.value)">
+                    <div class="popout-sort-toggle">
+                        <button id="genericSortCat" class="active" onclick="setGenericDetailSort('category')">Category</button>
+                        <button id="genericSortAZ" onclick="setGenericDetailSort('alpha')">A-Z</button>
+                    </div>
+                </div>
+            </div>
+            <div class="popout-scroll">
+                <div id="genericDetailContent"></div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -591,7 +794,7 @@
         toggle.innerHTML = collapsed ? '&#9654;' : '&#9660;';
         localStorage.setItem('edm_blurb_' + id, collapsed ? '1' : '0');
     }
-    ['employees','titles','entrata','entrataassign','softterm','leomap'].forEach(id => {
+    ['employees','titles','entrata','entrataassign','softterm','leomap','procHistory','procOutput','empCore'].forEach(id => {
         const state = localStorage.getItem('edm_blurb_' + id);
         if (state === '1') {
             const body = document.getElementById('blurbBody-' + id);
@@ -613,8 +816,15 @@
             if (tab.dataset.panel === 'entrataassign' && !entrataAssignLoaded) loadEntrataAssignments();
             if (tab.dataset.panel === 'softterm' && !softTermLoaded) loadSoftTerminations();
             if (tab.dataset.panel === 'leomap' && !leoMapLoaded) loadLeoMapping();
+            if (tab.dataset.panel === 'empTables') initEmpTablesDefault();
         });
     });
+
+    function switchDataFlowView(view) {
+        document.querySelectorAll('.dataflow-subnav-item').forEach(el => el.classList.remove('active'));
+        document.querySelector(`.dataflow-subnav-item[data-flowview="${view}"]`).classList.add('active');
+        document.getElementById('dataFlowFrame').src = `/static/emp_data_flow/${view}.html`;
+    }
 
     function toast(msg, type='success') {
         const el = document.createElement('div');
@@ -622,6 +832,632 @@
         el.textContent = msg;
         document.body.appendChild(el);
         setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 2500);
+    }
+
+    // ─── EMP TABLES MODULE: nav switching + generic PDM-style browsable tables ──
+    // (Processing History / Processing Output / Emp_Core -- Employees keeps its own
+    // existing bespoke functions above, just relocated into this module's nav.)
+    function switchEmpTable(key) {
+        document.querySelectorAll('.emp-tables-nav-item').forEach(el => el.classList.remove('active'));
+        document.querySelector(`.emp-tables-nav-item[data-emptable="${key}"]`).classList.add('active');
+        document.querySelectorAll('.emp-subpanel').forEach(el => el.classList.remove('active'));
+        document.getElementById('subpanel-' + key).classList.add('active');
+        if (key !== 'employees' && !genericLoaded[key]) loadGenericTab(key);
+    }
+
+    function initEmpTablesDefault() {
+        // Employees is the default sub-tab and already eager-loads at page load.
+    }
+
+    const genericTabConfig = {
+        procHistory: {
+            url: '/edm/api/processing-history',
+            defaultCols: ['pipeline_run_id', 'step_name', 'step_group', 'status', 'run_timestamp_start_utc', 'duration_sec', 'rows_affected', 'error_msg'],
+            anchorCol: 'step_name',
+            title: r => `${r.step_name} (${r.status})`,
+            exportTitle: 'Employee Data Manager - Processing History',
+            sourceTable: 'DB_BI_SUPPORT.control.EMP_PIPELINE_RUN_LOG',
+        },
+        procOutput: {
+            url: '/edm/api/processing-output',
+            defaultCols: ['employee_code', 'name_full', 'status', 'title_group', 'property_name', 'emp_processing_run_id', 'etl_updated_utc'],
+            anchorCol: 'name_full',
+            title: r => r.name_full || r.employee_code,
+            exportTitle: 'Employee Data Manager - Processing Output',
+            sourceTable: 'DB_APP_SUPPORT.dbo.Emp_Core_Staging',
+        },
+        empCore: {
+            url: '/edm/api/emp-core',
+            defaultCols: ['employee_code', 'name_full', 'status', 'title_group', 'property_name', 'flag_current', 'etl_updated_utc'],
+            anchorCol: 'name_full',
+            title: r => r.name_full || r.employee_code,
+            exportTitle: 'Employee Data Manager - Emp_Core',
+            sourceTable: 'DB_APP_SUPPORT.dbo.Emp_Core',
+        },
+    };
+
+    // ─── Every other Emp_/EMP_ table used by NB_EMP_PIPELINE.py, browsable here ──
+    const EXTRA_EMP_TABLES = [
+        { group: 'Import Landing', key: 'empImportPaycom', label: 'Emp_Import_Paycom', url: '/edm/api/emp-pipeline-table/emp_import_paycom', sourceTable: 'WH_ODS.dbo.Emp_Import_Paycom', blurb: "Raw landing table for the Paycom main employee export CSV. Truncated + reloaded every <code>NB_EMP_PIPELINE</code> run (<code>IMPORT_PAYCOM_MAIN</code> step)." },
+        { group: 'Import Landing', key: 'empImportPrehireUs', label: 'Emp_Import_Prehire_US', url: '/edm/api/emp-pipeline-table/emp_import_prehire_us', sourceTable: 'WH_ODS.dbo.Emp_Import_Prehire_US', blurb: "Raw landing table for the US prehire export CSV (<code>IMPORT_PREHIRE_US</code> step)." },
+        { group: 'Import Landing', key: 'empImportPrehireCan', label: 'Emp_Import_Prehire_CAN', url: '/edm/api/emp-pipeline-table/emp_import_prehire_can', sourceTable: 'WH_ODS.dbo.Emp_Import_Prehire_CAN', blurb: "Raw landing table for the Canada prehire export CSV (<code>IMPORT_PREHIRE_CAN</code> step)." },
+        { group: 'Import Snapshots', key: 'empImportPaycomMain', label: 'Emp_Import_Paycom_Main', url: '/edm/api/emp-pipeline-table/emp_import_paycom_main', sourceTable: 'WH_STAGING.dbo.Emp_Import_Paycom_Main', blurb: "This run's Paycom main snapshot, copied from WH_ODS into WH_STAGING for downstream processing." },
+        { group: 'Import Snapshots', key: 'empImportPaycomPrehireUs', label: 'Emp_Import_Paycom_Prehire_US', url: '/edm/api/emp-pipeline-table/emp_import_paycom_prehire_us', sourceTable: 'WH_STAGING.dbo.Emp_Import_Paycom_Prehire_US', blurb: "This run's US prehire snapshot." },
+        { group: 'Import Snapshots', key: 'empImportPaycomPrehireCan', label: 'Emp_Import_Paycom_Prehire_CAN', url: '/edm/api/emp-pipeline-table/emp_import_paycom_prehire_can', sourceTable: 'WH_STAGING.dbo.Emp_Import_Paycom_Prehire_CAN', blurb: "This run's Canada prehire snapshot." },
+        { group: 'Import Snapshots', key: 'empImportAd', label: 'Emp_Import_AD', url: '/edm/api/emp-pipeline-table/emp_import_ad', sourceTable: 'WH_STAGING.dbo.Emp_Import_AD', blurb: "This run's Active Directory snapshot." },
+        { group: 'Import Snapshots', key: 'empImportStaging', label: 'Emp_Import_Staging', url: '/edm/api/emp-pipeline-table/emp_import_staging', sourceTable: 'WH_STAGING.dbo.Emp_Import_Staging', blurb: "Fully joined/resolved staging rows -- one per employee -- built from the Paycom/AD/prehire snapshots above, right before Emp_Core assembly." },
+        { group: 'Key Resolution', key: 'empEmployeeKeys', label: 'Emp_Employee_Keys', url: '/edm/api/emp-pipeline-table/emp_employee_keys', sourceTable: 'WH_STAGING.dbo.Emp_Employee_Keys', blurb: "Persistent EMPLOYEE_CODE -&gt; EMPLOYEE_KEY assignment table (isolated clone used by <code>PROCESSING_KEY_RESOLUTION</code>)." },
+        { group: 'Key Resolution', key: 'empKeyResolutionStaging', label: 'Emp_Key_Resolution_Staging', url: '/edm/api/emp-pipeline-table/emp_key_resolution_staging', sourceTable: 'WH_STAGING.dbo.Emp_Key_Resolution_Staging', blurb: "Working staging table for bulk key-resolution UPDATEs (truncated + rebuilt each run)." },
+        { group: 'Core Merge Support', key: 'empCoreRetireStaging', label: 'Emp_Core_Retire_Staging', url: '/edm/api/emp-pipeline-table/emp_core_retire_staging', sourceTable: 'DB_APP_SUPPORT.dbo.Emp_Core_Retire_Staging', blurb: "Holds this run's stale EMPLOYEE_CODEs right before they're DELETEd from Emp_Core (the retire pass)." },
+        { group: 'Config / Rules', key: 'empTitleOverrides', label: 'EMP_TITLE_OVERRIDES', url: '/edm/api/emp-pipeline-table/emp_title_overrides', sourceTable: 'DB_APP_SUPPORT.dbo.EMP_TITLE_OVERRIDES', blurb: "Manual per-employee title overrides applied during processing." },
+        { group: 'Config / Rules', key: 'empPropertyAssignments', label: 'EMP_PROPERTY_ASSIGNMENTS', url: '/edm/api/emp-pipeline-table/emp_property_assignments', sourceTable: 'DB_APP_SUPPORT.dbo.EMP_PROPERTY_ASSIGNMENTS', blurb: "Manual employee-to-property assignment overrides feeding the Entrata property-assignment computation." },
+        { group: 'Config / Rules', key: 'empProcessingRules', label: 'EMP_PROCESSING_RULES', url: '/edm/api/emp-pipeline-table/emp_processing_rules', sourceTable: 'DB_BI_SUPPORT.control.EMP_PROCESSING_RULES', blurb: "Business rules consumed during row assembly (<code>PROCESSING_MAIN_JOIN</code>)." },
+    ];
+
+    const genericLoaded = {}, genericData = {}, genericSort = {}, genericAllCols = {}, genericVisibleCols = {}, genericColFilters = {};
+    function initGenericTabState(key) {
+        genericLoaded[key] = false;
+        genericData[key] = [];
+        genericSort[key] = { col: null, dir: 1 };
+        genericAllCols[key] = [];
+        genericVisibleCols[key] = genericTabConfig[key].defaultCols ? [...genericTabConfig[key].defaultCols] : [];
+        // Per-column filter, e.g. genericColFilters.procHistory['status'] = Set(['FAILED']).
+        // undefined/null = "All" (no filter); an (even empty) Set = explicit multi-select.
+        genericColFilters[key] = {};
+    }
+
+    // Builds one nav item + subpanel for a generic browsable table (used for both
+    // the hard-coded EXTRA_EMP_TABLES list and user-added custom tables below).
+    function addEmpTableSubpanel(t) {
+        const nav = document.querySelector('.emp-tables-nav');
+        const content = document.querySelector('.emp-tables-content');
+
+        const navItem = document.createElement('div');
+        navItem.className = 'emp-tables-nav-item';
+        navItem.dataset.emptable = t.key;
+        navItem.onclick = () => switchEmpTable(t.key);
+        if (t.removable) {
+            navItem.innerHTML = `<span>${esc(t.label)}</span><span class="emp-nav-remove" title="Remove this table" onclick="event.stopPropagation(); removeEmpCustomTable('${t.key}')">&times;</span>`;
+            ensureCustomDivider();
+            nav.appendChild(navItem);
+        } else {
+            navItem.textContent = t.label;
+            nav.appendChild(navItem);
+        }
+
+        const panel = document.createElement('div');
+        panel.className = 'emp-subpanel';
+        panel.id = 'subpanel-' + t.key;
+        panel.innerHTML = `
+            <div class="info-blurb" id="blurb-${t.key}">
+                <div class="blurb-header" onclick="toggleBlurb('${t.key}')">
+                    <span class="blurb-title">${esc(t.label)}</span>
+                    <span class="blurb-toggle" id="blurbToggle-${t.key}">&#9660;</span>
+                </div>
+                <div class="blurb-body" id="blurbBody-${t.key}">
+                    ${t.blurb}
+                    <br><br>
+                    <strong>Source table:</strong> <code>${esc(t.sourceTable)}</code>
+                </div>
+            </div>
+            <div class="filter-bar">
+                <div class="col-selector-wrap">
+                    <button class="col-selector-btn" onclick="toggleGenericColSelector('${t.key}')">&#9881; Columns</button>
+                    <div class="col-selector-panel" id="colSelectorPanel_${t.key}"></div>
+                </div>
+                <button class="btn btn-sm" onclick="exportGenericExcel('${t.key}')" style="color:var(--text-secondary)" title="Export ${esc(t.label)} to Excel">&#128190; Export</button>
+                <span class="count-label" id="${t.key}Count" style="margin-left:auto"></span>
+            </div>
+            <div class="table-scroll" style="overflow-x:auto">
+                <table class="data-table" id="${t.key}Table" style="width:100%">
+                    <thead id="${t.key}TableHead"></thead>
+                    <tbody></tbody>
+                </table>
+            </div>`;
+        content.appendChild(panel);
+
+        genericTabConfig[t.key] = {
+            url: t.url,
+            defaultCols: null,   // auto: first columns returned by the API
+            anchorCol: null,     // auto: first visible column
+            exportTitle: `Employee Data Manager - ${t.label}`,
+            sourceTable: t.sourceTable,
+        };
+        initGenericTabState(t.key);
+    }
+
+    function buildExtraEmpTableUI() {
+        const nav = document.querySelector('.emp-tables-nav');
+        let lastGroup = null;
+        EXTRA_EMP_TABLES.forEach(t => {
+            if (t.group !== lastGroup) {
+                const divider = document.createElement('div');
+                divider.className = 'emp-tables-nav-divider';
+                divider.textContent = t.group;
+                nav.appendChild(divider);
+                lastGroup = t.group;
+            }
+            addEmpTableSubpanel(t);
+        });
+    }
+    buildExtraEmpTableUI();
+
+    // ─── User-addable custom tables: modal form (launched from the toolbar button
+    // above the nav) + persisted entries, grouped under a lazily-added "Custom" divider.
+    let _customDividerAdded = false;
+    function ensureCustomDivider() {
+        if (_customDividerAdded) return;
+        const divider = document.createElement('div');
+        divider.className = 'emp-tables-nav-divider custom-divider';
+        divider.textContent = 'Custom';
+        document.querySelector('.emp-tables-nav').appendChild(divider);
+        _customDividerAdded = true;
+    }
+
+    function buildCustomTableUI() {
+        fetch('/edm/api/emp-custom-tables').then(r => r.json()).then(data => {
+            Object.entries(data).forEach(([key, entry]) => {
+                addEmpTableSubpanel({
+                    key, label: entry.label,
+                    url: `/edm/api/emp-pipeline-table/${key}`,
+                    sourceTable: `${entry.db}.${entry.schema}.${entry.table}`,
+                    blurb: 'User-added table.',
+                    removable: true,
+                });
+            });
+        });
+    }
+    buildCustomTableUI();
+
+    function toggleAddEmpTableForm() {
+        document.getElementById('addEmpTableOverlay').classList.toggle('open');
+        document.getElementById('addEmpTableError').textContent = '';
+    }
+
+    function saveEmpCustomTable() {
+        const label = document.getElementById('addEmpTableLabel').value.trim();
+        const db = document.getElementById('addEmpTableDb').value;
+        const schema = document.getElementById('addEmpTableSchema').value.trim() || 'dbo';
+        const table = document.getElementById('addEmpTableTable').value.trim();
+        const errEl = document.getElementById('addEmpTableError');
+        errEl.textContent = '';
+        if (!label || !table) { errEl.textContent = 'Display name and table name are required.'; return; }
+        fetch('/edm/api/emp-custom-tables', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ label, db, schema, table })
+        }).then(async r => {
+            const data = await r.json();
+            if (!r.ok) { errEl.textContent = data.error || 'Failed to add table'; return; }
+            addEmpTableSubpanel({
+                key: data.key, label: data.label,
+                url: `/edm/api/emp-pipeline-table/${data.key}`,
+                sourceTable: `${data.db}.${data.schema}.${data.table}`,
+                blurb: 'User-added table.',
+                removable: true,
+            });
+            document.getElementById('addEmpTableLabel').value = '';
+            document.getElementById('addEmpTableTable').value = '';
+            toggleAddEmpTableForm();
+            switchEmpTable(data.key);
+            toast('Table added: ' + data.label);
+        }).catch(() => { errEl.textContent = 'Network error adding table'; });
+    }
+
+    function removeEmpCustomTable(key) {
+        if (!confirm('Remove this table from the Emp Tables module?')) return;
+        fetch('/edm/api/emp-custom-tables/' + key, { method: 'DELETE' }).then(r => {
+            if (!r.ok) { toast('Failed to remove table', 'error'); return; }
+            document.querySelector(`.emp-tables-nav-item[data-emptable="${key}"]`)?.remove();
+            document.getElementById('subpanel-' + key)?.remove();
+            delete genericTabConfig[key];
+            delete genericLoaded[key]; delete genericData[key]; delete genericSort[key];
+            delete genericAllCols[key]; delete genericVisibleCols[key]; delete genericColFilters[key];
+            if (!document.querySelector('.emp-subpanel.active')) switchEmpTable('employees');
+            toast('Table removed');
+        });
+    }
+
+    function formatGenericVal(key, val) {
+        if (val === null || val === undefined || val === '') return '';
+        if (typeof val === 'string' && (key.includes('timestamp') || key.endsWith('_utc'))) {
+            const d = new Date(val);
+            return isNaN(d) ? val : d.toLocaleString();
+        }
+        return String(val);
+    }
+
+    function loadGenericTab(tabKey) {
+        const cfg = genericTabConfig[tabKey];
+        fetch(cfg.url).then(r => r.json()).then(data => {
+            genericData[tabKey] = data;
+            genericLoaded[tabKey] = true;
+            genericAllCols[tabKey] = data.length ? Object.keys(data[0]) : (cfg.defaultCols ? [...cfg.defaultCols] : []);
+            if (!genericVisibleCols[tabKey].length) {
+                genericVisibleCols[tabKey] = genericAllCols[tabKey].slice(0, 10);
+            }
+            if (!cfg.anchorCol) cfg.anchorCol = genericVisibleCols[tabKey][0];
+            buildGenericColSelector(tabKey);
+            renderGenericTab(tabKey);
+        });
+    }
+
+    // Distinct, sorted values for a column (blank/null rows collapse to '(Blank)').
+    function distinctColValues(tabKey, col) {
+        const seen = new Set();
+        const vals = [];
+        let hasBlank = false;
+        for (const r of genericData[tabKey]) {
+            const raw = r[col];
+            if (raw === null || raw === undefined || raw === '') { hasBlank = true; continue; }
+            const s = formatGenericVal(col, raw);
+            if (!seen.has(s)) { seen.add(s); vals.push(s); }
+        }
+        vals.sort((a, b) => a.localeCompare(b));
+        if (hasBlank) vals.push('(Blank)');
+        return vals;
+    }
+
+    function genericValKey(col, raw) {
+        return (raw === null || raw === undefined || raw === '') ? '(Blank)' : formatGenericVal(col, raw);
+    }
+
+    function colFilterLabel(tabKey, col) {
+        const sel = genericColFilters[tabKey][col];
+        if (!sel) return 'All';
+        const total = distinctColValues(tabKey, col).length;
+        if (sel.size === total) return 'All';
+        if (sel.size === 0) return 'None';
+        return `${sel.size} selected`;
+    }
+
+    function renderGenericTab(tabKey) {
+        renderGenericTableHead(tabKey);
+        renderGenericTableBody(tabKey);
+    }
+
+    function renderGenericTableHead(tabKey) {
+        const cols = genericVisibleCols[tabKey];
+        const sort = genericSort[tabKey];
+        const thead = document.getElementById(tabKey + 'TableHead');
+        if (!thead) return;
+        const labelRow = cols.map(c => {
+            const arrow = sort.col === c ? (sort.dir === 1 ? ' ▲' : ' ▼') : '';
+            const label = c.replace(/_/g, ' ');
+            return `<th class="sortable" onclick="sortGenericCol('${tabKey}','${c}')">${label}${arrow}</th>`;
+        }).join('');
+        const filterRow = cols.map(c => `<th style="padding:4px">
+            <div class="col-search-wrap">
+                <button type="button" class="col-filter-btn" id="colFilterBtn_${tabKey}_${c}" onclick="event.stopPropagation(); toggleColFilterMenu('${tabKey}','${c}', this)">
+                    <span id="colFilterLbl_${tabKey}_${c}">${colFilterLabel(tabKey, c)}</span> <span class="col-filter-caret">&#9662;</span>
+                </button>
+            </div>
+        </th>`).join('');
+        thead.innerHTML = `<tr>${labelRow}</tr><tr class="col-search-row">${filterRow}</tr>`;
+    }
+
+    function renderGenericTableBody(tabKey) {
+        const cols = genericVisibleCols[tabKey];
+        const colFilters = genericColFilters[tabKey];
+        let rows = genericData[tabKey];
+
+        // Multi-select per-column filters: every active (non-"All") column filter must match (AND).
+        const activeFilters = Object.entries(colFilters).filter(([, v]) => v);
+        if (activeFilters.length) {
+            rows = rows.filter(r => activeFilters.every(([c, set]) => set.has(genericValKey(c, r[c]))));
+        }
+        const statusEl = document.getElementById(tabKey + 'StatusFilter');
+        if (statusEl && statusEl.value) {
+            rows = rows.filter(r => r.status === statusEl.value);
+        }
+
+        const sort = genericSort[tabKey];
+        if (sort.col) {
+            rows = [...rows].sort((a, b) => {
+                const av = a[sort.col], bv = b[sort.col];
+                if (av === bv) return 0;
+                if (av === null || av === undefined) return 1;
+                if (bv === null || bv === undefined) return -1;
+                return (av > bv ? 1 : -1) * sort.dir;
+            });
+        }
+
+        genericFilteredSorted[tabKey] = rows;
+        const tbody = document.querySelector('#' + tabKey + 'Table tbody');
+        tbody.innerHTML = rows.map(r => {
+            const origIdx = genericData[tabKey].indexOf(r);
+            const cells = cols.map(c => `<td>${formatGenericVal(c, r[c])}</td>`).join('');
+            return `<tr onclick="openGenericDetail('${tabKey}', ${origIdx})" style="cursor:pointer">${cells}</tr>`;
+        }).join('');
+        const countEl = document.getElementById(tabKey + 'Count');
+        if (countEl) countEl.textContent = `${rows.length} row${rows.length === 1 ? '' : 's'}`;
+    }
+    const genericFilteredSorted = {};
+
+    // ─── Column filter dropdown: a single shared floating menu (appended to
+    // <body>, position:fixed) so it's never clipped by .table-scroll's overflow
+    // when the filtered table becomes short. Multi-select checkboxes always show
+    // every distinct member so a prior selection can always be revisited; defaults to "All".
+    const _sharedColFilterMenu = document.createElement('div');
+    _sharedColFilterMenu.className = 'col-filter-menu';
+    _sharedColFilterMenu.id = 'sharedColFilterMenu';
+    document.body.appendChild(_sharedColFilterMenu);
+
+    function toggleColFilterMenu(tabKey, col, btnEl) {
+        const menu = _sharedColFilterMenu;
+        const wasOpenForThis = menu.classList.contains('open') && menu.dataset.tabkey === tabKey && menu.dataset.col === col;
+        closeColFilterMenus();
+        if (wasOpenForThis) return;
+        menu.dataset.tabkey = tabKey;
+        menu.dataset.col = col;
+        positionColFilterMenu(btnEl);
+        renderColFilterMenuContents(tabKey, col);
+        menu.classList.add('open');
+    }
+
+    function positionColFilterMenu(btnEl) {
+        const menu = _sharedColFilterMenu;
+        const rect = btnEl.getBoundingClientRect();
+        const width = Math.max(rect.width, 200);
+        let left = Math.min(rect.left, window.innerWidth - width - 8);
+        let top = rect.bottom + 2;
+        if (top + 260 > window.innerHeight) top = Math.max(8, rect.top - 260); // flip above if no room below
+        menu.style.left = Math.max(8, left) + 'px';
+        menu.style.top = top + 'px';
+        menu.style.width = width + 'px';
+    }
+
+    function renderColFilterMenuContents(tabKey, col) {
+        const menu = _sharedColFilterMenu;
+        const all = distinctColValues(tabKey, col);
+        const sel = genericColFilters[tabKey][col]; // undefined/null = "All" selected
+        const isAllSelected = !sel;
+        menu.innerHTML = `
+            <div class="col-filter-search"><input type="text" placeholder="Filter list..." oninput="filterColFilterItems(this)"></div>
+            <label class="col-filter-all-row">
+                <input type="checkbox" data-tabkey="${tabKey}" data-col="${esc(col)}" data-role="all" ${isAllSelected ? 'checked' : ''}>
+                <strong>All</strong>
+            </label>
+            <div class="col-filter-list">
+                ${all.map(v => `<label class="col-filter-item">
+                    <input type="checkbox" data-tabkey="${tabKey}" data-col="${esc(col)}" data-value="${esc(v)}" ${(isAllSelected || sel.has(v)) ? 'checked' : ''}>
+                    <span>${esc(v)}</span>
+                </label>`).join('')}
+            </div>`;
+    }
+
+    function filterColFilterItems(inputEl) {
+        const q = inputEl.value.trim().toLowerCase();
+        const list = inputEl.closest('.col-filter-menu').querySelector('.col-filter-list');
+        list.querySelectorAll('.col-filter-item').forEach(el => {
+            el.style.display = (!q || el.textContent.toLowerCase().includes(q)) ? '' : 'none';
+        });
+    }
+
+    function closeColFilterMenus() {
+        _sharedColFilterMenu.classList.remove('open');
+    }
+
+    function toggleColFilterAll(tabKey, col, checked) {
+        genericColFilters[tabKey][col] = checked ? null : new Set();
+        afterColFilterChange(tabKey, col);
+    }
+
+    function toggleColFilterValue(tabKey, col, val, checked) {
+        const all = distinctColValues(tabKey, col);
+        let sel = genericColFilters[tabKey][col];
+        if (!sel) sel = new Set(all); // expand the "All" sentinel into an explicit full set before mutating
+        if (checked) sel.add(val); else sel.delete(val);
+        genericColFilters[tabKey][col] = (sel.size === all.length) ? null : sel;
+        afterColFilterChange(tabKey, col);
+    }
+
+    function afterColFilterChange(tabKey, col) {
+        renderGenericTableBody(tabKey);
+        const lbl = document.getElementById(`colFilterLbl_${tabKey}_${col}`);
+        if (lbl) lbl.textContent = colFilterLabel(tabKey, col);
+        const menu = _sharedColFilterMenu;
+        if (menu.classList.contains('open') && menu.dataset.tabkey === tabKey && menu.dataset.col === col) {
+            const searchVal = menu.querySelector('.col-filter-search input')?.value || '';
+            renderColFilterMenuContents(tabKey, col);
+            const newSearchInput = menu.querySelector('.col-filter-search input');
+            if (newSearchInput && searchVal) { newSearchInput.value = searchVal; filterColFilterItems(newSearchInput); }
+        }
+    }
+
+    document.addEventListener('change', e => {
+        const cb = e.target.closest('.col-filter-menu input[type=checkbox]');
+        if (!cb) return;
+        if (cb.dataset.role === 'all') toggleColFilterAll(cb.dataset.tabkey, cb.dataset.col, cb.checked);
+        else toggleColFilterValue(cb.dataset.tabkey, cb.dataset.col, cb.dataset.value, cb.checked);
+    });
+    document.addEventListener('pointerdown', e => {
+        if (e.target.closest('.col-search-wrap') || e.target.closest('.col-filter-menu')) return;
+        closeColFilterMenus();
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeColFilterMenus();
+    });
+    // Close (rather than leave visually detached) if the table scrolls or the window resizes.
+    document.addEventListener('scroll', () => closeColFilterMenus(), true);
+    window.addEventListener('resize', () => closeColFilterMenus());
+
+    function sortGenericCol(tabKey, col) {
+        const sort = genericSort[tabKey];
+        sort.dir = (sort.col === col) ? -sort.dir : 1;
+        sort.col = col;
+        renderGenericTab(tabKey);
+    }
+
+    function exportGenericExcel(tabKey) {
+        const cfg = genericTabConfig[tabKey];
+        const cols = genericVisibleCols[tabKey];
+        const rows = genericFilteredSorted[tabKey] || [];
+        downloadExcelCsv(
+            `edm_${tabKey}_${exportDateStampET()}.csv`,
+            cfg.exportTitle,
+            cfg.sourceTable,
+            cols.map(c => ({ label: c.replace(/_/g, ' '), value: r => formatGenericVal(c, r[c]) })),
+            rows
+        );
+    }
+
+    // Column selector (default + add-on-the-fly, same checkbox pattern as Employees)
+    function buildGenericColSelector(tabKey) {
+        const panel = document.getElementById('colSelectorPanel_' + tabKey);
+        if (!panel) return;
+        panel.innerHTML = `
+            <input type="text" class="col-search" placeholder="Search columns..." oninput="filterGenericColList('${tabKey}', this.value)">
+            <div class="col-reset" onclick="resetGenericCols('${tabKey}')">Reset to Default</div>
+            <div class="col-list" id="colList_${tabKey}"></div>`;
+        renderGenericColList(tabKey);
+    }
+
+    function renderGenericColList(tabKey) {
+        const list = document.getElementById('colList_' + tabKey);
+        list.innerHTML = genericAllCols[tabKey].map(c => {
+            const label = c.replace(/_/g, ' ');
+            const checked = genericVisibleCols[tabKey].includes(c) ? ' checked' : '';
+            return `<label><input type="checkbox" value="${c}"${checked} onchange="toggleGenericCol('${tabKey}','${c}', this.checked)"> ${label}</label>`;
+        }).join('');
+    }
+
+    function filterGenericColList(tabKey, q) {
+        q = q.toLowerCase();
+        document.querySelectorAll(`#colList_${tabKey} label`).forEach(el => {
+            el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+    }
+
+    function toggleGenericColSelector(tabKey) {
+        document.getElementById('colSelectorPanel_' + tabKey).classList.toggle('open');
+    }
+
+    function toggleGenericCol(tabKey, col, checked) {
+        const cfg = genericTabConfig[tabKey];
+        if (checked) {
+            if (!genericVisibleCols[tabKey].includes(col)) {
+                const anchorIdx = genericVisibleCols[tabKey].indexOf(cfg.anchorCol);
+                if (anchorIdx >= 0) genericVisibleCols[tabKey].splice(anchorIdx + 1, 0, col);
+                else genericVisibleCols[tabKey].push(col);
+            }
+        } else {
+            if (col === cfg.anchorCol) return; // always keep the anchor column visible
+            genericVisibleCols[tabKey] = genericVisibleCols[tabKey].filter(c => c !== col);
+            delete genericColFilters[tabKey][col];
+        }
+        renderGenericTab(tabKey);
+    }
+
+    function resetGenericCols(tabKey) {
+        genericVisibleCols[tabKey] = [...genericTabConfig[tabKey].defaultCols];
+        genericColFilters[tabKey] = {};
+        renderGenericColList(tabKey);
+        renderGenericTab(tabKey);
+    }
+
+    document.getElementById('procHistoryStatusFilter').addEventListener('change', () => renderGenericTab('procHistory'));
+
+    // Close any generic column-selector panel on outside click
+    document.addEventListener('click', e => {
+        document.querySelectorAll('.emp-subpanel .col-selector-panel.open').forEach(sel => {
+            if (!sel.contains(e.target) && !e.target.closest('.col-selector-btn')) sel.classList.remove('open');
+        });
+    });
+
+    // ─── GENERIC DETAIL POPOUT (mirrors Employees'/PDM's Category + A-Z + Jump-To) ──
+    const GENERIC_CATEGORIES = {
+        'Identity':   ['employee_key', 'employee_code', 'name_full', 'name_first', 'name_last', 'status'],
+        'Employment': ['title', 'title_group', 'department', 'property_name', 'supervisor_name'],
+        'Entrata':    ['entrata_'],
+        'LEO':        ['leo_'],
+        'Security':   ['security_', 'role_'],
+        'Dates':      ['date_', 'datetime_', 'etl_updated_utc', 'run_timestamp_'],
+        'Run Info':   ['pipeline_run_id', 'emp_processing_run_id', 'emp_import_run_id', 'run_log_id', 'step_', 'duration_sec', 'rows_affected', 'error_msg'],
+    };
+
+    function genericFieldCategory(key) {
+        for (const [cat, patterns] of Object.entries(GENERIC_CATEGORIES)) {
+            if (patterns.some(p => key === p || key.startsWith(p))) return cat;
+        }
+        if (key.startsWith('flag_')) return 'Flags';
+        if (key.includes('email') || key.includes('phone')) return 'Contact';
+        return 'General';
+    }
+
+    let _genericDetailRow = null, _genericDetailTabKey = null, _genericDetailSortMode = 'category';
+    let _genericCollapsedSections = {};
+
+    function setGenericDetailSort(mode) {
+        _genericDetailSortMode = mode;
+        document.getElementById('genericSortCat').classList.toggle('active', mode === 'category');
+        document.getElementById('genericSortAZ').classList.toggle('active', mode === 'alpha');
+        if (mode === 'category' && _genericDetailRow) {
+            _genericCollapsedSections = {};
+            Object.keys(_genericDetailRow).forEach(key => { _genericCollapsedSections[genericFieldCategory(key)] = true; });
+        } else {
+            _genericCollapsedSections = {};
+        }
+        if (_genericDetailRow) renderGenericDetailContent(_genericDetailRow);
+    }
+
+    function toggleGenericSection(headerEl, cat) {
+        const collapsed = headerEl.classList.toggle('collapsed');
+        const body = headerEl.nextElementSibling;
+        if (body) body.classList.toggle('collapsed');
+        _genericCollapsedSections[cat] = collapsed;
+    }
+
+    function renderGenericDetailContent(r) {
+        const content = document.getElementById('genericDetailContent');
+        const allKeys = Object.keys(r);
+
+        function makeRow(key) {
+            return `<div class="popout-row">
+                <span class="popout-label">${key.replace(/_/g, ' ')}</span>
+                <span class="popout-value">${esc(formatGenericVal(key, r[key]) || '—')}</span>
+            </div>`;
+        }
+
+        if (_genericDetailSortMode === 'alpha') {
+            content.innerHTML = allKeys.slice().sort().map(makeRow).join('');
+        } else {
+            const cats = {};
+            allKeys.forEach(key => {
+                const c = genericFieldCategory(key);
+                (cats[c] = cats[c] || []).push(key);
+            });
+            const ORDER = ['Identity', 'Employment', 'Run Info', 'Dates', 'Flags', 'Entrata', 'LEO', 'Security', 'Contact', 'General'];
+            const sorted = [...new Set([...ORDER, ...Object.keys(cats)])].filter(c => cats[c]);
+            content.innerHTML = sorted.map(cat => {
+                const rows = cats[cat].map(makeRow).join('');
+                const isCollapsed = !!_genericCollapsedSections[cat];
+                return `<div class="popout-section">
+                    <div class="popout-section-header${isCollapsed ? ' collapsed' : ''}" onclick="toggleGenericSection(this,'${esc(cat)}')">
+                        <span class="popout-section-chevron">&#9660;</span>
+                        <span class="popout-section-title">${cat}</span>
+                        <span class="popout-section-count">${cats[cat].length}</span>
+                    </div>
+                    <div class="popout-section-body${isCollapsed ? ' collapsed' : ''}">${rows}</div>
+                </div>`;
+            }).join('');
+        }
+    }
+
+    function openGenericDetail(tabKey, idx) {
+        const r = genericData[tabKey][idx];
+        if (!r) return;
+        const cfg = genericTabConfig[tabKey];
+        _genericDetailRow = r;
+        _genericDetailTabKey = tabKey;
+        const titleFn = cfg.title || (row => row[cfg.anchorCol] ?? Object.values(row)[0] ?? 'Row');
+        document.getElementById('genericDetailTitle').textContent = titleFn(r);
+        document.getElementById('genericJumpInput').value = '';
+        setGenericDetailSort('category');
+        document.getElementById('genericDetailPanel').classList.add('open');
+    }
+
+    function closeGenericDetail() {
+        document.getElementById('genericDetailPanel').classList.remove('open');
     }
 
     // ─── EMPLOYEES TAB ─────────────────────────────────────────────────────────
@@ -2117,5 +2953,6 @@
 <script>
     // initPopout must run after shell.html defines window.initPopout
     initPopout({ overlayId: 'empDetailPanel', handleId: 'empDetailResize', storageKey: 'edm_detail_w', minWidth: 380, onClose: closeEmpDetail });
+    initPopout({ overlayId: 'genericDetailPanel', handleId: 'genericDetailResize', storageKey: 'edm_generic_detail_w', minWidth: 380, onClose: closeGenericDetail });
 </script>
 {% endblock %}

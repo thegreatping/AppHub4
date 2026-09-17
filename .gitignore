@@ -26,6 +26,11 @@ Thumbs.db
 # Backup snapshots — recursive nesting causes path-length issues
 _backups/
 
+# Local secrets / deployment artifacts — never commit
+.fabric_token.json
+_publish_profile.xml
+_deploy.zip
+
 # Extracted msapp source (reference only, not app code)
 msapp_extracted/
 msapp_extract/

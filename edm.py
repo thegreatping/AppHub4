@@ -4,6 +4,9 @@ from auth import login_required
 from modules import MODULES, APP_ID_MAP
 from nav import build_nav_modules
 import sys
+import os
+import re
+import json
 from helpers import load_env, SafeConnection
 
 edm_bp = Blueprint("edm", __name__, url_prefix="/edm")
@@ -97,7 +100,7 @@ def search_employees():
 
         where = " AND ".join(conditions)
         cur = conn.execute(f"""
-            SELECT TOP 1000 e.*,
+            SELECT TOP 3000 e.*,
                 leo.TIMEZONE AS LEO_TIMEZONE,
                 leo.ROLE AS LEO_ROLE,
                 leo.PORTFOLIOS AS LEO_PORTFOLIOS,
@@ -1126,3 +1129,226 @@ def get_title_groups():
         return jsonify([r[0] for r in rows])
     finally:
         conn.close()
+
+
+# ─── PROCESSING HISTORY TAB (read-only from control.EMP_PIPELINE_RUN_LOG) ──────
+
+@edm_bp.route("/api/processing-history", methods=["GET"])
+@login_required
+def get_processing_history():
+    """Most recent NB_EMP_PIPELINE run-log rows (one per step per run)."""
+    check = _require_access()
+    if check:
+        return check
+    env = _get_env()
+    conn = SafeConnection(env, "DB_BI_SUPPORT", None, direct=True)
+    try:
+        cur = conn.execute("""
+            SELECT TOP 3000 RUN_LOG_ID, PIPELINE_RUN_ID, STEP_NAME, STEP_GROUP, STEP_ORDER,
+                   STATUS, RUN_TIMESTAMP_START_UTC, RUN_TIMESTAMP_END_UTC, DURATION_SEC,
+                   ROWS_AFFECTED, ERROR_MSG
+            FROM control.EMP_PIPELINE_RUN_LOG
+            ORDER BY RUN_LOG_ID DESC
+        """)
+        columns = [d[0].lower() for d in cur.description]
+        rows = cur.fetchall()
+        return jsonify(_rows_to_dicts(rows, columns))
+    finally:
+        conn.close()
+
+
+# ─── PROCESSING OUTPUT TAB (read-only from DB_APP_SUPPORT.dbo.Emp_Core_Staging) ─
+
+@edm_bp.route("/api/processing-output", methods=["GET"])
+@login_required
+def get_processing_output():
+    """Emp_Core_Staging -- this run's assembled rows before the lock-aware
+    MERGE into Emp_Core (truncated + rebuilt every pipeline run)."""
+    check = _require_access()
+    if check:
+        return check
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        cur = conn.execute("SELECT TOP 5000 * FROM dbo.Emp_Core_Staging ORDER BY NAME_FULL")
+        columns = [d[0].lower() for d in cur.description]
+        rows = cur.fetchall()
+        return jsonify(_rows_to_dicts(rows, columns))
+    finally:
+        conn.close()
+
+
+# ─── EMP_CORE BROWSER TAB (read-only from DB_APP_SUPPORT.dbo.Emp_Core) ─────────
+
+@edm_bp.route("/api/emp-core", methods=["GET"])
+@login_required
+def get_emp_core():
+    """Read-only browse of Emp_Core -- the persistent, incrementally-merged
+    table that is replacing legacy EMPLOYEE_F."""
+    check = _require_access()
+    if check:
+        return check
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        cur = conn.execute("SELECT TOP 5000 * FROM dbo.Emp_Core ORDER BY NAME_FULL")
+        columns = [d[0].lower() for d in cur.description]
+        rows = cur.fetchall()
+        return jsonify(_rows_to_dicts(rows, columns))
+    finally:
+        conn.close()
+
+
+def _rows_to_dicts(rows, columns):
+    """Shared row->dict + date-serialization helper for the 3 read-only
+    Processing/Emp_Core tabs above (mirrors search_employees' inline pattern)."""
+    result = []
+    for r in rows:
+        row_dict = {}
+        for i, col in enumerate(columns):
+            val = r[i]
+            if hasattr(val, "isoformat"):
+                val = val.isoformat()
+            row_dict[col] = val
+        result.append(row_dict)
+    return result
+
+
+# ─── OTHER "Emp_" PIPELINE TABLES (read-only browse) ────────────────────────────
+# Every other Emp_/EMP_ table read or written by NB_EMP_PIPELINE.py (see
+# _CONFIG_SOURCES and the import/key-resolution/retire steps), not already
+# covered by its own dedicated tab above. Whitelisted by key -- the table name
+# never comes from the request, so this can't be used to reach arbitrary tables.
+EMP_PIPELINE_TABLES = {
+    "emp_import_paycom":              {"db": "WH_ODS",         "direct": False, "schema": "dbo",     "table": "Emp_Import_Paycom"},
+    "emp_import_prehire_us":          {"db": "WH_ODS",         "direct": False, "schema": "dbo",     "table": "Emp_Import_Prehire_US"},
+    "emp_import_prehire_can":         {"db": "WH_ODS",         "direct": False, "schema": "dbo",     "table": "Emp_Import_Prehire_CAN"},
+    "emp_import_paycom_main":         {"db": "WH_STAGING",     "direct": False, "schema": "dbo",     "table": "Emp_Import_Paycom_Main"},
+    "emp_import_paycom_prehire_us":   {"db": "WH_STAGING",     "direct": False, "schema": "dbo",     "table": "Emp_Import_Paycom_Prehire_US"},
+    "emp_import_paycom_prehire_can":  {"db": "WH_STAGING",     "direct": False, "schema": "dbo",     "table": "Emp_Import_Paycom_Prehire_CAN"},
+    "emp_import_ad":                  {"db": "WH_STAGING",     "direct": False, "schema": "dbo",     "table": "Emp_Import_AD"},
+    "emp_import_staging":             {"db": "WH_STAGING",     "direct": False, "schema": "dbo",     "table": "Emp_Import_Staging"},
+    "emp_employee_keys":              {"db": "WH_STAGING",     "direct": False, "schema": "dbo",     "table": "Emp_Employee_Keys"},
+    "emp_key_resolution_staging":     {"db": "WH_STAGING",     "direct": False, "schema": "dbo",     "table": "Emp_Key_Resolution_Staging"},
+    "emp_core_retire_staging":        {"db": "DB_APP_SUPPORT", "direct": True,  "schema": "dbo",     "table": "Emp_Core_Retire_Staging"},
+    "emp_title_overrides":            {"db": "DB_APP_SUPPORT", "direct": True,  "schema": "dbo",     "table": "EMP_TITLE_OVERRIDES"},
+    "emp_property_assignments":       {"db": "DB_APP_SUPPORT", "direct": True,  "schema": "dbo",     "table": "EMP_PROPERTY_ASSIGNMENTS"},
+    "emp_processing_rules":           {"db": "DB_BI_SUPPORT",  "direct": True,  "schema": "control",  "table": "EMP_PROCESSING_RULES"},
+}
+
+# DB engines a user is allowed to pick from when adding a custom table, and
+# whether that engine needs a DIRECT (Fabric SQL Database) connection.
+CUSTOM_TABLE_DB_CHOICES = {
+    "WH_ODS":         False,
+    "WH_STAGING":     False,
+    "WH_PROD2":       False,
+    "DB_APP_SUPPORT": True,
+    "DB_BI_SUPPORT":  True,
+}
+_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_CUSTOM_TABLES_PATH = os.path.join(os.path.dirname(__file__), "emp_custom_tables.json")
+
+
+def _load_custom_tables():
+    """User-added Emp Tables entries (persisted so they survive restarts/deploys)."""
+    if not os.path.exists(_CUSTOM_TABLES_PATH):
+        return {}
+    try:
+        with open(_CUSTOM_TABLES_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_custom_tables(data):
+    with open(_CUSTOM_TABLES_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+
+@edm_bp.route("/api/emp-custom-tables", methods=["GET"])
+@login_required
+def list_emp_custom_tables():
+    """List user-added Emp Tables entries."""
+    check = _require_access()
+    if check:
+        return check
+    return jsonify(_load_custom_tables())
+
+
+@edm_bp.route("/api/emp-custom-tables", methods=["POST"])
+@login_required
+def add_emp_custom_table():
+    """Add a new user-defined table to the Emp Tables module."""
+    check = _require_access()
+    if check:
+        return check
+    body = request.get_json(force=True) or {}
+    label = (body.get("label") or "").strip()
+    db = (body.get("db") or "").strip()
+    schema = (body.get("schema") or "dbo").strip()
+    table = (body.get("table") or "").strip()
+
+    if not label or not table:
+        return jsonify({"error": "label and table are required"}), 400
+    if db not in CUSTOM_TABLE_DB_CHOICES:
+        return jsonify({"error": f"db must be one of {list(CUSTOM_TABLE_DB_CHOICES)}"}), 400
+    if not _IDENTIFIER_RE.match(schema) or not _IDENTIFIER_RE.match(table):
+        return jsonify({"error": "schema/table must be valid SQL identifiers (letters, digits, underscore)"}), 400
+
+    key = "custom_" + re.sub(r"[^a-z0-9]+", "_", label.lower()).strip("_")
+    custom = _load_custom_tables()
+    if key in custom or key in EMP_PIPELINE_TABLES:
+        return jsonify({"error": "a table with this label already exists"}), 409
+
+    # Fail fast if the table isn't actually reachable/queryable before persisting it.
+    env = _get_env()
+    direct = CUSTOM_TABLE_DB_CHOICES[db]
+    conn = SafeConnection(env, db, None, direct=direct)
+    try:
+        conn.execute(f"SELECT TOP 1 * FROM {schema}.[{table}]")
+    except Exception as e:
+        return jsonify({"error": f"could not query {db}.{schema}.{table}: {e}"}), 400
+    finally:
+        conn.close()
+
+    entry = {"label": label, "db": db, "direct": direct, "schema": schema, "table": table}
+    custom[key] = entry
+    _save_custom_tables(custom)
+    return jsonify({"key": key, **entry})
+
+
+@edm_bp.route("/api/emp-custom-tables/<key>", methods=["DELETE"])
+@login_required
+def delete_emp_custom_table(key):
+    """Remove a user-defined table from the Emp Tables module."""
+    check = _require_access()
+    if check:
+        return check
+    custom = _load_custom_tables()
+    if key not in custom:
+        return jsonify({"error": "not found"}), 404
+    del custom[key]
+    _save_custom_tables(custom)
+    return jsonify({"ok": True})
+
+
+@edm_bp.route("/api/emp-pipeline-table/<table_key>", methods=["GET"])
+@login_required
+def get_emp_pipeline_table(table_key):
+    """Generic read-only TOP 3000 browse for any whitelisted or user-added Emp_ pipeline table."""
+    check = _require_access()
+    if check:
+        return check
+    cfg = EMP_PIPELINE_TABLES.get(table_key) or _load_custom_tables().get(table_key)
+    if not cfg:
+        return jsonify({"error": "unknown table"}), 404
+    env = _get_env()
+    conn = SafeConnection(env, cfg["db"], None, direct=cfg["direct"])
+    try:
+        cur = conn.execute(f"SELECT TOP 3000 * FROM {cfg['schema']}.[{cfg['table']}]")
+        columns = [d[0].lower() for d in cur.description]
+        rows = cur.fetchall()
+        return jsonify(_rows_to_dicts(rows, columns))
+    finally:
+        conn.close()
+

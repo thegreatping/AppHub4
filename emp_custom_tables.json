@@ -1,0 +1,37 @@
+{
+  "custom_leo_title_paycom_map": {
+    "label": "LEO_TITLE_PAYCOM_MAP",
+    "db": "DB_APP_SUPPORT",
+    "direct": true,
+    "schema": "dbo",
+    "table": "LEO_TITLE_PAYCOM_MAP"
+  },
+  "custom_employee_soft_termination_overrides": {
+    "label": "EMPLOYEE_SOFT_TERMINATION_OVERRIDES",
+    "db": "DB_APP_SUPPORT",
+    "direct": true,
+    "schema": "dbo",
+    "table": "EMPLOYEE_SOFT_TERMINATION_OVERRIDES"
+  },
+  "custom_emp_entrata_group_assignments": {
+    "label": "EMP_ENTRATA_GROUP_ASSIGNMENTS",
+    "db": "DB_APP_SUPPORT",
+    "direct": true,
+    "schema": "dbo",
+    "table": "EMP_ENTRATA_GROUP_ASSIGNMENTS"
+  },
+  "custom_emp_entrata_title_group_mapping": {
+    "label": "EMP_ENTRATA_TITLE_GROUP_MAPPING",
+    "db": "DB_APP_SUPPORT",
+    "direct": true,
+    "schema": "dbo",
+    "table": "EMP_ENTRATA_TITLE_GROUP_MAPPING"
+  },
+  "custom_emp_title_group_mgmt": {
+    "label": "EMP_TITLE_GROUP_MGMT",
+    "db": "DB_APP_SUPPORT",
+    "direct": true,
+    "schema": "dbo",
+    "table": "EMP_TITLE_GROUP_MGMT"
+  }
+}

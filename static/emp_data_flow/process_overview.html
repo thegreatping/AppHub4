@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Employee System Redesign -- Process Overview</title>
+<style>
+  :root{
+    --bg:#1e1e2e;--surface:#181825;--surface2:#313244;--surface3:#45475a;
+    --text:#cdd6f4;--subtext:#a6adc8;
+    --blue:#89b4fa;--sky:#74c7ec;--green:#a6e3a1;--yellow:#f9e2af;
+    --orange:#fab387;--red:#f38ba8;--purple:#cba6f7;--teal:#94e2d5;--pink:#f5c2e7;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:13.5px;padding:24px 30px 60px;line-height:1.6}
+  h1{color:var(--blue);font-size:21px;margin-bottom:4px}
+  h2{color:var(--sky);font-size:15px;margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--surface3)}
+  .meta{color:var(--subtext);font-size:12px;margin-bottom:18px}
+  p{margin-bottom:10px;max-width:900px}
+  ul,ol{margin:0 0 10px 20px}
+  li{margin-bottom:4px}
+  code{background:var(--surface3);color:var(--orange);padding:0 4px;border-radius:3px;font-family:Consolas,monospace;font-size:11.5px}
+  table{border-collapse:collapse;width:100%;max-width:1000px;margin-bottom:10px}
+  th,td{border:1px solid var(--surface3);padding:7px 10px;text-align:left;font-size:12.5px;vertical-align:top}
+  th{background:var(--surface2);color:var(--sky);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+  tr:nth-child(even) td{background:rgba(255,255,255,0.02)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:9px;font-size:10.5px;font-weight:700;text-transform:uppercase;white-space:nowrap}
+  .badge-green{background:rgba(166,227,161,.18);color:var(--green)}
+  .badge-orange{background:rgba(250,179,135,.18);color:var(--orange)}
+  .badge-red{background:rgba(243,139,168,.18);color:var(--red)}
+  .badge-gray{background:rgba(69,71,90,.6);color:var(--subtext)}
+  .cards{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+  .card{background:var(--surface2);border:1px solid var(--surface3);border-radius:6px;padding:10px 14px;min-width:150px;flex:1}
+  .card .card-label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--subtext)}
+  .card .card-value{font-size:15px;font-weight:700;margin-top:3px}
+  .hint{background:var(--surface2);border-left:3px solid var(--yellow);padding:8px 13px;border-radius:0 6px 6px 0;font-size:12px;color:var(--subtext);margin-bottom:16px;max-width:900px}
+</style>
+</head>
+<body>
+
+<h1>Employee System Redesign -- Process Overview</h1>
+<div class="meta">Last updated 2026-09-17. Companion to <code>EMP_SYSTEM_TOPOLOGY_DIAGRAM.html</code> (this same tab) and <code>de_remediation/EMP_SYSTEM_REDESIGN_HANDOFF.md</code> (full session-handoff detail).</div>
+
+<div class="hint">This page summarizes <b>what</b> the redesign is and <b>where it stands right now</b>. For table-by-table lineage, use the Diagram view. For the full narrative log of every decision/bug/fix, see <code>EMP_SYSTEM_REDESIGN_PLAN.html</code>.</div>
+
+<h2>What This Project Is</h2>
+<p>Rebuilding the legacy Paycom-driven employee data pipeline (<code>EMPLOYEE_F_COMBO_SP_FABRIC.sql</code>, a 986-line T-SQL stored procedure) as a modern Python Fabric notebook: <b><code>NB_EMP_PIPELINE</code></b> (<code>de_remediation/_nb_emp_imports/NB_EMP_PIPELINE.py</code>, ~2,800+ lines).</p>
+<p>Target output table: <b><code>Emp_Core</code></b> (persistent, incrementally merged) -- replaces legacy <code>WH_STAGING.dbo.EMPLOYEE_F</code> (full truncate+rebuild every run) as the source of truth for employee data across AppHub, LEO exports, security groups, CasaPerks, and more.</p>
+<p><b>Non-negotiable ground rule:</b> legacy is always the source of truth. "Close enough" or a single matching metric is never accepted as proof of correctness -- every discrepancy is found and explained via row-level, column-level, byte-for-byte diffs.</p>
+
+<h2>Current Status</h2>
+<table>
+  <thead><tr><th>Phase / Item</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>IMPORT phase (Paycom/AD/prehire &rarr; landing + snapshot tables)</td><td><span class="badge badge-green">Complete</span></td></tr>
+    <tr><td>PROCESSING phase (12 steps: Load Config, Title Overrides, Key Resolution, Main Join, Apply Rules, Supervisor+Security, Entrata EPA, LEO Fields, Assemble Core, Write Staging, Merge Core, Supervisor Key)</td><td><span class="badge badge-green">Complete, deployed, tested</span></td></tr>
+    <tr><td><code>EMPLOYEE_KEYS</code> isolation from legacy (<code>Emp_Employee_Keys</code> clone table)</td><td><span class="badge badge-green">Complete</span></td></tr>
+    <tr><td>Row-count exact match vs legacy <code>EMPLOYEE_F</code></td><td><span class="badge badge-green">3,232 = 3,232</span></td></tr>
+    <tr><td>Full column-level parity validation (checklist i-3-18 through i-3-29)</td><td><span class="badge badge-green">Complete</span></td></tr>
+    <tr><td>i-3-24 (lock-aware merge verification)</td><td><span class="badge badge-orange">Passes vacuously</span> -- 0 employees currently have a lock bit set, not yet meaningfully tested</td></tr>
+    <tr><td>i-3-26 / i-3-27 (AppHub EDM Emp Tables module)</td><td><span class="badge badge-green">Complete 2026-09-16/17</span> -- expanded into a full read-only browser + user-addable tables (this tab)</td></tr>
+    <tr><td>i-3-28 (Entrata SP cutover dependency)</td><td><span class="badge badge-green">Complete 2026-09-16</span> -- computed natively from <code>Emp_Core</code>, legacy SPs no longer required. NOT yet deployed to Fabric (local only, pending go-ahead).</td></tr>
+    <tr><td>EXPORT phase (13 downstream targets)</td><td><span class="badge badge-red">Not started</span> -- all disabled in <code>control.EMP_PIPELINE_CONTROL</code></td></tr>
+    <tr><td>Phase 6 cutover (disable legacy SPs, retire legacy tables)</td><td><span class="badge badge-red">Not started</span> -- i-3-28 blocker is resolved, no longer blocking</td></tr>
+  </tbody>
+</table>
+
+<div class="cards">
+  <div class="card"><div class="card-label">Row parity</div><div class="card-value">3,232 / 3,232</div></div>
+  <div class="card"><div class="card-label">FLAG_* columns validated</div><div class="card-value">24 / 24, 0 mismatches</div></div>
+  <div class="card"><div class="card-label">Real bugs found &amp; fixed</div><div class="card-value">9</div></div>
+  <div class="card"><div class="card-label">Emp_Core columns</div><div class="card-value">149</div></div>
+</div>
+
+<h2>Architecture at a Glance</h2>
+<p>Sources (Paycom SFTP, AD export, EDM reference tables) &rarr; <b>Import</b> (dedicated <code>Emp_Import_*</code> landing/snapshot tables, isolated from legacy) &rarr; <b>Processing</b> (config load, title overrides, key resolution, main join, rules, Entrata/LEO fields, assemble + merge) &rarr; <b><code>Emp_Core</code></b> (persistent, incrementally merged, single source of truth) &rarr; <b>Exports</b> (WH_PROD2, AD/LEO/CasaPerks/GraceHill feeds -- not yet built). See the Diagram view for the full table-by-table breakdown.</p>
+
+<h2>9 Real Bugs Found &amp; Fixed During Parity Validation</h2>
+<ol>
+  <li>Case sensitivity -- SQL is case-insensitive by default, Python <code>==</code> is not.</li>
+  <li>PROPERTY_KEY resolution -- had to replicate the exact legacy <code>PAYCOM_IMPORT_LOAD_SP</code> algorithm.</li>
+  <li>Stale actives never retired -- <code>Emp_Core</code> is incremental, legacy was full-rebuild; fixed with an explicit retire pass.</li>
+  <li>4,153 stale leftover rows -- an active-count match masked a much bigger row-count defect; fixed with a real DELETE.</li>
+  <li><b>POSITION/PAYCOM_POSITION field swap</b> -- the single biggest bug, collapsed most remaining mismatches once fixed.</li>
+  <li><code>ctx.cfg["EMPLOYEE_KEYS"]</code> staleness -- new hires' keys were invisible to Main Join within the same run.</li>
+  <li>Title overrides never reached Main Join -- only patched an unused config table.</li>
+  <li><code>FLAG_TITLE_MATCH</code> NULL-semantics bug -- Python <code>or</code>-chains don't replicate SQL NULL propagation.</li>
+  <li><code>EMAIL</code> NULL-semantics bug -- same category of mistranslation for <code>ISNULL(WORK_EMAIL, AD_LOGIN)</code>.</li>
+</ol>
+<p>Plus a self-caught bug in the validation script itself: it had been <code>.upper()</code>-normalizing comparisons, which could have masked real case-format bugs.</p>
+
+<h2>Known Open Items</h2>
+<ul>
+  <li><b>i-3-24 lock verification</b> needs a real test case (a genuine lock set in AppHub, or a deliberate test row) before it can be marked truly validated.</li>
+  <li><b>EXPORT phase</b> (13 targets) has not been designed/built yet -- the next major body of work now that i-3-28 no longer blocks cutover planning.</li>
+  <li><b>i-3-28 fix</b> is local-only -- needs explicit approval before deploying to the live Fabric notebook.</li>
+  <li>Checklist HTML has a known duplicate-ID bug (<code>i-3-28</code>/<code>i-3-29</code> each appear twice) -- cosmetic, not yet cleaned up.</li>
+</ul>
+
+<h2>Key Files</h2>
+<ul>
+  <li><code>de_remediation/_nb_emp_imports/NB_EMP_PIPELINE.py</code> -- the pipeline notebook source (deployed to Fabric)</li>
+  <li><code>de_remediation/EMP_SYSTEM_REDESIGN_HANDOFF.md</code> -- full session-handoff detail (gotchas, technical facts, next steps)</li>
+  <li><code>de_remediation/EMP_SYSTEM_REDESIGN_PLAN.html</code> -- full narrative decision log (#1-#27)</li>
+  <li><code>de_remediation/EMP_SYSTEM_REDESIGN_CHECKLIST.html</code> -- master checklist (locked format)</li>
+  <li><code>de_remediation/EMP_SYSTEM_TOPOLOGY_DIAGRAM.html</code> -- visual flowchart (Diagram view, this tab)</li>
+  <li><code>APPHUB_4/edm.py</code> / <code>templates/edm.html</code> -- the AppHub 4.0 EDM "Emp Tables" module and this "Emp Data Flow" tab</li>
+</ul>
+
+</body>
+</html>
