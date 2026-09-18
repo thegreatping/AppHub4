@@ -169,7 +169,12 @@
       <div class="node" onclick="toggle(this)">
         <div class="n-name">PROCESSING_KEY_RESOLUTION</div>
         <div class="n-role"><span class="badge badge-green">Built + tested (2026-09-12)</span></div>
-        <div class="n-detail">Replicates the LIVE legacy <code>EMPLOYEE_KEYS_SP</code> exactly (matches on EMPLOYEE_CODE+NAME_FIRST+NAME_LAST, NOT the originally-planned name+hire_date -- corrected per user direction, Item #23). Tested live: 7,362 rows, 0 new keys, all existing refreshed in 2.8s.</div>
+        <div class="n-detail">Replicates the LIVE legacy <code>EMPLOYEE_KEYS_SP</code> exactly (matches on EMPLOYEE_CODE+NAME_FIRST+NAME_LAST, NOT the originally-planned name+hire_date -- corrected per user direction, Item #23). Tested live: 7,362 rows, 0 new keys, all existing refreshed in 2.8s. <b>i-3-30 (planned, 2026-09-17):</b> only mints/refreshes keys from Paycom MAIN rows -- never-before-seen Pre-Hire-only employees (from <code>ctx.us_rows</code>/<code>ctx.can_rows</code>) currently get their key ONLY because legacy <code>EMPLOYEE_KEYS_SP</code> still originates one (<code>LOAD_TYPE='PRE-HIRE'</code>), synced forward here. Must extend this step to mint PRE-HIRE keys natively before legacy is disabled at cutover.</div>
+      </div>
+      <div class="node special-flow" onclick="toggle(this)">
+        <div class="n-name">Pre-Hire "graduation"</div>
+        <div class="n-role">Existing behavior <span class="badge badge-green">works today</span></div>
+        <div class="n-detail">Once a Pre-Hire employee shows up in a later Paycom MAIN file, <code>PROCESSING_KEY_RESOLUTION</code>'s existing-match path flips their SAME <code>Emp_Employee_Keys</code> row from <code>LOAD_TYPE='PRE-HIRE'</code> to <code>'INCREMENTAL LOAD'</code> and refreshes <code>DATE_HIRED</code> -- no duplicate key, no remap. <code>PROCESSING_MAIN_JOIN</code>'s own key lookup explicitly excludes any row still tagged <code>LOAD_TYPE='PRE-HIRE'</code> (mirrors legacy EMPLOYEE_0's prehire exclusion) -- a genuinely-not-yet-hired Pre-Hire employee ends up with <code>EMPLOYEE_KEY=NULL</code> and is dropped by <code>PROCESSING_SUPERVISOR_SECURITY</code>'s <code>WHERE EMPLOYEE_KEY IS NOT NULL</code> filter, same as legacy.</div>
       </div>
       <div class="node" onclick="toggle(this)">
         <div class="n-name">PROCESSING_MAIN_JOIN &#8594; PROCESSING_SUPERVISOR_KEY</div>

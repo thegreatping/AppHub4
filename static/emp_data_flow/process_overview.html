@@ -58,7 +58,8 @@
     <tr><td>Full column-level parity validation (checklist i-3-18 through i-3-29)</td><td><span class="badge badge-green">Complete</span></td></tr>
     <tr><td>i-3-24 (lock-aware merge verification)</td><td><span class="badge badge-orange">Passes vacuously</span> -- 0 employees currently have a lock bit set, not yet meaningfully tested</td></tr>
     <tr><td>i-3-26 / i-3-27 (AppHub EDM Emp Tables module)</td><td><span class="badge badge-green">Complete 2026-09-16/17</span> -- expanded into a full read-only browser + user-addable tables (this tab)</td></tr>
-    <tr><td>i-3-28 (Entrata SP cutover dependency)</td><td><span class="badge badge-green">Complete 2026-09-16</span> -- computed natively from <code>Emp_Core</code>, legacy SPs no longer required. NOT yet deployed to Fabric (local only, pending go-ahead).</td></tr>
+    <tr><td>i-3-28 (Entrata SP cutover dependency)</td><td><span class="badge badge-green">Complete + deployed 2026-09-16/17</span> -- computed natively from <code>Emp_Core</code>, deployed to Fabric and test-run verified.</td></tr>
+    <tr><td>i-3-30 (Pre-Hire key-minting gap)</td><td><span class="badge badge-orange">Planned 2026-09-17</span> -- not yet built, not urgent before cutover since legacy still originates these keys today.</td></tr>
     <tr><td>EXPORT phase (13 downstream targets)</td><td><span class="badge badge-red">Not started</span> -- all disabled in <code>control.EMP_PIPELINE_CONTROL</code></td></tr>
     <tr><td>Phase 6 cutover (disable legacy SPs, retire legacy tables)</td><td><span class="badge badge-red">Not started</span> -- i-3-28 blocker is resolved, no longer blocking</td></tr>
   </tbody>
@@ -90,9 +91,9 @@
 
 <h2>Known Open Items</h2>
 <ul>
+  <li><b>i-3-30 (Pre-Hire key-minting)</b> -- <code>PROCESSING_KEY_RESOLUTION</code> only mints/refreshes keys from Paycom MAIN rows, never from the Pre-Hire xlsx sources. A never-before-seen Pre-Hire-only employee currently gets their key only because legacy <code>EMPLOYEE_KEYS_SP</code> still originates one. Must be built before Phase 6 disables that legacy SP; not urgent before then.</li>
   <li><b>i-3-24 lock verification</b> needs a real test case (a genuine lock set in AppHub, or a deliberate test row) before it can be marked truly validated.</li>
   <li><b>EXPORT phase</b> (13 targets) has not been designed/built yet -- the next major body of work now that i-3-28 no longer blocks cutover planning.</li>
-  <li><b>i-3-28 fix</b> is local-only -- needs explicit approval before deploying to the live Fabric notebook.</li>
   <li>Checklist HTML has a known duplicate-ID bug (<code>i-3-28</code>/<code>i-3-29</code> each appear twice) -- cosmetic, not yet cleaned up.</li>
 </ul>
 
