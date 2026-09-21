@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Emp System Redesign - Full Data Flow ERD</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.27.0/cytoscape.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#header {
+  padding: 7px 14px;
+  background: #181825;
+  border-bottom: 1px solid #313244;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+#header h1 { font-size: 13px; font-weight: 700; color: #cdd6f4; white-space: nowrap; }
+.legend { display: flex; gap: 9px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 9.5px; color: #a6adc8; white-space: nowrap; }
+.legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+.controls { display: flex; gap: 5px; margin-left: auto; flex-shrink: 0; }
+.btn {
+  background: #313244; border: 1px solid #45475a; color: #cdd6f4;
+  padding: 4px 9px; border-radius: 4px; font-size: 11px; cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover { background: #45475a; }
+.btn.active { background: #45475a; border-color: #7f849c; }
+#main { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+#cy { flex: 1; background: #1e1e2e; }
+#detail-panel {
+  width: 380px;
+  background: #181825;
+  border-left: 1px solid #313244;
+  overflow-y: auto;
+  padding: 14px;
+  display: none;
+  flex-shrink: 0;
+}
+#detail-panel.active { display: block; }
+.dp-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+#dp-title { font-size: 13px; font-weight: 700; color: #cdd6f4; line-height: 1.3; flex: 1; }
+.close-btn {
+  background: none; border: none; color: #6c7086; cursor: pointer;
+  font-size: 18px; line-height: 1; padding: 0 0 0 8px; flex-shrink: 0;
+}
+.close-btn:hover { color: #f38ba8; }
+.type-badge {
+  display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 20px;
+  margin-bottom: 10px; font-weight: 600;
+}
+.detail-section { margin-bottom: 12px; }
+.detail-section h3 {
+  font-size: 10px; font-weight: 600; color: #7f849c; text-transform: uppercase;
+  letter-spacing: 0.06em; margin-bottom: 4px; border-bottom: 1px solid #313244;
+  padding-bottom: 3px;
+}
+.detail-section p, .detail-section li {
+  font-size: 11px; color: #a6adc8; line-height: 1.55;
+}
+.detail-section ul { padding-left: 14px; }
+.detail-section li { margin-bottom: 2px; }
+code {
+  font-family: 'Consolas', 'Courier New', monospace; font-size: 10.5px;
+  background: #313244; color: #a6e3a1; padding: 1px 4px; border-radius: 3px;
+}
+#bottom-bar {
+  background: #11111b; border-top: 1px solid #313244;
+  padding: 3px 12px; font-size: 10px; color: #6c7086;
+  display: flex; gap: 16px; flex-shrink: 0;
+}
+#bottom-bar span { color: #45475a; }
+#node-hint { color: #a6adc8 !important; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>Emp System Redesign -- Full Data Flow ERD (2026-09-21)</h1>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#89b4fa"></div>Source</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#94e2d5"></div>Config/Reference</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a6e3a1"></div>IMPORT Step</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#89dceb"></div>Landing/Staging Table</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#cba6f7"></div>PROCESSING Step</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f9e2af"></div>Emp_Core (Central)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#7fc87a"></div>EXPORT Step</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f38ba8"></div>Export Target Table</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#7f849c"></div>External System</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#eba0ac"></div>Legacy (being retired)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#74c7ec"></div>Readers Migration</div>
+  </div>
+  <div class="controls">
+    <button class="btn" onclick="cy.fit(null, 40)">Fit All</button>
+    <button class="btn" onclick="zoomIn()">+ Zoom</button>
+    <button class="btn" onclick="zoomOut()">- Zoom</button>
+    <button class="btn" id="btn-planned" onclick="togglePlanned()">Hide Planned (not-yet-built)</button>
+    <button class="btn" onclick="resetHighlight()">Reset</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="cy"></div>
+  <div id="detail-panel">
+    <div class="dp-header">
+      <h2 id="dp-title"></h2>
+      <button class="close-btn" onclick="closePanel()">&times;</button>
+    </div>
+    <div id="dp-badge"></div>
+    <div id="dp-content"></div>
+  </div>
+</div>
+
+<div id="bottom-bar">
+  <span id="node-hint">Click any node to see details -- scroll to zoom -- drag to pan</span>
+  <span>Ctrl+click: reset highlight</span>
+</div>
+
+<script>
+
+// ---- Node detail data -------------------------------------------------------
+
+const D = {
+
+  src_paycom: {
+    title: 'Paycom HRIS (daily SFTP)',
+    type: 'Source System', tc: '#89b4fa',
+    desc: 'Authoritative HRIS. Delivers "BI SFTP Report V7.csv" daily via SFTP (push.paycomonline.net). ~7,300+ rows, 35 columns, ALL employees (active/terminated/on-leave).',
+    sections: [
+      { h: 'Key Fields', b: '<code>Employee_Code</code>, <code>Legal_Firstname/Lastname</code>, <code>Preferred_Firstname/Lastname</code>, <code>Hire_Date</code>, <code>Seniority_Date</code> (true DATE_HIRED source -- Hire_Date never reflects rehires), <code>Rehire_Date</code>, <code>Business_Title</code>, <code>Department</code>, <code>Supervisor_Primary(_Code)</code>, <code>Work_Email</code>, <code>Work_Location</code>' },
+      { h: 'Consumed By', b: 'NB_EMP_PIPELINE step <code>IMPORT_PAYCOM_MAIN</code> -- downloaded fresh via SFTP, parsed in-memory, no dependency on the old <code>WH_ODS.PAYCOM_IMPORT_V7</code> landing table.' },
+    ]
+  },
+  src_prehire: {
+    title: 'Prehire Excel Files (US + CA)',
+    type: 'Source System', tc: '#89b4fa',
+    desc: 'Pre-hire reports submitted as Excel workbooks, arriving BEFORE the new employee shows up in the main Paycom SFTP feed -- gives IT/Entrata provisioning lead time.',
+    sections: [
+      { h: 'Consumed By', b: '<code>IMPORT_PREHIRE_US</code> / <code>IMPORT_PREHIRE_CAN</code> steps.' },
+      { h: 'Purpose', b: 'Enables EMPLOYEE_KEY assignment before the employee appears in the main feed.' },
+    ]
+  },
+  src_ad: {
+    title: 'Active Directory (inbound sync)',
+    type: 'External System', tc: '#7f849c',
+    desc: 'On-prem AD sync. Provides account status, login, department, location for provisioned employees.',
+    sections: [
+      { h: 'Landing', b: 'WH_STAGING.dbo.AD_EMPLOYEES_0 -- read as a PROCESSING_LOAD_CONFIG config table.' },
+    ]
+  },
+  src_config: {
+    title: 'Config / Reference Source Systems',
+    type: 'Source System', tc: '#89b4fa',
+    desc: 'Business-rule and lookup tables maintained by admins (title groups, security levels, property assignments, LEO mappings) -- not employee data itself, but required to compute derived Emp_Core fields.',
+    sections: [
+      { h: 'Examples', b: 'EMPLOYEE_TITLES_0, EMP_TITLE_GROUP_MGMT, SECURITY_LEVELS(_BY_TITLE), EMP_PROPERTY_ASSIGNMENTS, LEO_TITLE_PAYCOM_MAP, PROPERTY_F, PROPERTY_0' },
+    ]
+  },
+
+  imp_paycom_main: {
+    title: 'IMPORT_PAYCOM_MAIN',
+    type: 'IMPORT Step', tc: '#a6e3a1',
+    desc: 'Downloads the daily Paycom SFTP CSV, parses ~7,300 rows in-memory, computes DATE_KEY/DATEID_*/DATETIME_* fields, TRUNCATE+INSERT into the landing table.',
+    sections: [
+{ h: 'Fixed this session', b: '<ul><li>DATE_HIRED now sourced from <code>Seniority_Date</code>, not <code>Hire_Date</code> (matches live PAYCOM_IMPORT_LOAD_SP fix -- Hire_Date never reflects rehires)</li><li>WORK_LOCATION_CODE no longer parsed from free-text Work_Location</li><li>SOURCE_FILE_NAME hardcoded to literal PAYCOM_IMPORT_V7 matching legacy</li></ul>' },
+      { h: 'Writes To', b: '<code>WH_ODS.dbo.Emp_Import_Paycom</code>' },
+    ]
+  },
+  imp_prehire_us: {
+    title: 'IMPORT_PREHIRE_US',
+    type: 'IMPORT Step', tc: '#a6e3a1',
+    desc: 'Parses the US pre-hire Excel workbook.',
+    sections: [{ h: 'Writes To', b: 'Snapshot table via IMPORT_SNAPSHOT (Emp_Import_Paycom_Prehire_US)' }]
+  },
+  imp_prehire_can: {
+    title: 'IMPORT_PREHIRE_CAN',
+    type: 'IMPORT Step', tc: '#a6e3a1',
+    desc: 'Parses the Canada pre-hire Excel workbook.',
+    sections: [{ h: 'Writes To', b: 'Snapshot table via IMPORT_SNAPSHOT (Emp_Import_Paycom_Prehire_CAN)' }]
+  },
+  imp_snapshot: {
+    title: 'IMPORT_SNAPSHOT',
+    type: 'IMPORT Step', tc: '#a6e3a1',
+    desc: 'Copies the freshly-loaded WH_ODS source tables (Emp_Import_Paycom + prehire US/CAN) into WH_STAGING snapshot tables in a single SQL statement per table (no row-by-row read-back).',
+    sections: [{ h: 'Writes To', b: 'WH_STAGING.dbo.Emp_Import_Paycom_Main / _Prehire_US / _Prehire_CAN' }]
+  },
+  imp_build_staging: {
+    title: 'IMPORT_BUILD_STAGING',
+    type: 'IMPORT Step', tc: '#a6e3a1',
+    desc: 'Combines Main + Prehire US + Prehire CAN snapshots into one unified staging table for PROCESSING to consume.',
+    sections: [{ h: 'Writes To', b: 'WH_STAGING.dbo.Emp_Import_Staging' }]
+  },
+
+  tbl_emp_import_paycom: {
+    title: 'WH_ODS.dbo.Emp_Import_Paycom',
+    type: 'Landing Table', tc: '#89dceb',
+    desc: 'Dedicated landing table for the daily Paycom main-feed parse. TRUNCATE+INSERT every run via the custom CSV/_csv_field COPY INTO helper (fixed this session for correct NULL vs empty-string and datetime-string fidelity).',
+    sections: []
+  },
+  tbl_emp_import_snapshot: {
+    title: 'WH_STAGING Snapshot Tables',
+    type: 'Landing Table', tc: '#89dceb',
+    desc: 'Emp_Import_Paycom_Main, Emp_Import_Paycom_Prehire_US, Emp_Import_Paycom_Prehire_CAN -- point-in-time copies for PROCESSING to read without re-touching WH_ODS.',
+    sections: []
+  },
+  tbl_emp_import_staging: {
+    title: 'WH_STAGING.dbo.Emp_Import_Staging',
+    type: 'Landing Table', tc: '#89dceb',
+    desc: 'Unified US + CAN + Main staging table, the single input PROCESSING_KEY_RESOLUTION and PROCESSING_MAIN_JOIN read from.',
+    sections: []
+  },
+
+  cfg_app_support: {
+    title: 'DB_APP_SUPPORT Config Tables (~16)',
+    type: 'Config/Reference', tc: '#94e2d5',
+    desc: 'Read directly from the master DB_APP_SUPPORT (not a WH_STAGING replica -- avoids the sync-lag issue found this session with EMPLOYEE_TITLES_0/TITLE_GROUP_KEY).',
+    sections: [
+      { h: 'Tables', b: 'EMPLOYEE_0, APP_EMPLOYEES, EMPLOYEE_TITLES_0, EMP_TITLE_GROUP_MGMT, EMP_ENTRATA_TITLE_GROUP_MAPPING, EMP_TITLE_OVERRIDES, SECURITY_LEVELS_BY_TITLE, SECURITY_LEVELS, EMP_PROPERTY_ASSIGNMENTS, LEO_TITLE_PAYCOM_MAP, LEO_DEPT_TITLE_MAP, LEO_TIMEZONE_MAP, LEO_ROLES, EMPLOYEE_SECURITY_ROLES, EMPLOYEE_SOFT_TERMINATION_OVERRIDES, PROPERTY_0' },
+    ]
+  },
+  cfg_staging_ref: {
+    title: 'WH_STAGING Reference Tables',
+    type: 'Config/Reference', tc: '#94e2d5',
+    desc: 'Reference/isolation tables read during PROCESSING_LOAD_CONFIG.',
+    sections: [
+      { h: 'Tables', b: 'PROPERTY_F, Emp_Employee_Keys (isolates PROCESSING_KEY_RESOLUTION from live legacy), AD_EMPLOYEES_0, AGENTS_0, EMP_ENTRATA_GROUP_ASSIGNMENTS_0, EMPLOYEE_SOFT_TERMINATIONS, EMPLOYEE_SECURITY_0, LEO_EMPLOYEE_OVERRIDES' },
+    ]
+  },
+  cfg_emp_core_snapshot: {
+    title: 'Emp_Core Snapshot (self-feed)',
+    type: 'Config/Reference', tc: '#94e2d5',
+    desc: 'i-3-28 fix: EMP_ENTRATA_AGENTS_0_SP / EMP_ENTRATA_PROPERTY_ASSIGNMENTS_0_SP used to read legacy EMPLOYEE_F -- a circular dependency that would go stale at cutover. Now a snapshot of already-resolved Emp_Core fields feeds these computations natively in Python instead.',
+    sections: []
+  },
+  cfg_bi_support: {
+    title: 'DB_BI_SUPPORT.control.EMP_PROCESSING_RULES',
+    type: 'Config/Reference', tc: '#94e2d5',
+    desc: 'Business-rule config table read during PROCESSING_LOAD_CONFIG.',
+    sections: []
+  },
+
+  proc_group: {
+    title: 'PROCESSING (12 steps)',
+    type: 'PROCESSING Step', tc: '#cba6f7',
+    desc: 'The full in-memory transformation chain inside NB_EMP_PIPELINE that turns Emp_Import_Staging + every config/reference table into the final Emp_Core row shape. Grouped into one box here (rather than 12 separate boxes) to keep the diagram readable -- runs strictly in the order below.',
+    sections: [
+      { h: 'Steps (in order)', b: '<ol><li><b>LOAD_CONFIG</b> -- reads every reference/config table in parallel (ThreadPoolExecutor, one short-lived connection per table), then reads+validates Emp_Import_Staging. Results stashed as ctx.cfg[key].</li><li><b>TITLE_OVERRIDES</b> -- applies EMP_TITLE_OVERRIDES admin overrides to raw Paycom POSITION before title-group lookups.</li><li><b>KEY_RESOLUTION</b> -- assigns/looks up EMPLOYEE_KEY per employee code, excluding PRE-HIRE rows from the active key set (isolated via its own Emp_Employee_Keys clone).</li><li><b>MAIN_JOIN</b> -- the ~90-column Combo CTE ported from EMPLOYEE_F_COMBO_SP (property/AD/Entrata/title/security joins). Largest, most complex step; source of most parity bugs found/fixed this session.</li><li><b>APPLY_RULES</b> -- applies EMP_PROCESSING_RULES business logic on top of the Main Join output.</li><li><b>SUPERVISOR_SECURITY</b> -- resolves security overrides / supervisor-driven security fields.</li><li><b>ENTRATA_EPA</b> -- computes Entrata property assignments natively in Python from the Emp_Core snapshot (replaces the old circular-dependency SP).</li><li><b>LEO_FIELDS</b> -- computes LEO_ELIGIBLE and LEO_* mapped fields (role, title, timezone, properties) respecting LEO_*_LOCKED bits.</li><li><b>ASSEMBLE_CORE</b> -- assembles the final 149-column Emp_Core row shape from all prior step outputs.</li><li><b>WRITE_STAGING</b> -- TRUNCATE+INSERT of this run\'s full row set into <code>DB_APP_SUPPORT.dbo.Emp_Core_Staging</code>, the input to the lock-aware merge.</li><li><b>MERGE_CORE</b> -- lock-aware MERGE into the persistent Emp_Core: new employees INSERT all columns; unchanged-hash employees skip; changed-hash employees UPDATE respecting each of 7 *_LOCKED bits; includes an explicit retire pass (DELETE) for employees who drop out of the source set.</li><li><b>SUPERVISOR_KEY</b> -- post-merge pass resolving SUPERVISOR_KEY (depends on all EMPLOYEE_KEYs already being finalized in Emp_Core).</li></ol>' },
+    ]
+  },
+
+  core_emp_core: {
+    title: 'DB_APP_SUPPORT.dbo.Emp_Core',
+    type: 'Central Table (Single Source of Truth)', tc: '#f9e2af',
+    desc: '149 columns, PK=EMPLOYEE_KEY. Persistent, incrementally merged (not a full rebuild like legacy). Replaces WH_STAGING.EMPLOYEE_F, WH_STAGING.EMPLOYEE_0, DB_APP_SUPPORT.xtemp.EMPLOYEE_F, and DB_APP_SUPPORT.dbo.EMPLOYEE_0 outright (Item #16) -- not a shadow of them.',
+    sections: [
+      { h: 'Lock-bit convention', b: 'Adopts the per-field *_LOCKED columns from the old EMPLOYEE_0, since Emp_Core is now the bidirectional/EDM table itself.' },
+      { h: 'Fact tables', b: 'EMPLOYEE_METRICS and EMPLOYEE_FACTS stay separate (date/vertical fact grain) -- Emp_Core feeds a daily snapshot into each, it does not absorb them.' },
+      { h: 'Status', b: 'Built + backfilled (7,185+ rows). Fully deployed to Fabric and verified with a live end-to-end run, 2026-09-20.' },
+    ]
+  },
+
+  exp_wh_prod2: {
+    title: 'EXPORT_WH_PROD2',
+    type: 'EXPORT Step (Group A -- BUILT)', tc: '#7fc87a',
+    desc: 'Reads fresh Emp_Core WHERE LOAD_TYPE<>\'PRE-HIRE\', computes CATEGORY/DATE_ID/DATE_KEY, writes both Employees and Facts shadow tables.',
+    sections: [{ h: 'Status', b: 'Built, deployed, validated to high fidelity vs legacy (2026-09-20).' }]
+  },
+  exp_employee_metrics: {
+    title: 'EXPORT_EMPLOYEE_METRICS',
+    type: 'EXPORT Step (Group A -- BUILT)', tc: '#7fc87a',
+    desc: 'Reads EMPLOYEE_METRICS_0 (WH_STAGING, external upstream) LEFT JOIN GRACEHILL_COMPLIANCE_SUMMARY_IMPORT, overwrites M_3/M_LABEL_3, writes shadow table.',
+    sections: [{ h: 'Status', b: 'Built, deployed, EXACT MATCH vs legacy (0/995 mismatches).' }]
+  },
+  exp_security_0: {
+    title: 'EXPORT_SECURITY_0 (planned)',
+    type: 'EXPORT Step (Group B -- NOT built)', tc: '#7fc87a',
+    desc: 'Will TRUNCATE+INSERT the 18-col EMPLOYEE_SECURITY_0 subset from Emp_Core, FLAG_CURRENT=1. The only WH_STAGING backward-compat table still needing a real shadow/export step.',
+    sections: []
+  },
+  exp_group_c: {
+    title: 'EXPORT_DB_APP_SUPPORT_COMPANIONS (planned)',
+    type: 'EXPORT Step (Group C -- NOT built)', tc: '#7fc87a',
+    desc: 'Will build xtemp.Emp_Employee_Keys, xtemp.Emp_AD_Employees_0, and dbo.Emp_Milestones_Employees -- all genuinely excluded from Emp_Core (different grain/purpose), NOT superseded by readers-first migration.',
+    sections: []
+  },
+  exp_ad_provisioning: {
+    title: 'EXPORT_AD_PROVISIONING (planned)',
+    type: 'EXPORT Step (Group D -- NOT built)', tc: '#7fc87a',
+    desc: 'Will build Emp_Active_Emps_For_AD_0, Emp_Terminated_Emps_For_AD_0, Emp_Employee_Soft_Terminations (MERGE), Emp_Terminations_Log (append). Must confirm whether real EMPLOYEE_SOFT_TERMINATIONS is actually written by the legacy chain (vs. only read) before building the merge.',
+    sections: []
+  },
+  exp_ad_security: {
+    title: 'EXPORT_AD_SECURITY_CSV (planned)',
+    type: 'EXPORT Step (Group D -- NOT built)', tc: '#7fc87a',
+    desc: 'Will build Emp_AD_Security_Groups_Export + Emp_Employee_Security_Groups_Export_0 (two active legacy targets found this session, both shadowed) and generate users{YYYYMMDDHHmm}.csv to a TEST SharePoint path.',
+    sections: []
+  },
+  exp_casaperks: {
+    title: 'EXPORT_CASAPERKS (planned)',
+    type: 'EXPORT Step (Group D -- NOT built)', tc: '#7fc87a',
+    desc: 'Will build Emp_Active_Casaperks_0 / Emp_Terminated_Casaperks_0, apply init_cap formatting in Python, generate output file to a TEST path.',
+    sections: []
+  },
+  exp_leo: {
+    title: 'EXPORT_LEO_SFTP (planned)',
+    type: 'EXPORT Step (Group D -- NOT built)', tc: '#7fc87a',
+    desc: 'Will filter WHERE LEO_ELIGIBLE=1 directly from Emp_Core (no staging table) and push to a TEST SFTP path, respecting LEO_*_LOCKED bits.',
+    sections: []
+  },
+  exp_gracehill: {
+    title: 'EXPORT_GRACEHILL (planned)',
+    type: 'EXPORT Step (Group D -- NOT built)', tc: '#7fc87a',
+    desc: 'Will filter GraceHill-eligible employees directly from Emp_Core and deliver to a TEST target. Replaces NB_GRACEHILL_PEAKMADE_EMPLOYEE_EXPORT.',
+    sections: []
+  },
+
+  tbl_emp_employees: {
+    title: 'Emp_Employees -> WH_PROD2.dbo.EMPLOYEES',
+    type: 'Export Target (BUILT)', tc: '#f38ba8',
+    desc: '118 cols, FLAG_CURRENT=1. Shadow table until Phase 6 cutover renames it over the real table and disables EMPLOYEES_LOAD_SP.',
+    sections: [{ h: 'Parity', b: '3,201 rows match. Remaining diffs are timing drift (SUPERVISOR_EMP_CODE/EMAIL), deliberate (LEASE_COUNT), or live-master-vs-stale-replica (TITLE_GROUP_KEY).' }]
+  },
+  tbl_emp_employee_facts: {
+    title: 'Emp_Employee_Facts -> WH_PROD2.dbo.EMPLOYEE_FACTS',
+    type: 'Export Target (BUILT)', tc: '#f38ba8',
+    desc: 'Daily DATE_KEY snapshot fact table -- stays its own table forever, Emp_Core just feeds it.',
+    sections: [{ h: 'Parity', b: 'Exact key-level match; only LEASE_COUNT differs (deliberate, legacy Cartesian-join bug not replicated).' }]
+  },
+  tbl_emp_employee_metrics: {
+    title: 'Emp_Employee_Metrics -> WH_PROD2.dbo.EMPLOYEE_METRICS',
+    type: 'Export Target (BUILT)', tc: '#f38ba8',
+    desc: 'Vertical metrics fact table, metric list changes over time -- stays separate from Emp_Core.',
+    sections: [{ h: 'Parity', b: 'EXACT MATCH, 0 mismatches across 995 rows.' }]
+  },
+  tbl_emp_security_0: {
+    title: 'Emp_Employee_Security_0 -> WH_STAGING.EMPLOYEE_SECURITY_0',
+    type: 'Export Target (planned)', tc: '#f38ba8',
+    desc: '18-column security subset, FLAG_CURRENT=1.',
+    sections: []
+  },
+tbl_xtemp_keys: { title: 'xtemp.Emp_Employee_Keys -> xtemp.EMPLOYEE_KEYS', type: 'Export Target (planned)', tc: '#f38ba8', desc: 'Key registry sync -- different function than the WH_STAGING clone used internally for PROCESSING_KEY_RESOLUTION isolation.', sections: [] },
+tbl_xtemp_ad: { title: 'xtemp.Emp_AD_Employees_0 -> xtemp.AD_EMPLOYEES_0', type: 'Export Target (planned)', tc: '#f38ba8', desc: 'Raw AD snapshot sync -- feeds Emp_Core upstream too, but the xtemp copy is its own export target.', sections: [] },
+tbl_milestones: { title: 'dbo.Emp_Milestones_Employees -> dbo.MILESTONES_EMPLOYEES', type: 'Export Target (planned)', tc: '#f38ba8', desc: 'Per-PROPERTY+EMPLOYEE bridge table (many-to-many grain) -- excluded from Emp_Core.', sections: [] },
+  tbl_ad_active_term: { title: 'AD Provisioning Shadow Tables', type: 'Export Target (planned)', tc: '#f38ba8', desc: 'Emp_Active_Emps_For_AD_0, Emp_Terminated_Emps_For_AD_0, Emp_Employee_Soft_Terminations, Emp_Terminations_Log.', sections: [] },
+  tbl_ad_security_export: { title: 'AD Security Groups Shadow Tables', type: 'Export Target (planned)', tc: '#f38ba8', desc: 'Emp_AD_Security_Groups_Export + Emp_Employee_Security_Groups_Export_0.', sections: [] },
+  tbl_casaperks: { title: 'CasaPerks Shadow Tables', type: 'Export Target (planned)', tc: '#f38ba8', desc: 'Emp_Active_Casaperks_0, Emp_Terminated_Casaperks_0.', sections: [] },
+
+  ext_ad_system: { title: 'Active Directory System', type: 'External System', tc: '#7f849c', desc: 'Downstream consumer of AD provisioning exports -- account creation/disablement.', sections: [] },
+  ext_sharepoint: { title: 'SharePoint (/Technology/AD/Outbound/)', type: 'External System', tc: '#7f849c', desc: 'Destination for the AD Security Groups users*.csv export.', sections: [] },
+  ext_casaperks: { title: 'CasaPerks Platform', type: 'External System', tc: '#7f849c', desc: 'Employee benefits platform, consumes Active/Terminated CSVs.', sections: [] },
+  ext_leo: { title: 'LEO System (SFTP users.csv)', type: 'External System', tc: '#7f849c', desc: 'Property management system, consumes LEO-eligible employee roster via SFTP.', sections: [] },
+  ext_gracehill: { title: 'GraceHill Platform', type: 'External System', tc: '#7f849c', desc: 'Compliance training platform, consumes GraceHill-eligible employee roster.', sections: [] },
+
+  legacy_employee_f: {
+    title: 'WH_STAGING.dbo.EMPLOYEE_F (legacy)',
+    type: 'Legacy Table -- Being Retired', tc: '#eba0ac',
+    desc: 'NOT an export -- an internal legacy table, rebuilt daily (full truncate+rebuild) by EMPLOYEE_F_COMBO_SP. Replaced OUTRIGHT by Emp_Core (Item #16) -- no shadow table is built for it. Every consumer below migrates to reading Emp_Core directly instead.',
+    sections: [{ h: 'Retirement condition', b: 'EMPLOYEE_F_COMBO_SP is disabled only once nothing reads its output anymore.' }]
+  },
+  legacy_employee_0: {
+    title: 'DB_APP_SUPPORT.dbo.EMPLOYEE_0 (legacy)',
+    type: 'Legacy Table -- Being Retired', tc: '#eba0ac',
+    desc: 'NOT an export -- an internal legacy master table (140 cols), maintained by NB_EMPLOYEE_0_COMBO. Replaced OUTRIGHT by Emp_Core (Item #16) -- no shadow table is built for it.',
+    sections: []
+  },
+
+  migrate_low_risk: {
+    title: 'Readers Migration -- Low Risk (3 consumers)',
+    type: 'Readers-First Migration', tc: '#74c7ec',
+    desc: 'Isolated, read-only exports -- can migrate independently, no blocking dependencies.',
+    sections: [{ h: 'Consumers', b: 'EMPLOYEE_CASAPERKS_SP, LEO_USERS_EXPORT_SP, ACTIVE_EMPS_FOR_AD_SP (all currently read WH_STAGING.EMPLOYEE_F)' }]
+  },
+  migrate_med_risk: {
+    title: 'Readers Migration -- Medium Risk (4 consumers)',
+    type: 'Readers-First Migration', tc: '#74c7ec',
+    desc: 'Application-support functions and read-only UI grids.',
+    sections: [{ h: 'Consumers', b: 'EMPLOYEE_PREHIRES_APPSUPPORT_SP (xtemp.EMPLOYEE_F), EMPLOYEE_SECURITY_GROUPS_EXPORT_SP, AppHub edm.py, AppHub scorecard.py (may already be mid-migration)' }]
+  },
+  migrate_high_risk: {
+    title: 'Readers Migration -- High Risk (6 consumers)',
+    type: 'Readers-First Migration', tc: '#74c7ec',
+    desc: 'User-facing AppHub workflow modules where stale/wrong data has real operational impact (wrong assignment, wrong roster).',
+    sections: [{ h: 'Consumers', b: 'AppHub cultivate.py, fasttrack.py, maintenance.py, mentor_cert.py, mindset.py, promotion_transfer.py (all currently read xtemp.EMPLOYEE_F or WH_STAGING.EMPLOYEE_F)' }]
+  },
+  migrate_security_gate: {
+    title: 'AppHub security.py -- Migrates LAST (gating)',
+    type: 'Readers-First Migration', tc: '#74c7ec',
+    desc: 'CRITICAL SECURITY PATH -- resolves AppHub module access by matching logged-in user email to EMPLOYEE_F.TITLE_GROUP. Every session reads this. Migrate only after every other consumer has burned in; recommend a canary rollout before full cutover.',
+    sections: [{ h: 'Gate condition', b: 'Legacy EMPLOYEE_F_COMBO_SP is disabled only once this (and everything else) no longer reads its output.' }]
+  },
+
+};
+
+// ---- Type color mapping -----------------------------------------------------
+
+const TC = {
+  source:   { bg: '#1a3050', br: '#89b4fa', lbl: '#89b4fa' },
+  cfg:      { bg: '#051a1a', br: '#94e2d5', lbl: '#94e2d5' },
+  imp:      { bg: '#102010', br: '#a6e3a1', lbl: '#a6e3a1' },
+  land:     { bg: '#101820', br: '#89dceb', lbl: '#89dceb' },
+  proc:     { bg: '#20183a', br: '#cba6f7', lbl: '#cba6f7' },
+  core:     { bg: '#222000', br: '#f9e2af', lbl: '#f9e2af' },
+  exp:      { bg: '#0d2015', br: '#7fc87a', lbl: '#7fc87a' },
+  target:   { bg: '#280c1a', br: '#f38ba8', lbl: '#f38ba8' },
+  external: { bg: '#1e1e2e', br: '#585b70', lbl: '#7f849c' },
+  legacy:   { bg: '#2a1015', br: '#eba0ac', lbl: '#eba0ac' },
+  migrate:  { bg: '#082530', br: '#74c7ec', lbl: '#74c7ec' },
+};
+
+// ---- Node + edge definitions ------------------------------------------------
+
+const elements = [
+  // Sources
+  { data:{ id:'src_paycom',   label:'Paycom HRIS\n(daily SFTP)',        ntype:'source' }, position:{ x:0, y:0 } },
+  { data:{ id:'src_prehire',  label:'Prehire Excel\n(US + CA)',         ntype:'source' }, position:{ x:0, y:126 } },
+  { data:{ id:'src_ad',       label:'Active Directory\n(inbound)',      ntype:'source' }, position:{ x:0, y:252 } },
+  { data:{ id:'src_config',   label:'Config/Reference\nSource Systems', ntype:'source' }, position:{ x:0, y:651 } },
+
+  // IMPORT steps
+  { data:{ id:'imp_paycom_main',  label:'IMPORT_PAYCOM_MAIN',  ntype:'imp' }, position:{ x:140, y:0 } },
+  { data:{ id:'imp_prehire_us',   label:'IMPORT_PREHIRE_US',   ntype:'imp' }, position:{ x:140, y:105 } },
+  { data:{ id:'imp_prehire_can',  label:'IMPORT_PREHIRE_CAN',  ntype:'imp' }, position:{ x:140, y:189 } },
+  { data:{ id:'imp_snapshot',     label:'IMPORT_SNAPSHOT',     ntype:'imp' }, position:{ x:280, y:105 } },
+  { data:{ id:'imp_build_staging',label:'IMPORT_BUILD_STAGING',ntype:'imp' }, position:{ x:420, y:105 } },
+
+  // Landing tables
+  { data:{ id:'tbl_emp_import_paycom',   label:'WH_ODS\nEmp_Import_Paycom',        ntype:'land' }, position:{ x:280, y:0 } },
+  { data:{ id:'tbl_emp_import_snapshot', label:'WH_STAGING\nSnapshot Tables (x3)', ntype:'land' }, position:{ x:420, y:189 } },
+  { data:{ id:'tbl_emp_import_staging',  label:'WH_STAGING\nEmp_Import_Staging',   ntype:'land' }, position:{ x:560, y:105 } },
+
+  // Config clusters
+  { data:{ id:'cfg_app_support',      label:'DB_APP_SUPPORT\nConfig Tables (x16)', ntype:'cfg' }, position:{ x:0, y:441 } },
+  { data:{ id:'cfg_staging_ref',      label:'WH_STAGING\nReference Tables',        ntype:'cfg' }, position:{ x:0, y:546 } },
+  { data:{ id:'cfg_emp_core_snapshot',label:'Emp_Core\nSnapshot (self-feed)',      ntype:'cfg' }, position:{ x:0, y:756 } },
+  { data:{ id:'cfg_bi_support',       label:'DB_BI_SUPPORT.control\nEMP_PROCESSING_RULES', ntype:'cfg' }, position:{ x:0, y:861 } },
+
+  // PROCESSING chain -- grouped into one box (12 steps, see detail panel for the ordered list)
+  { data:{ id:'proc_group', label:'PROCESSING\n(12 steps)', ntype:'proc' }, position:{ x:800, y:105 } },
+
+  // Emp_Core (central)
+  { data:{ id:'core_emp_core', label:'DB_APP_SUPPORT\nEmp_Core\n(149 cols)', ntype:'core' }, position:{ x:1260, y:105 } },
+
+  // EXPORT steps
+  { data:{ id:'exp_wh_prod2',        label:'EXPORT_WH_PROD2\n(BUILT)',         ntype:'exp' }, position:{ x:1400, y:-147 } },
+  { data:{ id:'exp_employee_metrics',label:'EXPORT_EMPLOYEE_\nMETRICS (BUILT)', ntype:'exp' }, position:{ x:1400, y:-42 } },
+  { data:{ id:'exp_security_0',      label:'EXPORT_SECURITY_0\n(planned)',     ntype:'exp' }, position:{ x:1400, y:63 } },
+  { data:{ id:'exp_group_c',         label:'EXPORT_APP_SUPPORT\nCOMPANIONS (planned)', ntype:'exp' }, position:{ x:1400, y:168 } },
+  { data:{ id:'exp_ad_provisioning', label:'EXPORT_AD_\nPROVISIONING (planned)', ntype:'exp' }, position:{ x:1400, y:294 } },
+  { data:{ id:'exp_ad_security',     label:'EXPORT_AD_\nSECURITY_CSV (planned)', ntype:'exp' }, position:{ x:1400, y:399 } },
+  { data:{ id:'exp_casaperks',       label:'EXPORT_CASAPERKS\n(planned)',      ntype:'exp' }, position:{ x:1400, y:504 } },
+  { data:{ id:'exp_leo',             label:'EXPORT_LEO_SFTP\n(planned)',       ntype:'exp' }, position:{ x:1400, y:609 } },
+  { data:{ id:'exp_gracehill',       label:'EXPORT_GRACEHILL\n(planned)',      ntype:'exp' }, position:{ x:1400, y:714 } },
+
+  // Export target tables
+  { data:{ id:'tbl_emp_employees',        label:'Emp_Employees\n\u2192 EMPLOYEES',            ntype:'target' }, position:{ x:1540, y:-189 } },
+  { data:{ id:'tbl_emp_employee_facts',   label:'Emp_Employee_Facts\n\u2192 EMPLOYEE_FACTS',   ntype:'target' }, position:{ x:1540, y:-118 } },
+  { data:{ id:'tbl_emp_employee_metrics', label:'Emp_Employee_Metrics\n\u2192 EMPLOYEE_METRICS', ntype:'target' }, position:{ x:1540, y:-42 } },
+  { data:{ id:'tbl_emp_security_0',       label:'Emp_Employee_Security_0\n\u2192 EMPLOYEE_SECURITY_0', ntype:'target' }, position:{ x:1540, y:63 } },
+  { data:{ id:'tbl_xtemp_keys',           label:'xtemp.Emp_Employee_Keys\n\u2192 xtemp.EMPLOYEE_KEYS', ntype:'target' }, position:{ x:1540, y:134 } },
+  { data:{ id:'tbl_xtemp_ad',             label:'xtemp.Emp_AD_Employees_0\n\u2192 xtemp.AD_EMPLOYEES_0', ntype:'target' }, position:{ x:1540, y:189 } },
+  { data:{ id:'tbl_milestones',           label:'Emp_Milestones_Employees\n\u2192 MILESTONES_EMPLOYEES', ntype:'target' }, position:{ x:1540, y:244 } },
+  { data:{ id:'tbl_ad_active_term',       label:'AD Provisioning\nShadow Tables (x4)', ntype:'target' }, position:{ x:1540, y:294 } },
+  { data:{ id:'tbl_ad_security_export',   label:'AD Security Groups\nShadow Tables (x2)', ntype:'target' }, position:{ x:1540, y:399 } },
+  { data:{ id:'tbl_casaperks',            label:'CasaPerks\nShadow Tables (x2)',   ntype:'target' }, position:{ x:1540, y:504 } },
+
+  // External destinations
+  { data:{ id:'ext_ad_system',  label:'Active Directory\nSystem',         ntype:'external' }, position:{ x:1680, y:294 } },
+  { data:{ id:'ext_sharepoint', label:'SharePoint\n/AD/Outbound/',        ntype:'external' }, position:{ x:1680, y:399 } },
+  { data:{ id:'ext_casaperks',  label:'CasaPerks\nPlatform',              ntype:'external' }, position:{ x:1680, y:504 } },
+  { data:{ id:'ext_leo',        label:'LEO System\n(SFTP users.csv)',     ntype:'external' }, position:{ x:1680, y:609 } },
+  { data:{ id:'ext_gracehill',  label:'GraceHill\nPlatform',              ntype:'external' }, position:{ x:1680, y:714 } },
+
+  // Readers-first migration branch
+  { data:{ id:'legacy_employee_f', label:'WH_STAGING\nEMPLOYEE_F\n(legacy, retiring)', ntype:'legacy' }, position:{ x:1260, y:882 } },
+  { data:{ id:'legacy_employee_0', label:'DB_APP_SUPPORT\nEMPLOYEE_0\n(legacy, retiring)', ntype:'legacy' }, position:{ x:1260, y:1008 } },
+  { data:{ id:'migrate_low_risk',      label:'Readers Migration\nLow Risk (x3)',    ntype:'migrate' }, position:{ x:1400, y:861 } },
+  { data:{ id:'migrate_med_risk',      label:'Readers Migration\nMedium Risk (x4)', ntype:'migrate' }, position:{ x:1400, y:945 } },
+  { data:{ id:'migrate_high_risk',     label:'Readers Migration\nHigh Risk (x6)',   ntype:'migrate' }, position:{ x:1400, y:1029 } },
+  { data:{ id:'migrate_security_gate', label:'AppHub security.py\nMIGRATES LAST',   ntype:'migrate' }, position:{ x:1400, y:1113 } },
+
+  // -------- Edges --------
+  { data:{ id:'e1', source:'src_paycom',  target:'imp_paycom_main' } },
+  { data:{ id:'e2', source:'src_prehire', target:'imp_prehire_us' } },
+  { data:{ id:'e3', source:'src_prehire', target:'imp_prehire_can' } },
+  { data:{ id:'e4', source:'imp_paycom_main', target:'tbl_emp_import_paycom' } },
+  { data:{ id:'e5', source:'tbl_emp_import_paycom', target:'imp_snapshot' } },
+  { data:{ id:'e6', source:'imp_prehire_us',  target:'imp_snapshot' } },
+  { data:{ id:'e7', source:'imp_prehire_can', target:'imp_snapshot' } },
+  { data:{ id:'e8', source:'imp_snapshot', target:'tbl_emp_import_snapshot' } },
+  { data:{ id:'e9', source:'tbl_emp_import_snapshot', target:'imp_build_staging' } },
+  { data:{ id:'e10', source:'imp_build_staging', target:'tbl_emp_import_staging' } },
+  { data:{ id:'e11', source:'tbl_emp_import_staging', target:'proc_group' } },
+  { data:{ id:'e12', source:'src_ad', target:'cfg_staging_ref' } },
+  { data:{ id:'e13', source:'src_config', target:'cfg_app_support' } },
+  { data:{ id:'e14', source:'cfg_app_support', target:'proc_group' } },
+  { data:{ id:'e15', source:'cfg_staging_ref', target:'proc_group' } },
+  { data:{ id:'e16', source:'cfg_emp_core_snapshot', target:'proc_group' } },
+  { data:{ id:'e17', source:'cfg_bi_support', target:'proc_group' } },
+  { data:{ id:'e18', source:'core_emp_core', target:'cfg_emp_core_snapshot', label:'daily snapshot', classes:'feedback-edge' } },
+
+  { data:{ id:'e30', source:'proc_group', target:'core_emp_core' } },
+
+  { data:{ id:'e31', source:'core_emp_core', target:'exp_wh_prod2' } },
+  { data:{ id:'e32', source:'core_emp_core', target:'exp_employee_metrics' } },
+  { data:{ id:'e33', source:'core_emp_core', target:'exp_security_0', classes:'old-edge' } },
+  { data:{ id:'e34', source:'core_emp_core', target:'exp_group_c', classes:'old-edge' } },
+  { data:{ id:'e35', source:'core_emp_core', target:'exp_ad_provisioning', classes:'old-edge' } },
+  { data:{ id:'e36', source:'core_emp_core', target:'exp_ad_security', classes:'old-edge' } },
+  { data:{ id:'e37', source:'core_emp_core', target:'exp_casaperks', classes:'old-edge' } },
+  { data:{ id:'e38', source:'core_emp_core', target:'exp_leo', classes:'old-edge' } },
+  { data:{ id:'e39', source:'core_emp_core', target:'exp_gracehill', classes:'old-edge' } },
+
+  { data:{ id:'e40', source:'exp_wh_prod2', target:'tbl_emp_employees' } },
+  { data:{ id:'e41', source:'exp_wh_prod2', target:'tbl_emp_employee_facts' } },
+  { data:{ id:'e42', source:'exp_employee_metrics', target:'tbl_emp_employee_metrics' } },
+  { data:{ id:'e43', source:'exp_security_0', target:'tbl_emp_security_0', classes:'old-edge' } },
+  { data:{ id:'e44', source:'exp_group_c', target:'tbl_xtemp_keys', classes:'old-edge' } },
+  { data:{ id:'e45', source:'exp_group_c', target:'tbl_xtemp_ad', classes:'old-edge' } },
+  { data:{ id:'e46', source:'exp_group_c', target:'tbl_milestones', classes:'old-edge' } },
+  { data:{ id:'e47', source:'exp_ad_provisioning', target:'tbl_ad_active_term', classes:'old-edge' } },
+  { data:{ id:'e48', source:'exp_ad_security', target:'tbl_ad_security_export', classes:'old-edge' } },
+  { data:{ id:'e49', source:'exp_casaperks', target:'tbl_casaperks', classes:'old-edge' } },
+  { data:{ id:'e50', source:'exp_leo', target:'ext_leo', classes:'old-edge' } },
+  { data:{ id:'e51', source:'exp_gracehill', target:'ext_gracehill', classes:'old-edge' } },
+
+  { data:{ id:'e52', source:'tbl_ad_active_term', target:'ext_ad_system', classes:'old-edge' } },
+  { data:{ id:'e53', source:'tbl_ad_security_export', target:'ext_sharepoint', classes:'old-edge' } },
+  { data:{ id:'e54', source:'tbl_casaperks', target:'ext_casaperks', classes:'old-edge' } },
+
+  { data:{ id:'e55', source:'core_emp_core', target:'legacy_employee_f', label:'replaces outright' } },
+  { data:{ id:'e56', source:'core_emp_core', target:'legacy_employee_0', label:'replaces outright' } },
+  { data:{ id:'e57', source:'legacy_employee_f', target:'migrate_low_risk', label:'current readers', classes:'old-edge' } },
+  { data:{ id:'e58', source:'legacy_employee_f', target:'migrate_med_risk', label:'current readers', classes:'old-edge' } },
+  { data:{ id:'e59', source:'legacy_employee_f', target:'migrate_high_risk', label:'current readers', classes:'old-edge' } },
+  { data:{ id:'e60', source:'legacy_employee_f', target:'migrate_security_gate', label:'current readers', classes:'old-edge' } },
+  { data:{ id:'e61', source:'core_emp_core', target:'migrate_low_risk', label:'migrate to' } },
+  { data:{ id:'e62', source:'core_emp_core', target:'migrate_med_risk', label:'migrate to' } },
+  { data:{ id:'e63', source:'core_emp_core', target:'migrate_high_risk', label:'migrate to' } },
+  { data:{ id:'e64', source:'core_emp_core', target:'migrate_security_gate', label:'migrate to (last)' } },
+];
+
+// ---- Cytoscape style --------------------------------------------------------
+
+const CY_STYLE = [
+  {
+    selector: 'node',
+    style: {
+      'background-color': ele => TC[ele.data('ntype')]?.bg || '#313244',
+      'border-color':     ele => TC[ele.data('ntype')]?.br || '#45475a',
+      'border-width': 2,
+      'label': 'data(label)',
+      'text-wrap': 'wrap',
+      'text-valign': 'center',
+      'text-halign': 'center',
+      'color': ele => TC[ele.data('ntype')]?.lbl || '#cdd6f4',
+      'font-size': '10px',
+      'font-family': "'Consolas','Segoe UI',sans-serif",
+      'width': 155,
+      'height': 60,
+      'shape': 'roundrectangle',
+      'cursor': 'pointer',
+      'text-max-width': '140px',
+    }
+  },
+  { selector: 'node[ntype="core"]', style: { 'width': 175, 'height': 80, 'border-width': 4 } },
+  { selector: 'node[ntype="proc"]', style: { 'width': 190, 'height': 74, 'border-width': 3 } },
+  { selector: 'node[ntype="target"], node[ntype="land"]', style: { 'width': 165, 'height': 66 } },
+  { selector: 'node[ntype="legacy"]', style: { 'border-style': 'dashed' } },
+  {
+    selector: 'edge',
+    style: {
+      'width': 1.5,
+      'line-color': '#3d3f5e',
+      'target-arrow-color': '#4a4c6e',
+      'target-arrow-shape': 'triangle',
+      'curve-style': 'bezier',
+      'label': 'data(label)',
+      'font-size': '8.5px',
+      'color': '#6c7086',
+      'text-background-color': '#1e1e2e',
+      'text-background-opacity': 1,
+      'text-background-padding': '2px',
+      'text-rotation': 'autorotate',
+    }
+  },
+  {
+    selector: '.old-edge',
+    style: {
+      'line-style': 'dashed',
+      'line-dash-pattern': [6, 4],
+      'line-color': '#3a5060',
+      'target-arrow-color': '#3a5060',
+      'opacity': 0.8,
+    }
+  },
+  {
+    selector: '.feedback-edge',
+    style: {
+      'line-color': '#4a4060',
+      'target-arrow-color': '#4a4060',
+      'line-style': 'dashed',
+      'line-dash-pattern': [3, 4],
+      'curve-style': 'unbundled-bezier',
+      'control-point-distances': [-60],
+      'control-point-weights': [0.5],
+    }
+  },
+  { selector: 'node:selected, node.highlighted', style: { 'border-width': 3, 'border-color': '#cdd6f4', 'opacity': 1 } },
+  { selector: 'edge.highlighted', style: { 'line-color': '#89b4fa', 'target-arrow-color': '#89b4fa', 'width': 2.5, 'opacity': 1 } },
+  { selector: '.dimmed', style: { 'opacity': 0.12 } },
+];
+
+// ---- Initialize Cytoscape ---------------------------------------------------
+
+const cy = cytoscape({
+  container: document.getElementById('cy'),
+  elements: elements,
+  style: CY_STYLE,
+  layout: { name: 'preset' },
+  wheelSensitivity: 0.25,
+  minZoom: 0.05,
+  maxZoom: 3,
+});
+
+cy.fit(null, 50);
+
+// ---- Interaction ------------------------------------------------------------
+
+let plannedHidden = false;
+const PLANNED_IDS = ['exp_security_0','exp_group_c','exp_ad_provisioning','exp_ad_security','exp_casaperks','exp_leo','exp_gracehill',
+  'tbl_emp_security_0','tbl_xtemp_keys','tbl_xtemp_ad','tbl_milestones','tbl_ad_active_term','tbl_ad_security_export','tbl_casaperks',
+  'ext_ad_system','ext_sharepoint','ext_casaperks','ext_leo','ext_gracehill'];
+
+function togglePlanned() {
+  plannedHidden = !plannedHidden;
+  const btn = document.getElementById('btn-planned');
+  if (plannedHidden) {
+    PLANNED_IDS.forEach(id => cy.$(`#${id}`).hide());
+    cy.$('.old-edge').hide();
+    btn.textContent = 'Show Planned (not-yet-built)';
+    btn.classList.add('active');
+  } else {
+    cy.elements().show();
+    btn.textContent = 'Hide Planned (not-yet-built)';
+    btn.classList.remove('active');
+  }
+}
+
+function zoomIn()  { cy.zoom({ level: cy.zoom() * 1.25, renderedPosition: { x: cy.width()/2, y: cy.height()/2 } }); }
+function zoomOut() { cy.zoom({ level: cy.zoom() / 1.25, renderedPosition: { x: cy.width()/2, y: cy.height()/2 } }); }
+
+function resetHighlight() { cy.elements().removeClass('highlighted dimmed'); }
+
+function closePanel() {
+  document.getElementById('detail-panel').classList.remove('active');
+  resetHighlight();
+}
+
+cy.on('tap', 'node', function(evt) {
+  const node = evt.target;
+  const id   = node.id();
+  const det  = D[id];
+
+  cy.elements().removeClass('highlighted dimmed');
+  const neighborhood = node.closedNeighborhood();
+  neighborhood.addClass('highlighted');
+  cy.elements().not(neighborhood).addClass('dimmed');
+
+  if (!det) {
+    document.getElementById('detail-panel').classList.remove('active');
+    return;
+  }
+
+  document.getElementById('dp-title').textContent = det.title;
+  document.getElementById('dp-badge').innerHTML =
+    `<span class="type-badge" style="background:${det.tc}18;color:${det.tc};border:1px solid ${det.tc}40">${det.type}</span>`;
+
+  let html = `<div class="detail-section"><p>${det.desc}</p></div>`;
+  for (const s of det.sections) {
+    html += `<div class="detail-section"><h3>${s.h}</h3><p>${s.b}</p></div>`;
+  }
+  document.getElementById('dp-content').innerHTML = html;
+  document.getElementById('detail-panel').classList.add('active');
+
+  document.getElementById('node-hint').textContent = `Node: ${det.title}  |  Type: ${det.type}`;
+});
+
+cy.on('tap', function(evt) {
+  if (evt.target === cy) {
+    resetHighlight();
+    document.getElementById('node-hint').textContent = 'Click any node to see details -- scroll to zoom -- drag to pan';
+  }
+});
+
+</script>
+</body>
+</html>
