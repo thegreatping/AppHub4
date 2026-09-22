@@ -1157,6 +1157,33 @@ def get_processing_history():
         conn.close()
 
 
+@edm_bp.route("/api/export-history", methods=["GET"])
+@login_required
+def get_export_history():
+    """EXPORT-step-only slice of control.EMP_PIPELINE_RUN_LOG, ordered so
+    each run's export targets (EXPORT_WH_PROD2 ... EXPORT_SUMMARY) appear
+    grouped together, most recent run first."""
+    check = _require_access()
+    if check:
+        return check
+    env = _get_env()
+    conn = SafeConnection(env, "DB_BI_SUPPORT", None, direct=True)
+    try:
+        cur = conn.execute("""
+            SELECT TOP 3000 RUN_LOG_ID, PIPELINE_RUN_ID, STEP_NAME, STEP_ORDER,
+                   STATUS, RUN_TIMESTAMP_START_UTC, RUN_TIMESTAMP_END_UTC, DURATION_SEC,
+                   ROWS_AFFECTED, ERROR_MSG
+            FROM control.EMP_PIPELINE_RUN_LOG
+            WHERE STEP_GROUP = 'EXPORT'
+            ORDER BY PIPELINE_RUN_ID DESC, STEP_ORDER
+        """)
+        columns = [d[0].lower() for d in cur.description]
+        rows = cur.fetchall()
+        return jsonify(_rows_to_dicts(rows, columns))
+    finally:
+        conn.close()
+
+
 # ─── PROCESSING OUTPUT TAB (read-only from DB_APP_SUPPORT.dbo.Emp_Core_Staging) ─
 
 @edm_bp.route("/api/processing-output", methods=["GET"])

@@ -589,6 +589,7 @@
                 <div class="emp-tables-nav">
                     <div class="emp-tables-nav-item active" data-emptable="employees" onclick="switchEmpTable('employees')">Employees</div>
                     <div class="emp-tables-nav-item" data-emptable="procHistory" onclick="switchEmpTable('procHistory')">Processing History</div>
+                    <div class="emp-tables-nav-item" data-emptable="exportHistory" onclick="switchEmpTable('exportHistory')">Export History</div>
                     <div class="emp-tables-nav-item" data-emptable="procOutput" onclick="switchEmpTable('procOutput')">Processing Output</div>
                     <div class="emp-tables-nav-item" data-emptable="empCore" onclick="switchEmpTable('empCore')">Emp_Core</div>
                 </div>
@@ -659,6 +660,42 @@
                         <div class="table-scroll" style="overflow-x:auto">
                             <table class="data-table" id="procHistoryTable" style="width:100%">
                                 <thead id="procHistoryTableHead"></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- EXPORT HISTORY SUBPANEL -->
+                    <div class="emp-subpanel" id="subpanel-exportHistory">
+                        <div class="info-blurb" id="blurb-exportHistory">
+                            <div class="blurb-header" onclick="toggleBlurb('exportHistory')">
+                                <span class="blurb-title">Export History</span>
+                                <span class="blurb-toggle" id="blurbToggle-exportHistory">&#9660;</span>
+                            </div>
+                            <div class="blurb-body" id="blurbBody-exportHistory">
+                                Read-only, EXPORT-step-only slice of <code>control.EMP_PIPELINE_RUN_LOG</code> -- one row per export target per <code>NB_EMP_PIPELINE</code> run (WH_PROD2, WH_STAGING compat, DB_APP_SUPPORT sync, AD Provisioning, AD Security CSV, CasaPerks, LEO SFTP, GraceHill, Employee Metrics, Summary). Ordered so each run's targets stay grouped together, most recent run first.
+                                <br><br>
+                                <strong>Source table:</strong> <code>DB_BI_SUPPORT.control.EMP_PIPELINE_RUN_LOG</code> filtered to <code>STEP_GROUP='EXPORT'</code>.
+                            </div>
+                        </div>
+                        <div class="filter-bar">
+                            <select id="exportHistoryStatusFilter" class="emp-filter-select">
+                                <option value="">All Statuses</option>
+                                <option value="COMPLETE">COMPLETE</option>
+                                <option value="FAILED">FAILED</option>
+                                <option value="SKIPPED">SKIPPED</option>
+                                <option value="RUNNING">RUNNING</option>
+                            </select>
+                            <div class="col-selector-wrap">
+                                <button class="col-selector-btn" onclick="toggleGenericColSelector('exportHistory')">&#9881; Columns</button>
+                                <div class="col-selector-panel" id="colSelectorPanel_exportHistory"></div>
+                            </div>
+                            <button class="btn btn-sm" onclick="exportGenericExcel('exportHistory')" style="color:var(--text-secondary)" title="Export Export History to Excel">&#128190; Export</button>
+                            <span class="count-label" id="exportHistoryCount" style="margin-left:auto"></span>
+                        </div>
+                        <div class="table-scroll" style="overflow-x:auto">
+                            <table class="data-table" id="exportHistoryTable" style="width:100%">
+                                <thead id="exportHistoryTableHead"></thead>
                                 <tbody></tbody>
                             </table>
                         </div>
@@ -795,7 +832,7 @@
         toggle.innerHTML = collapsed ? '&#9654;' : '&#9660;';
         localStorage.setItem('edm_blurb_' + id, collapsed ? '1' : '0');
     }
-    ['employees','titles','entrata','entrataassign','softterm','leomap','procHistory','procOutput','empCore'].forEach(id => {
+    ['employees','titles','entrata','entrataassign','softterm','leomap','procHistory','exportHistory','procOutput','empCore'].forEach(id => {
         const state = localStorage.getItem('edm_blurb_' + id);
         if (state === '1') {
             const body = document.getElementById('blurbBody-' + id);
@@ -875,6 +912,14 @@
             exportTitle: 'Employee Data Manager - Emp_Core',
             sourceTable: 'DB_APP_SUPPORT.dbo.Emp_Core',
         },
+        exportHistory: {
+            url: '/edm/api/export-history',
+            defaultCols: ['pipeline_run_id', 'step_name', 'status', 'run_timestamp_start_utc', 'duration_sec', 'rows_affected', 'error_msg'],
+            anchorCol: 'step_name',
+            title: r => `${r.step_name} (${r.status})`,
+            exportTitle: 'Employee Data Manager - Export History',
+            sourceTable: "DB_BI_SUPPORT.control.EMP_PIPELINE_RUN_LOG WHERE STEP_GROUP='EXPORT'",
+        },
     };
 
     // ─── Every other Emp_/EMP_ table used by NB_EMP_PIPELINE.py, browsable here ──
@@ -906,6 +951,11 @@
         // undefined/null = "All" (no filter); an (even empty) Set = explicit multi-select.
         genericColFilters[key] = {};
     }
+
+    // procHistory/procOutput/empCore/exportHistory are hard-coded (not built via
+    // addEmpTableSubpanel, which self-initializes state for EXTRA_EMP_TABLES/custom
+    // tables) -- must init their shared-state entries explicitly before first use.
+    ['procHistory', 'procOutput', 'empCore', 'exportHistory'].forEach(initGenericTabState);
 
     // Builds one nav item + subpanel for a generic browsable table (used for both
     // the hard-coded EXTRA_EMP_TABLES list and user-added custom tables below).
@@ -1357,6 +1407,7 @@
     }
 
     document.getElementById('procHistoryStatusFilter').addEventListener('change', () => renderGenericTab('procHistory'));
+    document.getElementById('exportHistoryStatusFilter').addEventListener('change', () => renderGenericTab('exportHistory'));
 
     // Close any generic column-selector panel on outside click
     document.addEventListener('click', e => {
