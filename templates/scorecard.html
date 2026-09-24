@@ -1,0 +1,1125 @@
+{% extends "shell.html" %}
+{% block head %}
+<style>
+    .sc-container { padding: 18px 24px 40px; max-width: 100%; }
+
+    /* Ribbon stat bar */
+    .sc-ribbon { display: flex; align-items: center; gap: 22px; padding: 12px 16px; background: var(--surface-raised); border: 1px solid var(--border-medium); border-radius: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .sc-stat { display: flex; flex-direction: column; gap: 2px; }
+    .sc-stat .k { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+    .sc-stat .v { font-family: Consolas, monospace; font-weight: 700; font-size: 1.1rem; color: var(--text-primary); }
+    .sc-stat.clickable { cursor: pointer; padding: 4px 10px; border-radius: 6px; }
+    .sc-stat.clickable:hover { background: var(--hover-bg-strong); }
+    .sc-stat.clickable.active .v { color: var(--accent-cyan); }
+    .sc-toolbar { margin-left: auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .sc-q1-toggle { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
+    .sc-search { background: var(--input-bg); border: 1px solid var(--border-input); border-radius: 5px; color: var(--text-primary); padding: 6px 10px; font-size: 0.8rem; min-width: 240px; }
+    .sc-search:focus { outline: none; border-color: var(--accent-cyan); }
+
+    /* Active filter chip bar */
+    .sc-chipbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 4px; margin-bottom: 8px; }
+    .sc-chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(103,232,224,0.12); color: var(--accent-cyan); border: 1px solid rgba(103,232,224,0.35); border-radius: 12px; padding: 3px 6px 3px 10px; font-size: 0.72rem; font-weight: 600; }
+    .sc-chip button { border: none; background: none; color: inherit; cursor: pointer; font-size: 0.85rem; line-height: 1; padding: 0 2px; }
+    .sc-chip-clear { font-size: 0.72rem; color: var(--text-secondary); cursor: pointer; text-decoration: underline; }
+    .sc-empty { padding: 60px 20px; text-align: center; color: var(--text-secondary); font-size: 0.9rem; }
+
+    /* Grouped sticky-header table */
+    .sc-table-wrap { overflow: auto; max-height: calc(100vh - 260px); border: 1px solid var(--border-medium); border-radius: 8px; }
+    .sc-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .sc-table th, .sc-table td { padding: 6px 8px; border-bottom: 1px solid var(--border-subtle); white-space: nowrap; }
+    .sc-table th { position: sticky; background: var(--surface-raised); z-index: 2; text-align: center; }
+    .sc-table thead tr:first-child th { z-index: 3; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-secondary); border-bottom: 1px solid var(--border-medium); }
+    .sc-table thead tr:nth-child(2) th { font-weight: 700; color: var(--text-primary); cursor: pointer; user-select: none; }
+    .sc-table thead tr:nth-child(2) th:hover { color: var(--accent-cyan); }
+    .sc-table thead tr:nth-child(3) th { z-index: 2; }
+    .sc-table th.grp-leadership { background: rgba(103,232,224,0.10); }
+    .sc-table th.grp-maintenance { background: rgba(251,191,36,0.10); }
+    .sc-table th.id-col, .sc-table td.id-col { text-align: left; }
+    .sc-table td.id-col.name-col { font-weight: 600; color: var(--text-primary); }
+    .sc-table tbody tr { cursor: pointer; }
+    .sc-table tbody tr:hover td { background: var(--hover-bg-strong); }
+    .sc-table td.notes-col { text-align: left; max-width: 220px; overflow: hidden; text-overflow: ellipsis; color: var(--text-secondary); }
+    .sort-arrow { font-size: 0.62rem; color: var(--accent-cyan); margin-left: 3px; }
+
+    /* Overall Score -- deliberately oversized so it pops next to RM */
+    .sc-overall-header { font-size: 0.82rem !important; color: var(--accent-cyan) !important; }
+    .sc-overall-cell { font-family: Consolas, monospace; font-weight: 800; font-size: 1.25rem; color: var(--accent-cyan); text-align: center; }
+
+    /* Override slideout (mirrors PDM's .detail-value / .override-check pattern) */
+    .sc-detail-overall { font-family: Consolas, monospace; font-weight: 800; font-size: 1.6rem; color: var(--accent-cyan); }
+    .sc-rmscore-header { cursor: default; flex-wrap: wrap; }
+
+    /* Light/Medium theme -- the shared --accent-cyan (light teal) is too
+       washed out against these lighter backgrounds; darken it for every
+       cyan-colored element in this module, including the shared
+       .popout-section-title (LEADERSHIP/MAINTENANCE/RM SCORE headers),
+       scoped to #scDetailContent so it doesn't affect other modules. */
+    [data-theme="medium"] .sc-overall-header, [data-theme="light"] .sc-overall-header,
+    [data-theme="medium"] .sc-overall-cell, [data-theme="light"] .sc-overall-cell,
+    [data-theme="medium"] .sc-detail-overall, [data-theme="light"] .sc-detail-overall,
+    [data-theme="medium"] .sc-chip, [data-theme="light"] .sc-chip,
+    [data-theme="medium"] .sort-arrow, [data-theme="light"] .sort-arrow,
+    [data-theme="medium"] .sc-stat.clickable.active .v, [data-theme="light"] .sc-stat.clickable.active .v {
+        color: #0f766e !important;
+    }
+    [data-theme="medium"] #scDetailContent .popout-section-title,
+    [data-theme="light"] #scDetailContent .popout-section-title {
+        color: #0f766e;
+    }
+    .sc-rmscore-header .sc-measure-value { flex-shrink: 0; }
+    .sc-quarter-badge { display: inline-block; font-weight: 800; color: #1a1200; background: #ffb300; padding: 1px 8px; border-radius: 4px; }
+    .sc-override-by { font-size: 0.68rem; color: #ff9800; margin-left: 8px; white-space: nowrap; }
+    .sc-blurb-toggle { align-self: flex-start; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-secondary); padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; }
+    .sc-blurb-toggle:hover { border-color: var(--accent-cyan); color: var(--text-primary); }
+    .sc-blurb { font-size: 0.7rem; color: var(--text-secondary); line-height: 1.4; margin-top: 2px; max-width: 260px; white-space: normal; display: none; }
+    #scDetailContent.blurbs-on .sc-blurb { display: block; }
+
+    .sc-dd-icon { cursor: pointer; opacity: 0.7; font-size: 1.2rem; }
+    .sc-dd-icon:hover { opacity: 1; }
+    .sc-dd-overlay {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+        z-index: 1000; align-items: center; justify-content: center;
+    }
+    .sc-dd-overlay.open { display: flex; }
+    .sc-dd-modal {
+        background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 8px;
+        width: 90vw; max-width: 1200px; height: 85vh; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .sc-dd-header {
+        display: flex; align-items: flex-start; justify-content: space-between;
+        padding: 12px 16px; border-bottom: 1px solid var(--border-input); flex-shrink: 0;
+    }
+    .sc-dd-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+    .sc-dd-subtitle { font-size: 0.75rem; color: var(--text-secondary); margin-top: 3px; }
+    .sc-dd-rule { margin-top: 6px; font-size: 0.75rem; color: var(--text-primary); max-width: 640px; line-height: 1.4; }
+    .sc-dd-lineage-toggle { margin-top: 6px; background: none; border: none; color: var(--accent-cyan); font-size: 0.7rem; cursor: pointer; padding: 0; }
+    .sc-dd-lineage-toggle:hover { text-decoration: underline; }
+    .sc-dd-lineage { margin-top: 4px; font-size: 0.72rem; color: var(--text-secondary); background: var(--input-bg); border: 1px solid var(--border-input); border-radius: 4px; padding: 6px 10px; max-width: 640px; }
+    .sc-dd-close { background: none; border: none; color: var(--text-secondary); font-size: 1.4rem; line-height: 1; cursor: pointer; }
+    .sc-dd-close:hover { color: var(--text-primary); }
+    .sc-dd-toolbar { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--border-input); flex-shrink: 0; }
+    .sc-dd-combo { position: relative; flex: 0 0 260px; }
+    .sc-dd-search { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 5px 8px; border-radius: 4px; font-size: 0.8rem; }
+    .sc-dd-combo-list {
+        display: none; position: absolute; top: calc(100% + 2px); left: 0; right: 0; z-index: 10;
+        max-height: 260px; overflow-y: auto; background: var(--surface-raised); border: 1px solid var(--border-input);
+        border-radius: 4px; box-shadow: 0 8px 24px var(--shadow-overlay);
+    }
+    .sc-dd-combo-list.open { display: block; }
+    .sc-dd-combo-item { padding: 5px 10px; font-size: 0.78rem; color: var(--text-primary); cursor: pointer; white-space: nowrap; }
+    .sc-dd-combo-item:hover { background: var(--input-bg); }
+    .sc-dd-combo-item.active { background: var(--accent-cyan); color: #fff; }
+    .sc-dd-combo-item.sc-dd-combo-empty { color: var(--text-secondary); cursor: default; font-style: italic; }
+    .sc-dd-combo-item.sc-dd-combo-empty:hover { background: none; }
+    .sc-dd-count { font-size: 0.75rem; color: var(--text-secondary); }
+    .sc-dd-legend { display: flex; align-items: center; gap: 5px; font-size: 0.72rem; color: var(--text-secondary); }
+    .sc-dd-legend-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: rgba(220, 53, 69, 0.5); box-shadow: inset 2px 0 0 #dc3545; }
+    .sc-dd-export-btn { margin-left: auto; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-secondary); padding: 5px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; }
+    .sc-dd-export-btn:hover { border-color: var(--accent-cyan); color: var(--text-primary); }
+    .sc-dd-table-wrap { flex: 1; overflow: auto; }
+    .sc-dd-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .sc-dd-table thead th {
+        position: sticky; top: 0; background: var(--surface-raised); border-bottom: 1px solid var(--border-input);
+        text-align: left; padding: 6px 10px; white-space: nowrap; z-index: 1;
+    }
+    .sc-dd-table tbody td { padding: 5px 10px; border-bottom: 1px solid var(--border-input); white-space: nowrap; color: var(--text-primary); }
+    .sc-dd-table tbody tr:hover td { background: var(--input-bg); }
+    .sc-dd-fail-row td { background: rgba(220, 53, 69, 0.16); box-shadow: inset 3px 0 0 #dc3545; }
+    .sc-dd-fail-row:hover td { background: rgba(220, 53, 69, 0.26); }
+    .sc-dd-empty { text-align: center; color: var(--text-secondary); padding: 24px !important; white-space: normal !important; }
+    .sc-notes-input { width: 100%; box-sizing: border-box; min-height: 70px; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 8px; border-radius: 4px; font-size: 0.8rem; font-family: inherit; resize: vertical; }
+    .sc-notes-meta { font-size: 0.68rem; color: var(--text-secondary); margin-top: 6px; }
+    .sc-notes-actions { display: flex; gap: 8px; margin-top: 8px; }
+    .sc-measure-value { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .sc-measure-value select { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 4px 6px; border-radius: 4px; font-size: 0.78rem; }
+    .sc-measure-value select option { background: var(--surface-raised); color: var(--text-primary); }
+    .sc-measure-value select.mv-pass { background: rgba(74,222,128,0.18); color: #4ade80; border-color: rgba(74,222,128,0.4); }
+    .sc-measure-value select.mv-fail { background: rgba(243,139,168,0.2); color: #f38ba8; border-color: rgba(243,139,168,0.4); }
+    .sc-measure-value select.mv-empty { background: rgba(251,191,36,0.18); color: #fbbf24; border-color: rgba(251,191,36,0.4); }
+    .sc-override-wrap { display: flex; align-items: center; gap: 4px; font-size: 0.66rem; color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
+    .sc-override-check { width: 14px; height: 14px; accent-color: #ff9800; cursor: pointer; }
+    .sc-override-wrap.active { color: #ff9800; font-weight: 700; }
+    .sc-readonly-val { font-family: Consolas, monospace; font-weight: 700; color: var(--text-primary); flex-shrink: 0; padding: 2px 8px; border-radius: 4px; }
+    .sc-readonly-val.mv-pass { color: #4ade80; background: rgba(74,222,128,0.16); }
+    .sc-readonly-val.mv-fail { color: #f38ba8; background: rgba(243,139,168,0.18); }
+    .sc-readonly-val.mv-empty { color: #fbbf24; background: rgba(251,191,36,0.16); }
+
+    /* Light theme -- the dark-theme colors above are too washed out against
+       a light background; darker, more saturated equivalents needed for
+       real contrast (same approach as apphub.css's existing light/medium
+       overrides elsewhere, e.g. .validation-warnings). */
+    [data-theme="light"] .sc-measure-value select.mv-pass,
+    [data-theme="light"] .sc-readonly-val.mv-pass {
+        color: #15803d; background: rgba(21,128,61,0.14); border-color: rgba(21,128,61,0.4);
+    }
+    [data-theme="light"] .sc-measure-value select.mv-fail,
+    [data-theme="light"] .sc-readonly-val.mv-fail {
+        color: #b91c1c; background: rgba(185,28,28,0.14); border-color: rgba(185,28,28,0.4);
+    }
+    [data-theme="light"] .sc-measure-value select.mv-empty,
+    [data-theme="light"] .sc-readonly-val.mv-empty {
+        color: #92400e; background: rgba(146,64,14,0.14); border-color: rgba(146,64,14,0.4);
+    }
+    [data-theme="light"] .sc-override-wrap.active,
+    [data-theme="light"] .sc-override-by {
+        color: #b45309;
+    }
+
+    /* Medium theme -- override slideout controls: darker font only, no
+       tinted background (per feedback). The tiny main-grid P/F chips are a
+       DIFFERENT case -- at that size, font color alone was nearly invisible
+       against the grid's own background, so those keep a strong tinted fill
+       plus bold text (see .sc-chip-pass/.sc-chip-fail overrides below). */
+    [data-theme="medium"] .sc-measure-value select.mv-pass,
+    [data-theme="medium"] .sc-readonly-val.mv-pass {
+        color: #15803d; background: var(--input-bg); border-color: var(--border-input);
+    }
+    [data-theme="medium"] .sc-measure-value select.mv-fail,
+    [data-theme="medium"] .sc-readonly-val.mv-fail {
+        color: #b91c1c; background: var(--input-bg); border-color: var(--border-input);
+    }
+    [data-theme="medium"] .sc-measure-value select.mv-empty,
+    [data-theme="medium"] .sc-readonly-val.mv-empty {
+        color: #92400e; background: var(--input-bg); border-color: var(--border-input);
+    }
+    [data-theme="medium"] .sc-override-wrap.active,
+    [data-theme="medium"] .sc-override-by {
+        color: #b45309;
+    }
+
+    .sc-bool-cell { text-align: center; }
+    .sc-chip-pass { display: inline-block; min-width: 48px; padding: 1px 7px; border-radius: 3px; font-family: Consolas, monospace; font-weight: 700; background: rgba(74,222,128,0.16); color: #4ade80; text-align: center; }
+    .sc-chip-fail { display: inline-block; min-width: 48px; padding: 1px 7px; border-radius: 3px; font-family: Consolas, monospace; font-weight: 700; background: rgba(243,139,168,0.18); color: #f38ba8; text-align: center; }
+    [data-theme="medium"] .sc-chip-pass, [data-theme="light"] .sc-chip-pass {
+        color: #ffffff; background: #8ac09e; font-weight: 800;
+    }
+    [data-theme="medium"] .sc-chip-fail, [data-theme="light"] .sc-chip-fail {
+        color: #ffffff; background: #dc8e8e; font-weight: 800;
+    }
+    .sc-chip-na { color: var(--text-secondary); }
+    .sc-table td.sc-overridden { box-shadow: inset 0 0 0 2px #ff9800; }
+    .sc-total-val { font-family: Consolas, monospace; font-weight: 700; color: var(--text-primary); }
+    .sc-prior-val { font-family: Consolas, monospace; font-size: 0.72rem; color: var(--accent-gold); }
+    .sc-prior-col { background: rgba(251,191,36,0.06); }
+
+    /* Excel-style column filter (shared floating menu, same pattern as edm.html) */
+    .col-search-wrap { position: relative; }
+    .col-filter-btn { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 3px 5px; border-radius: 4px; font-size: 0.66rem; font-weight: normal; text-align: left; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 4px; text-transform: none; letter-spacing: normal; }
+    .col-filter-btn:hover { border-color: var(--accent-cyan); }
+    .col-filter-caret { font-size: 0.55rem; color: var(--text-secondary); flex-shrink: 0; }
+    .col-filter-menu { display: none; position: fixed; z-index: 500; min-width: 190px; max-width: 300px; background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 4px; box-shadow: 0 8px 24px var(--shadow-overlay); text-transform: none; letter-spacing: normal; font-weight: normal; }
+    .col-filter-menu.open { display: block; }
+    .col-filter-search { padding: 6px; border-bottom: 1px solid var(--border-subtle); }
+    .col-filter-search input { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 4px 6px; border-radius: 4px; font-size: 0.7rem; }
+    .col-filter-all-row { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--border-subtle); cursor: pointer; font-size: 0.7rem; color: var(--text-primary); }
+    .col-filter-list { max-height: 220px; overflow-y: auto; }
+    .col-filter-item { display: flex; align-items: center; gap: 6px; padding: 4px 8px; font-size: 0.7rem; color: var(--text-primary); cursor: pointer; white-space: nowrap; }
+    .col-filter-item:hover { background: var(--hover-bg-strong); }
+    .col-filter-item input, .col-filter-all-row input { flex-shrink: 0; cursor: pointer; }
+    .col-filter-item span { overflow: hidden; text-overflow: ellipsis; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="content-header">
+    <div class="header-left">
+        <i class="fa-solid fa-award" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
+        <span class="page-title">Leadership Scorecard</span>
+        <span class="page-subtitle" id="scQuarterLabel">Loading...</span>
+    </div>
+</div>
+
+<div class="sc-container">
+
+    <div class="sc-ribbon">
+        <div class="sc-stat">
+            <span class="k">Communities</span>
+            <span class="v" id="statCommunities">--</span>
+        </div>
+        <div class="sc-stat clickable" id="statInputsBtn" onclick="toggleQuickFilter('needsInput')">
+            <span class="k">RM Inputs Saved</span>
+            <span class="v" id="statInputs">--</span>
+        </div>
+        <div class="sc-stat clickable" id="statCommentsBtn" onclick="toggleQuickFilter('hasNotes')">
+            <span class="k">Comments</span>
+            <span class="v" id="statComments">--</span>
+        </div>
+        <div class="sc-toolbar">
+            <label class="sc-q1-toggle">
+                <input type="checkbox" id="q1ToggleCb" onchange="toggleQ1History(this.checked)">
+                Show prior quarter totals
+            </label>
+            <input type="text" class="sc-search" id="scSearch" placeholder="Search property, entity, or RM..." oninput="onSearchInput(this.value)">
+        </div>
+    </div>
+
+    <div class="sc-chipbar" id="scChipBar" style="display:none;"></div>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="scTable">
+            <thead id="scThead"></thead>
+            <tbody id="scTbody"></tbody>
+        </table>
+    </div>
+    <div class="sc-empty" id="scEmpty" style="display:none;">No properties match the current filters.</div>
+
+</div>
+
+<!-- Per-property override slideout -- mirrors PDM's .popout-overlay structure -->
+<div class="popout-overlay" id="scDetailPanel">
+    <div class="popout-resize-handle" id="scDetailResize"></div>
+    <button class="popout-close-btn" onclick="closeScDetail()">&times;</button>
+    <div class="popout-sticky-header">
+        <div class="popout-title" id="scDetailTitle"></div>
+        <div class="popout-subtitle" id="scDetailSubtitle"></div>
+        <div class="popout-subtitle">Overall Score: <span class="sc-detail-overall" id="scDetailOverall">--</span></div>
+        <button type="button" class="sc-blurb-toggle" id="scBlurbToggleBtn" onclick="toggleBlurbs()">Show explanations</button>
+    </div>
+    <div class="popout-scroll" id="scDetailContent"></div>
+</div>
+
+<!-- Drill-down evidence modal -- shows the raw WH_PROD2 rows behind a measure -->
+<div class="sc-dd-overlay" id="scDrilldownOverlay">
+    <div class="sc-dd-modal">
+        <div class="sc-dd-header">
+            <div>
+                <div class="sc-dd-title" id="scDdTitle"></div>
+                <div class="sc-dd-subtitle" id="scDdSubtitle"></div>
+                <div class="sc-dd-rule" id="scDdRule" style="display:none;"></div>
+                <button type="button" class="sc-dd-lineage-toggle" id="scDdLineageToggle" onclick="toggleDdLineage()">Show data source &#9662;</button>
+                <div class="sc-dd-lineage" id="scDdLineage" style="display:none;"></div>
+            </div>
+            <button type="button" class="sc-dd-close" onclick="closeDrilldown()">&times;</button>
+        </div>
+        <div class="sc-dd-toolbar">
+            <div class="sc-dd-combo" id="scDdCombo">
+                <input type="text" id="scDdPropertyInput" class="sc-dd-search" placeholder="All Properties"
+                    autocomplete="off" oninput="onDdPropertyInput()" onfocus="onDdPropertyInput()">
+                <div class="sc-dd-combo-list" id="scDdPropertyList"></div>
+            </div>
+            <span class="sc-dd-legend"><span class="sc-dd-legend-swatch"></span>Fails the business rule</span>
+            <span id="scDdCount" class="sc-dd-count"></span>
+            <button type="button" class="sc-dd-export-btn" onclick="exportDrilldownExcel()">&#128190; Export</button>
+        </div>
+        <div class="sc-dd-table-wrap">
+            <table class="sc-dd-table" id="scDdTable">
+                <thead id="scDdThead"></thead>
+                <tbody id="scDdTbody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+window.SC_MEASURE_DEFS = {{ measure_defs | tojson }};
+window.SC_IS_ADMIN = {{ 'true' if is_admin else 'false' }};
+</script>
+<script>
+const ID_COLS = [
+    { key: 'PROPERTY_NAME', label: 'Property', type: 'text', css: 'name-col' },
+    { key: 'ENTITY_NUMBER', label: 'Entity', type: 'text' },
+    { key: 'RM_NAME', label: 'RM', type: 'text' },
+];
+const OVERALL_COL = { key: 'OVERALL', label: 'Overall Score', type: 'total' };
+const LEADERSHIP_COLS = [
+    { key: 'TC', label: 'Timecard', type: 'bool' },
+    { key: 'TR', label: 'Training', type: 'bool' },
+    { key: 'PCARD', label: 'PPV / PCard', type: 'bool' },
+    { key: 'RA', label: 'Risk Assmt', type: 'bool' },
+    { key: 'IIPP', label: 'IIPP', type: 'bool' },
+    { key: 'LFA', label: 'Lease File Audit', type: 'bool' },
+    { key: 'PMLEO', label: 'PM LEO', type: 'bool' },
+    { key: 'REP', label: 'Reputation', type: 'bool' },
+    { key: 'WO', label: 'Work Orders', type: 'bool' },
+    { key: 'RMSCORE', label: 'RM Score', type: 'num' },
+    { key: 'PRERM', label: 'Pre-RM', type: 'total' },
+    { key: 'LDRTOTAL', label: 'Leadership Total', type: 'total' },
+];
+const MAINT_COLS = [
+    { key: 'MSLEO', label: 'MS LEO', type: 'bool' },
+    { key: 'CURB', label: 'Curb Appeal', type: 'bool' },
+    { key: 'PUBLICAREAS', label: 'Public Areas', type: 'bool' },
+    { key: 'MAINT', label: 'Maintenance', type: 'bool' },
+    { key: 'LOGS', label: 'Logs & Binders', type: 'bool' },
+    { key: 'MSWO', label: 'Work Orders', type: 'bool' },
+    { key: 'SURVEYS', label: 'Surveys', type: 'bool' },
+    { key: 'NOI', label: 'NOI', type: 'bool' },
+    { key: 'MSTOTAL', label: 'Maintenance Total', type: 'total' },
+];
+const NOTES_COL = { key: 'NOTES', label: 'Notes', type: 'text' };
+const ALL_COLS = [...ID_COLS, OVERALL_COL, ...LEADERSHIP_COLS, ...MAINT_COLS, NOTES_COL];
+const COL_BY_KEY = Object.fromEntries(ALL_COLS.map(c => [c.key, c]));
+// Measures with a backend drill-down (mirrors _MEASURE_TO_DRILLDOWN_GROUP in scorecard.py).
+// SURVEYS has no source table yet, so it's intentionally excluded.
+const DRILLDOWN_KEYS = new Set(['TC', 'TR', 'PCARD', 'RA', 'IIPP', 'LFA', 'PMLEO', 'MSLEO', 'REP', 'WO', 'MSWO', 'CURB', 'PUBLICAREAS', 'MAINT', 'LOGS', 'NOI']);
+
+let allRows = [];
+let priorByPropertyKey = {};
+let colFilters = {};      // key -> Set of allowed display-values, or undefined/null = "All"
+let searchQuery = '';
+let quickFilters = { needsInput: false, hasNotes: false };
+let sort = { col: null, dir: 1 };
+let showPrior = false;
+
+function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function displayVal(col, row) {
+    const v = row[col.key];
+    if (col.type === 'bool') return v === null || v === undefined ? '--' : (v ? 'Pass' : 'Fail');
+    if (v === null || v === undefined || v === '') return '--';
+    return String(v);
+}
+
+async function loadData() {
+    const resp = await fetch('/scorecard/api/data?prior=1');
+    const data = await resp.json();
+    allRows = data.rows || [];
+    priorByPropertyKey = {};
+    if (data.prior_quarter && data.prior_quarter.rows) {
+        data.prior_quarter.rows.forEach(r => { priorByPropertyKey[r.PROPERTY_KEY] = r; });
+    }
+    document.getElementById('scQuarterLabel').innerHTML = data.quarter_label
+        ? `<span class="sc-quarter-badge">${esc(data.quarter_label)}</span> -- ${data.is_admin ? 'All Properties (Admin)' : 'My Portfolio'}`
+        : 'No data available yet';
+    render();
+}
+
+function passesFilters(row) {
+    for (const [key, sel] of Object.entries(colFilters)) {
+        if (!sel) continue; // "All" selected
+        const col = COL_BY_KEY[key];
+        if (!sel.has(displayVal(col, row))) return false;
+    }
+    if (searchQuery) {
+        const hay = `${row.PROPERTY_NAME || ''} ${row.ENTITY_NUMBER || ''} ${row.RM_NAME || ''}`.toLowerCase();
+        if (!hay.includes(searchQuery.toLowerCase())) return false;
+    }
+    if (quickFilters.needsInput) {
+        if (row.RMSCORE !== null && row.SURVEYS !== null && row.NOI !== null) return false;
+    }
+    if (quickFilters.hasNotes) {
+        if (!row.NOTES) return false;
+    }
+    return true;
+}
+
+function getFilteredSorted() {
+    let rows = allRows.filter(passesFilters);
+    if (sort.col) {
+        const col = COL_BY_KEY[sort.col];
+        rows = [...rows].sort((a, b) => {
+            let av = a[sort.col], bv = b[sort.col];
+            if (col.type === 'text') { av = (av || '').toLowerCase(); bv = (bv || '').toLowerCase(); }
+            if (av === bv) return 0;
+            if (av === null || av === undefined) return 1;
+            if (bv === null || bv === undefined) return -1;
+            return (av > bv ? 1 : -1) * sort.dir;
+        });
+    }
+    return rows;
+}
+
+function distinctColValues(col) {
+    const set = new Set(allRows.map(r => displayVal(col, r)));
+    return [...set].sort();
+}
+
+function colFilterLabel(col) {
+    const sel = colFilters[col.key];
+    if (!sel) return 'All';
+    const all = distinctColValues(col);
+    return sel.size === all.length ? 'All' : `${sel.size} selected`;
+}
+
+function renderHeader() {
+    const thead = document.getElementById('scThead');
+    const groupRow = `<tr>
+        <th class="id-col" colspan="${ID_COLS.length + 1}"></th>
+        <th class="grp-leadership" colspan="${LEADERSHIP_COLS.length}">Leadership</th>
+        <th class="grp-maintenance" colspan="${MAINT_COLS.length + (showPrior ? 1 : 0)}">Maintenance</th>
+        <th></th>
+    </tr>`;
+    const labelRow = `<tr>
+        ${ID_COLS.map(c => `<th class="id-col" onclick="sortCol('${c.key}')">${esc(c.label)}${sortArrow(c.key)}</th>`).join('')}
+        <th class="sc-overall-header" onclick="sortCol('OVERALL')">${esc(OVERALL_COL.label)}${sortArrow('OVERALL')}</th>
+        ${LEADERSHIP_COLS.map(c => `<th onclick="sortCol('${c.key}')" title="${esc(blurbFor(c.key))}">${esc(c.label)}${sortArrow(c.key)}${ddIconHtml(c)}</th>`).join('')}
+        ${showPrior ? `<th class="sc-prior-col">Prior Ldr Total</th>` : ''}
+        ${MAINT_COLS.map(c => `<th onclick="sortCol('${c.key}')" title="${esc(blurbFor(c.key))}">${esc(c.label)}${sortArrow(c.key)}${ddIconHtml(c)}</th>`).join('')}
+        ${showPrior ? `<th class="sc-prior-col">Prior Maint Total</th>` : ''}
+        <th onclick="sortCol('NOTES')">Notes${sortArrow('NOTES')}</th>
+    </tr>`;
+    const filterRow = `<tr class="col-search-row">
+        ${ID_COLS.map(c => filterCellHtml(c)).join('')}
+        ${filterCellHtml(OVERALL_COL)}
+        ${LEADERSHIP_COLS.map(c => filterCellHtml(c)).join('')}
+        ${showPrior ? `<th></th>` : ''}
+        ${MAINT_COLS.map(c => filterCellHtml(c)).join('')}
+        ${showPrior ? `<th></th>` : ''}
+        ${filterCellHtml(NOTES_COL)}
+    </tr>`;
+    thead.innerHTML = groupRow + labelRow + filterRow;
+    applyStickyHeaderOffsets();
+}
+
+function applyStickyHeaderOffsets() {
+    // Row heights vary with font/content (e.g. wrapped labels, filter buttons),
+    // so hardcoded CSS `top` values drift and cause rows to overlap/hide each
+    // other on scroll -- measure actual rendered heights instead.
+    const thead = document.getElementById('scThead');
+    const rows = thead.rows;
+    let offset = 0;
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        Array.from(row.cells).forEach(cell => { cell.style.top = offset + 'px'; });
+        offset += row.offsetHeight;
+    }
+}
+
+function ddIconHtml(c) {
+    if (!DRILLDOWN_KEYS.has(c.key)) return '';
+    return ` <span class="sc-dd-icon" title="View underlying records" onclick="event.stopPropagation(); openDrilldown('${c.key}')">&#128269;</span>`;
+}
+
+function blurbFor(key) {
+    const m = window.SC_MEASURE_DEFS.find(x => x.key === key);
+    return m ? m.blurb : '';
+}
+
+function filterCellHtml(c) {
+    return `<th class="col-search-th">
+        <div class="col-search-wrap">
+            <button type="button" class="col-filter-btn" id="colFilterBtn_${c.key}" onclick="event.stopPropagation(); toggleColFilterMenu('${c.key}', this)">
+                <span id="colFilterLbl_${c.key}">${colFilterLabel(c)}</span> <span class="col-filter-caret">&#9662;</span>
+            </button>
+        </div>
+    </th>`;
+}
+
+function sortArrow(key) {
+    if (sort.col !== key) return '';
+    return `<span class="sort-arrow">${sort.dir === 1 ? '\u25B2' : '\u25BC'}</span>`;
+}
+
+function sortCol(key) {
+    sort.dir = (sort.col === key) ? -sort.dir : 1;
+    sort.col = key;
+    render();
+}
+
+function renderBody(rows) {
+    const tbody = document.getElementById('scTbody');
+    tbody.innerHTML = rows.map(row => {
+        const idCells = ID_COLS.map(c => `<td class="id-col ${c.css || ''}">${esc(row[c.key] || '--')}</td>`).join('');
+        const overallCell = `<td class="sc-overall-cell">${row.OVERALL ?? '--'}</td>`;
+        const ldrCells = LEADERSHIP_COLS.map(c => cellHtml(c, row)).join('');
+        const priorLdr = showPrior ? `<td class="sc-prior-val sc-prior-col">${priorByPropertyKey[row.PROPERTY_KEY]?.LDRTOTAL ?? '--'}</td>` : '';
+        const maintCells = MAINT_COLS.map(c => cellHtml(c, row)).join('');
+        const priorMaint = showPrior ? `<td class="sc-prior-val sc-prior-col">${priorByPropertyKey[row.PROPERTY_KEY]?.MSTOTAL ?? '--'}</td>` : '';
+        const notesCell = `<td class="notes-col" title="${esc(row.NOTES || '')}">${esc(row.NOTES || '--')}</td>`;
+        return `<tr onclick="openScDetail(${row.PROPERTY_KEY})">${idCells}${overallCell}${ldrCells}${priorLdr}${maintCells}${priorMaint}${notesCell}</tr>`;
+    }).join('');
+}
+
+function cellHtml(c, row) {
+    const v = row[c.key];
+    const isLocked = !!row[`${c.key}_LOCKED`];
+    const lockedCls = isLocked ? ' sc-overridden' : '';
+    const lockedBy = row[`${c.key}_LOCKED_BY`];
+    const reasonTxt = row[`${c.key}_REASON`];
+    const titleAttr = isLocked && lockedBy
+        ? ` title="Overridden by ${esc(lockedBy)}${reasonTxt ? ' -- ' + esc(reasonTxt) : ''}"`
+        : '';
+    if (c.type === 'bool') {
+        if (v === null || v === undefined) return `<td class="sc-chip-na sc-bool-cell${lockedCls}"${titleAttr}>--</td>`;
+        return `<td class="sc-bool-cell${lockedCls}"${titleAttr}>${v ? '<span class="sc-chip-pass">P</span>' : '<span class="sc-chip-fail">F</span>'}</td>`;
+    }
+    if (c.type === 'total' || c.type === 'num') {
+        return `<td class="sc-total-val${lockedCls}"${titleAttr}>${v === null || v === undefined ? '--' : v}</td>`;
+    }
+    return `<td class="${lockedCls.trim()}"${titleAttr}>${esc(v ?? '--')}</td>`;
+}
+
+function updateRibbon(rows) {
+    document.getElementById('statCommunities').textContent = `${rows.length} of ${allRows.length}`;
+    document.getElementById('statInputs').textContent = allRows.filter(r => r.RMSCORE !== null && r.SURVEYS !== null && r.NOI !== null).length;
+    document.getElementById('statComments').textContent = allRows.filter(r => r.NOTES).length;
+    document.getElementById('statInputsBtn').classList.toggle('active', quickFilters.needsInput);
+    document.getElementById('statCommentsBtn').classList.toggle('active', quickFilters.hasNotes);
+}
+
+function renderChipBar() {
+    const bar = document.getElementById('scChipBar');
+    const chips = [];
+    if (searchQuery) chips.push(`<span class="sc-chip">Search: "${esc(searchQuery)}" <button onclick="clearSearch()">&times;</button></span>`);
+    if (quickFilters.needsInput) chips.push(`<span class="sc-chip">Needs RM Input <button onclick="toggleQuickFilter('needsInput')">&times;</button></span>`);
+    if (quickFilters.hasNotes) chips.push(`<span class="sc-chip">Has Notes <button onclick="toggleQuickFilter('hasNotes')">&times;</button></span>`);
+    for (const [key, sel] of Object.entries(colFilters)) {
+        if (!sel) continue;
+        const col = COL_BY_KEY[key];
+        chips.push(`<span class="sc-chip">${esc(col.label)}: ${sel.size} selected <button onclick="clearColFilter('${key}')">&times;</button></span>`);
+    }
+    if (sort.col) chips.push(`<span class="sc-chip">Sort: ${esc(COL_BY_KEY[sort.col].label)} ${sort.dir === 1 ? 'A-Z' : 'Z-A'} <button onclick="clearSort()">&times;</button></span>`);
+    if (!chips.length) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+    bar.style.display = 'flex';
+    bar.innerHTML = chips.join('') + `<span class="sc-chip-clear" onclick="clearAllFilters()">Clear all</span>`;
+}
+
+function render() {
+    renderHeader();
+    const rows = getFilteredSorted();
+    renderBody(rows);
+    updateRibbon(rows);
+    renderChipBar();
+    document.getElementById('scEmpty').style.display = rows.length ? 'none' : 'block';
+    document.getElementById('scTable').style.display = rows.length ? '' : 'none';
+}
+
+function onSearchInput(val) { searchQuery = val; render(); }
+function clearSearch() { searchQuery = ''; document.getElementById('scSearch').value = ''; render(); }
+function toggleQuickFilter(name) { quickFilters[name] = !quickFilters[name]; render(); }
+function clearColFilter(key) { delete colFilters[key]; render(); }
+function clearSort() { sort = { col: null, dir: 1 }; render(); }
+function clearAllFilters() {
+    searchQuery = ''; document.getElementById('scSearch').value = '';
+    quickFilters = { needsInput: false, hasNotes: false };
+    colFilters = {}; sort = { col: null, dir: 1 };
+    render();
+}
+function toggleQ1History(checked) { showPrior = checked; render(); }
+
+// ── Excel-style shared floating column filter menu (same pattern as edm.html) ──
+const _sharedColFilterMenu = document.createElement('div');
+_sharedColFilterMenu.className = 'col-filter-menu';
+_sharedColFilterMenu.id = 'scSharedColFilterMenu';
+document.body.appendChild(_sharedColFilterMenu);
+
+function toggleColFilterMenu(key, btnEl) {
+    const menu = _sharedColFilterMenu;
+    const wasOpenForThis = menu.classList.contains('open') && menu.dataset.col === key;
+    closeColFilterMenus();
+    if (wasOpenForThis) return;
+    menu.dataset.col = key;
+    positionColFilterMenu(btnEl);
+    renderColFilterMenuContents(key);
+    menu.classList.add('open');
+}
+
+function positionColFilterMenu(btnEl) {
+    const menu = _sharedColFilterMenu;
+    const rect = btnEl.getBoundingClientRect();
+    const width = Math.max(rect.width, 190);
+    let left = Math.min(rect.left, window.innerWidth - width - 8);
+    let top = rect.bottom + 2;
+    if (top + 260 > window.innerHeight) top = Math.max(8, rect.top - 260);
+    menu.style.left = Math.max(8, left) + 'px';
+    menu.style.top = top + 'px';
+    menu.style.width = width + 'px';
+}
+
+function renderColFilterMenuContents(key) {
+    const col = COL_BY_KEY[key];
+    const menu = _sharedColFilterMenu;
+    const all = distinctColValues(col);
+    const sel = colFilters[key];
+    const isAllSelected = !sel;
+    menu.innerHTML = `
+        <div class="col-filter-search"><input type="text" placeholder="Filter list..." oninput="filterColFilterItems(this)"></div>
+        <label class="col-filter-all-row">
+            <input type="checkbox" data-col="${esc(key)}" data-role="all" ${isAllSelected ? 'checked' : ''}>
+            <strong>All</strong>
+        </label>
+        <div class="col-filter-list">
+            ${all.map(v => `<label class="col-filter-item">
+                <input type="checkbox" data-col="${esc(key)}" data-value="${esc(v)}" ${(isAllSelected || sel.has(v)) ? 'checked' : ''}>
+                <span>${esc(v)}</span>
+            </label>`).join('')}
+        </div>`;
+}
+
+function filterColFilterItems(inputEl) {
+    const q = inputEl.value.trim().toLowerCase();
+    const list = inputEl.closest('.col-filter-menu').querySelector('.col-filter-list');
+    list.querySelectorAll('.col-filter-item').forEach(el => {
+        el.style.display = (!q || el.textContent.toLowerCase().includes(q)) ? '' : 'none';
+    });
+}
+
+function closeColFilterMenus() { _sharedColFilterMenu.classList.remove('open'); }
+
+function toggleColFilterAll(key, checked) {
+    colFilters[key] = checked ? null : new Set();
+    afterColFilterChange(key);
+}
+
+function toggleColFilterValue(key, val, checked) {
+    const col = COL_BY_KEY[key];
+    const all = distinctColValues(col);
+    let sel = colFilters[key];
+    if (!sel) sel = new Set(all);
+    if (checked) sel.add(val); else sel.delete(val);
+    colFilters[key] = (sel.size === all.length) ? null : sel;
+    afterColFilterChange(key);
+}
+
+function afterColFilterChange(key) {
+    render();
+    const menu = _sharedColFilterMenu;
+    if (menu.classList.contains('open') && menu.dataset.col === key) {
+        const searchVal = menu.querySelector('.col-filter-search input')?.value || '';
+        renderColFilterMenuContents(key);
+        const newSearchInput = menu.querySelector('.col-filter-search input');
+        if (newSearchInput && searchVal) { newSearchInput.value = searchVal; filterColFilterItems(newSearchInput); }
+    }
+}
+
+document.addEventListener('change', e => {
+    const cb = e.target.closest('.col-filter-menu input[type=checkbox]');
+    if (!cb) return;
+    if (cb.dataset.role === 'all') toggleColFilterAll(cb.dataset.col, cb.checked);
+    else toggleColFilterValue(cb.dataset.col, cb.dataset.value, cb.checked);
+});
+document.addEventListener('pointerdown', e => {
+    if (e.target.closest('.col-search-wrap') || e.target.closest('.col-filter-menu')) return;
+    closeColFilterMenus();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeColFilterMenus(); });
+document.addEventListener('scroll', () => closeColFilterMenus(), true);
+window.addEventListener('resize', () => closeColFilterMenus());
+window.addEventListener('resize', () => applyStickyHeaderOffsets());
+
+// ── Per-property override slideout (mirrors PDM's popout + override-checkbox pattern) ──
+let scDetailPopout = null;
+let scDetailData = null;
+let scDetailBaseline = null;   // measure values as first loaded this session -- "the incoming value in the slideout"
+let blurbsVisible = false;
+
+function toggleBlurbs() {
+    blurbsVisible = !blurbsVisible;
+    document.getElementById('scDetailContent').classList.toggle('blurbs-on', blurbsVisible);
+    document.getElementById('scBlurbToggleBtn').textContent = blurbsVisible ? 'Hide explanations' : 'Show explanations';
+}
+
+let scDrilldownData = null;
+let scDdMeasureCode = null;
+let scDdSelectedProperty = null;   // null = All Properties
+let scDdSort = { col: null, dir: 1 };
+let scDdVisibleRows = [];
+
+function openDrilldown(measureCode) {
+    document.getElementById('scDrilldownOverlay').classList.add('open');
+    document.getElementById('scDdRule').style.display = 'none';
+    document.getElementById('scDdRule').textContent = '';
+    document.getElementById('scDdLineage').style.display = 'none';
+    document.getElementById('scDdLineage').textContent = '';
+    document.getElementById('scDdLineageToggle').textContent = 'Show data source \u25BE';
+    document.getElementById('scDdPropertyInput').value = '';
+    document.getElementById('scDdPropertyList').classList.remove('open');
+    scDdMeasureCode = measureCode;
+    scDdSelectedProperty = null;
+    scDdSort = { col: null, dir: 1 };
+    fetchDrilldownData();
+}
+
+function fetchDrilldownData() {
+    document.getElementById('scDdTitle').textContent = 'Loading...';
+    document.getElementById('scDdSubtitle').textContent = '';
+    document.getElementById('scDdThead').innerHTML = '';
+    document.getElementById('scDdTbody').innerHTML = '';
+    document.getElementById('scDdCount').textContent = '';
+    const qs = scDdSelectedProperty ? `?property=${encodeURIComponent(scDdSelectedProperty)}` : '';
+    fetch(`/scorecard/api/drilldown/${scDdMeasureCode}${qs}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById('scDdTitle').textContent = 'Unable to load';
+                document.getElementById('scDdSubtitle').textContent = data.error;
+                return;
+            }
+            scDrilldownData = data;
+            document.getElementById('scDdTitle').textContent = data.label.replace(/&amp;/g, '&');
+            document.getElementById('scDdSubtitle').textContent = data.quarter_label +
+                (data.truncated ? ` -- showing first ${data.rows.length} of ${data.total_rows} rows (use the property dropdown to narrow)` : ` -- ${data.total_rows} rows`);
+            const ruleBox = document.getElementById('scDdRule');
+            ruleBox.textContent = data.rule || '';
+            ruleBox.style.display = data.rule ? 'block' : 'none';
+            document.getElementById('scDdLineage').textContent = data.lineage || '';
+            renderDrilldownTable();
+        })
+        .catch(() => {
+            document.getElementById('scDdTitle').textContent = 'Unable to load';
+            document.getElementById('scDdSubtitle').textContent = 'Request failed -- please try again.';
+        });
+}
+
+function closeDrilldown() {
+    document.getElementById('scDrilldownOverlay').classList.remove('open');
+    document.getElementById('scDdPropertyList').classList.remove('open');
+    scDrilldownData = null;
+}
+
+function toggleDdLineage() {
+    const box = document.getElementById('scDdLineage');
+    const open = box.style.display !== 'none';
+    box.style.display = open ? 'none' : 'block';
+    document.getElementById('scDdLineageToggle').textContent = open ? 'Show data source \u25BE' : 'Hide data source \u25B4';
+}
+
+function ddPropertyList() {
+    if (!scDrilldownData) return [];
+    return scDrilldownData.properties || [];
+}
+
+function onDdPropertyInput() {
+    const q = (document.getElementById('scDdPropertyInput').value || '').toLowerCase();
+    const all = ddPropertyList();
+    const matches = q ? all.filter(p => p.toLowerCase().includes(q)) : all;
+    const list = document.getElementById('scDdPropertyList');
+    const allRow = `<div class="sc-dd-combo-item${scDdSelectedProperty ? '' : ' active'}" onclick="selectDdProperty(null)"><em>All Properties</em></div>`;
+    list.innerHTML = allRow + matches.map(p =>
+        `<div class="sc-dd-combo-item${p === scDdSelectedProperty ? ' active' : ''}" onclick="selectDdProperty('${esc(p).replace(/'/g, "\\'")}')">${esc(p)}</div>`
+    ).join('') || `<div class="sc-dd-combo-item sc-dd-combo-empty">No matching properties</div>`;
+    list.classList.add('open');
+}
+
+function selectDdProperty(name) {
+    scDdSelectedProperty = name;
+    document.getElementById('scDdPropertyInput').value = name || '';
+    document.getElementById('scDdPropertyList').classList.remove('open');
+    fetchDrilldownData();
+}
+
+document.addEventListener('pointerdown', e => {
+    if (e.target.closest('#scDdCombo')) return;
+    const list = document.getElementById('scDdPropertyList');
+    if (list) list.classList.remove('open');
+});
+
+function sortDdCol(col) {
+    scDdSort.dir = (scDdSort.col === col) ? -scDdSort.dir : 1;
+    scDdSort.col = col;
+    renderDrilldownTable();
+}
+
+function renderDrilldownTable() {
+    if (!scDrilldownData) return;
+    const { columns, rows } = scDrilldownData;
+    let filtered = rows;
+    if (scDdSort.col) {
+        const col = scDdSort.col, dir = scDdSort.dir;
+        filtered = filtered.slice().sort((a, b) => {
+            const av = a[col], bv = b[col];
+            if (av === null || av === undefined || av === '') return bv === null || bv === undefined || bv === '' ? 0 : 1;
+            if (bv === null || bv === undefined || bv === '') return -1;
+            const an = Number(av), bn = Number(bv);
+            const bothNumeric = !isNaN(an) && !isNaN(bn) && av !== '' && bv !== '';
+            if (bothNumeric) return dir * (an - bn);
+            return dir * String(av).localeCompare(String(bv));
+        });
+    }
+    document.getElementById('scDdThead').innerHTML = `<tr>${columns.map(c => {
+        const arrow = scDdSort.col === c ? `<span class="sort-arrow">${scDdSort.dir === 1 ? '\u25B2' : '\u25BC'}</span>` : '';
+        return `<th onclick="sortDdCol('${c.replace(/'/g, "\\'")}')">${esc(c)}${arrow}</th>`;
+    }).join('')}</tr>`;
+    if (!rows.length) {
+        document.getElementById('scDdTbody').innerHTML =
+            `<tr><td colspan="${columns.length}" class="sc-dd-empty">No records found for this quarter yet.</td></tr>`;
+        document.getElementById('scDdCount').textContent = '';
+        scDdVisibleRows = [];
+        return;
+    }
+    document.getElementById('scDdTbody').innerHTML = filtered.map(r =>
+        `<tr class="${r._fail ? 'sc-dd-fail-row' : ''}">${columns.map(c => `<td>${esc(r[c] ?? '--')}</td>`).join('')}</tr>`
+    ).join('') || `<tr><td colspan="${columns.length}" class="sc-dd-empty">No rows match this property.</td></tr>`;
+    document.getElementById('scDdCount').textContent = `${filtered.length} of ${rows.length} shown`;
+    scDdVisibleRows = filtered;
+}
+
+function ddExportDateStampET() {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date()).reduce((a, p) => { a[p.type] = p.value; return a; }, {});
+    return `${parts.year}${parts.month}${parts.day}`;
+}
+
+function exportDrilldownExcel() {
+    if (!scDrilldownData || !scDdVisibleRows.length) { alert('No rows to export.'); return; }
+    const { columns, label, lineage, quarter_label } = scDrilldownData;
+    const csvEscape = value => '"' + String(value ?? '').replace(/"/g, '""') + '"';
+    const lines = [
+        [label.replace(/&amp;/g, '&')],
+        ['Quarter', quarter_label],
+        ['Property', scDdSelectedProperty || 'All Properties'],
+        ['Source', lineage || ''],
+        ['Exported', new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }) + ' ET'],
+        [],
+        [...columns, 'Fails Business Rule'],
+        ...scDdVisibleRows.map(r => [...columns.map(c => r[c] ?? ''), r._fail ? 'Yes' : ''])
+    ];
+    const csv = lines.map(row => row.map(csvEscape).join(',')).join('\r\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const safeName = (scDdMeasureCode || 'measure').toLowerCase();
+    const filename = `scorecard_${safeName}_${ddExportDateStampET()}.csv`;
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    URL.revokeObjectURL(link.href);
+    link.remove();
+}
+
+function openScDetail(propertyKey) {
+    if (!scDetailPopout) {
+        scDetailPopout = window.initPopout({
+            overlayId: 'scDetailPanel', handleId: 'scDetailResize',
+            storageKey: 'sc_detail_w', minWidth: 420,
+        });
+    }
+    fetch(`/scorecard/api/property/${propertyKey}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { alert(data.error); return; }
+            scDetailData = data;
+            scDetailBaseline = {};
+            window.SC_MEASURE_DEFS.forEach(m => { scDetailBaseline[m.key] = data[m.key]; });
+            renderScDetail();
+            scDetailPopout.open();
+        });
+}
+
+function closeScDetail() {
+    if (scDetailPopout) scDetailPopout.close();
+}
+
+function renderScDetail() {
+    const d = scDetailData;
+    document.getElementById('scDetailTitle').textContent = d.PROPERTY_NAME || `Property ${d.PROPERTY_KEY}`;
+    document.getElementById('scDetailSubtitle').innerHTML = `Entity ${esc(d.ENTITY_NUMBER || '--')} \u00B7 ${esc(d.RM_NAME || '--')} \u00B7 <span class="sc-quarter-badge">${esc(d.QUARTER_YEAR || '')}</span>`;
+    document.getElementById('scDetailOverall').textContent = d.OVERALL ?? '--';
+
+    const leadership = window.SC_MEASURE_DEFS.filter(m => m.group === 'leadership' && m.key !== 'RMSCORE');
+    const maintenance = window.SC_MEASURE_DEFS.filter(m => m.group === 'maintenance');
+    document.getElementById('scDetailContent').innerHTML = `
+        ${rmScoreHeaderHtml(d)}
+        <div class="popout-section">
+            <div class="popout-section-header"><span class="popout-section-title">Leadership</span></div>
+            <div class="popout-section-body">${leadership.map(measureRowHtml).join('')}</div>
+        </div>
+        <div class="popout-section">
+            <div class="popout-section-header"><span class="popout-section-title">Maintenance</span></div>
+            <div class="popout-section-body">${maintenance.map(measureRowHtml).join('')}</div>
+        </div>
+        <div class="popout-section">
+            <div class="popout-section-header"><span class="popout-section-title">Notes</span></div>
+            <div class="popout-section-body">${notesSectionHtml(d)}</div>
+        </div>
+    `;
+    document.getElementById('scDetailContent').classList.toggle('blurbs-on', blurbsVisible);
+}
+
+function rmScoreHeaderHtml(d) {
+    const m = window.SC_MEASURE_DEFS.find(x => x.key === 'RMSCORE');
+    const val = d.RMSCORE;
+    const cls = measureValClass(m, val);
+    const updatedBy = d.RMSCORE_LOCKED_BY;
+    const byHtml = updatedBy ? `<span class="sc-override-by">Updated by ${esc(updatedBy)}</span>` : '';
+    if (!d.can_edit) {
+        const displayText = val === null || val === undefined ? '--' : val;
+        return `<div class="popout-section">
+            <div class="popout-section-header sc-rmscore-header">
+                <span class="popout-section-title">RM Score (0-5)</span>
+                <div class="sc-measure-value">
+                    <span class="sc-readonly-val ${cls}">${displayText}</span>
+                    ${byHtml}
+                </div>
+            </div>
+        </div>`;
+    }
+    const opts = measureOptions(m);
+    const optHtml = `<option value="">--</option>` + opts.map(([v, l]) => `<option value="${v}" ${val === v ? 'selected' : ''}>${esc(l)}</option>`).join('');
+    return `<div class="popout-section">
+        <div class="popout-section-header sc-rmscore-header">
+            <span class="popout-section-title">RM Score (0-5)</span>
+            <div class="sc-measure-value">
+                <select class="${cls}" onchange="saveScRmScore(this.value)">${optHtml}</select>
+                ${byHtml}
+            </div>
+        </div>
+    </div>`;
+}
+
+function saveScRmScore(valueStr) {
+    if (!scDetailData || valueStr === '') return;
+    const value = parseInt(valueStr, 10);
+    fetch(`/scorecard/api/properties/${scDetailData.PROPERTY_KEY}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ RMSCORE: value }),
+    }).then(r => r.json()).then(res => {
+        if (res.error) { alert(res.error); return; }
+        scDetailData.RMSCORE = value;
+        scDetailData.RMSCORE_LOCKED_BY = res.updated_by ?? scDetailData.RMSCORE_LOCKED_BY;
+        scDetailData.LDRTOTAL = res.ldrtotal; scDetailData.MSTOTAL = res.mstotal; scDetailData.OVERALL = res.overall;
+        document.getElementById('scDetailOverall').textContent = res.overall;
+        renderScDetail();
+        const row = allRows.find(r => r.PROPERTY_KEY === scDetailData.PROPERTY_KEY);
+        if (row) {
+            row.RMSCORE = value;
+            row.RMSCORE_LOCKED_BY = res.updated_by ?? row.RMSCORE_LOCKED_BY;
+            row.LDRTOTAL = res.ldrtotal; row.MSTOTAL = res.mstotal; row.OVERALL = res.overall;
+            render();
+        }
+    });
+}
+
+function notesSectionHtml(d) {
+    const meta = d.NOTE_BY ? `Last noted by ${esc(d.NOTE_BY)}${d.NOTE_AT ? ' on ' + esc(new Date(d.NOTE_AT).toLocaleDateString()) : ''}` : '';
+    if (!d.can_edit) {
+        return `<div class="sc-notes-meta">${d.NOTES ? esc(d.NOTES) : 'No note on this property.'}</div>
+                <div class="sc-notes-meta">${meta}</div>`;
+    }
+    return `
+        <textarea id="scNotesInput" class="sc-notes-input" placeholder="Add a note for this property...">${esc(d.NOTES || '')}</textarea>
+        <div class="sc-notes-meta">${meta}</div>
+        <div class="sc-notes-actions">
+            <button type="button" class="sc-blurb-toggle" onclick="saveScNotes()">Save Note</button>
+            <button type="button" class="sc-blurb-toggle" onclick="clearScNotes()">Clear</button>
+        </div>
+    `;
+}
+
+function saveScNotes() {
+    if (!scDetailData) return;
+    const val = document.getElementById('scNotesInput').value;
+    fetch(`/scorecard/api/notes/${scDetailData.PROPERTY_KEY}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: val }),
+    }).then(r => r.json()).then(res => {
+        if (res.error) { alert(res.error); return; }
+        scDetailData.NOTES = res.notes;
+        scDetailData.NOTE_BY = res.note_by;
+        scDetailData.NOTE_AT = res.note_by ? new Date().toISOString() : null;
+        renderScDetail();
+        const row = allRows.find(r => r.PROPERTY_KEY === scDetailData.PROPERTY_KEY);
+        if (row) { row.NOTES = res.notes; render(); }
+    });
+}
+
+function clearScNotes() {
+    if (!scDetailData) return;
+    if (!confirm('Clear the note for this property?')) return;
+    document.getElementById('scNotesInput').value = '';
+    saveScNotes();
+}
+
+function measureOptions(m) {
+    if (m.type === 'bool') return [[1, 'Pass'], [0, 'Fail']];
+    if (m.type === 'bool01') return [[1, 'Yes'], [0, 'No']];
+    return [0, 1, 2, 3, 4, 5].map(n => [n, String(n)]);
+}
+
+function measureValClass(m, val) {
+    if (val === null || val === undefined || val === '') return 'mv-empty';
+    if (m.type === 'num5') return '';
+    return val ? 'mv-pass' : 'mv-fail';
+}
+
+function measureRowHtml(m) {
+    const d = scDetailData;
+    const val = d[m.key];
+    const locked = !!d[`${m.key}_LOCKED`];
+    const cls = measureValClass(m, val);
+    const displayText = m.type === 'bool' ? (val === null ? '--' : (val ? 'Pass' : 'Fail'))
+        : m.type === 'bool01' ? (val === null ? '--' : (val ? 'Yes' : 'No'))
+        : (val === null || val === undefined ? '--' : val);
+
+    if (!d.can_edit) {
+        return `<div class="popout-row">
+            <div class="popout-label">${esc(m.label)}<div class="sc-blurb">${esc(m.blurb)}</div></div>
+            <div class="sc-readonly-val ${cls}">${displayText}</div>
+        </div>`;
+    }
+
+    const opts = measureOptions(m);
+    const optHtml = `<option value="">--</option>` + opts.map(([v, l]) => `<option value="${v}" ${val === v ? 'selected' : ''}>${esc(l)}</option>`).join('');
+    const lockedBy = d[`${m.key}_LOCKED_BY`];
+    const reasonTxt = d[`${m.key}_REASON`];
+    const byHtml = (locked && lockedBy)
+        ? `<span class="sc-override-by">Overridden by ${esc(lockedBy)}${reasonTxt ? ' -- ' + esc(reasonTxt) : ''}</span>`
+        : '';
+    return `<div class="popout-row">
+        <div class="popout-label">${esc(m.label)}<div class="sc-blurb">${esc(m.blurb)}</div></div>
+        <div class="sc-measure-value">
+            <select class="${cls}" onchange="saveScMeasure('${m.key}', this.value, this)">${optHtml}</select>
+            <label class="sc-override-wrap ${locked ? 'active' : ''}" title="Override: protect this value from being overwritten by the next pipeline run">
+                <input type="checkbox" class="sc-override-check" ${locked ? 'checked' : ''} onchange="toggleScOverride('${m.key}', this.checked)">
+                Override
+            </label>
+            ${byHtml}
+        </div>
+    </div>`;
+}
+
+function saveScMeasure(field, valueStr, selectEl) {
+    if (!scDetailData || valueStr === '') return;
+    const value = parseInt(valueStr, 10);
+    fetch(`/scorecard/api/properties/${scDetailData.PROPERTY_KEY}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+    }).then(r => r.json()).then(res => {
+        if (res.error) { alert(res.error); return; }
+        scDetailData[field] = value;
+        scDetailData.LDRTOTAL = res.ldrtotal; scDetailData.MSTOTAL = res.mstotal; scDetailData.OVERALL = res.overall;
+        document.getElementById('scDetailOverall').textContent = res.overall;
+        if (selectEl) {
+            const m = window.SC_MEASURE_DEFS.find(x => x.key === field);
+            selectEl.className = measureValClass(m, value);
+        }
+        const row = allRows.find(r => r.PROPERTY_KEY === scDetailData.PROPERTY_KEY);
+        if (row) { row[field] = value; row.LDRTOTAL = res.ldrtotal; row.MSTOTAL = res.mstotal; row.OVERALL = res.overall; render(); }
+
+        // Auto-manage the Override checkbox: checked when the picked value
+        // differs from what was showing when the slideout was opened
+        // ("the incoming value"), unchecked when it's set back to match.
+        const baselineVal = scDetailBaseline ? scDetailBaseline[field] : undefined;
+        const isLocked = !!scDetailData[`${field}_LOCKED`];
+        const shouldBeLocked = baselineVal !== undefined && value !== baselineVal;
+        if (shouldBeLocked !== isLocked) {
+            setScOverride(field, shouldBeLocked, null);
+        }
+    });
+}
+
+function toggleScOverride(field, enabled) {
+    if (!scDetailData) return;
+    let reason = null;
+    if (enabled) {
+        reason = prompt('Optional: reason for this override (e.g. "credit of 1 from Director of Operations Support")', '') || '';
+    }
+    setScOverride(field, enabled, reason);
+}
+
+function setScOverride(field, enabled, reason) {
+    if (!scDetailData) return;
+    fetch(`/scorecard/api/overrides/${scDetailData.PROPERTY_KEY}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field, enabled, reason }),
+    }).then(r => r.json()).then(res => {
+        if (res.error) { alert(res.error); return; }
+        scDetailData[`${field}_LOCKED`] = enabled;
+        scDetailData[`${field}_LOCKED_BY`] = res.locked_by ?? null;
+        scDetailData[`${field}_REASON`] = res.reason ?? null;
+        renderScDetail();
+        const row = allRows.find(r => r.PROPERTY_KEY === scDetailData.PROPERTY_KEY);
+        if (row) {
+            row[`${field}_LOCKED`] = enabled;
+            row[`${field}_LOCKED_BY`] = res.locked_by ?? null;
+            row[`${field}_REASON`] = res.reason ?? null;
+            render();
+        }
+    });
+}
+
+loadData();
+</script>
+{% endblock %}

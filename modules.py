@@ -28,6 +28,7 @@ APP_ID_MAP = {
     3: "prepaid_visa_compliance",
     5: "property_data_manager_pdm",
     2: "rm_inspections",
+    36: "leadership_scorecard",
 }
 
 # Reverse: string ID → App_ID
@@ -292,6 +293,16 @@ MODULES = [
         "description": "Regional manager property inspection tracking.",
         "type": "powerapps",
         "route": None,
+        "admin_only": False,
+    },
+    {
+        "id": "leadership_scorecard",
+        "name": "Leadership Scorecard",
+        "icon": "fa-solid fa-award",
+        "color": "#00a9c8",
+        "description": "Quarterly leadership and maintenance scorecard for RM bonus processing.",
+        "type": "flask",
+        "route": "/scorecard/",
         "admin_only": False,
     },
 ]

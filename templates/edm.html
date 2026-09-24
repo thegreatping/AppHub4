@@ -898,7 +898,7 @@
         },
         procOutput: {
             url: '/edm/api/processing-output',
-            defaultCols: ['employee_code', 'name_full', 'status', 'title_group', 'property_name', 'emp_processing_run_id', 'etl_updated_utc'],
+            defaultCols: ['employee_code', 'name_full', 'status', 'title_group', 'property_name', 'emp_processing_run_id', 'etl_updated_utc', 'datetime_created'],
             anchorCol: 'name_full',
             title: r => r.name_full || r.employee_code,
             exportTitle: 'Employee Data Manager - Processing Output',
@@ -906,7 +906,7 @@
         },
         empCore: {
             url: '/edm/api/emp-core',
-            defaultCols: ['employee_code', 'name_full', 'status', 'title_group', 'property_name', 'flag_current', 'etl_updated_utc'],
+            defaultCols: ['employee_code', 'name_full', 'status', 'title_group', 'property_name', 'flag_current', 'etl_updated_utc', 'datetime_created'],
             anchorCol: 'name_full',
             title: r => r.name_full || r.employee_code,
             exportTitle: 'Employee Data Manager - Emp_Core',
@@ -938,6 +938,8 @@
         { group: 'Config / Rules', key: 'empTitleOverrides', label: 'EMP_TITLE_OVERRIDES', url: '/edm/api/emp-pipeline-table/emp_title_overrides', sourceTable: 'DB_APP_SUPPORT.dbo.EMP_TITLE_OVERRIDES', blurb: "Manual per-employee title overrides applied during processing." },
         { group: 'Config / Rules', key: 'empPropertyAssignments', label: 'EMP_PROPERTY_ASSIGNMENTS', url: '/edm/api/emp-pipeline-table/emp_property_assignments', sourceTable: 'DB_APP_SUPPORT.dbo.EMP_PROPERTY_ASSIGNMENTS', blurb: "Manual employee-to-property assignment overrides feeding the Entrata property-assignment computation." },
         { group: 'Config / Rules', key: 'empProcessingRules', label: 'EMP_PROCESSING_RULES', url: '/edm/api/emp-pipeline-table/emp_processing_rules', sourceTable: 'DB_BI_SUPPORT.control.EMP_PROCESSING_RULES', blurb: "Business rules consumed during row assembly (<code>PROCESSING_MAIN_JOIN</code>)." },
+        { group: 'Observability', key: 'empPipelineIngestionLog', label: 'EMP_PIPELINE_INGESTION_LOG', url: '/edm/api/emp-pipeline-table/emp_pipeline_ingestion_log', sourceTable: 'DB_BI_SUPPORT.control.EMP_PIPELINE_INGESTION_LOG', defaultCols: ['ingestion_log_id', 'pipeline_run_id', 'run_datetime', 'step_name', 'source_label', 'status', 'normalized_employee_code', 'exclusion_reason'], blurb: "Schema-drift + row-level ingestion audit trail, added 2026-09-23. <code>STATUS='SCHEMA_WARNING'</code> rows flag a source file (Paycom CSV/prehire xlsx) whose header columns no longer match what this pipeline reads -- check <code>EXCLUSION_REASON</code> for the missing/new column names. <code>STATUS='PARSED'</code> rows are one per prehire record (US/Canada only, not the large main Paycom file) with the full raw source row in <code>RAW_JSON</code> (toggle it on via &#9881; Columns). Never blocks the pipeline -- purely diagnostic." },
+        { group: 'Observability', key: 'empPipelineParityLog', label: 'EMP_PIPELINE_PARITY_LOG', url: '/edm/api/emp-pipeline-table/emp_pipeline_parity_log', sourceTable: 'DB_BI_SUPPORT.control.EMP_PIPELINE_PARITY_LOG', defaultCols: ['parity_log_id', 'pipeline_run_id', 'run_datetime', 'table_label', 'real_count', 'clone_count', 'only_real_count', 'only_clone_count', 'mismatched_rows', 'alert_worthy'], blurb: "One row per shadow/clone table compared each run by the <code>VALIDATE_PARITY</code> step, logged whether clean or not. <code>ALERT_WORTHY=1</code> rows are the discrepancies that triggered an email alert and (if unexpected) failed the pipeline run -- see <code>DETAIL_JSON</code> (toggle via &#9881; Columns) for per-column mismatch counts and example rows." },
     ];
 
     const genericLoaded = {}, genericData = {}, genericSort = {}, genericAllCols = {}, genericVisibleCols = {}, genericColFilters = {};
@@ -1009,7 +1011,7 @@
 
         genericTabConfig[t.key] = {
             url: t.url,
-            defaultCols: null,   // auto: first columns returned by the API
+            defaultCols: t.defaultCols || null,   // auto (null): first columns returned by the API
             anchorCol: null,     // auto: first visible column
             exportTitle: `Employee Data Manager - ${t.label}`,
             sourceTable: t.sourceTable,
@@ -1110,10 +1112,8 @@
 
     function formatGenericVal(key, val) {
         if (val === null || val === undefined || val === '') return '';
-        if (typeof val === 'string' && (key.includes('timestamp') || key.endsWith('_utc'))) {
-            const d = new Date(val);
-            return isNaN(d) ? val : d.toLocaleString();
-        }
+        // Timestamps are already formatted server-side as Eastern local time
+        // (see edm.py's _format_eastern) -- do not re-parse/re-convert here.
         return String(val);
     }
 

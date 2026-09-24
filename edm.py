@@ -7,11 +7,17 @@ import sys
 import os
 import re
 import json
+import datetime
+from zoneinfo import ZoneInfo
 from helpers import load_env, SafeConnection
 
 edm_bp = Blueprint("edm", __name__, url_prefix="/edm")
 
 _env = None
+# Every timestamp this module reads is stored as naive UTC (NB_EMP_PIPELINE.py's
+# datetime.datetime.utcnow() calls, and SQL Server DATETIME2 columns populated
+# the same way). All times displayed in EDM must be Eastern, not UTC.
+_EASTERN = ZoneInfo("America/New_York")
 
 
 def _get_env():
@@ -115,17 +121,7 @@ def search_employees():
         """, tuple(params) if params else None)
         columns = [desc[0].lower() for desc in cur.description]
         rows = cur.fetchall()
-        result = []
-        for r in rows:
-            row_dict = {}
-            for i, col in enumerate(columns):
-                val = r[i]
-                # Convert non-serializable types
-                if hasattr(val, 'isoformat'):
-                    val = val.isoformat()
-                row_dict[col] = val
-            result.append(row_dict)
-        return jsonify(result)
+        return jsonify(_rows_to_dicts(rows, columns))
     finally:
         conn.close()
 
@@ -958,9 +954,9 @@ def get_soft_terminations():
             "flag_soft_termination": bool(r[4]) if r[4] is not None else True,
             "expires_on": r[5].isoformat() if r[5] else None,
             "added_by": r[6],
-            "added_on": r[7].isoformat() if r[7] else None,
+            "added_on": _format_eastern(r[7]) if r[7] else None,
             "updated_by": r[8],
-            "updated_on": r[9].isoformat() if r[9] else None,
+            "updated_on": _format_eastern(r[9]) if r[9] else None,
             "is_active": bool(r[10]) if r[10] is not None else True
         } for r in rows])
     finally:
@@ -1226,16 +1222,29 @@ def get_emp_core():
         conn.close()
 
 
+def _format_eastern(val):
+    """Convert a naive-UTC datetime.datetime to Eastern local time for
+    display (handles EST/EDT automatically). `date`-only values (no time
+    component, e.g. a hire date) pass through unconverted -- a calendar
+    date has no timezone to convert."""
+    if isinstance(val, datetime.datetime):
+        eastern = val.replace(tzinfo=datetime.timezone.utc).astimezone(_EASTERN)
+        return eastern.strftime("%Y-%m-%d %I:%M:%S %p ET")
+    return val.isoformat()
+
+
 def _rows_to_dicts(rows, columns):
-    """Shared row->dict + date-serialization helper for the 3 read-only
-    Processing/Emp_Core tabs above (mirrors search_employees' inline pattern)."""
+    """Shared row->dict + Eastern-time date-serialization helper, used by
+    every read-only browse endpoint in this module (Employees search,
+    Processing/Export History, Processing Output, Emp_Core, and every
+    generic Emp_ pipeline table)."""
     result = []
     for r in rows:
         row_dict = {}
         for i, col in enumerate(columns):
             val = r[i]
             if hasattr(val, "isoformat"):
-                val = val.isoformat()
+                val = _format_eastern(val)
             row_dict[col] = val
         result.append(row_dict)
     return result
@@ -1261,6 +1270,10 @@ EMP_PIPELINE_TABLES = {
     "emp_title_overrides":            {"db": "DB_APP_SUPPORT", "direct": True,  "schema": "dbo",     "table": "EMP_TITLE_OVERRIDES"},
     "emp_property_assignments":       {"db": "DB_APP_SUPPORT", "direct": True,  "schema": "dbo",     "table": "EMP_PROPERTY_ASSIGNMENTS"},
     "emp_processing_rules":           {"db": "DB_BI_SUPPORT",  "direct": True,  "schema": "control",  "table": "EMP_PROCESSING_RULES"},
+    # Append-only logs (not truncate+reload snapshots) -- order_by ensures TOP 3000
+    # keeps the newest rows as each log grows past that cap, not the oldest.
+    "emp_pipeline_ingestion_log":     {"db": "DB_BI_SUPPORT",  "direct": True,  "schema": "control",  "table": "EMP_PIPELINE_INGESTION_LOG", "order_by": "INGESTION_LOG_ID DESC"},
+    "emp_pipeline_parity_log":        {"db": "DB_BI_SUPPORT",  "direct": True,  "schema": "control",  "table": "EMP_PIPELINE_PARITY_LOG",    "order_by": "PARITY_LOG_ID DESC"},
 }
 
 # DB engines a user is allowed to pick from when adding a custom table, and
@@ -1372,7 +1385,8 @@ def get_emp_pipeline_table(table_key):
     env = _get_env()
     conn = SafeConnection(env, cfg["db"], None, direct=cfg["direct"])
     try:
-        cur = conn.execute(f"SELECT TOP 3000 * FROM {cfg['schema']}.[{cfg['table']}]")
+        order_clause = f" ORDER BY {cfg['order_by']}" if cfg.get("order_by") else ""
+        cur = conn.execute(f"SELECT TOP 3000 * FROM {cfg['schema']}.[{cfg['table']}]{order_clause}")
         columns = [d[0].lower() for d in cur.description]
         rows = cur.fetchall()
         return jsonify(_rows_to_dicts(rows, columns))

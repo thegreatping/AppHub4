@@ -33,5 +33,12 @@
     "direct": true,
     "schema": "dbo",
     "table": "EMP_TITLE_GROUP_MGMT"
+  },
+  "custom_employee_prehire": {
+    "label": "EMPLOYEE_PREHIRE",
+    "db": "DB_APP_SUPPORT",
+    "direct": true,
+    "schema": "dbo",
+    "table": "EMPLOYEE_PREHIRES"
   }
 }
