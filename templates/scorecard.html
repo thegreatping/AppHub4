@@ -3,6 +3,11 @@
 <style>
     .sc-container { padding: 18px 24px 40px; max-width: 100%; }
 
+    .sc-tabbar { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--border-medium); }
+    .sc-tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-secondary); padding: 8px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+    .sc-tab:hover { color: var(--text-primary); }
+    .sc-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
+
     /* Ribbon stat bar */
     .sc-ribbon { display: flex; align-items: center; gap: 22px; padding: 12px 16px; background: var(--surface-raised); border: 1px solid var(--border-medium); border-radius: 8px; margin-bottom: 12px; flex-wrap: wrap; }
     .sc-stat { display: flex; flex-direction: column; gap: 2px; }
@@ -15,6 +20,8 @@
     .sc-q1-toggle { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
     .sc-search { background: var(--input-bg); border: 1px solid var(--border-input); border-radius: 5px; color: var(--text-primary); padding: 6px 10px; font-size: 0.8rem; min-width: 240px; }
     .sc-search:focus { outline: none; border-color: var(--accent-cyan); }
+    .sc-export-btn { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-secondary); padding: 7px 12px; border-radius: 5px; font-size: 0.78rem; cursor: pointer; white-space: nowrap; }
+    .sc-export-btn:hover { border-color: var(--accent-cyan); color: var(--text-primary); }
 
     /* Active filter chip bar */
     .sc-chipbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 4px; margin-bottom: 8px; }
@@ -130,6 +137,39 @@
     .sc-notes-input { width: 100%; box-sizing: border-box; min-height: 70px; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 8px; border-radius: 4px; font-size: 0.8rem; font-family: inherit; resize: vertical; }
     .sc-notes-meta { font-size: 0.68rem; color: var(--text-secondary); margin-top: 6px; }
     .sc-notes-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+    .sc-so-overlay {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+        z-index: 1100; align-items: center; justify-content: center;
+    }
+    .sc-so-overlay.open { display: flex; }
+    .sc-so-modal {
+        background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 8px;
+        width: 90vw; max-width: 420px; padding: 20px;
+    }
+    .sc-so-modal h3 { margin: 0 0 8px; font-size: 1.05rem; color: var(--text-primary); }
+    .sc-so-sub { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; margin: 0 0 16px; white-space: pre-line; }
+    .sc-so-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .sc-so-row-cancel { justify-content: center; margin-top: 10px; }
+    .sc-so-btn { flex: 1; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 8px 12px; border-radius: 4px; font-size: 0.82rem; cursor: pointer; }
+    .sc-so-btn:hover { border-color: var(--accent-cyan); }
+    .sc-so-btn-primary { background: var(--accent-cyan); color: #04211f; border-color: var(--accent-cyan); font-weight: 600; }
+    .sc-so-btn-primary:hover { filter: brightness(1.08); }
+    .sc-so-btn-plain { background: none; border: none; color: var(--text-secondary); font-size: 0.75rem; text-decoration: underline; cursor: pointer; }
+
+    .sc-noi-info { cursor: pointer; opacity: 0.75; margin-left: 3px; }
+    .sc-noi-info:hover { opacity: 1; color: var(--accent-cyan); }
+    .sc-noi-modal { max-width: 460px; }
+    .sc-noi-calc { background: var(--input-bg); border: 1px solid var(--border-input); border-radius: 4px; padding: 10px 14px; margin-bottom: 12px; font-size: 0.82rem; color: var(--text-primary); }
+    .sc-noi-row { padding: 3px 0; }
+    .sc-noi-total { border-top: 1px solid var(--border-input); margin-top: 4px; padding-top: 6px; font-weight: 700; }
+    .sc-noi-hint { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5; margin: 0 0 14px; }
+    .sc-noi-links { border-top: 1px solid var(--border-input); padding-top: 10px; }
+    .sc-noi-links-head { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-secondary); margin-bottom: 6px; }
+    .sc-noi-link { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: var(--input-bg); border: 1px solid var(--border-input); border-radius: 4px; margin-bottom: 6px; text-decoration: none; font-size: 0.8rem; }
+    .sc-noi-link:hover { border-color: var(--accent-cyan); }
+    .sc-noi-flag { font-weight: 600; color: var(--text-primary); }
+    .sc-noi-url { color: var(--accent-cyan); font-size: 0.72rem; }
     .sc-measure-value { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
     .sc-measure-value select { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 4px 6px; border-radius: 4px; font-size: 0.78rem; }
     .sc-measure-value select option { background: var(--surface-raised); color: var(--text-primary); }
@@ -217,6 +257,42 @@
     .col-filter-item:hover { background: var(--hover-bg-strong); }
     .col-filter-item input, .col-filter-all-row input { flex-shrink: 0; cursor: pointer; }
     .col-filter-item span { overflow: hidden; text-overflow: ellipsis; }
+
+    .sc-reference-btn { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 7px 14px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; }
+    .sc-reference-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .sc-ref-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 1100; align-items: center; justify-content: center; }
+    .sc-ref-overlay.open { display: flex; }
+    .sc-ref-modal { background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 8px; width: 90vw; max-width: 900px; height: 85vh; display: flex; flex-direction: column; overflow: hidden; }
+    .sc-ref-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border-input); flex-shrink: 0; }
+    .sc-ref-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+    .sc-ref-close { background: none; border: none; color: var(--text-secondary); font-size: 1.4rem; line-height: 1; cursor: pointer; }
+    .sc-ref-close:hover { color: var(--text-primary); }
+    .sc-ref-tabs { display: flex; gap: 4px; padding: 8px 16px 0; border-bottom: 1px solid var(--border-input); flex-shrink: 0; }
+    .sc-ref-tab { background: none; border: none; color: var(--text-secondary); padding: 8px 14px; font-size: 0.8rem; cursor: pointer; border-bottom: 2px solid transparent; }
+    .sc-ref-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); font-weight: 600; }
+    .sc-ref-body { flex: 1; overflow-y: auto; padding: 18px 24px; }
+    .sc-ref-intro { color: var(--text-secondary); font-size: 0.82rem; margin: 0 0 16px; }
+    .sc-crit-item { border: 1px solid var(--border-input); border-radius: 6px; padding: 12px 14px; margin-bottom: 10px; }
+    .sc-crit-name { font-weight: 700; color: var(--text-primary); font-size: 0.88rem; margin-bottom: 4px; }
+    .sc-crit-src { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 6px; }
+    .sc-crit-src a { color: var(--accent-cyan); }
+    .sc-crit-body { font-size: 0.8rem; color: var(--text-primary); line-height: 1.5; }
+    .sc-crit-body ul { margin: 4px 0; padding-left: 18px; }
+    .sc-crit-body ul ul { margin: 2px 0; }
+    .sc-guide-section { margin-bottom: 16px; }
+    .sc-guide-section h4 { font-size: 0.85rem; color: var(--accent-cyan); margin: 0 0 6px; }
+    .sc-guide-section ol { margin: 0; padding-left: 20px; font-size: 0.8rem; color: var(--text-primary); line-height: 1.6; }
+
+    .sc-cal-modal { max-width: 480px; }
+    .sc-cal-all { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-primary); margin-bottom: 8px; cursor: pointer; }
+    .sc-cal-list { max-height: 260px; overflow-y: auto; border: 1px solid var(--border-input); border-radius: 4px; padding: 4px; margin-bottom: 10px; }
+    .sc-cal-opt { display: flex; align-items: flex-start; gap: 8px; padding: 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; color: var(--text-primary); }
+    .sc-cal-opt:hover { background: var(--input-bg); }
+    .sc-cal-opt input { margin-top: 2px; flex-shrink: 0; cursor: pointer; }
+    .sc-cal-date { font-weight: 700; margin-right: 4px; }
+    .sc-cal-bold { font-weight: 700; }
+    .sc-cal-note { display: block; font-size: 0.72rem; color: var(--text-secondary); margin-top: 2px; }
+    .sc-cal-hint { font-size: 0.72rem; color: var(--text-secondary); margin: 0 0 12px; }
 </style>
 {% endblock %}
 {% block content %}
@@ -226,10 +302,25 @@
         <span class="page-title">Leadership Scorecard</span>
         <span class="page-subtitle" id="scQuarterLabel">Loading...</span>
     </div>
+    <div class="header-right">
+        <button type="button" class="sc-reference-btn" onclick="openScReference()"><i class="fa-solid fa-book"></i> Criteria &amp; Guides</button>
+        {% if is_admin %}
+        <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/tables'" title="Browse every table feeding or produced by the Scorecard pipeline (admin only)"><i class="fa-solid fa-database"></i> Table Manager</button>
+        <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/runs'" title="Recent pipeline executions with per-step outcomes (admin only)"><i class="fa-solid fa-play-circle"></i> Pipeline Runs</button>
+        <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/admin/diagram/dataflow','_blank','noopener')" title="Interactive data-flow diagram (admin only)"><i class="fa-solid fa-diagram-project"></i> Data Flow</button>
+        <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/admin/diagram/table_manager','_blank','noopener')" title="Interactive table-manager diagram (admin only)"><i class="fa-solid fa-sitemap"></i> Diagram</button>
+        {% endif %}
+    </div>
 </div>
 
 <div class="sc-container">
 
+    <div class="sc-tabbar">
+        <button type="button" class="sc-tab active" id="scTabBtn_scorecard" onclick="showScTab('scorecard')">Scorecard</button>
+        <button type="button" class="sc-tab" id="scTabBtn_fallforecast" onclick="showScTab('fallforecast')">Fall Forecast</button>
+    </div>
+
+    <div id="scView_scorecard">
     <div class="sc-ribbon">
         <div class="sc-stat">
             <span class="k">Communities</span>
@@ -249,6 +340,9 @@
                 Show prior quarter totals
             </label>
             <input type="text" class="sc-search" id="scSearch" placeholder="Search property, entity, or RM..." oninput="onSearchInput(this.value)">
+            <button type="button" class="sc-export-btn" onclick="showCalPrompt()">&#128197; Add to Outlook</button>
+            <button type="button" class="sc-export-btn" onclick="exportSubjectiveScores()">&#9993; Email My Scores</button>
+            <button type="button" class="sc-export-btn" id="scFullExportBtn" style="display:none;" onclick="exportFullSummary()">&#128190; Full Summary Export</button>
         </div>
     </div>
 
@@ -261,6 +355,27 @@
         </table>
     </div>
     <div class="sc-empty" id="scEmpty" style="display:none;">No properties match the current filters.</div>
+    </div>
+
+    <div id="scView_fallforecast" style="display:none;">
+    <div class="sc-ribbon">
+        <div class="sc-stat">
+            <span class="k">Snapshot</span>
+            <span class="v" id="statFFSnapshot">--</span>
+        </div>
+        <div class="sc-toolbar">
+            <input type="text" class="sc-search" id="scFFSearch" placeholder="Search property, entity, or RM..." oninput="renderFallForecast()">
+            <button type="button" class="sc-export-btn" onclick="exportBonusCalcForm()">&#128190; Bonus Calc Form Export</button>
+        </div>
+    </div>
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="scFFTable">
+            <thead id="scFFThead"></thead>
+            <tbody id="scFFTbody"></tbody>
+        </table>
+    </div>
+    <div class="sc-empty" id="scFFEmpty" style="display:none;">No properties have Fall Forecast leasing data yet.</div>
+    </div>
 
 </div>
 
@@ -309,9 +424,335 @@
     </div>
 </div>
 
+<!-- Sign-out completion check (RM only -- mirrors the original prototype's "Before You Sign Out" flow,
+     minus the local-file email step since data now saves live to SCORECARD_CORE on every edit) -->
+<div class="sc-so-overlay" id="scSignoutOverlay">
+    <div class="sc-so-modal">
+        <h3>Before You Sign Out</h3>
+        <p class="sc-so-sub" id="scSoSummary"></p>
+        <div class="sc-so-row">
+            <button type="button" class="sc-so-btn sc-so-btn-primary" id="scSoFinishBtn" onclick="scSoFinishScores()">Add / finish my scores</button>
+            <button type="button" class="sc-so-btn" onclick="scSoConfirmSignOut()">Sign out anyway</button>
+        </div>
+        <div class="sc-so-row sc-so-row-cancel">
+            <button type="button" class="sc-so-btn-plain" onclick="closeScSignoutModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- NOI reference modal -- formula + where to pull the numbers from -->
+<div class="sc-so-overlay" id="scNoiOverlay">
+    <div class="sc-so-modal sc-noi-modal">
+        <h3>Controllable NOI</h3>
+        <p class="sc-so-sub">Score 1 if Controllable NOI meets or exceeds budget -- otherwise 0.</p>
+        <div class="sc-noi-calc">
+            <div class="sc-noi-row">Net Operating Income</div>
+            <div class="sc-noi-row">&minus; Total Taxes and Insurance</div>
+            <div class="sc-noi-row">&minus; Management Fees</div>
+            <div class="sc-noi-row sc-noi-total">= Controllable NOI</div>
+        </div>
+        <p class="sc-noi-hint">Use the Apex Report where available. If a property isn't on it, pull the <b>Income Statement -- Budget vs Actual (YTD)</b> from Entrata and use the <b>Actual</b> columns.</p>
+        <div class="sc-noi-links">
+            <div class="sc-noi-links-head">Reference links</div>
+            <a class="sc-noi-link" href="https://peakmade.entrata.com/?module=company_reports_newxxx" target="_blank" rel="noopener">
+                <span class="sc-noi-flag">U.S. Properties</span><span class="sc-noi-url">peakmade.entrata.com</span>
+            </a>
+            <a class="sc-noi-link" href="https://peakcampuscanadainc.entrata.com/?module=company_reports_newxxx" target="_blank" rel="noopener">
+                <span class="sc-noi-flag">Canada Properties</span><span class="sc-noi-url">peakcampuscanadainc.entrata.com</span>
+            </a>
+        </div>
+        <div class="sc-so-row sc-so-row-cancel">
+            <button type="button" class="sc-so-btn-plain" onclick="closeNoiInfoModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Criteria & Guides reference -->
+<div class="sc-ref-overlay" id="scReferenceOverlay">
+    <div class="sc-ref-modal">
+        <div class="sc-ref-header">
+            <div class="sc-ref-title">Criteria &amp; Guides</div>
+            <button type="button" class="sc-ref-close" onclick="closeScReference()">&times;</button>
+        </div>
+        <div class="sc-ref-tabs">
+            <button type="button" class="sc-ref-tab" id="scRefTab_criteria" onclick="showScReferenceTab('criteria')">Criteria Breakdown</button>
+            <button type="button" class="sc-ref-tab" id="scRefTab_bonus" onclick="showScReferenceTab('bonus')">Bonus Calc Form Guide</button>
+            <button type="button" class="sc-ref-tab" id="scRefTab_paycom" onclick="showScReferenceTab('paycom')">Paycom Guide</button>
+        </div>
+        <div class="sc-ref-body" id="scRefBody"></div>
+    </div>
+</div>
+
+<!-- Add-to-Outlook calendar prompt -->
+<div class="sc-so-overlay" id="scCalOverlay">
+    <div class="sc-so-modal sc-cal-modal">
+        <h3>&#128197; Add Important Due Dates to your Outlook calendar?</h3>
+        <p class="sc-so-sub" id="scCalMsg">Choose which bonus deadlines to add as calendar reminders.</p>
+        <label class="sc-cal-all"><input type="checkbox" id="scCalSelectAll" onchange="scToggleCalAll(this.checked)"> Select all</label>
+        <div class="sc-cal-list" id="scCalList"></div>
+        <p class="sc-cal-hint">Each appointment downloads as a single-event file. Open it, then hit <b>Save &amp; Close</b> in Outlook.</p>
+        <div class="sc-so-row">
+            <button type="button" class="sc-so-btn-plain" onclick="closeScCalPrompt()">No thanks</button>
+            <button type="button" class="sc-so-btn sc-so-btn-primary" onclick="scAddSelectedDueDates()">&#128197; Add selected</button>
+        </div>
+    </div>
+</div>
+
 <script>
 window.SC_MEASURE_DEFS = {{ measure_defs | tojson }};
 window.SC_IS_ADMIN = {{ 'true' if is_admin else 'false' }};
+</script>
+<script>
+// ── Criteria & Guides static reference content (ported from the original prototype) ──
+const SC_CRITERIA = [
+  {
+    "name": "Using the Sheets",
+    "def": "The tabs to the left of this report reflect why properties received a credit of 0.",
+    "src": ""
+  },
+  {
+    "name": "Timecard Approvals",
+    "def": "\u2022 All managers must approve associates' timecards every other Monday by 10AM EST.\no California properties can submit timecards by 9AM PST / 12 PM EST. \no New York properties must approve timecards by 10AM every Monday.\n\u2022 Credit is earned when all pay periods are approved on time. \n\u2022 If 1 pay period in the quarter is missed, associates receive a zero on this scoring \nmeasure.",
+    "src": "Paycom"
+  },
+  {
+    "name": "Training Completion",
+    "def": "Grace Hill completion average >= 95% for the entire quarter to earn credit.",
+    "src": "Grace Hill Location Compliance"
+  },
+  {
+    "name": "Pre-Paid Visa",
+    "def": "Reconcile weekly by Tuesday with accurate GL codes & descriptions to earn credit.",
+    "src": "Truist"
+  },
+  {
+    "name": "Risk Assessment",
+    "def": "Complete once per quarter to earn credit.",
+    "src": "Leonardo 24/7"
+  },
+  {
+    "name": "IIPP",
+    "def": "\u2022 The Illness & Injury Prevention Program (IIPP) is due by the 10th of each month in the quarter.\n\u2022 Each month, the form must have Appeared, be Complete, and be submitted On Time.\n\u2022 To earn a credit of 1, the property must pass all three checks in April, May, AND June.\n\u2022 Missing any single month (not complete or not on time) results in a 0.\n\u2022 Properties not appearing in the report for any month are scored 1 by default.",
+    "src": "Leonardo 24/7"
+  },
+  {
+    "name": "Lease File Audit",
+    "def": "\u2022 The Lease File Audit must be completed by the 15th of each month in the quarter.\n\u2022 Each month, the audit must have Appeared, be Complete, and be submitted On Time.\n\u2022 To earn a credit of 1, the property must pass all three checks in April, May, AND June.\n\u2022 Missing any single month (not complete or not on time) results in a 0.\n\u2022 Properties not appearing in the report for any month are scored 1 by default.",
+    "src": "Leonardo 24/7"
+  },
+  {
+    "name": "Leo Compliance PM Score",
+    "def": "Leo compliance must be >= 95% each month of the quarter.",
+    "src": "Leonardo 24/7"
+  },
+  {
+    "name": "Reputation Score",
+    "def": "Compare Friday of last quarter vs Friday of recently closed quarter; overall score must increase by >= 1%.",
+    "src": "Reputation.com"
+  },
+  {
+    "name": "Subjective PM Score (0-5)",
+    "def": "Regional Manager assessment of overall leadership performance (subjective + objective), scored 0-5.",
+    "src": ""
+  },
+  {
+    "name": "Work Order Completion",
+    "def": "Average open days at quarter end must be <= 1 day.",
+    "src": "Peak Insights > Work Orders 13 month rolling trend"
+  },
+  {
+    "name": "RM Inspection",
+    "def": "Quarterly RM Inspection >= 85% = 1; < 85% = 0. Covers Curb Appeal, Public Areas & Amenities, Maintenance, Safety Logs & Binders.",
+    "src": "Leonardo 24/7"
+  },
+  {
+    "name": "Leo Compliance (Maintainance Score)",
+    "def": "Leo compliance must be >= 95% each month of the quarter.",
+    "src": "Leonardo 24/7"
+  },
+  {
+    "name": "Controllable NOI % to Budget",
+    "def": "\u2022 Meet or exceed the Controllable NOI budget to earn a credit of 1; otherwise 0.\n\u2022 Pull the figure from the Apex Report -- most properties are already listed there.\n\u2022 If a property is not on the Apex Report, use Entrata's \"Income Statement - Budget vs Actual (Year-to-Date)\" report and the Actual columns.\n\u2022 Controllable NOI = Net Operating Income - Total Taxes and Insurance - Management Fees.\n\u2022 Reference links:\no U.S. Properties: https://peakmade.entrata.com/?module=company_reports_newxxx\no Canada Properties: https://peakcampuscanadainc.entrata.com/?module=company_reports_newxxx",
+    "src": "Apex Report / Entrata Income Statement"
+  },
+  {
+    "name": "Subjective Maintenance Score (0/1)",
+    "def": "Subjective 0/1 assessment reflecting J Turner surveys and Reputation.com reviews (positive & negative).",
+    "src": ""
+  }
+];
+const SC_BONUS_GUIDE = {
+  "title": "How to Use the Bonus Calculation Form",
+  "intro": "The Bonus Calculation Form auto-populates variances and calculates amounts due per associate. Work in the correct quarter tab (Q1-Q4).",
+  "sections": [
+    {
+      "h": "Set up the quarter tab",
+      "items": [
+        "Open the proper quarter sheet (Q1, Q2, Q3, or Q4).",
+        "Type the names of the bonus-eligible associates at the top of the page.",
+        "If an associate was promoted, transferred, or hired into their current position that quarter, note that date.",
+        "Add the PM salary. The Salary Information sheet is hidden for confidentiality -- right-click the Q1 tab, choose Unhide, then select Salary Information."
+      ]
+    },
+    {
+      "h": "Leasing & renewal targets (Peak Insight Fall Forecast)",
+      "items": [
+        "From the last week of the quarter's Lease Breakdown, enter Complete Leases CY into 'Achieved Target'.",
+        "Set the Budgeted Target from 'Complete Leases CY vs Target'.",
+        "Example: Complete Leases CY 343, vs Target -36 -> Budgeted Target 379; property is 36 behind, so no leasing bonus.",
+        "Example: Complete Leases 430, vs Target +11 -> Budgeted Target 419; property is 11 ahead, so the Leasing Manager earns the bonus."
+      ]
+    },
+    {
+      "h": "NOI",
+      "items": [
+        "Use the Apex Report (from FP&A) or calculate manually from Entrata's Income Statement.",
+        "Input Controllable NOI into cell G17.",
+        "Input Budgeted Controllable NOI into cell H17."
+      ]
+    },
+    {
+      "h": "Leadership / RM scores",
+      "items": [
+        "From the Leadership Measures Scorecard, take Column J (Leadership Score) into cell G21.",
+        "Take Column K (your subjective PM score) into cell H21."
+      ]
+    },
+    {
+      "h": "Maintenance performance score",
+      "items": [
+        "From the Maintenance Scorecard, take the Performance Score in Column I into cell G26."
+      ]
+    },
+    {
+      "h": "Exceptions",
+      "items": [
+        "Note any exceptions in the exceptions rows of the form.",
+        "Subjective adjustment: associate is due additional incentive, or earned the bonus despite missed targets due to extenuating circumstances.",
+        "Prorated amount: present for half the quarter -> half the bonus; less than half -> not eligible.",
+        "Regional Vice Presidents must approve all exceptions."
+      ]
+    },
+    {
+      "h": "Controllable NOI calculation (from Entrata YTD Budget vs Actual)",
+      "items": [
+        "In the Actual columns: Net Operating Income - Total Taxes and Insurance - Management Fees = Controllable NOI.",
+        "Maintenance Scorecard: meets or exceeds budget -> score 1; otherwise 0.",
+        "This NOI data also feeds the Bonus Calculation Form."
+      ]
+    }
+  ]
+};
+const SC_PAYCOM_GUIDE = {
+  "title": "How to Enter Bonuses into Paycom",
+  "intro": "Calculate bonus totals before entering. Bonuses are paid the last pay date of the month following the month earned, and must be entered/approved by the submission deadline for that pay date (see your payroll schedule).",
+  "sections": [
+    {
+      "h": "Get to the timecard",
+      "items": [
+        "Log into Paycom Manager and go to Time Management > Timecard Search.",
+        "Select the associate's name to open their timecard."
+      ]
+    },
+    {
+      "h": "Hourly associates",
+      "items": [
+        "Click the red 'Deferred Overtime Compensation Calculator' link (ensures FLSA overtime adjustments).",
+        "Date to apply: a date within the pay period being paid on the last pay date of the month.",
+        "Method: Per Hours Worked.",
+        "Date range: first and last day of the prior quarter for quarterly bonuses (e.g. 4/1/2026-6/30/2026).",
+        "Select the bonus type (e.g. Leadership Measures, NOI (YTD), Quarterly Leasing, Renewal, NOI Kicker).",
+        "Enter the dollar amount. Do NOT check 'Use Regular Hours to Calculate OT'.",
+        "Click Calculate. If an Amount Owed populates, select OTP (Overtime Premium); if none, leave blank.",
+        "Click Add To Timecard."
+      ]
+    },
+    {
+      "h": "Salaried associates",
+      "items": [
+        "Click Add Dollars.",
+        "Enter a date within the pay period for the pay date the bonus should be received.",
+        "Select the appropriate Pay Code (Leadership Measures, NOI, Quarterly Lease, etc.; Spot Bonus for one-offs).",
+        "Enter the dollar amount and add a description in the Comment section.",
+        "Click Add Dollars.",
+        "Note: PMs enter their own bonus via Employee Self-Service; the RM is notified and it won't show on the Manager-login bonus report."
+      ]
+    },
+    {
+      "h": "Validate",
+      "items": [
+        "Go to Time Management > Reports > Time Detail Report.",
+        "Select XLS, set the date range, and Freeze Center if bonuses were entered after the last freeze time.",
+        "Filter the Earning field to 'Bonus', select all bonus codes, include comments, and Generate Report.",
+        "Cross-reference the Time Detail Report against the Bonus Calculation Form to confirm they match.",
+        "Earning codes: CLB = Collection, LSB = Leasing, RNW = Renewal."
+      ]
+    }
+  ]
+};
+
+// Criteria text uses "\u2022" for top-level bullets and "o " for sub-bullets; wrapped
+// lines continue the previous bullet. Renders that structure as a real nested list.
+function scCritHtml(text) {
+    if (!text) return '';
+    const lines = String(text).split('\n');
+    const items = [];
+    lines.forEach(raw => {
+        const s = raw.trim();
+        if (!s) return;
+        if (s.charAt(0) === '\u2022') items.push({ lvl: 0, txt: s.slice(1).trim() });
+        else if (/^o\s+/i.test(s)) items.push({ lvl: 1, txt: s.replace(/^o\s+/i, '').trim() });
+        else if (items.length) items[items.length - 1].txt += ' ' + s;
+        else items.push({ lvl: 0, txt: s });
+    });
+    if (!items.length) return '';
+    let h = '<ul>', open = false;
+    items.forEach(it => {
+        if (it.lvl === 1) {
+            if (!open) { h += '<ul>'; open = true; }
+            h += `<li>${esc(it.txt)}</li>`;
+        } else {
+            if (open) { h += '</ul>'; open = false; }
+            h += `<li>${esc(it.txt)}</li>`;
+        }
+    });
+    if (open) h += '</ul>';
+    h += '</ul>';
+    return h;
+}
+
+let scRefTab = 'criteria';
+
+function openScReference() {
+    document.getElementById('scReferenceOverlay').classList.add('open');
+    showScReferenceTab(scRefTab);
+}
+function closeScReference() {
+    document.getElementById('scReferenceOverlay').classList.remove('open');
+}
+function showScReferenceTab(tab) {
+    scRefTab = tab;
+    ['criteria', 'bonus', 'paycom'].forEach(t => {
+        document.getElementById(`scRefTab_${t}`).classList.toggle('active', t === tab);
+    });
+    const body = document.getElementById('scRefBody');
+    if (tab === 'criteria') {
+        let h = '<p class="sc-ref-intro">Each community earns a credit of 1 or 0 per measure. These are the definitions and data sources behind every column on the scorecard.</p>';
+        SC_CRITERIA.forEach(c => {
+            if (c.name === 'Using the Sheets') return;
+            const src = c.src ? `<div class="sc-crit-src">Source: ${esc(c.src)}</div>` : '';
+            h += `<div class="sc-crit-item"><div class="sc-crit-name">${esc(c.name)}</div>${src}<div class="sc-crit-body">${scCritHtml(c.def)}</div></div>`;
+        });
+        body.innerHTML = h;
+    } else {
+        const g = tab === 'bonus' ? SC_BONUS_GUIDE : SC_PAYCOM_GUIDE;
+        let h = `<p class="sc-ref-intro">${esc(g.intro)}</p>`;
+        g.sections.forEach(s => {
+            h += `<div class="sc-guide-section"><h4>${esc(s.h)}</h4><ol>${s.items.map(i => `<li>${esc(i)}</li>`).join('')}</ol></div>`;
+        });
+        body.innerHTML = h;
+    }
+}
 </script>
 <script>
 const ID_COLS = [
@@ -359,6 +800,7 @@ let searchQuery = '';
 let quickFilters = { needsInput: false, hasNotes: false };
 let sort = { col: null, dir: 1 };
 let showPrior = false;
+let scQuarterLabel = '';
 
 function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -379,9 +821,11 @@ async function loadData() {
     if (data.prior_quarter && data.prior_quarter.rows) {
         data.prior_quarter.rows.forEach(r => { priorByPropertyKey[r.PROPERTY_KEY] = r; });
     }
+    scQuarterLabel = data.quarter_label || '';
     document.getElementById('scQuarterLabel').innerHTML = data.quarter_label
         ? `<span class="sc-quarter-badge">${esc(data.quarter_label)}</span> -- ${data.is_admin ? 'All Properties (Admin)' : 'My Portfolio'}`
         : 'No data available yet';
+    document.getElementById('scFullExportBtn').style.display = window.SC_IS_ADMIN ? '' : 'none';
     render();
 }
 
@@ -573,6 +1017,7 @@ function render() {
     renderChipBar();
     document.getElementById('scEmpty').style.display = rows.length ? 'none' : 'block';
     document.getElementById('scTable').style.display = rows.length ? '' : 'none';
+    renderFallForecast();
 }
 
 function onSearchInput(val) { searchQuery = val; render(); }
@@ -1032,10 +1477,13 @@ function measureRowHtml(m) {
     const displayText = m.type === 'bool' ? (val === null ? '--' : (val ? 'Pass' : 'Fail'))
         : m.type === 'bool01' ? (val === null ? '--' : (val ? 'Yes' : 'No'))
         : (val === null || val === undefined ? '--' : val);
+    const infoIcon = m.key === 'NOI'
+        ? ` <span class="sc-noi-info" title="NOI formula &amp; reference links" onclick="event.stopPropagation(); openNoiInfoModal()">&#9432;</span>`
+        : '';
 
     if (!d.can_edit) {
         return `<div class="popout-row">
-            <div class="popout-label">${esc(m.label)}<div class="sc-blurb">${esc(m.blurb)}</div></div>
+            <div class="popout-label">${esc(m.label)}${infoIcon}<div class="sc-blurb">${esc(m.blurb)}</div></div>
             <div class="sc-readonly-val ${cls}">${displayText}</div>
         </div>`;
     }
@@ -1048,7 +1496,7 @@ function measureRowHtml(m) {
         ? `<span class="sc-override-by">Overridden by ${esc(lockedBy)}${reasonTxt ? ' -- ' + esc(reasonTxt) : ''}</span>`
         : '';
     return `<div class="popout-row">
-        <div class="popout-label">${esc(m.label)}<div class="sc-blurb">${esc(m.blurb)}</div></div>
+        <div class="popout-label">${esc(m.label)}${infoIcon}<div class="sc-blurb">${esc(m.blurb)}</div></div>
         <div class="sc-measure-value">
             <select class="${cls}" onchange="saveScMeasure('${m.key}', this.value, this)">${optHtml}</select>
             <label class="sc-override-wrap ${locked ? 'active' : ''}" title="Override: protect this value from being overwritten by the next pipeline run">
@@ -1120,6 +1568,316 @@ function setScOverride(field, enabled, reason) {
     });
 }
 
+// ── Sign-out completion check (RM only) ──────────────────────────────────
+let scLogoutHref = null;
+
+function scMyCounts() {
+    const total = allRows.length;
+    return {
+        total,
+        rmscore: allRows.filter(r => r.RMSCORE !== null && r.RMSCORE !== undefined).length,
+        surveys: allRows.filter(r => r.SURVEYS !== null && r.SURVEYS !== undefined).length,
+        noi: allRows.filter(r => r.NOI !== null && r.NOI !== undefined).length,
+        notes: allRows.filter(r => r.NOTES).length,
+    };
+}
+
+function initScSignoutInterception() {
+    if (window.SC_IS_ADMIN) return;   // admins sign out directly, matches the original prototype's admin path
+    const link = document.querySelector('.logout-link');
+    if (!link) return;
+    link.addEventListener('click', e => {
+        if (!allRows || !allRows.length) return;   // nothing loaded yet -- don't block sign-out
+        e.preventDefault();
+        scLogoutHref = link.getAttribute('href');
+        openScSignoutModal();
+    });
+}
+
+function openScSignoutModal() {
+    const c = scMyCounts();
+    const missing = c.total - Math.min(c.rmscore, c.surveys, c.noi);
+    const lines = [
+        `${c.rmscore} of ${c.total} RM Scores, ${c.surveys} of ${c.total} Surveys, ${c.noi} of ${c.total} NOI entered`,
+        c.notes ? `${c.notes} note${c.notes > 1 ? 's' : ''} saved` : null,
+        missing > 0
+            ? `${missing} propert${missing === 1 ? 'y' : 'ies'} still need${missing === 1 ? 's' : ''} a score.`
+            : 'All scores are entered.',
+    ].filter(Boolean);
+    document.getElementById('scSoSummary').textContent = lines.join('\n');
+    document.getElementById('scSoFinishBtn').style.display = missing > 0 ? '' : 'none';
+    document.getElementById('scSignoutOverlay').classList.add('open');
+}
+
+function closeScSignoutModal() {
+    document.getElementById('scSignoutOverlay').classList.remove('open');
+}
+
+function scSoFinishScores() {
+    closeScSignoutModal();
+    quickFilters.needsInput = true;
+    render();
+}
+
+function scSoConfirmSignOut() {
+    closeScSignoutModal();
+    if (scLogoutHref) window.location.href = scLogoutHref;
+}
+
+function openNoiInfoModal() { document.getElementById('scNoiOverlay').classList.add('open'); }
+function closeNoiInfoModal() { document.getElementById('scNoiOverlay').classList.remove('open'); }
+
+// ── Exports (Phase 5) ─────────────────────────────────────────────────────
+function scExportTimestamp() {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())} ${pad(now.getHours())}.${pad(now.getMinutes())}.${pad(now.getSeconds())}`;
+}
+
+function scDownloadBlob(content, mimeType, filename) {
+    const blob = new Blob([content], { type: mimeType });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(a.href);
+    a.remove();
+}
+
+function exportSubjectiveScores() {
+    if (!allRows.length) { alert('No data to export.'); return; }
+    const missingRM = allRows.filter(r => r.RMSCORE === null || r.RMSCORE === undefined);
+    const missingSV = allRows.filter(r => r.SURVEYS === null || r.SURVEYS === undefined);
+    const missingNOI = allRows.filter(r => r.NOI === null || r.NOI === undefined);
+    if (missingRM.length || missingSV.length || missingNOI.length) {
+        const listNames = rows => rows.slice(0, 12).map(r => `  - ${r.PROPERTY_NAME}`).join('\n') + (rows.length > 12 ? `\n  ...and ${rows.length - 12} more` : '');
+        let msg = "Your scores can't be emailed yet -- a score must be present for every community. A dash (--) is not an accepted value.\n\n";
+        if (missingRM.length) msg += `RM Score (0-5) still missing for ${missingRM.length} propert${missingRM.length === 1 ? 'y' : 'ies'}:\n${listNames(missingRM)}\n\n`;
+        if (missingSV.length) msg += `Surveys & Reviews (0/1) still missing for ${missingSV.length} propert${missingSV.length === 1 ? 'y' : 'ies'}:\n${listNames(missingSV)}\n\n`;
+        if (missingNOI.length) msg += `Controllable NOI (0/1) still missing for ${missingNOI.length} propert${missingNOI.length === 1 ? 'y' : 'ies'}:\n${listNames(missingNOI)}\n\n`;
+        msg += 'These communities are now highlighted for you.';
+        alert(msg);
+        quickFilters.needsInput = true;
+        render();
+        return;
+    }
+    const rmName = window.SC_IS_ADMIN ? 'Admin Export' : (allRows[0].RM_NAME || 'RM');
+    const th = 'style="background:#00a9c8;color:#fff;font-weight:bold;border:1px solid #999;padding:4px 8px;text-align:left;"';
+    const tdC = 'style="border:1px solid #ccc;padding:4px 8px;text-align:center;"';
+    const tdL = 'style="border:1px solid #ccc;padding:4px 8px;"';
+    let h = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body>';
+    h += '<table style="border-collapse:collapse;font-family:Calibri,Arial;font-size:11pt;">';
+    h += `<tr><td colspan="6" style="background:#16232a;color:#fff;font-weight:bold;padding:6px 8px;">${esc(rmName)} -- ${esc(scQuarterLabel)} Subjective Scores &amp; Notes</td></tr>`;
+    h += `<tr><td colspan="6" style="color:#555;padding:4px 8px;font-size:9pt;">Submitted by: <b>${esc(rmName)}</b> | ${new Date().toLocaleString('en-US')}</td></tr>`;
+    h += `<tr><th ${th}>Entity</th><th ${th}>Community</th><th ${th}>RM Score (0-5)</th><th ${th}>Surveys &amp; Reviews (0/1)</th><th ${th}>NOI % to Budget (0/1)</th><th ${th}>RM Notes</th></tr>`;
+    allRows.slice().sort((a, b) => (a.PROPERTY_NAME || '').localeCompare(b.PROPERTY_NAME || '')).forEach(r => {
+        h += `<tr><td ${tdC}>${esc(r.ENTITY_NUMBER)}</td><td ${tdL}>${esc(r.PROPERTY_NAME)}</td>` +
+             `<td ${tdC}>${esc(r.RMSCORE)}</td><td ${tdC}>${r.SURVEYS ? 'Yes' : 'No'}</td><td ${tdC}>${r.NOI ? 'Yes' : 'No'}</td>` +
+             `<td ${tdL}>${esc(r.NOTES || '')}</td></tr>`;
+    });
+    h += '</table></body></html>';
+    const fname = `${scQuarterLabel} - Subjective Scores - ${rmName} - ${scExportTimestamp()}.xls`;
+    scDownloadBlob(h, 'application/vnd.ms-excel', fname);
+
+    const subject = `${rmName} - ${scQuarterLabel} Subjective Scores`;
+    const body = `Attached are my scorecards for ${scQuarterLabel}.\n\nSubmitted via the Leadership Scorecard on ${new Date().toLocaleString('en-US')}.`;
+    window.location.href = `mailto:mblazier@peakmade.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+function exportFullSummary() {
+    if (!window.SC_IS_ADMIN) return;
+    if (!allRows.length) { alert('No data to export.'); return; }
+    const measureCols = LEADERSHIP_COLS.concat(MAINT_COLS).map(c => c.key).filter(k => !['PRERM', 'LDRTOTAL', 'MSTOTAL'].includes(k));
+    const cols = ['PROPERTY_KEY', 'ENTITY_NUMBER', 'PROPERTY_NAME', 'RM_EMAIL', 'RM_NAME', 'OVERALL', 'PRERM', 'LDRTOTAL', 'MSTOTAL'];
+    measureCols.forEach(k => cols.push(k, `${k}_LOCKED`, `${k}_LOCKED_BY`, `${k}_REASON`));
+    cols.push('NOTES', 'NOTE_BY', 'NOTE_AT');
+    const csvEscape = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const lines = [
+        [`Leadership Scorecard -- Full Summary (Admin)`],
+        ['Quarter', scQuarterLabel],
+        ['Exported', new Date().toLocaleString('en-US')],
+        [],
+        cols,
+        ...allRows.slice().sort((a, b) => (a.PROPERTY_NAME || '').localeCompare(b.PROPERTY_NAME || '')).map(r => cols.map(c => r[c]))
+    ];
+    const csv = lines.map(row => row.map(csvEscape).join(',')).join('\r\n');
+    scDownloadBlob('\ufeff' + csv, 'text/csv;charset=utf-8;', `${scQuarterLabel} - Full Summary - ${scExportTimestamp()}.csv`);
+}
+
+// ── Fall Forecast tab (Complete/New/Renewal leasing CY vs Target) ────────
+const FF_COLS = [
+    { key: 'PROPERTY_NAME', label: 'Property' },
+    { key: 'ENTITY_NUMBER', label: 'Entity' },
+    { key: 'RM_NAME', label: 'RM' },
+    { key: 'COMPLETE_CY', label: 'Complete CY' },
+    { key: 'COMPLETE_TARGET', label: 'Complete Target' },
+    { key: 'COMPLETE_VS_TARGET', label: 'Complete vs Target' },
+    { key: 'NEW_CY', label: 'New CY' },
+    { key: 'NEW_TARGET', label: 'New Target' },
+    { key: 'NEW_VS_TARGET', label: 'New vs Target' },
+    { key: 'RENEWAL_CY', label: 'Renewal CY' },
+    { key: 'RENEWAL_TARGET', label: 'Renewal Target' },
+    { key: 'RENEWAL_VS_TARGET', label: 'Renewal vs Target' },
+];
+let scFFSort = { col: null, dir: 1 };
+
+function showScTab(tab) {
+    ['scorecard', 'fallforecast'].forEach(t => {
+        document.getElementById(`scTabBtn_${t}`).classList.toggle('active', t === tab);
+        document.getElementById(`scView_${t}`).style.display = t === tab ? '' : 'none';
+    });
+    if (tab === 'fallforecast') renderFallForecast();
+}
+
+function sortFFCol(key) {
+    scFFSort.dir = (scFFSort.col === key) ? -scFFSort.dir : 1;
+    scFFSort.col = key;
+    renderFallForecast();
+}
+
+function ffRows() {
+    const q = (document.getElementById('scFFSearch')?.value || '').toLowerCase();
+    let rows = allRows.filter(r => r.COMPLETE_CY !== null && r.COMPLETE_CY !== undefined);
+    if (q) {
+        rows = rows.filter(r => `${r.PROPERTY_NAME || ''} ${r.ENTITY_NUMBER || ''} ${r.RM_NAME || ''}`.toLowerCase().includes(q));
+    }
+    if (scFFSort.col) {
+        const col = scFFSort.col, dir = scFFSort.dir;
+        rows = rows.slice().sort((a, b) => {
+            const av = a[col], bv = b[col];
+            if (av === null || av === undefined) return bv === null || bv === undefined ? 0 : 1;
+            if (bv === null || bv === undefined) return -1;
+            if (typeof av === 'number' && typeof bv === 'number') return dir * (av - bv);
+            return dir * String(av).localeCompare(String(bv));
+        });
+    } else {
+        rows = rows.slice().sort((a, b) => (a.PROPERTY_NAME || '').localeCompare(b.PROPERTY_NAME || ''));
+    }
+    return rows;
+}
+
+function renderFallForecast() {
+    document.getElementById('statFFSnapshot').textContent = scQuarterLabel ? `${scQuarterLabel} (last week of quarter)` : '--';
+    const rows = ffRows();
+    document.getElementById('scFFThead').innerHTML = `<tr>${FF_COLS.map(c => {
+        const arrow = scFFSort.col === c.key ? `<span class="sort-arrow">${scFFSort.dir === 1 ? '\u25B2' : '\u25BC'}</span>` : '';
+        return `<th onclick="sortFFCol('${c.key}')">${esc(c.label)}${arrow}</th>`;
+    }).join('')}</tr>`;
+    document.getElementById('scFFTbody').innerHTML = rows.map(r =>
+        `<tr>${FF_COLS.map(c => {
+            const v = r[c.key];
+            const cls = c.key === 'PROPERTY_NAME' ? 'id-col name-col' : (c.key === 'ENTITY_NUMBER' || c.key === 'RM_NAME' ? 'id-col' : '');
+            return `<td class="${cls}">${esc(v ?? '--')}</td>`;
+        }).join('')}</tr>`
+    ).join('');
+    document.getElementById('scFFEmpty').style.display = rows.length ? 'none' : 'block';
+    document.getElementById('scFFTable').style.display = rows.length ? '' : 'none';
+}
+
+function exportBonusCalcForm() {
+    const rows = ffRows();
+    if (!rows.length) { alert('No Fall Forecast leasing data to export.'); return; }
+    const cols = ['PROPERTY_NAME', 'ENTITY_NUMBER', 'RM_NAME',
+        'COMPLETE_CY', 'COMPLETE_TARGET', 'COMPLETE_VS_TARGET',
+        'NEW_CY', 'NEW_TARGET', 'NEW_VS_TARGET',
+        'RENEWAL_CY', 'RENEWAL_TARGET', 'RENEWAL_VS_TARGET',
+        'RMSCORE', 'LDRTOTAL', 'MSTOTAL', 'NOI'];
+    const labels = ['Community', 'Entity', 'Regional Manager',
+        'Complete Leases CY (Achieved Target)', 'Complete Leases Budgeted Target', 'Complete vs Target',
+        'New Leases CY', 'New Leases Target', 'New vs Target',
+        'Renewal Leases CY', 'Renewal Leases Target', 'Renewal vs Target',
+        'Subjective PM Score (0-5)', 'Leadership Score Total', 'Maintenance Total', 'NOI % to Budget (0/1)'];
+    const csvEscape = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const lines = [
+        ['Bonus Calculation Form Export'],
+        ['Quarter', scQuarterLabel],
+        ['Exported', new Date().toLocaleString('en-US')],
+        [],
+        labels,
+        ...rows.map(r => cols.map(c => r[c])),
+    ];
+    const csv = lines.map(row => row.map(csvEscape).join(',')).join('\r\n');
+    scDownloadBlob('\ufeff' + csv, 'text/csv;charset=utf-8;', `${scQuarterLabel} - Bonus Calc Form Export - ${scExportTimestamp()}.csv`);
+}
+
+// ── Outlook .ics due-date export ──────────────────────────────────────────
+// KNOWN LIMITATION: these dates are the real, confirmed Q2 2026 bonus-cycle
+// dates ported verbatim from the original prototype -- there is no known
+// formula to derive them from the quarter alone (they're set by People Ops
+// each cycle). Must be updated with the real dates before Q3 2026 opens.
+const SC_DUE_DATES = [
+    { d: '20260731', label: '7/31/26', t: 'Add and email scores to People Operations', note: "Add notes if you see score discrepancies that should be addressed, and if applicable, share any exception approvals you've received from the owner of the data point with the exception." },
+    { d: '20260807', label: '8/7/26', t: 'Enter quarterly bonuses into Paycom', bold: true, preselect: true },
+    { d: '20260813', label: '8/13/26', t: 'Discuss scorecards with your Property Managers', note: 'Review each scorecard so Property Managers understand their achievements and areas of improvement, and have them share with their team before the payout date.', preselect: true },
+    { d: '20260814', label: '8/14/26', t: 'Payout of quarterly bonuses' },
+];
+
+function icsEsc(t) { return String(t).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n'); }
+
+function addDueDateToOutlook(i) {
+    const e = SC_DUE_DATES[i];
+    if (!e) return;
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const lines = [
+        'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//PeakMade//Leadership Scorecard//EN', 'CALSCALE:GREGORIAN',
+        'BEGIN:VTIMEZONE', 'TZID:America/New_York',
+        'BEGIN:DAYLIGHT', 'TZOFFSETFROM:-0500', 'TZOFFSETTO:-0400', 'TZNAME:EDT',
+        'DTSTART:19700308T020000', 'RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU', 'END:DAYLIGHT',
+        'BEGIN:STANDARD', 'TZOFFSETFROM:-0400', 'TZOFFSETTO:-0500', 'TZNAME:EST',
+        'DTSTART:19701101T020000', 'RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU', 'END:STANDARD',
+        'END:VTIMEZONE',
+        'BEGIN:VEVENT',
+        'UID:peak-scorecard-' + e.d + '@peakmade.com',
+        'DTSTAMP:' + stamp,
+        'DTSTART;TZID=America/New_York:' + e.d + 'T140000',
+        'DTEND;TZID=America/New_York:' + e.d + 'T143000',
+        'SUMMARY:' + scQuarterLabel + ' Bonuses -- ' + e.t,
+        'DESCRIPTION:Leadership Measures and Maintenance Scorecard for Quarterly Bonuses (' + scQuarterLabel + ').\\n\\nDue ' + e.label + ' at 2:00 PM EST: ' + icsEsc(e.t) + '.' + (e.note ? '\\n\\n' + icsEsc(e.note) : ''),
+        'BEGIN:VALARM', 'TRIGGER:-P1D', 'ACTION:DISPLAY',
+        'DESCRIPTION:Due tomorrow -- ' + icsEsc(e.t), 'END:VALARM',
+        'END:VEVENT', 'END:VCALENDAR',
+    ];
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = scQuarterLabel + ' - ' + e.t.replace(/[\\/:*?"<>|]/g, '') + ' - ' + e.label.replace(/\//g, '.') + '.ics';
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(a.href);
+    a.remove();
+}
+
+function showCalPrompt() {
+    const box = document.getElementById('scCalList');
+    box.innerHTML = SC_DUE_DATES.map((e, i) => {
+        const pre = e.preselect ? ' checked' : '';
+        return `<label class="sc-cal-opt">
+            <input type="checkbox" class="sc-cal-cb" value="${i}"${pre} onchange="scSyncCalAll()">
+            <span class="${e.bold ? 'sc-cal-bold' : ''}"><span class="sc-cal-date">${esc(e.label)}</span>${esc(e.t)}.
+                ${e.note ? `<span class="sc-cal-note">${esc(e.note)}</span>` : ''}</span>
+        </label>`;
+    }).join('');
+    scSyncCalAll();
+    document.getElementById('scCalOverlay').classList.add('open');
+}
+function closeScCalPrompt() { document.getElementById('scCalOverlay').classList.remove('open'); }
+function scToggleCalAll(on) { document.querySelectorAll('#scCalList .sc-cal-cb').forEach(cb => { cb.checked = on; }); }
+function scSyncCalAll() {
+    const all = document.querySelectorAll('#scCalList .sc-cal-cb');
+    const checked = document.querySelectorAll('#scCalList .sc-cal-cb:checked');
+    const sa = document.getElementById('scCalSelectAll');
+    sa.checked = all.length > 0 && checked.length === all.length;
+    sa.indeterminate = checked.length > 0 && checked.length < all.length;
+}
+function scAddSelectedDueDates() {
+    const picks = [];
+    document.querySelectorAll('#scCalList .sc-cal-cb:checked').forEach(cb => picks.push(parseInt(cb.value, 10)));
+    closeScCalPrompt();
+    picks.forEach((idx, n) => setTimeout(() => addDueDateToOutlook(idx), n * 400));
+}
+
 loadData();
+initScSignoutInterception();
 </script>
 {% endblock %}

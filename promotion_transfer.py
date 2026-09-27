@@ -102,7 +102,7 @@ def api_employees():
     cur = conn.execute("""
         SELECT EMPLOYEE_CODE, NAME_FULL, NAME_FIRST, NAME_LAST,
                TITLE, SUPERVISOR_NAME, SUPERVISOR_EMAIL, EMAIL_AD, LOCATION_AD, TYPE
-        FROM xtemp.EMPLOYEE_F
+        FROM dbo.Emp_Core
         WHERE STATUS = 'ACTIVE'
         ORDER BY NAME_FULL
     """)

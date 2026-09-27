@@ -511,7 +511,7 @@ body {
 }
 
 /* Testing status indicator — thin border tied to Module Registry Testing column */
-.nav-item[data-testing="PASS"]    { border: 1px solid #16a34a; }
+.nav-item[data-testing="PASS"]    { border: 2px solid #22ff5b; box-shadow: 0 0 4px rgba(34,255,91,0.35); }
 .nav-item[data-testing="FAIL"]    { border: 1px solid #ef4444; }
 .nav-item[data-testing="PENDING"] { border: 1px solid #eab308; }
 .nav-item.active[data-testing]    { border-left: 3px solid var(--nav-active-border); }

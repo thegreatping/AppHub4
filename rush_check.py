@@ -37,12 +37,14 @@ SP_SITE_PATH = "peakcampus.sharepoint.com:/sites/BaseCampApps"
 SP_SITE_BASE  = "https://peakcampus.sharepoint.com/sites/BaseCampApps"
 SP_LIST_ID   = "b38a5488-e83e-4ab3-a888-ed7c3ca656b9"
 
-# Shipping method choices (Choice field in SP)
+# Shipping method choices — MUST exactly match the ShippingMethod Choice column
+# in the live SharePoint lists (Rush Check + Special Handling, allowTextEntry=False).
 SHIPPING_METHODS = [
-    "Regular Mail",
+    "US Mail - Today",
+    "US Mail - This Week's Check Run",
+    "FedEx Express Saver",
     "FedEx Overnight",
-    "FedEx 2nd Day",
-    "Will Call / Pickup",
+    "FedEx 2 Day",
 ]
 
 # US states for vendor address
@@ -845,7 +847,7 @@ def api_submit():
         "VendorZip_x002f_PostalCode": vendor_zip,
         "InvoiceNumber":       invoice_number,
         "DateNeeded":          date_needed_iso,
-        "ShippingMethod":      {"Value": shipping_method},
+        "ShippingMethod":      shipping_method,
         "CheckAmount":         check_amount,
         "EntityID1":           line_items[0]["entity_id"],
         "GLCode1":             line_items[0]["gl_code"],

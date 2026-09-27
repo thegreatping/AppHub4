@@ -1,0 +1,1385 @@
+{% extends "shell.html" %}
+{% block head %}
+<style>
+    .stm-container { padding: 18px 24px 40px; max-width: 100%; }
+    .stm-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border-medium); }
+    .stm-title { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); }
+    .stm-subtitle { font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; }
+    .stm-back { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 6px 12px; border-radius: 4px; font-size: 0.78rem; cursor: pointer; text-decoration: none; }
+    .stm-back:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+
+    .stm-layout { display: flex; gap: 16px; align-items: flex-start; }
+    .stm-nav { width: 260px; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; max-height: calc(100vh - 190px); overflow-y: auto; }
+    .stm-nav-divider { padding: 12px 10px 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+    .stm-nav-item { padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.78rem; color: var(--text-primary); display: flex; flex-direction: column; gap: 2px; }
+    .stm-nav-item:hover { background: var(--input-bg); }
+    .stm-nav-item.active { background: var(--accent-cyan); color: #fff; }
+    .stm-nav-item .lbl { font-weight: 600; }
+    .stm-nav-item .sub { font-size: 0.65rem; color: var(--text-secondary); }
+    .stm-nav-item.active .sub { color: rgba(255,255,255,0.85); }
+
+    .stm-content { flex: 1; min-width: 0; }
+    .stm-meta { background: var(--input-bg); border: 1px solid var(--border-input); border-radius: 5px; padding: 10px 14px; margin-bottom: 10px; font-size: 0.78rem; color: var(--text-primary); }
+    .stm-meta .row { display: flex; gap: 20px; flex-wrap: wrap; }
+    .stm-meta .k { color: var(--text-secondary); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.4px; }
+    .stm-meta .v { font-family: Consolas, monospace; font-weight: 600; }
+    .stm-desc { margin-top: 6px; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; }
+    .stm-filter-badge { margin-top: 8px; padding: 6px 10px; background: rgba(0,169,200,0.10); border: 1px solid rgba(0,169,200,0.35); border-radius: 4px; font-size: 0.72rem; color: var(--text-primary); }
+    .stm-filter-badge .k { color: var(--accent-cyan); text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700; font-size: 0.65rem; }
+    .stm-filter-badge code { font-family: Consolas, monospace; color: var(--text-primary); background: transparent; padding: 0 2px; }
+    .stm-measures-chip { display: inline-block; background: rgba(0,169,200,0.15); border: 1px solid var(--accent-cyan); color: var(--accent-cyan); padding: 1px 7px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; margin-left: 4px; }
+
+    .stm-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .stm-toolbar input[type="search"] { flex: 0 0 240px; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 5px 8px; border-radius: 4px; font-size: 0.78rem; }
+    .stm-toolbar .count { font-size: 0.72rem; color: var(--text-secondary); }
+    .stm-clear-filters { background: transparent; border: 1px solid var(--border-input); color: var(--text-secondary); padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; }
+    .stm-clear-filters:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .stm-cap-note { font-size: 0.7rem; color: #f59e0b; font-weight: 600; margin-left: 6px; }
+    .stm-export { margin-left: auto; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 5px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; }
+    .stm-export:hover { border-color: var(--accent-cyan); }
+    .stm-error-banner { display: none; font-size: 0.72rem; color: #f87171; background: rgba(248,113,113,0.10); border: 1px solid rgba(248,113,113,0.4); border-radius: 4px; padding: 6px 10px; margin-bottom: 8px; }
+    .stm-error-banner.on { display: block; }
+
+    .stm-table-wrap { overflow: auto; border: 1px solid var(--border-medium); border-radius: 6px; max-height: calc(100vh - 320px); position: relative; }
+    .stm-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+    .stm-table thead th { position: sticky; background: var(--surface-raised); color: var(--text-primary); text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border-medium); white-space: nowrap; font-weight: 700; user-select: none; z-index: 2; }
+    .stm-table .stm-head-row th { top: 0; cursor: pointer; }
+    .stm-table .stm-head-row th:hover { color: var(--accent-cyan); }
+    .stm-table .stm-filter-row th { top: 30px; padding: 3px 6px; background: var(--input-bg); z-index: 3; }
+    .stm-filter-cell { display: flex; align-items: center; gap: 3px; }
+    .stm-table .stm-filter-row input { flex: 1 1 auto; min-width: 0; box-sizing: border-box; background: var(--surface, #1e1e1e); border: 1px solid var(--border-input); color: var(--text-primary); padding: 3px 6px; border-radius: 3px; font-size: 0.72rem; font-family: Consolas, monospace; }
+    .stm-table .stm-filter-row input:focus { outline: none; border-color: var(--accent-cyan); }
+    .stm-table .stm-filter-row input:not(:placeholder-shown) { border-color: var(--accent-cyan); background: rgba(0,169,200,0.10); }
+    .stm-table .stm-filter-row input:disabled { background: rgba(255,255,255,0.03); color: var(--text-secondary); cursor: not-allowed; }
+    .stm-col-filter-btn { flex: 0 0 auto; background: transparent; border: 1px solid var(--border-input); color: var(--text-secondary); padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; cursor: pointer; line-height: 1; }
+    .stm-col-filter-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .stm-col-filter-btn.active { background: var(--accent-cyan); color: #fff; border-color: var(--accent-cyan); }
+    .stm-col-filter-badge { flex: 0 1 auto; font-size: 0.65rem; color: var(--accent-cyan); font-weight: 700; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
+    .stm-sort-arrow { margin-left: 4px; color: var(--accent-cyan); font-size: 0.7rem; }
+    .stm-sort-arrow-idle { color: var(--border-medium); opacity: 0.4; }
+    .stm-table th:hover .stm-sort-arrow-idle { color: var(--accent-cyan); opacity: 0.8; }
+    .stm-table td { padding: 5px 10px; border-bottom: 1px solid var(--border-subtle); white-space: nowrap; color: var(--text-primary); }
+    .stm-table tbody tr.editable { cursor: pointer; }
+    .stm-table tbody tr:hover td { background: var(--input-bg); }
+    .stm-table tbody tr.editable:hover td { background: rgba(0,169,200,0.10); }
+    .stm-empty { text-align: center; padding: 40px 20px; color: var(--text-secondary); font-size: 0.85rem; }
+
+    /* Filter dropdown popover */
+    .stm-popover { position: fixed; width: 300px; max-height: 420px; background: var(--surface, #1e1e1e); border: 1px solid var(--border-medium); border-radius: 6px; box-shadow: 0 6px 24px rgba(0,0,0,0.5); z-index: 1000; display: none; flex-direction: column; overflow: hidden; }
+    .stm-popover.open { display: flex; }
+    .stm-popover-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid var(--border-medium); }
+    .stm-popover-col { font-size: 0.75rem; font-weight: 700; color: var(--text-primary); font-family: Consolas, monospace; }
+    .stm-popover-close { background: transparent; border: none; color: var(--text-secondary); font-size: 1rem; cursor: pointer; padding: 0 6px; border-radius: 3px; }
+    .stm-popover-close:hover { background: var(--input-bg); color: var(--text-primary); }
+    .stm-popover-search-wrap { padding: 8px 10px 4px; }
+    .stm-popover-search { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 5px 8px; border-radius: 3px; font-size: 0.75rem; }
+    .stm-popover-search:focus { outline: none; border-color: var(--accent-cyan); }
+    .stm-popover-actions-top { display: flex; justify-content: space-between; align-items: center; padding: 4px 10px 6px; border-bottom: 1px solid var(--border-subtle); }
+    .stm-popover-selectall { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-primary); cursor: pointer; }
+    .stm-popover-count { font-size: 0.65rem; color: var(--text-secondary); }
+    .stm-popover-list { flex: 1; overflow-y: auto; padding: 4px 0; min-height: 100px; max-height: 260px; }
+    .stm-popover-row { display: flex; align-items: center; gap: 6px; padding: 4px 12px; font-size: 0.75rem; color: var(--text-primary); cursor: pointer; }
+    .stm-popover-row:hover { background: var(--input-bg); }
+    .stm-popover-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: Consolas, monospace; }
+    .stm-popover-loading, .stm-popover-empty { padding: 16px; text-align: center; color: var(--text-secondary); font-size: 0.75rem; }
+    .stm-popover-capped { padding: 4px 12px; font-size: 0.65rem; color: #f59e0b; background: rgba(245,158,11,0.08); border-bottom: 1px solid rgba(245,158,11,0.2); }
+    .stm-popover-footer { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid var(--border-medium); background: var(--input-bg); }
+    .stm-popover-footer button { flex: 1; padding: 5px 10px; font-size: 0.72rem; border-radius: 3px; cursor: pointer; border: 1px solid var(--border-input); }
+    .stm-popover-clear { background: transparent; color: var(--text-secondary); }
+    .stm-popover-clear:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .stm-popover-cancel { background: transparent; color: var(--text-primary); }
+    .stm-popover-apply { background: var(--accent-cyan); color: #fff; border-color: var(--accent-cyan); font-weight: 600; }
+    .stm-popover-apply:hover { filter: brightness(1.1); }
+
+    /* History modal + audit tables (used both in modal and in the edit slideout) */
+    .stm-history-btn { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 4px 10px; border-radius: 4px; font-size: 0.72rem; cursor: pointer; }
+    .stm-history-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .stm-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 1100; display: none; }
+    .stm-modal-backdrop.open { display: block; }
+    .stm-modal { position: fixed; top: 6vh; left: 50%; transform: translateX(-50%); width: 92vw; max-width: 1200px; max-height: 88vh; background: var(--surface, #1e1e1e); border: 1px solid var(--border-medium); border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.6); z-index: 1101; display: none; flex-direction: column; overflow: hidden; }
+    .stm-modal.open { display: flex; }
+    .stm-modal-header { padding: 12px 18px; border-bottom: 1px solid var(--border-medium); display: flex; align-items: center; justify-content: space-between; }
+    .stm-modal-title { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); }
+    .stm-modal-sub { font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px; font-family: Consolas, monospace; }
+    .stm-modal-close { background: transparent; border: none; color: var(--text-secondary); font-size: 1.2rem; cursor: pointer; padding: 4px 10px; border-radius: 4px; }
+    .stm-modal-close:hover { background: var(--input-bg); color: var(--text-primary); }
+    .stm-modal-body { padding: 12px 18px; overflow: auto; flex: 1; }
+
+    .stm-audit-table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+    .stm-audit-table th { position: sticky; top: 0; background: var(--surface-raised); color: var(--text-primary); text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border-medium); font-weight: 700; white-space: nowrap; }
+    .stm-audit-table td { padding: 5px 8px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); vertical-align: top; }
+    .stm-audit-table tr:hover td { background: var(--input-bg); }
+    .stm-audit-when { font-family: Consolas, monospace; white-space: nowrap; color: var(--text-secondary); }
+    .stm-audit-who { font-family: Consolas, monospace; white-space: nowrap; color: var(--text-primary); }
+    .stm-audit-rowkey { font-family: Consolas, monospace; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+    .stm-audit-field { font-family: Consolas, monospace; font-weight: 700; color: var(--accent-cyan); white-space: nowrap; }
+    .stm-audit-old, .stm-audit-new { font-family: Consolas, monospace; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .stm-audit-old { color: #f87171; }
+    .stm-audit-new { color: #4ec26a; }
+    .stm-audit-arrow { color: var(--text-secondary); text-align: center; }
+    .stm-audit-reason { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); font-style: italic; }
+    .stm-audit-action { text-align: right; white-space: nowrap; }
+    .stm-audit-revert { background: transparent; border: 1px solid var(--border-input); color: var(--text-secondary); padding: 2px 8px; border-radius: 3px; font-size: 0.68rem; cursor: pointer; }
+    .stm-audit-revert:hover { border-color: #f59e0b; color: #f59e0b; }
+    .stm-null { color: var(--text-secondary); font-style: italic; }
+
+    .stm-slideout-history-wrap { margin-top: 18px; border-top: 1px solid var(--border-medium); padding-top: 12px; }
+    .stm-slideout-history-wrap summary { cursor: pointer; font-size: 0.75rem; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.4px; padding: 4px 0; user-select: none; }
+    .stm-slideout-history-wrap summary:hover { color: var(--accent-cyan); }
+    .stm-slideout-history { margin-top: 6px; max-height: 260px; overflow: auto; border: 1px solid var(--border-input); border-radius: 4px; }
+
+    /* Slideout edit panel */
+    .stm-slideout-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 998; display: none; }
+    .stm-slideout-backdrop.open { display: block; }
+    .stm-slideout { position: fixed; top: 0; right: 0; height: 100vh; width: 620px; max-width: 90vw; background: var(--surface, #1e1e1e); border-left: 1px solid var(--border-medium); box-shadow: -6px 0 24px rgba(0,0,0,0.4); z-index: 999; transform: translateX(100%); transition: transform 0.22s ease; display: flex; flex-direction: column; }
+    .stm-slideout.open { transform: translateX(0); }
+    .stm-slideout-header { padding: 14px 18px; border-bottom: 1px solid var(--border-medium); display: flex; align-items: center; justify-content: space-between; }
+    .stm-slideout-title { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); }
+    .stm-slideout-sub { font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px; font-family: Consolas, monospace; }
+    .stm-slideout-close { background: transparent; border: none; color: var(--text-secondary); font-size: 1.2rem; cursor: pointer; padding: 4px 10px; border-radius: 4px; }
+    .stm-slideout-close:hover { background: var(--input-bg); color: var(--text-primary); }
+    .stm-slideout-body { padding: 14px 18px; overflow-y: auto; flex: 1; font-size: 0.8rem; }
+    .stm-slideout-body .stm-field-group { margin-bottom: 14px; }
+    .stm-slideout-body .stm-field-group label { display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-secondary); font-weight: 700; margin-bottom: 4px; }
+    .stm-slideout-body .stm-field-group input[type="text"],
+    .stm-slideout-body .stm-field-group input[type="number"],
+    .stm-slideout-body .stm-field-group textarea,
+    .stm-slideout-body .stm-field-group select { width: 100%; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 6px 9px; border-radius: 4px; font-size: 0.82rem; font-family: inherit; box-sizing: border-box; }
+    .stm-slideout-body .stm-field-group textarea { min-height: 60px; resize: vertical; }
+    .stm-slideout-body .stm-readonly-group { margin-bottom: 10px; padding: 8px 10px; background: var(--input-bg); border-radius: 4px; }
+    .stm-slideout-body .stm-readonly-group .k { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-secondary); font-weight: 700; }
+    .stm-slideout-body .stm-readonly-group .v { font-family: Consolas, monospace; font-size: 0.78rem; color: var(--text-primary); margin-top: 2px; word-break: break-word; }
+    .stm-slideout-footer { padding: 12px 18px; border-top: 1px solid var(--border-medium); display: flex; gap: 8px; align-items: center; }
+    .stm-slideout-footer .stm-reason { flex: 1; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 6px 8px; border-radius: 4px; font-size: 0.75rem; }
+    .stm-slideout-footer button { padding: 7px 14px; border-radius: 4px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border-input); }
+    .stm-slideout-footer .stm-save { background: var(--accent-cyan); color: #fff; border-color: var(--accent-cyan); }
+    .stm-slideout-footer .stm-save:hover { filter: brightness(1.1); }
+    .stm-slideout-footer .stm-save:disabled { opacity: 0.5; cursor: not-allowed; }
+    .stm-slideout-footer .stm-cancel { background: var(--input-bg); color: var(--text-primary); }
+    .stm-slideout-footer .stm-delete { background: transparent; color: #f87171; border-color: rgba(248,113,113,0.4); }
+    .stm-slideout-footer .stm-delete:hover { background: rgba(248,113,113,0.12); border-color: #f87171; }
+    .stm-required { color: #f59e0b; font-weight: 700; margin-left: 2px; }
+    .stm-add-btn { background: var(--accent-cyan); border: 1px solid var(--accent-cyan); color: #fff; padding: 4px 10px; border-radius: 4px; font-size: 0.72rem; cursor: pointer; font-weight: 600; }
+    .stm-add-btn:hover { filter: brightness(1.1); }
+    .stm-bulk-edit-btn { background: var(--accent-cyan); border: 1px solid var(--accent-cyan); color: #fff; padding: 4px 10px; border-radius: 4px; font-size: 0.72rem; cursor: pointer; font-weight: 600; }
+    .stm-bulk-edit-btn:hover { filter: brightness(1.1); }
+    .stm-cols-btn { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 4px 10px; border-radius: 4px; font-size: 0.72rem; cursor: pointer; }
+    .stm-cols-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .stm-cols-btn.active { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .stm-select-col-th, .stm-select-col { width: 30px; text-align: center; padding: 3px 6px !important; }
+    .stm-select-col input[type="checkbox"], .stm-select-col-th input[type="checkbox"] { cursor: pointer; }
+    .stm-slideout-status { font-size: 0.72rem; padding: 6px 18px; }
+    .stm-slideout-status.ok { color: #4ec26a; }
+    .stm-slideout-status.err { color: #e15a5a; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="stm-container">
+    <div class="stm-header">
+        <div>
+            <div class="stm-title"><i class="fa-solid fa-database" style="color: var(--accent-cyan); margin-right: 6px;"></i> Scorecard Table Manager</div>
+            <div class="stm-subtitle">Read-only browse of every table feeding or produced by the Leadership Scorecard pipeline (App_ID 36). Admin-only.</div>
+        </div>
+        <div style="display:flex; gap:6px;">
+            <a href="/scorecard/admin/runs" class="stm-back" title="Pipeline runs viewer">&#9654; Pipeline Runs</a>
+            <a href="/scorecard/" class="stm-back">&larr; Back to Scorecard</a>
+        </div>
+    </div>
+
+    <div class="stm-layout">
+        <div class="stm-nav" id="stmNav">Loading...</div>
+        <div class="stm-content" id="stmContent">
+            <div class="stm-empty">Select a table from the left to browse.</div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit slideout -->
+<div class="stm-slideout-backdrop" id="stmSlideoutBackdrop" onclick="closeStmSlideout()"></div>
+<div class="stm-slideout" id="stmSlideout" role="dialog" aria-modal="true">
+    <div class="stm-slideout-header">
+        <div>
+            <div class="stm-slideout-title" id="stmSlideoutTitle">Edit row</div>
+            <div class="stm-slideout-sub" id="stmSlideoutSub"></div>
+        </div>
+        <button class="stm-slideout-close" onclick="closeStmSlideout()" title="Close (Esc)">&times;</button>
+    </div>
+    <div class="stm-slideout-body" id="stmSlideoutBody"></div>
+    <div class="stm-slideout-status" id="stmSlideoutStatus"></div>
+    <div class="stm-slideout-footer" id="stmSlideoutFooter">
+        <input type="text" class="stm-reason" id="stmSlideoutReason" placeholder="Reason for change (optional but recommended)">
+        <button class="stm-cancel" onclick="closeStmSlideout()">Cancel</button>
+        <button class="stm-save" id="stmSlideoutSave" onclick="saveStmSlideout()">Save changes</button>
+    </div>
+</div>
+
+<!-- Full-table history modal -->
+<div class="stm-modal-backdrop" id="stmHistoryBackdrop" onclick="closeStmHistoryModal()"></div>
+<div class="stm-modal" id="stmHistoryModal" role="dialog" aria-modal="true">
+    <div class="stm-modal-header">
+        <div>
+            <div class="stm-modal-title">Edit history</div>
+            <div class="stm-modal-sub" id="stmHistorySub"></div>
+        </div>
+        <button class="stm-modal-close" onclick="closeStmHistoryModal()" title="Close (Esc)">&times;</button>
+    </div>
+    <div class="stm-modal-body" id="stmHistoryBody">Loading&hellip;</div>
+</div>
+
+<script>
+let stmRegistry = {};
+let stmCurrentKey = null;
+let stmCurrentData = null;
+let stmDisplayedRows = [];
+let stmEditRowIdx = null;
+// Per-column filter state: { col: { text: '', values: null } }
+// text = LIKE substring (blank = ignore). values = [...]  IN clause (null = ignore).
+let stmColFilters = {};
+let stmSort = null;
+let stmRequeryTick = 0;
+let stmFilterDebounce = null;
+// Filter dropdown popover state
+let stmPopoverCol = null;
+let stmPopoverValues = [];        // all values loaded from server for the current dropdown
+let stmPopoverChecked = new Set(); // currently checked values (as strings)
+let stmPopoverSearchDebounce = null;
+let stmPopoverLoading = false;
+// Bulk edit: JSON-stringified row_key => true for each checked row.
+let stmSelectedRowKeys = new Set();
+// Per-table hidden columns: Set<colname>. Persisted in localStorage.
+let stmHiddenCols = new Set();
+
+function stmEsc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+async function stmInit() {
+    const r = await fetch('/scorecard/api/admin/tables');
+    if (!r.ok) {
+        document.getElementById('stmNav').innerHTML = '<div class="stm-empty">Failed to load registry.</div>';
+        return;
+    }
+    stmRegistry = await r.json();
+    renderStmNav();
+    _stmRestoreFromUrl();
+}
+
+// Restore table / filters / sort from the URL so admins can share links to a
+// specific browse state (e.g. "measure rules with EFFECTIVE_TO_AY < 2027").
+function _stmRestoreFromUrl() {
+    const p = new URLSearchParams(location.search);
+    const key = p.get('table');
+    if (!key || !stmRegistry[key]) return;
+    const rawFilters = p.get('col_filters');
+    if (rawFilters) {
+        try {
+            const parsed = JSON.parse(rawFilters);
+            for (const [c, v] of Object.entries(parsed)) {
+                if (Array.isArray(v)) stmColFilters[c] = { text: '', values: v };
+                else stmColFilters[c] = { text: String(v), values: null };
+            }
+        } catch { /* ignore malformed */ }
+    }
+    const sortCol = p.get('sort_col');
+    const sortDir = p.get('sort_dir');
+    if (sortCol) stmSort = { col: sortCol, dir: sortDir === 'DESC' ? 'DESC' : 'ASC' };
+    selectStmTable(key, /*fromUrl=*/true);
+}
+
+function _stmSyncUrl() {
+    if (!stmCurrentKey) return;
+    const p = new URLSearchParams();
+    p.set('table', stmCurrentKey);
+    const active = stmSerializeColFilters();
+    if (Object.keys(active).length) p.set('col_filters', JSON.stringify(active));
+    if (stmSort && stmSort.col) {
+        p.set('sort_col', stmSort.col);
+        p.set('sort_dir', stmSort.dir || 'ASC');
+    }
+    const url = `${location.pathname}?${p.toString()}`;
+    history.replaceState(null, '', url);
+}
+
+function renderStmNav() {
+    const nav = document.getElementById('stmNav');
+    const groups = {};
+    for (const [key, cfg] of Object.entries(stmRegistry)) {
+        (groups[cfg.group] = groups[cfg.group] || []).push([key, cfg]);
+    }
+    const groupOrder = ['Inbound: Paycom', 'Inbound: Training', 'Inbound: Truist / P-Card',
+        'Inbound: Leonardo 24/7', 'Inbound: Reputation.com', 'Inbound: Entrata / WH_ODS',
+        'Inbound: RM Inspection (Molly)', 'Inbound: Entrata (Financial)',
+        'Inbound: Student CORE Dataset', 'Central Table', 'Control'];
+    const seen = new Set();
+    let html = '';
+    for (const g of groupOrder) {
+        if (!groups[g]) continue;
+        seen.add(g);
+        html += `<div class="stm-nav-divider">${stmEsc(g)}</div>`;
+        for (const [key, cfg] of groups[g].sort((a, b) => a[1].label.localeCompare(b[1].label))) {
+            html += stmNavItemHtml(key, cfg);
+        }
+    }
+    for (const g of Object.keys(groups)) {
+        if (seen.has(g)) continue;
+        html += `<div class="stm-nav-divider">${stmEsc(g)}</div>`;
+        for (const [key, cfg] of groups[g].sort((a, b) => a[1].label.localeCompare(b[1].label))) {
+            html += stmNavItemHtml(key, cfg);
+        }
+    }
+    nav.innerHTML = html;
+}
+
+function stmNavItemHtml(key, cfg) {
+    return `<div class="stm-nav-item" data-key="${key}" onclick="selectStmTable('${key}')">
+        <span class="lbl">${stmEsc(cfg.label)}</span>
+        <span class="sub">${stmEsc(cfg.db)} &middot; ${stmEsc(cfg.schema)}.${stmEsc(cfg.table)}</span>
+    </div>`;
+}
+
+async function selectStmTable(key, fromUrl = false) {
+    stmCurrentKey = key;
+    if (!fromUrl) {
+        // Manual nav clears filters/sort; URL restore preserves them.
+        stmColFilters = {};
+        stmSort = null;
+    }
+    stmSelectedRowKeys = new Set();
+    // Restore hidden-column choices for this table.
+    try {
+        const saved = localStorage.getItem(`scorecard_tm_hidden_cols_${key}`);
+        stmHiddenCols = saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { stmHiddenCols = new Set(); }
+    document.querySelectorAll('.stm-nav-item').forEach(el => el.classList.toggle('active', el.dataset.key === key));
+    await loadStmTable();
+}
+
+async function loadStmTable() {
+    if (!stmCurrentKey) return;
+    const content = document.getElementById('stmContent');
+    const hasPrior = !!stmCurrentData;
+    if (!hasPrior) content.innerHTML = '<div class="stm-empty">Loading...</div>';
+
+    const myTick = ++stmRequeryTick;
+    const params = new URLSearchParams();
+    const activeFilters = stmSerializeColFilters();
+    if (Object.keys(activeFilters).length) params.set('col_filters', JSON.stringify(activeFilters));
+    if (stmSort && stmSort.col) {
+        params.set('sort_col', stmSort.col);
+        params.set('sort_dir', stmSort.dir || 'ASC');
+    }
+    let r, j;
+    try {
+        r = await fetch(`/scorecard/api/admin/table/${encodeURIComponent(stmCurrentKey)}?${params}`);
+        j = await r.json().catch(() => ({ error: 'invalid response' }));
+    } catch (e) {
+        if (myTick !== stmRequeryTick) return;
+        content.innerHTML = `<div class="stm-empty">Failed to load: ${e.message || e}</div>`;
+        return;
+    }
+    if (myTick !== stmRequeryTick) return;
+    if (!r.ok) {
+        const msg = (j && j.error) || `HTTP ${r.status}`;
+        if (hasPrior) {
+            const banner = document.getElementById('stmErrorBanner');
+            if (banner) { banner.textContent = 'Query failed: ' + msg; banner.classList.add('on'); }
+        } else {
+            content.innerHTML = `<div class="stm-empty">Query failed: ${msg}</div>`;
+        }
+        return;
+    }
+    stmCurrentData = j;
+    _stmSyncUrl();
+    renderStmContent();
+}
+
+function stmSerializeColFilters() {
+    // Convert {col: {text, values}} to {col: str|list} payload the backend expects.
+    const out = {};
+    for (const [col, f] of Object.entries(stmColFilters)) {
+        if (!f) continue;
+        if (Array.isArray(f.values) && f.values.length > 0) {
+            out[col] = f.values;
+        } else if (f.text && f.text.trim() !== '') {
+            out[col] = f.text.trim();
+        }
+    }
+    return out;
+}
+
+function stmFilterActiveCount() {
+    let n = 0;
+    for (const f of Object.values(stmColFilters)) {
+        if (!f) continue;
+        if ((Array.isArray(f.values) && f.values.length > 0) || (f.text && f.text.trim() !== '')) n++;
+    }
+    return n;
+}
+
+function stmGetFilter(col) {
+    if (!stmColFilters[col]) stmColFilters[col] = { text: '', values: null };
+    return stmColFilters[col];
+}
+
+function renderStmContent() {
+    if (!stmCurrentData) return;
+    const cfg = stmCurrentData.config;
+    const measures = (cfg.measures || []).map(m => `<span class="stm-measures-chip">${stmEsc(m)}</span>`).join('');
+    const rows = stmCurrentData.rows;
+    const columns = stmCurrentData.columns;
+    const activeFilterCount = stmFilterActiveCount();
+    const limit = cfg.limit || 3000;
+    const atLimit = rows.length >= limit;
+
+    const filterBadge = cfg.where_sql_resolved
+        ? `<div class="stm-filter-badge"><span class="k">Filtered:</span> <code>WHERE ${stmEsc(cfg.where_sql_resolved)}</code>${cfg.sql_order_by_resolved ? ` <span class="k" style="margin-left:12px;">Ordered:</span> <code>${stmEsc(cfg.sql_order_by_resolved)}</code>` : ''}</div>`
+        : '';
+    const isEditable = Array.isArray(cfg.primary_key) && cfg.primary_key.length > 0 && Array.isArray(cfg.editable_columns) && cfg.editable_columns.length > 0;
+    const historyBtn = isEditable
+        ? `<button class="stm-history-btn" onclick="openStmHistoryModal()" title="View edit history for this table">&#128337; History</button>`
+        : '';
+    const addBtn = cfg.allow_insert
+        ? `<button class="stm-add-btn" onclick="openStmAddSlideout()" title="Add a new row">&plus; Add row</button>`
+        : '';
+    const meta = `<div class="stm-meta">
+        <div class="row">
+            <div><span class="k">Database</span> <span class="v">${stmEsc(cfg.db)}</span></div>
+            <div><span class="k">Schema.Table</span> <span class="v">${stmEsc(cfg.schema)}.${stmEsc(cfg.table)}</span></div>
+            <div><span class="k">Rows returned</span> <span class="v">${rows.length.toLocaleString()}${atLimit ? ' (at cap)' : ''}</span></div>
+            ${measures ? `<div><span class="k">Feeds Measures</span> ${measures}</div>` : ''}
+            ${(addBtn || historyBtn) ? `<div style="margin-left:auto;display:flex;gap:6px;">${addBtn}${historyBtn}</div>` : ''}
+        </div>
+        <div class="stm-desc">${stmEsc(cfg.description || '')}</div>
+        ${filterBadge}
+    </div>`;
+    const capNote = atLimit
+        ? `<span class="stm-cap-note">&#9888; Row cap of ${limit.toLocaleString()} reached &mdash; narrow a column filter to see more.</span>`
+        : '';
+    const isEditableTable = Array.isArray(cfg.primary_key) && cfg.primary_key.length > 0 && Array.isArray(cfg.editable_columns) && cfg.editable_columns.length > 0;
+    const selectedCount = stmSelectedRowKeys.size;
+    const bulkEditBtn = (isEditableTable && selectedCount > 0)
+        ? `<button class="stm-bulk-edit-btn" onclick="openStmBulkEditSlideout()">&#9998; Bulk edit ${selectedCount} row${selectedCount === 1 ? '' : 's'}</button>`
+        : '';
+    const hiddenCount = stmHiddenCols.size;
+    const colsBtn = `<button class="stm-cols-btn${hiddenCount > 0 ? ' active' : ''}" onclick="openStmColsPopover(event)" title="Show/hide columns">&#9881; Cols${hiddenCount > 0 ? ` (${columns.length - hiddenCount}/${columns.length})` : ''}</button>`;
+    const toolbar = `<div class="stm-toolbar">
+        <span class="count">${rows.length.toLocaleString()} rows &middot; ${activeFilterCount} column filter${activeFilterCount === 1 ? '' : 's'} active${selectedCount > 0 ? ` &middot; <span style="color: var(--accent-cyan); font-weight:700;">${selectedCount} selected</span>` : ''}</span>
+        ${activeFilterCount ? '<button class="stm-clear-filters" onclick="clearStmFilters()">Clear filters</button>' : ''}
+        ${bulkEditBtn}
+        ${capNote}
+        ${colsBtn}
+        <button class="stm-export" onclick="exportStmTable()">&#128190; Export CSV</button>
+    </div>
+    <div class="stm-error-banner" id="stmErrorBanner"></div>`;
+    const visibleColumns = columns.filter(c => !stmHiddenCols.has(c));
+    const table = renderStmTableHtml(visibleColumns, rows);
+    document.getElementById('stmContent').innerHTML = meta + toolbar + table;
+    stmDisplayedRows = rows;
+    if (stmCurrentData._focusFilter) {
+        const el = document.querySelector(`.stm-col-filter[data-col="${CSS.escape(stmCurrentData._focusFilter)}"]`);
+        if (el) {
+            el.focus();
+            const v = el.value;
+            el.setSelectionRange(v.length, v.length);
+        }
+        stmCurrentData._focusFilter = null;
+    }
+}
+
+function renderStmTableHtml(columns, rows) {
+    const cfg = stmCurrentData.config || {};
+    const isEditable = Array.isArray(cfg.primary_key) && cfg.primary_key.length > 0 && Array.isArray(cfg.editable_columns) && cfg.editable_columns.length > 0;
+    const pkCols = cfg.primary_key || [];
+    const sortCol = stmSort && stmSort.col;
+    const sortDir = stmSort && stmSort.dir;
+    const selectCol = isEditable
+        ? `<th class="stm-select-col-th" title="Select rows for bulk edit"><input type="checkbox" onclick="onStmSelectAll(event)" ${stmAllVisibleSelected(rows, pkCols) ? 'checked' : ''}></th>`
+        : '';
+    const selectFilterCol = isEditable ? '<th class="stm-select-col-th"></th>' : '';
+    const head = `<thead>
+        <tr class="stm-head-row">${selectCol}${columns.map(c => {
+            const isActive = sortCol === c;
+            const arrow = isActive ? `<span class="stm-sort-arrow">${sortDir === 'DESC' ? '\u25BC' : '\u25B2'}</span>` : '<span class="stm-sort-arrow stm-sort-arrow-idle">\u25C6</span>';
+            return `<th onclick="sortStmCol('${c.replace(/'/g, "\\'")}')" title="Click to sort">${stmEsc(c)}${arrow}</th>`;
+        }).join('')}</tr>
+        <tr class="stm-filter-row">${selectFilterCol}${columns.map(c => {
+            const f = stmColFilters[c] || {};
+            const hasList = Array.isArray(f.values) && f.values.length > 0;
+            const inputVal = hasList ? '' : (f.text || '');
+            const inputDisabled = hasList ? 'disabled' : '';
+            const badge = hasList
+                ? `<span class="stm-col-filter-badge" title="${stmEsc(f.values.join(', '))}">= ${f.values.length} value${f.values.length === 1 ? '' : 's'}</span>`
+                : '';
+            const btnActive = hasList ? ' active' : '';
+            return `<th>
+                <div class="stm-filter-cell">
+                    <input type="text" class="stm-col-filter" data-col="${stmEsc(c)}" value="${stmEsc(inputVal)}" placeholder="&#128269;" ${inputDisabled}
+                           oninput="onStmColFilterInput(event)" onkeydown="onStmColFilterKey(event)" onclick="event.stopPropagation()">
+                    ${badge}
+                    <button class="stm-col-filter-btn${btnActive}" title="Filter by value" onclick="openStmFilterPopover(event, '${c.replace(/'/g, "\\'")}')">&#9662;</button>
+                </div>
+            </th>`;
+        }).join('')}</tr>
+    </thead>`;
+    if (!rows.length) {
+        return `<div class="stm-table-wrap"><table class="stm-table">${head}</table><div class="stm-empty">No rows match the current filters.</div></div>`;
+    }
+    const body = `<tbody>${rows.map((r, i) => {
+        const cls = isEditable ? 'editable' : '';
+        const onclick = isEditable ? ` onclick="openStmSlideout(${i})"` : '';
+        const title = isEditable ? ' title="Click to edit"' : '';
+        const rkStr = isEditable ? stmRowKeyStr(r, pkCols) : '';
+        const checked = isEditable && stmSelectedRowKeys.has(rkStr) ? 'checked' : '';
+        const selectCell = isEditable
+            ? `<td class="stm-select-col" onclick="event.stopPropagation()"><input type="checkbox" data-rkstr="${stmEsc(rkStr)}" ${checked} onclick="onStmRowCheck(event)"></td>`
+            : '';
+        return `<tr class="${cls}"${onclick}${title} data-row-idx="${i}">${selectCell}${columns.map(c => `<td>${stmEsc(r[c] ?? '')}</td>`).join('')}</tr>`;
+    }).join('')}</tbody>`;
+    const hint = isEditable ? '<div style="font-size:0.7rem; color: var(--text-secondary); margin-top:6px;">&#9998; Click any row to edit its editable fields. Check the boxes on the left to bulk-edit multiple rows.</div>' : '';
+    return `<div class="stm-table-wrap"><table class="stm-table">${head}${body}</table></div>${hint}`;
+}
+
+function stmRowKeyStr(row, pkCols) {
+    const obj = {};
+    for (const c of pkCols) obj[c] = row[c];
+    return JSON.stringify(obj, Object.keys(obj).sort());
+}
+
+function stmAllVisibleSelected(rows, pkCols) {
+    if (!rows.length || !pkCols.length) return false;
+    return rows.every(r => stmSelectedRowKeys.has(stmRowKeyStr(r, pkCols)));
+}
+
+function onStmRowCheck(ev) {
+    const key = ev.target.dataset.rkstr;
+    if (ev.target.checked) stmSelectedRowKeys.add(key);
+    else stmSelectedRowKeys.delete(key);
+    renderStmContent();
+}
+
+function onStmSelectAll(ev) {
+    const cfg = stmCurrentData.config || {};
+    const pkCols = cfg.primary_key || [];
+    const rows = stmDisplayedRows;
+    if (ev.target.checked) {
+        for (const r of rows) stmSelectedRowKeys.add(stmRowKeyStr(r, pkCols));
+    } else {
+        for (const r of rows) stmSelectedRowKeys.delete(stmRowKeyStr(r, pkCols));
+    }
+    renderStmContent();
+}
+
+function onStmColFilterInput(ev) {
+    const col = ev.target.dataset.col;
+    const f = stmGetFilter(col);
+    f.text = ev.target.value;
+    f.values = null; // typing clears the multi-select
+    if (stmCurrentData) stmCurrentData._focusFilter = col;
+    if (stmFilterDebounce) clearTimeout(stmFilterDebounce);
+    stmFilterDebounce = setTimeout(loadStmTable, 400);
+}
+
+function onStmColFilterKey(ev) {
+    if (ev.key === 'Enter') {
+        if (stmFilterDebounce) { clearTimeout(stmFilterDebounce); stmFilterDebounce = null; }
+        if (stmCurrentData) stmCurrentData._focusFilter = ev.target.dataset.col;
+        loadStmTable();
+    }
+}
+
+function clearStmFilters() {
+    stmColFilters = {};
+    loadStmTable();
+}
+
+function sortStmCol(col) {
+    if (stmSort && stmSort.col === col) {
+        if (stmSort.dir === 'ASC') stmSort = { col, dir: 'DESC' };
+        else stmSort = null;
+    } else {
+        stmSort = { col, dir: 'ASC' };
+    }
+    loadStmTable();
+}
+
+// ── Filter dropdown popover ───────────────────────────────────────────────
+async function openStmFilterPopover(ev, col) {
+    ev.stopPropagation();
+    ev.preventDefault();
+    const anchor = ev.currentTarget;
+    stmPopoverCol = col;
+    const existing = stmColFilters[col] || {};
+    stmPopoverChecked = new Set((existing.values || []).map(String));
+    stmPopoverValues = [];
+    stmPopoverLoading = true;
+
+    let pop = document.getElementById('stmFilterPopover');
+    if (!pop) {
+        pop = document.createElement('div');
+        pop.id = 'stmFilterPopover';
+        pop.className = 'stm-popover';
+        document.body.appendChild(pop);
+    }
+    pop.innerHTML = renderStmPopoverHtml(col);
+    pop.classList.add('open');
+    positionStmPopover(pop, anchor);
+    // Wire outside-click after opening
+    setTimeout(() => document.addEventListener('mousedown', stmPopoverOutside, { once: false }), 0);
+    document.addEventListener('keydown', stmPopoverEsc);
+
+    await fetchStmPopoverValues(col, '');
+    document.getElementById('stmPopoverSearch')?.focus();
+}
+
+function renderStmPopoverHtml(col) {
+    const list = stmPopoverLoading
+        ? '<div class="stm-popover-loading">Loading values&hellip;</div>'
+        : renderStmPopoverListHtml();
+    return `<div class="stm-popover-header">
+            <div class="stm-popover-col">${stmEsc(col)}</div>
+            <button class="stm-popover-close" onclick="closeStmFilterPopover()" title="Close">&times;</button>
+        </div>
+        <div class="stm-popover-search-wrap">
+            <input type="text" id="stmPopoverSearch" class="stm-popover-search" placeholder="Search values&hellip;"
+                   oninput="onStmPopoverSearchInput(event)" onkeydown="onStmPopoverSearchKey(event)">
+        </div>
+        <div class="stm-popover-actions-top">
+            <label class="stm-popover-selectall">
+                <input type="checkbox" onclick="onStmPopoverSelectAll(event)" ${stmPopoverAllChecked() ? 'checked' : ''}>
+                <span>(Select All)</span>
+            </label>
+            <span class="stm-popover-count" id="stmPopoverCount">${stmPopoverChecked.size} selected</span>
+        </div>
+        <div class="stm-popover-list" id="stmPopoverList">${list}</div>
+        <div class="stm-popover-footer">
+            <button class="stm-popover-clear" onclick="clearStmPopoverSelection()">Clear</button>
+            <button class="stm-popover-cancel" onclick="closeStmFilterPopover()">Cancel</button>
+            <button class="stm-popover-apply" onclick="applyStmPopover()">Apply</button>
+        </div>`;
+}
+
+function renderStmPopoverListHtml() {
+    if (!stmPopoverValues.length) return '<div class="stm-popover-empty">No values.</div>';
+    return stmPopoverValues.map(v => {
+        const s = String(v ?? '');
+        const checked = stmPopoverChecked.has(s) ? 'checked' : '';
+        return `<label class="stm-popover-row">
+            <input type="checkbox" value="${stmEsc(s)}" ${checked} onclick="onStmPopoverToggle(event)">
+            <span>${stmEsc(s === '' ? '(blank)' : s)}</span>
+        </label>`;
+    }).join('');
+}
+
+function stmPopoverAllChecked() {
+    return stmPopoverValues.length > 0 && stmPopoverValues.every(v => stmPopoverChecked.has(String(v ?? '')));
+}
+
+async function fetchStmPopoverValues(col, search) {
+    stmPopoverLoading = true;
+    const list = document.getElementById('stmPopoverList');
+    if (list) list.innerHTML = '<div class="stm-popover-loading">Loading&hellip;</div>';
+    const otherFilters = { ...stmSerializeColFilters() };
+    delete otherFilters[col];
+    const params = new URLSearchParams({ col });
+    if (search) params.set('search', search);
+    if (Object.keys(otherFilters).length) params.set('col_filters', JSON.stringify(otherFilters));
+    let r, j;
+    try {
+        r = await fetch(`/scorecard/api/admin/table/${encodeURIComponent(stmCurrentKey)}/distinct?${params}`);
+        j = await r.json().catch(() => ({ error: 'invalid response' }));
+    } catch (e) {
+        if (list) list.innerHTML = `<div class="stm-popover-empty">Failed: ${e.message}</div>`;
+        return;
+    }
+    if (col !== stmPopoverCol) return; // popover changed while loading
+    stmPopoverLoading = false;
+    if (!r.ok) {
+        if (list) list.innerHTML = `<div class="stm-popover-empty">Failed: ${j.error || r.status}</div>`;
+        return;
+    }
+    stmPopoverValues = j.values || [];
+    if (list) list.innerHTML = renderStmPopoverListHtml();
+    if (j.capped) {
+        list.insertAdjacentHTML('afterbegin', '<div class="stm-popover-capped">Showing first 500 values &mdash; refine search for more.</div>');
+    }
+    // Update select-all + count
+    const sa = document.querySelector('.stm-popover-selectall input');
+    if (sa) sa.checked = stmPopoverAllChecked();
+    const cnt = document.getElementById('stmPopoverCount');
+    if (cnt) cnt.textContent = `${stmPopoverChecked.size} selected`;
+}
+
+function onStmPopoverSearchInput(ev) {
+    const val = ev.target.value;
+    if (stmPopoverSearchDebounce) clearTimeout(stmPopoverSearchDebounce);
+    stmPopoverSearchDebounce = setTimeout(() => fetchStmPopoverValues(stmPopoverCol, val), 300);
+}
+
+function onStmPopoverSearchKey(ev) {
+    if (ev.key === 'Enter') {
+        if (stmPopoverSearchDebounce) { clearTimeout(stmPopoverSearchDebounce); stmPopoverSearchDebounce = null; }
+        fetchStmPopoverValues(stmPopoverCol, ev.target.value);
+    } else if (ev.key === 'Escape') {
+        closeStmFilterPopover();
+    }
+}
+
+function onStmPopoverToggle(ev) {
+    const v = ev.target.value;
+    if (ev.target.checked) stmPopoverChecked.add(v);
+    else stmPopoverChecked.delete(v);
+    const sa = document.querySelector('.stm-popover-selectall input');
+    if (sa) sa.checked = stmPopoverAllChecked();
+    const cnt = document.getElementById('stmPopoverCount');
+    if (cnt) cnt.textContent = `${stmPopoverChecked.size} selected`;
+}
+
+function onStmPopoverSelectAll(ev) {
+    if (ev.target.checked) {
+        for (const v of stmPopoverValues) stmPopoverChecked.add(String(v ?? ''));
+    } else {
+        for (const v of stmPopoverValues) stmPopoverChecked.delete(String(v ?? ''));
+    }
+    document.querySelectorAll('#stmPopoverList input[type="checkbox"]').forEach(cb => {
+        cb.checked = stmPopoverChecked.has(cb.value);
+    });
+    const cnt = document.getElementById('stmPopoverCount');
+    if (cnt) cnt.textContent = `${stmPopoverChecked.size} selected`;
+}
+
+function clearStmPopoverSelection() {
+    stmPopoverChecked.clear();
+    document.querySelectorAll('#stmPopoverList input[type="checkbox"]').forEach(cb => cb.checked = false);
+    const sa = document.querySelector('.stm-popover-selectall input');
+    if (sa) sa.checked = false;
+    const cnt = document.getElementById('stmPopoverCount');
+    if (cnt) cnt.textContent = '0 selected';
+}
+
+function applyStmPopover() {
+    if (!stmPopoverCol) return;
+    const f = stmGetFilter(stmPopoverCol);
+    if (stmPopoverChecked.size === 0) {
+        f.values = null;
+    } else {
+        f.values = Array.from(stmPopoverChecked);
+        f.text = ''; // multi-select overrides freeform
+    }
+    closeStmFilterPopover();
+    loadStmTable();
+}
+
+function closeStmFilterPopover() {
+    const pop = document.getElementById('stmFilterPopover');
+    if (pop) pop.classList.remove('open');
+    stmPopoverCol = null;
+    document.removeEventListener('mousedown', stmPopoverOutside);
+    document.removeEventListener('keydown', stmPopoverEsc);
+}
+
+function stmPopoverOutside(ev) {
+    const pop = document.getElementById('stmFilterPopover');
+    if (!pop || !pop.classList.contains('open')) return;
+    if (pop.contains(ev.target)) return;
+    if (ev.target.classList && ev.target.classList.contains('stm-col-filter-btn')) return;
+    closeStmFilterPopover();
+}
+
+function stmPopoverEsc(ev) {
+    if (ev.key === 'Escape') closeStmFilterPopover();
+}
+
+function positionStmPopover(pop, anchor) {
+    const r = anchor.getBoundingClientRect();
+    const popW = 300;
+    let left = r.right - popW;
+    if (left < 8) left = 8;
+    if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
+    let top = r.bottom + 4;
+    if (top + 400 > window.innerHeight - 8) top = Math.max(8, r.top - 400 - 4);
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+}
+
+function exportStmTable() {
+    if (!stmCurrentData) return;
+    const { rows } = stmCurrentData;
+    const columns = stmCurrentData.columns.filter(c => !stmHiddenCols.has(c));
+    const csvEscape = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const csv = [columns, ...rows.map(r => columns.map(c => r[c]))].map(row => row.map(csvEscape).join(',')).join('\r\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
+    a.download = `scorecard_${stmCurrentKey}_${ts}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(a.href);
+    a.remove();
+}
+
+// ── Column visibility popover ─────────────────────────────────────────────
+function openStmColsPopover(ev) {
+    ev.stopPropagation(); ev.preventDefault();
+    const anchor = ev.currentTarget;
+    if (!stmCurrentData) return;
+    const cols = stmCurrentData.columns;
+    let pop = document.getElementById('stmColsPopover');
+    if (!pop) {
+        pop = document.createElement('div');
+        pop.id = 'stmColsPopover';
+        pop.className = 'stm-popover';
+        document.body.appendChild(pop);
+    }
+    _stmRenderColsPopover(pop, cols);
+    pop.classList.add('open');
+    positionStmPopover(pop, anchor);
+    setTimeout(() => document.addEventListener('mousedown', _stmColsOutside, { once: false }), 0);
+    document.addEventListener('keydown', _stmColsEsc);
+}
+
+function _stmRenderColsPopover(pop, cols) {
+    const allVisible = cols.every(c => !stmHiddenCols.has(c));
+    pop.innerHTML = `<div class="stm-popover-header">
+            <div class="stm-popover-col">Show / hide columns</div>
+            <button class="stm-popover-close" onclick="closeStmColsPopover()" title="Close">&times;</button>
+        </div>
+        <div class="stm-popover-search-wrap">
+            <input type="text" id="stmColsSearch" class="stm-popover-search" placeholder="Search columns&hellip;" oninput="_stmColsSearchInput(event)">
+        </div>
+        <div class="stm-popover-actions-top">
+            <label class="stm-popover-selectall">
+                <input type="checkbox" onclick="_stmColsSelectAll(event)" ${allVisible ? 'checked' : ''}>
+                <span>(Show All)</span>
+            </label>
+            <span class="stm-popover-count">${cols.length - stmHiddenCols.size} of ${cols.length} shown</span>
+        </div>
+        <div class="stm-popover-list" id="stmColsList">${_stmColsListHtml(cols, '')}</div>
+        <div class="stm-popover-footer">
+            <button class="stm-popover-clear" onclick="_stmColsReset()">Show all</button>
+            <button class="stm-popover-cancel" onclick="closeStmColsPopover()">Close</button>
+        </div>`;
+}
+
+function _stmColsListHtml(cols, q) {
+    const filter = q.toLowerCase();
+    const filtered = filter ? cols.filter(c => c.toLowerCase().includes(filter)) : cols;
+    if (!filtered.length) return '<div class="stm-popover-empty">No matches.</div>';
+    return filtered.map(c => {
+        const shown = !stmHiddenCols.has(c);
+        return `<label class="stm-popover-row">
+            <input type="checkbox" value="${stmEsc(c)}" ${shown ? 'checked' : ''} onclick="_stmColsToggle(event)">
+            <span>${stmEsc(c)}</span>
+        </label>`;
+    }).join('');
+}
+
+function _stmColsSearchInput(ev) {
+    const list = document.getElementById('stmColsList');
+    if (list) list.innerHTML = _stmColsListHtml(stmCurrentData.columns, ev.target.value);
+}
+
+function _stmColsToggle(ev) {
+    const col = ev.target.value;
+    if (ev.target.checked) stmHiddenCols.delete(col);
+    else stmHiddenCols.add(col);
+    _stmColsPersist();
+    // Update the header count without re-rendering the whole popover.
+    const cnt = document.querySelector('#stmColsPopover .stm-popover-count');
+    if (cnt) cnt.textContent = `${stmCurrentData.columns.length - stmHiddenCols.size} of ${stmCurrentData.columns.length} shown`;
+    renderStmContent();
+}
+
+function _stmColsSelectAll(ev) {
+    if (ev.target.checked) stmHiddenCols = new Set();
+    else stmHiddenCols = new Set(stmCurrentData.columns);
+    _stmColsPersist();
+    _stmRenderColsPopover(document.getElementById('stmColsPopover'), stmCurrentData.columns);
+    renderStmContent();
+}
+
+function _stmColsReset() {
+    stmHiddenCols = new Set();
+    _stmColsPersist();
+    _stmRenderColsPopover(document.getElementById('stmColsPopover'), stmCurrentData.columns);
+    renderStmContent();
+}
+
+function _stmColsPersist() {
+    if (!stmCurrentKey) return;
+    try {
+        localStorage.setItem(`scorecard_tm_hidden_cols_${stmCurrentKey}`, JSON.stringify(Array.from(stmHiddenCols)));
+    } catch { /* localStorage may fail; not critical */ }
+}
+
+function closeStmColsPopover() {
+    const pop = document.getElementById('stmColsPopover');
+    if (pop) pop.classList.remove('open');
+    document.removeEventListener('mousedown', _stmColsOutside);
+    document.removeEventListener('keydown', _stmColsEsc);
+}
+
+function _stmColsOutside(ev) {
+    const pop = document.getElementById('stmColsPopover');
+    if (!pop || !pop.classList.contains('open')) return;
+    if (pop.contains(ev.target)) return;
+    if (ev.target.classList && ev.target.classList.contains('stm-cols-btn')) return;
+    closeStmColsPopover();
+}
+
+function _stmColsEsc(ev) { if (ev.key === 'Escape') closeStmColsPopover(); }
+
+// ── Edit slideout ─────────────────────────────────────────────────────────
+// stmSlideoutMode: 'edit' | 'add' | 'bulk'; stmEditRowIdx used in edit mode only.
+let stmSlideoutMode = 'edit';
+
+function _stmFieldControlHtml(col, val) {
+    const displayVal = val === null || val === undefined ? '' : String(val);
+    const lowerC = col.toLowerCase();
+    if (lowerC === 'enabled' || lowerC === 'abort_on_failure' || lowerC.startsWith('flag_') || lowerC.startsWith('is_')) {
+        const checked = (displayVal === '1' || displayVal.toLowerCase() === 'true') ? 'checked' : '';
+        return `<select data-field="${stmEsc(col)}">
+            <option value="1" ${checked ? 'selected' : ''}>1 (true)</option>
+            <option value="0" ${!checked ? 'selected' : ''}>0 (false)</option>
+        </select>`;
+    }
+    if (lowerC.startsWith('param_num') || lowerC === 'step_order' || lowerC.startsWith('effective_from_ay') || lowerC.startsWith('effective_to_ay') || lowerC === 'default_if_missing') {
+        return `<input type="number" step="any" data-field="${stmEsc(col)}" value="${stmEsc(displayVal)}">`;
+    }
+    if (lowerC === 'notes' || lowerC === 'reason' || lowerC === 'description' || lowerC.endsWith('_json')) {
+        return `<textarea data-field="${stmEsc(col)}">${stmEsc(displayVal)}</textarea>`;
+    }
+    return `<input type="text" data-field="${stmEsc(col)}" value="${stmEsc(displayVal)}">`;
+}
+
+function _stmRenderSlideoutFooter(cfg) {
+    const isEdit = stmSlideoutMode === 'edit';
+    const isBulk = stmSlideoutMode === 'bulk';
+    const canDelete = isEdit && cfg.allow_delete;
+    const saveLabel = isEdit ? 'Save changes' : (isBulk ? `Apply to ${stmSelectedRowKeys.size} rows` : 'Insert row');
+    const deleteBtn = canDelete
+        ? `<button class="stm-delete" onclick="deleteStmSlideout()">Delete row</button>`
+        : '';
+    document.getElementById('stmSlideoutFooter').innerHTML = `
+        ${deleteBtn}
+        <input type="text" class="stm-reason" id="stmSlideoutReason" placeholder="Reason for change (optional but recommended)">
+        <button class="stm-cancel" onclick="closeStmSlideout()">Cancel</button>
+        <button class="stm-save" id="stmSlideoutSave" onclick="saveStmSlideout()">${saveLabel}</button>`;
+}
+
+function openStmSlideout(rowIdx) {
+    if (!stmCurrentData) return;
+    const cfg = stmCurrentData.config || {};
+    const pkCols = cfg.primary_key || [];
+    const editable = cfg.editable_columns || [];
+    if (!pkCols.length || !editable.length) return;
+    const row = stmDisplayedRows[rowIdx];
+    if (!row) return;
+    stmSlideoutMode = 'edit';
+    stmEditRowIdx = rowIdx;
+
+    const pkPairs = pkCols.map(c => `${c}=${row[c]}`).join(' &middot; ');
+    document.getElementById('stmSlideoutTitle').textContent = `Edit ${cfg.schema}.${cfg.table}`;
+    document.getElementById('stmSlideoutSub').innerHTML = pkPairs;
+
+    let bodyHtml = '';
+    for (const c of pkCols) {
+        bodyHtml += `<div class="stm-readonly-group"><div class="k">${stmEsc(c)} (primary key)</div><div class="v">${stmEsc(row[c] ?? '')}</div></div>`;
+    }
+    for (const c of editable) {
+        bodyHtml += `<div class="stm-field-group"><label>${stmEsc(c)}</label>${_stmFieldControlHtml(c, row[c])}</div>`;
+    }
+    bodyHtml += `<details class="stm-slideout-history-wrap" open>
+        <summary>Edit history for this row</summary>
+        <div id="stmSlideoutHistory" class="stm-slideout-history"><div class="stm-empty" style="padding:12px;">Loading history&hellip;</div></div>
+    </details>`;
+    document.getElementById('stmSlideoutBody').innerHTML = bodyHtml;
+    _stmRenderSlideoutFooter(cfg);
+    document.getElementById('stmSlideoutStatus').textContent = '';
+    document.getElementById('stmSlideoutStatus').className = 'stm-slideout-status';
+    document.getElementById('stmSlideoutBackdrop').classList.add('open');
+    document.getElementById('stmSlideout').classList.add('open');
+    loadStmRowHistory();
+}
+
+function openStmAddSlideout() {
+    if (!stmCurrentData) return;
+    const cfg = stmCurrentData.config || {};
+    if (!cfg.allow_insert) return;
+    const insertable = cfg.insertable_columns || cfg.editable_columns || [];
+    const required = new Set(cfg.required_columns || []);
+    if (!insertable.length) return;
+    stmSlideoutMode = 'add';
+    stmEditRowIdx = null;
+
+    document.getElementById('stmSlideoutTitle').textContent = `Add row to ${cfg.schema}.${cfg.table}`;
+    document.getElementById('stmSlideoutSub').textContent = 'Fill in the fields below. Required fields are marked with *.';
+
+    let bodyHtml = '';
+    for (const c of insertable) {
+        const req = required.has(c) ? ' <span class="stm-required">*</span>' : '';
+        bodyHtml += `<div class="stm-field-group"><label>${stmEsc(c)}${req}</label>${_stmFieldControlHtml(c, null)}</div>`;
+    }
+    document.getElementById('stmSlideoutBody').innerHTML = bodyHtml;
+    _stmRenderSlideoutFooter(cfg);
+    document.getElementById('stmSlideoutStatus').textContent = '';
+    document.getElementById('stmSlideoutStatus').className = 'stm-slideout-status';
+    document.getElementById('stmSlideoutBackdrop').classList.add('open');
+    document.getElementById('stmSlideout').classList.add('open');
+}
+
+function closeStmSlideout() {
+    document.getElementById('stmSlideoutBackdrop').classList.remove('open');
+    document.getElementById('stmSlideout').classList.remove('open');
+    stmEditRowIdx = null;
+    stmSlideoutMode = 'edit';
+}
+
+function openStmBulkEditSlideout() {
+    if (!stmCurrentData) return;
+    const cfg = stmCurrentData.config || {};
+    const editable = cfg.editable_columns || [];
+    if (!editable.length) return;
+    if (stmSelectedRowKeys.size === 0) return;
+    stmSlideoutMode = 'bulk';
+    stmEditRowIdx = null;
+
+    document.getElementById('stmSlideoutTitle').textContent = `Bulk edit ${stmSelectedRowKeys.size} row${stmSelectedRowKeys.size === 1 ? '' : 's'} in ${cfg.schema}.${cfg.table}`;
+    document.getElementById('stmSlideoutSub').innerHTML = 'Pick a field, enter a new value, and confirm. Every row change is logged individually to the audit trail.';
+
+    const bodyHtml = `<div class="stm-field-group">
+            <label>Field to set on every selected row</label>
+            <select id="stmBulkField" onchange="_stmBulkOnFieldChange()">
+                ${editable.map(c => `<option value="${stmEsc(c)}">${stmEsc(c)}</option>`).join('')}
+            </select>
+        </div>
+        <div class="stm-field-group">
+            <label>New value <span style="color: var(--text-secondary); font-weight: 400;">(applies to ALL ${stmSelectedRowKeys.size} selected rows)</span></label>
+            <div id="stmBulkValueControl">${_stmFieldControlHtml(editable[0], null)}</div>
+        </div>
+        <div style="font-size:0.72rem; color: var(--text-secondary); margin-top: 10px; padding: 8px 10px; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); border-radius: 4px;">
+            &#9888; Bulk edits cannot be undone with a single click. Each row can be individually reverted from its audit history.
+        </div>`;
+    document.getElementById('stmSlideoutBody').innerHTML = bodyHtml;
+    _stmRenderSlideoutFooter(cfg);
+    document.getElementById('stmSlideoutStatus').textContent = '';
+    document.getElementById('stmSlideoutStatus').className = 'stm-slideout-status';
+    document.getElementById('stmSlideoutBackdrop').classList.add('open');
+    document.getElementById('stmSlideout').classList.add('open');
+}
+
+function _stmBulkOnFieldChange() {
+    const field = document.getElementById('stmBulkField').value;
+    document.getElementById('stmBulkValueControl').innerHTML = _stmFieldControlHtml(field, null);
+}
+
+async function saveStmSlideout() {
+    if (stmSlideoutMode === 'add') return _saveStmSlideoutAdd();
+    if (stmSlideoutMode === 'bulk') return _saveStmSlideoutBulk();
+    return _saveStmSlideoutEdit();
+}
+
+async function _saveStmSlideoutBulk() {
+    if (!stmCurrentData || stmSelectedRowKeys.size === 0) return;
+    const field = document.getElementById('stmBulkField').value;
+    const ctrl = document.querySelector('#stmBulkValueControl [data-field]');
+    const value = ctrl ? (ctrl.value === '' ? null : ctrl.value) : null;
+    const rowKeys = Array.from(stmSelectedRowKeys).map(s => JSON.parse(s));
+
+    if (!confirm(`Set ${field} = ${value === null ? '(null)' : value} on ${rowKeys.length} row${rowKeys.length === 1 ? '' : 's'}?`)) return;
+
+    const statusEl = document.getElementById('stmSlideoutStatus');
+    const btn = document.getElementById('stmSlideoutSave');
+    btn.disabled = true;
+    statusEl.textContent = `Updating ${rowKeys.length} rows...`;
+    statusEl.className = 'stm-slideout-status';
+    try {
+        const r = await fetch(`/scorecard/api/admin/table/${encodeURIComponent(stmCurrentKey)}/bulk-edit`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                row_keys: rowKeys, field, value,
+                reason: document.getElementById('stmSlideoutReason').value.trim() || null,
+            }),
+        });
+        const body = await r.json();
+        if (!r.ok) {
+            statusEl.textContent = `Bulk edit failed: ${body.error || r.status}`;
+            statusEl.className = 'stm-slideout-status err';
+            btn.disabled = false;
+            return;
+        }
+        const summary = `Updated ${body.updated}, unchanged ${body.unchanged}, missing ${body.missing}${body.errors.length ? `, errors ${body.errors.length}` : ''}`;
+        statusEl.textContent = summary + '. Reloading...';
+        statusEl.className = body.errors.length ? 'stm-slideout-status err' : 'stm-slideout-status ok';
+        stmSelectedRowKeys = new Set();
+        await loadStmTable();
+        setTimeout(closeStmSlideout, 800);
+    } catch (e) {
+        statusEl.textContent = `Bulk edit error: ${e.message || e}`;
+        statusEl.className = 'stm-slideout-status err';
+        btn.disabled = false;
+    }
+}
+
+async function _saveStmSlideoutAdd() {
+    if (!stmCurrentData) return;
+    const cfg = stmCurrentData.config || {};
+    const insertable = new Set(cfg.insertable_columns || []);
+    const values = {};
+    document.querySelectorAll('#stmSlideoutBody [data-field]').forEach(el => {
+        const field = el.dataset.field;
+        if (!insertable.has(field)) return;
+        const v = el.value;
+        values[field] = v === '' ? null : v;
+    });
+    const statusEl = document.getElementById('stmSlideoutStatus');
+    const btn = document.getElementById('stmSlideoutSave');
+    btn.disabled = true;
+    statusEl.textContent = 'Inserting...';
+    statusEl.className = 'stm-slideout-status';
+    try {
+        const r = await fetch(`/scorecard/api/admin/table/${encodeURIComponent(stmCurrentKey)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ values, reason: document.getElementById('stmSlideoutReason').value.trim() || null }),
+        });
+        const body = await r.json();
+        if (!r.ok) {
+            statusEl.textContent = `Insert failed: ${body.error || r.status}`;
+            statusEl.className = 'stm-slideout-status err';
+            btn.disabled = false;
+            return;
+        }
+        statusEl.textContent = `Inserted row ${JSON.stringify(body.row_key)}. Reloading...`;
+        statusEl.className = 'stm-slideout-status ok';
+        await loadStmTable();
+        setTimeout(closeStmSlideout, 500);
+    } catch (e) {
+        statusEl.textContent = `Insert error: ${e.message || e}`;
+        statusEl.className = 'stm-slideout-status err';
+        btn.disabled = false;
+    }
+}
+
+async function _saveStmSlideoutEdit() {
+    if (stmEditRowIdx === null || !stmCurrentData) return;
+    const cfg = stmCurrentData.config || {};
+    const pkCols = cfg.primary_key || [];
+    const row = stmDisplayedRows[stmEditRowIdx];
+    if (!row) return;
+    const rowKey = {};
+    for (const c of pkCols) rowKey[c] = row[c];
+
+    const changes = {};
+    document.querySelectorAll('#stmSlideoutBody [data-field]').forEach(el => {
+        const field = el.dataset.field;
+        const newVal = el.value;
+        const oldVal = row[field];
+        const oldStr = oldVal === null || oldVal === undefined ? '' : String(oldVal);
+        if (String(newVal) !== oldStr) {
+            changes[field] = newVal === '' ? null : newVal;
+        }
+    });
+
+    const statusEl = document.getElementById('stmSlideoutStatus');
+    if (!Object.keys(changes).length) {
+        statusEl.textContent = 'No changes to save.';
+        statusEl.className = 'stm-slideout-status err';
+        return;
+    }
+
+    const btn = document.getElementById('stmSlideoutSave');
+    btn.disabled = true;
+    statusEl.textContent = 'Saving...';
+    statusEl.className = 'stm-slideout-status';
+    try {
+        const r = await fetch(`/scorecard/api/admin/table/${encodeURIComponent(stmCurrentKey)}/edit`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                row_key: rowKey,
+                changes: changes,
+                reason: document.getElementById('stmSlideoutReason').value.trim() || null,
+            }),
+        });
+        const body = await r.json();
+        if (!r.ok) {
+            statusEl.textContent = `Save failed: ${body.error || r.status}`;
+            statusEl.className = 'stm-slideout-status err';
+            btn.disabled = false;
+            return;
+        }
+        statusEl.textContent = `Saved ${body.updated.join(', ')}. Reloading...`;
+        statusEl.className = 'stm-slideout-status ok';
+        // Reload table and close panel
+        await selectStmTable(stmCurrentKey);
+        setTimeout(closeStmSlideout, 400);
+    } catch (e) {
+        statusEl.textContent = `Save error: ${e.message || e}`;
+        statusEl.className = 'stm-slideout-status err';
+        btn.disabled = false;
+    }
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('stmSlideout').classList.contains('open')) {
+        closeStmSlideout();
+    }
+    if (e.key === 'Escape' && document.getElementById('stmHistoryModal').classList.contains('open')) {
+        closeStmHistoryModal();
+    }
+});
+
+// ── Edit history (table-wide modal + row-scoped in slideout) ─────────────
+async function openStmHistoryModal() {
+    if (!stmCurrentKey) return;
+    const cfg = stmCurrentData?.config || {};
+    document.getElementById('stmHistorySub').textContent = `${cfg.schema}.${cfg.table} \u2022 last 500 edits`;
+    document.getElementById('stmHistoryBody').innerHTML = 'Loading&hellip;';
+    document.getElementById('stmHistoryBackdrop').classList.add('open');
+    document.getElementById('stmHistoryModal').classList.add('open');
+    try {
+        const r = await fetch(`/scorecard/api/admin/table/${encodeURIComponent(stmCurrentKey)}/audit`);
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || r.status);
+        const bodyEl = document.getElementById('stmHistoryBody');
+        bodyEl._audit = j.audit;
+        bodyEl.innerHTML = renderStmAuditHtml(j.audit, /*allowRevert=*/true, /*includeRowKey=*/true);
+    } catch (e) {
+        document.getElementById('stmHistoryBody').innerHTML = `<div class="stm-empty">Failed: ${stmEsc(e.message || e)}</div>`;
+    }
+}
+
+function closeStmHistoryModal() {
+    document.getElementById('stmHistoryBackdrop').classList.remove('open');
+    document.getElementById('stmHistoryModal').classList.remove('open');
+}
+
+function renderStmAuditHtml(audit, allowRevert, includeRowKey) {
+    if (!audit || !audit.length) return '<div class="stm-empty">No edits recorded yet.</div>';
+    const rows = audit.map(a => {
+        const when = a.changed_at ? a.changed_at.replace('T', ' ').slice(0, 16) : '';
+        const rowKeyLabel = includeRowKey ? `<td class="stm-audit-rowkey" title="${stmEsc(a.row_key)}">${stmEsc(a.row_key)}</td>` : '';
+        const oldVal = a.old_value === null ? '<em class="stm-null">(null)</em>' : stmEsc(String(a.old_value));
+        const newVal = a.new_value === null ? '<em class="stm-null">(null)</em>' : stmEsc(String(a.new_value));
+        const revertBtn = allowRevert
+            ? `<button class="stm-audit-revert" title="Restore old value" onclick="revertStmAudit(${a.audit_id})">Revert</button>`
+            : '';
+        return `<tr>
+            <td class="stm-audit-when">${stmEsc(when)}</td>
+            <td class="stm-audit-who">${stmEsc(a.changed_by || '')}</td>
+            ${rowKeyLabel}
+            <td class="stm-audit-field">${stmEsc(a.field)}</td>
+            <td class="stm-audit-old">${oldVal}</td>
+            <td class="stm-audit-arrow">&rarr;</td>
+            <td class="stm-audit-new">${newVal}</td>
+            <td class="stm-audit-reason" title="${stmEsc(a.reason || '')}">${stmEsc(a.reason || '')}</td>
+            <td class="stm-audit-action">${revertBtn}</td>
+        </tr>`;
+    }).join('');
+    const headRowKey = includeRowKey ? '<th>Row key</th>' : '';
+    return `<table class="stm-audit-table"><thead><tr>
+        <th>When</th><th>Who</th>${headRowKey}<th>Field</th><th>Old</th><th></th><th>New</th><th>Reason</th><th></th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function revertStmAudit(auditId) {
+    // Find the audit row so we know table/row_key/field/old_value.
+    const bodyEl = document.getElementById('stmHistoryBody');
+    const inline = document.getElementById('stmSlideoutHistory');
+    let audit;
+    for (const source of [bodyEl?._audit, inline?._audit]) {
+        if (!source) continue;
+        audit = source.find(a => a.audit_id === auditId);
+        if (audit) break;
+    }
+    if (!audit) {
+        // Fallback: refetch and search
+        const r = await fetch(`/scorecard/api/admin/table/${encodeURIComponent(stmCurrentKey)}/audit`);
+        const j = await r.json();
+        audit = (j.audit || []).find(a => a.audit_id === auditId);
+    }
+    if (!audit) { alert('Audit row not found.'); return; }
+    if (!confirm(`Restore ${audit.field} to:\n\n${audit.old_value ?? '(null)'}\n\n(current: ${audit.new_value ?? '(null)'})`)) return;
+
+    let rowKey;
+    try { rowKey = JSON.parse(audit.row_key); } catch { alert('Malformed row_key.'); return; }
+    const changes = { [audit.field]: audit.old_value };
+    const r = await fetch(`/scorecard/api/admin/table/${encodeURIComponent(stmCurrentKey)}/edit`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ row_key: rowKey, changes, reason: `Revert of AUDIT_ID ${auditId}` }),
+    });
+    const j = await r.json();
+    if (!r.ok) { alert('Revert failed: ' + (j.error || r.status)); return; }
+    // Refresh whichever view is open.
+    if (document.getElementById('stmHistoryModal').classList.contains('open')) openStmHistoryModal();
+    if (document.getElementById('stmSlideout').classList.contains('open') && stmEditRowIdx !== null) {
+        loadStmRowHistory();
+    }
+    loadStmTable();
+}
+
+async function deleteStmSlideout() {
+    if (stmEditRowIdx === null || !stmCurrentData) return;
+    const cfg = stmCurrentData.config || {};
+    if (!cfg.allow_delete) return;
+    const pkCols = cfg.primary_key || [];
+    const row = stmDisplayedRows[stmEditRowIdx];
+    if (!row) return;
+    const rowKey = {};
+    for (const c of pkCols) rowKey[c] = row[c];
+    const pkStr = pkCols.map(c => `${c}=${row[c]}`).join(', ');
+    if (!confirm(`Delete this row from ${cfg.schema}.${cfg.table}?\n\n${pkStr}\n\nThis is logged to the audit trail but cannot be undone from the UI.`)) return;
+
+    const statusEl = document.getElementById('stmSlideoutStatus');
+    statusEl.textContent = 'Deleting...';
+    statusEl.className = 'stm-slideout-status';
+    try {
+        const r = await fetch(`/scorecard/api/admin/table/${encodeURIComponent(stmCurrentKey)}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ row_key: rowKey, reason: document.getElementById('stmSlideoutReason').value.trim() || null }),
+        });
+        const body = await r.json();
+        if (!r.ok) {
+            statusEl.textContent = `Delete failed: ${body.error || r.status}`;
+            statusEl.className = 'stm-slideout-status err';
+            return;
+        }
+        statusEl.textContent = 'Deleted. Reloading...';
+        statusEl.className = 'stm-slideout-status ok';
+        await loadStmTable();
+        setTimeout(closeStmSlideout, 500);
+    } catch (e) {
+        statusEl.textContent = `Delete error: ${e.message || e}`;
+        statusEl.className = 'stm-slideout-status err';
+    }
+}
+
+async function loadStmRowHistory() {
+    const container = document.getElementById('stmSlideoutHistory');
+    if (!container) return;
+    if (stmEditRowIdx === null || !stmCurrentData) return;
+    const cfg = stmCurrentData.config || {};
+    const pkCols = cfg.primary_key || [];
+    const row = stmDisplayedRows[stmEditRowIdx];
+    if (!row) return;
+    const rowKey = {};
+    for (const c of pkCols) rowKey[c] = row[c];
+    const params = new URLSearchParams({ row_key: JSON.stringify(rowKey) });
+    container.innerHTML = '<div class="stm-empty" style="padding:12px;">Loading history&hellip;</div>';
+    try {
+        const r = await fetch(`/scorecard/api/admin/table/${encodeURIComponent(stmCurrentKey)}/audit?${params}`);
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || r.status);
+        container._audit = j.audit;
+        container.innerHTML = renderStmAuditHtml(j.audit.slice(0, 20), /*allowRevert=*/true, /*includeRowKey=*/false);
+    } catch (e) {
+        container.innerHTML = `<div class="stm-empty">Failed: ${stmEsc(e.message || e)}</div>`;
+    }
+}
+
+stmInit();
+</script>
+{% endblock %}

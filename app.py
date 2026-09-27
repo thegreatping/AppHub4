@@ -16,6 +16,7 @@ from new_hire import newhire_bp
 from peak_link import peak_link_bp
 from rent_forecast import rfs_bp
 from rent_forecast2 import rfs2_bp
+from rent_forecast3 import rfs3_bp
 from market_benchmark import mrb_bp
 from milestones import milestones_bp
 from promotion_transfer import paf_bp
@@ -46,6 +47,7 @@ def create_app():
     app.register_blueprint(peak_link_bp)
     app.register_blueprint(rfs_bp)
     app.register_blueprint(rfs2_bp)
+    app.register_blueprint(rfs3_bp)
     app.register_blueprint(mrb_bp)
     app.register_blueprint(milestones_bp)
     app.register_blueprint(paf_bp)

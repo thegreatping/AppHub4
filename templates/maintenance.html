@@ -9,6 +9,16 @@
         .maint-panel { display: none; }
         .maint-panel.active { display: block; }
 
+        /* Dev & Maint Plan tab */
+        .devplan-tabs { display: flex; gap: 4px; margin: 4px 0 12px; }
+        .devplan-tab { padding: 7px 16px; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border: 1px solid var(--border-medium); border-radius: 6px; background: var(--input-bg); }
+        .devplan-tab:hover { color: var(--text-primary); }
+        .devplan-tab.active { color: #fff; background: var(--accent-cyan); border-color: var(--accent-cyan); }
+        .devplan-sub { display: none; }
+        .devplan-sub.active { display: block; }
+        .devplan-frame-wrap { border: 1px solid var(--border-medium); border-radius: 8px; overflow: hidden; height: calc(100vh - 260px); min-height: 500px; }
+        .devplan-iframe { width: 100%; height: 100%; border: none; background: #fff; }
+
         /* Data table */
         .data-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
         .data-table th { text-align: left; padding: 10px 12px; background: var(--input-bg); color: var(--text-secondary); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-medium); }
@@ -163,6 +173,7 @@
             <div class="maint-tab" data-panel="audience">Audience Manager</div>
             <div class="maint-tab" data-panel="lookup">User Lookup</div>
             <div class="maint-tab" data-panel="usagelog">Usage Log</div>
+            <div class="maint-tab" data-panel="devplan">Dev &amp; Maint Plan</div>
             <div class="maint-tab" data-panel="diagnostics" style="margin-left:auto;color:var(--accent-gold);">Diagnostics</div>
         </div>
 
@@ -375,6 +386,31 @@
             </div>
 
             <div class="empty-state" id="ulEmpty" style="display:none;">No log entries found for this filter.</div>
+        </div>
+    </div>
+
+    <!-- DEV & MAINT PLAN PANEL -->
+    <div class="maint-panel" id="panel-devplan">
+        <div class="info-blurb" id="blurb-devplan">
+            <div class="blurb-header" onclick="toggleBlurb('devplan')">
+                <span class="blurb-title">Dev &amp; Maint Plan</span>
+                <span class="blurb-toggle" id="blurbToggle-devplan">&#9660;</span>
+            </div>
+            <div class="blurb-body" id="blurbBody-devplan">
+                Live view of the AppHub 4.0 build-out project plan and daily dev/maintenance checklist. Both documents are edited directly on disk (<code>apphub_project_plan.html</code>, <code>apphub_checklist.html</code> in <code>APPHUB_4/</code>) and rendered here as-is.
+                <br><br>
+                <strong>Source tables:</strong> none -- these are static HTML documents, not database-backed.
+            </div>
+        </div>
+        <div class="devplan-tabs">
+            <div class="devplan-tab active" data-sub="plan">Project Plan</div>
+            <div class="devplan-tab" data-sub="checklist">Checklist</div>
+        </div>
+        <div class="devplan-frame-wrap devplan-sub active" id="devplan-sub-plan">
+            <iframe id="devplan-iframe-plan" class="devplan-iframe" title="AppHub 4.0 Project Plan"></iframe>
+        </div>
+        <div class="devplan-frame-wrap devplan-sub" id="devplan-sub-checklist">
+            <iframe id="devplan-iframe-checklist" class="devplan-iframe" title="AppHub 4.0 Checklist"></iframe>
         </div>
     </div>
 
@@ -1245,6 +1281,26 @@
     });
     document.getElementById('ulApply').addEventListener('click', () => { _ulLoaded = false; loadUsageLog(); });
     document.getElementById('ulUser').addEventListener('change', () => { _ulLoaded = false; loadUsageLog(); });
+
+    // ─── DEV & MAINT PLAN ───────────────────────────────────────────────────────
+    let _devplanLoaded = false;
+    document.querySelectorAll('.maint-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            if (this.dataset.panel === 'devplan' && !_devplanLoaded) {
+                document.getElementById('devplan-iframe-plan').src = '/maintenance/dev-plan';
+                document.getElementById('devplan-iframe-checklist').src = '/maintenance/dev-checklist';
+                _devplanLoaded = true;
+            }
+        });
+    });
+    document.querySelectorAll('.devplan-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.devplan-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.devplan-sub').forEach(p => p.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById('devplan-sub-' + this.dataset.sub).classList.add('active');
+        });
+    });
 
     // ─── INIT ───────────────────────────────────────────────────────────────────
     (async () => { await Promise.all([loadFavoritesForTable(), loadModuleFlags()]); loadModules(); })();

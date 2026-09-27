@@ -321,7 +321,7 @@ def api_submit():
         "PropertyAccountant":            accountant,
         "RMEmail":                       rm_email,
         "RVPEmail":                      rvp_email,
-        "SubmissionType":                {"Value": submission_type},
+        "SubmissionType":                submission_type,
         "Vendor":                        vendor_name,
         "VendorID":                      vendor_id,
         "StreetAddress":                 street_address,
@@ -330,7 +330,7 @@ def api_submit():
         "VendorZip_x002f_PostalCode":    vendor_zip,
         "InvoiceNumber":                 invoice_number,
         "DateNeeded":                    date_needed_iso,
-        "ShippingMethod":                {"Value": shipping_method},
+        "ShippingMethod":                shipping_method,
         "CheckAmounr":                   check_amount,   # SP field has a typo — kept as-is
         "Total":                         total,
         "EntityID1":                     line_items[0]["entity_id"],

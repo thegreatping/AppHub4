@@ -7,10 +7,13 @@ Data source : WH_PROD2 (LS_TIMESHEET, LS_TRAINING, LS_PREPAID_VISA, LS_RISK_ASSE
 Identity    : DB_APP_SUPPORT.dbo.Emp_Core (NOT EMPLOYEE_F -- EMPLOYEE_F is being retired)
 APP_ID      : 36
 """
-from flask import Blueprint, render_template, session, jsonify, request
+from flask import Blueprint, render_template, session, jsonify, request, abort, send_file
+import json
+import os
+import re
 from auth import login_required
 from nav import build_nav_modules
-from helpers import load_env, SafeConnection
+from helpers import load_env, SafeConnection, _get_fabric_api_token
 import datetime
 
 scorecard_bp = Blueprint("scorecard", __name__, url_prefix="/scorecard")
@@ -27,7 +30,10 @@ _GRID_COLUMNS = [
     "RMSCORE", "PRERM", "LDRTOTAL",
     "MSLEO", "CURB", "PUBLICAREAS", "MAINT", "LOGS", "MSWO",
     "SURVEYS", "NOI", "MSTOTAL",
-    "NOTES",
+    "COMPLETE_CY", "COMPLETE_TARGET", "COMPLETE_VS_TARGET",
+    "NEW_CY", "NEW_TARGET", "NEW_VS_TARGET",
+    "RENEWAL_CY", "RENEWAL_TARGET", "RENEWAL_VS_TARGET",
+    "NOTES", "NOTE_BY", "NOTE_AT",
 ]
 
 # Every measure the override slideout can edit -- key must match a real
@@ -197,6 +203,997 @@ def index():
     if check:
         return check
     return render_template("scorecard.html", **_ctx())
+
+
+# LeadershipScorecard/ is the sibling folder to APPHUB_4/ (see file layout in
+# apphub4.md memory) -- the diagrams live there, not under APPHUB_4/static/.
+_DIAGRAM_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "LeadershipScorecard"))
+_DIAGRAM_FILES = {
+    "dataflow": "scorecard_dataflow_diagram.html",
+    "table_manager": "scorecard_table_manager_diagram.html",
+}
+
+
+@scorecard_bp.route("/admin/diagram/<diagram_name>")
+@login_required
+def admin_diagram(diagram_name):
+    """Serve the standalone data-flow / table-manager diagrams from the
+    sibling LeadershipScorecard/ folder as-is (they're self-contained dark-
+    theme HTML with their own SVG/JS). Admin-gated -- these are the
+    interactive architecture views a stakeholder or on-call engineer would
+    want to open to understand what the pipeline does."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    filename = _DIAGRAM_FILES.get(diagram_name)
+    if filename is None:
+        abort(404)
+    path = os.path.join(_DIAGRAM_DIR, filename)
+    if not os.path.exists(path):
+        abort(404)
+    return send_file(path, mimetype="text/html")
+
+
+# Registry of every table feeding or produced by the Scorecard pipeline.
+# Mirrors edm.py's EMP_PIPELINE_TABLES pattern -- browse-only, TOP 3000, table
+# names come from this whitelist so the endpoint can't be used to reach
+# arbitrary tables. Admin-gated.
+_TABLE_REGISTRY_PATH = os.path.join(os.path.dirname(__file__), "scorecard_tables.json")
+
+def _load_scorecard_tables():
+    if not os.path.exists(_TABLE_REGISTRY_PATH):
+        return {}
+    try:
+        with open(_TABLE_REGISTRY_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+@scorecard_bp.route("/admin/tables")
+@login_required
+def admin_tables_page():
+    """Admin-only Table Manager page -- browse every table feeding or produced
+    by the Scorecard pipeline. Rendered inside the shell (unlike the raw
+    dark-theme diagrams which are served as standalone HTML)."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    return render_template("scorecard_table_manager.html", **_ctx())
+
+
+@scorecard_bp.route("/api/admin/tables")
+@login_required
+def api_admin_tables():
+    """Return the whole table registry -- powers the Table Manager left-nav."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    return jsonify(_load_scorecard_tables())
+
+
+@scorecard_bp.route("/admin/runs")
+@login_required
+def admin_runs_page():
+    """Admin-only Pipeline Runs viewer -- lists recent pipeline executions
+    and per-step outcomes so admins can triage without leaving AppHub."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    return render_template("scorecard_pipeline_runs.html", **_ctx())
+
+
+@scorecard_bp.route("/api/admin/runs")
+@login_required
+def api_admin_runs():
+    """Return summary of last 50 pipeline runs (one row per PIPELINE_RUN_ID)."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    env = _get_env()
+    conn = SafeConnection(env, "DB_BI_SUPPORT", None, direct=True)
+    try:
+        rows = conn.fetchall("""
+            SELECT TOP 50
+                PIPELINE_RUN_ID,
+                COUNT(*) AS STEPS,
+                SUM(CASE WHEN STATUS = 'COMPLETE' THEN 1 ELSE 0 END) AS N_COMPLETE,
+                SUM(CASE WHEN STATUS = 'FAILED' THEN 1 ELSE 0 END) AS N_FAILED,
+                SUM(CASE WHEN STATUS = 'SKIPPED' THEN 1 ELSE 0 END) AS N_SKIPPED,
+                MIN(RUN_TIMESTAMP_START_UTC) AS RUN_START_UTC,
+                MAX(RUN_TIMESTAMP_END_UTC) AS RUN_END_UTC,
+                SUM(DURATION_SEC) AS TOTAL_DURATION_SEC,
+                SUM(ROWS_AFFECTED) AS TOTAL_ROWS
+            FROM control.SCORECARD_PIPELINE_RUN_LOG
+            GROUP BY PIPELINE_RUN_ID
+            ORDER BY MAX(RUN_TIMESTAMP_END_UTC) DESC
+        """)
+        result = []
+        for r in rows:
+            overall = "COMPLETE"
+            if r[3] and r[3] > 0:
+                overall = "FAILED"
+            elif r[4] and r[4] > 0 and r[2] < r[1]:
+                overall = "PARTIAL"
+            result.append({
+                "run_id": r[0],
+                "steps": r[1],
+                "n_complete": r[2],
+                "n_failed": r[3] or 0,
+                "n_skipped": r[4] or 0,
+                "run_start_utc": r[5].isoformat() if r[5] else None,
+                "run_end_utc": r[6].isoformat() if r[6] else None,
+                "total_duration_sec": float(r[7]) if r[7] is not None else None,
+                "total_rows": int(r[8]) if r[8] is not None else 0,
+                "overall_status": overall,
+            })
+        return jsonify({"runs": result})
+    finally:
+        conn.close()
+
+
+@scorecard_bp.route("/api/admin/runs/<run_id>")
+@login_required
+def api_admin_run_detail(run_id):
+    """Return per-step detail for a single PIPELINE_RUN_ID."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    if not isinstance(run_id, str) or not (1 <= len(run_id) <= 100):
+        return jsonify({"error": "invalid run_id"}), 400
+    env = _get_env()
+    conn = SafeConnection(env, "DB_BI_SUPPORT", None, direct=True)
+    try:
+        rows = conn.fetchall("""
+            SELECT STEP_ORDER, STEP_GROUP, STEP_NAME, STATUS,
+                   RUN_TIMESTAMP_START_UTC, RUN_TIMESTAMP_END_UTC,
+                   DURATION_SEC, ROWS_AFFECTED, ERROR_MSG
+            FROM control.SCORECARD_PIPELINE_RUN_LOG
+            WHERE PIPELINE_RUN_ID = ?
+            ORDER BY STEP_ORDER, RUN_TIMESTAMP_START_UTC
+        """, (run_id,))
+        if not rows:
+            return jsonify({"error": "run not found"}), 404
+        steps = []
+        for r in rows:
+            steps.append({
+                "step_order": r[0],
+                "step_group": r[1],
+                "step_name": r[2],
+                "status": r[3],
+                "start_utc": r[4].isoformat() if r[4] else None,
+                "end_utc": r[5].isoformat() if r[5] else None,
+                "duration_sec": float(r[6]) if r[6] is not None else None,
+                "rows_affected": int(r[7]) if r[7] is not None else 0,
+                "error_msg": r[8],
+            })
+        return jsonify({"run_id": run_id, "steps": steps})
+    finally:
+        conn.close()
+
+
+# Scorecard pipeline notebook lookup — display name in the ETL workspace.
+_SCORECARD_ETL_WORKSPACE_ID = "a28164c3-c392-4848-83d4-b4a26f4bdef3"
+_SCORECARD_NOTEBOOK_NAME = "NB_SCORECARD_PIPELINE"
+_scorecard_notebook_id_cache = {"id": None}
+
+
+def _resolve_scorecard_notebook_id(env):
+    """Look up NB_SCORECARD_PIPELINE's item id in the ETL workspace, cached."""
+    if _scorecard_notebook_id_cache["id"]:
+        return _scorecard_notebook_id_cache["id"]
+    import requests as _requests
+    token = _get_fabric_api_token(env)
+    r = _requests.get(
+        f"https://api.fabric.microsoft.com/v1/workspaces/{_SCORECARD_ETL_WORKSPACE_ID}/items?type=Notebook",
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=30,
+    )
+    if r.status_code != 200:
+        raise RuntimeError(f"Fabric items list failed: HTTP {r.status_code} {r.text[:200]}")
+    for nb in r.json().get("value", []):
+        if nb.get("displayName") == _SCORECARD_NOTEBOOK_NAME:
+            _scorecard_notebook_id_cache["id"] = nb["id"]
+            return nb["id"]
+    raise RuntimeError(f"Notebook {_SCORECARD_NOTEBOOK_NAME!r} not found in workspace {_SCORECARD_ETL_WORKSPACE_ID}")
+
+
+@scorecard_bp.route("/api/admin/runs/trigger", methods=["POST"])
+@login_required
+def api_admin_run_trigger():
+    """Trigger a Fabric run of NB_SCORECARD_PIPELINE. Returns the monitor URL
+    for the job instance; UI polls the runs list to see when the new
+    PIPELINE_RUN_ID appears in the log."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    env = _get_env()
+    import requests as _requests
+    try:
+        token = _get_fabric_api_token(env)
+    except Exception as e:
+        return jsonify({"error": f"Could not acquire Fabric API token: {e}"}), 500
+    try:
+        nb_id = _resolve_scorecard_notebook_id(env)
+    except Exception as e:
+        return jsonify({"error": f"Could not resolve notebook: {e}"}), 500
+    r = _requests.post(
+        f"https://api.fabric.microsoft.com/v1/workspaces/{_SCORECARD_ETL_WORKSPACE_ID}/items/{nb_id}/jobs/instances?jobType=RunNotebook",
+        headers={"Authorization": f"Bearer {token}"},
+        json={},
+        timeout=30,
+    )
+    if r.status_code not in (200, 202):
+        return jsonify({"error": f"Trigger failed: HTTP {r.status_code} {r.text[:400]}"}), 502
+    monitor_url = r.headers.get("Location") or r.headers.get("location")
+    user_email = (session.get("user", {}) or {}).get("email", "unknown")
+    triggered_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    return jsonify({
+        "ok": True,
+        "monitor_url": monitor_url,
+        "triggered_at": triggered_at,
+        "triggered_by": user_email,
+        "notebook_id": nb_id,
+        "workspace_id": _SCORECARD_ETL_WORKSPACE_ID,
+    })
+
+
+@scorecard_bp.route("/api/admin/table/<table_key>")
+@login_required
+def api_admin_table(table_key):
+    """Generic read-only TOP N browse for any registry-whitelisted Scorecard
+    pipeline table. Supports per-column server-side filtering (contains,
+    case-insensitive LIKE with CAST) and per-column server-side sorting
+    (overriding the registry default) so column filters requery the full
+    source table instead of clipping against the loaded window.
+
+    Query params (all optional):
+        col_filters -- JSON `{col: value}` map. `value` may be a string
+            (substring LIKE) or a JSON array (exact-match IN clause).
+        sort_col / sort_dir -- override registry order_by; sort_dir in ASC/DESC.
+        limit -- override TOP N (default 3000, hard cap 10000)."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    cfg = _load_scorecard_tables().get(table_key)
+    if not cfg:
+        return jsonify({"error": "unknown table"}), 404
+    env = _get_env()
+
+    try:
+        col_filters = json.loads(request.args.get("col_filters") or "{}")
+    except json.JSONDecodeError:
+        return jsonify({"error": "col_filters must be valid JSON"}), 400
+    if not isinstance(col_filters, dict):
+        return jsonify({"error": "col_filters must be a JSON object"}), 400
+    col_filters = _clean_col_filters(col_filters)
+
+    sort_col = (request.args.get("sort_col") or "").strip() or None
+    sort_dir = (request.args.get("sort_dir") or "ASC").upper()
+    if sort_dir not in ("ASC", "DESC"):
+        sort_dir = "ASC"
+    try:
+        limit = min(int(request.args.get("limit") or 3000), 10000)
+        if limit < 1:
+            limit = 3000
+    except ValueError:
+        limit = 3000
+
+    if sort_col and not _IDENTIFIER_RE.match(sort_col):
+        return jsonify({"error": f"invalid column name: {sort_col}"}), 400
+
+    try:
+        where_parts, where_params = _build_col_filter_where(cfg, env, col_filters)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    where_clause = f" WHERE {' AND '.join(where_parts)}" if where_parts else ""
+
+    sort_python_side = False
+    if sort_col:
+        if sort_col == "PROPERTY_NAME":
+            sort_python_side = True
+            order_clause = ""
+        else:
+            order_clause = f" ORDER BY [{sort_col}] {sort_dir}"
+    else:
+        default_order = cfg.get("order_by")
+        sort_python_side = default_order == "PROPERTY_NAME"
+        default_sql_order = cfg.get("sql_order_by") or (default_order if not sort_python_side else None)
+        order_clause = f" ORDER BY {default_sql_order}" if default_sql_order else ""
+
+    cfg_out = dict(cfg)
+    if where_parts:
+        cfg_out["where_sql_resolved"] = " AND ".join(where_parts)
+    if order_clause:
+        cfg_out["sql_order_by_resolved"] = order_clause.replace(" ORDER BY ", "")
+    cfg_out["limit"] = limit
+
+    conn = SafeConnection(env, cfg["db"], None, direct=cfg.get("direct", False))
+    try:
+        sql = f"SELECT TOP {limit} * FROM {cfg['schema']}.[{cfg['table']}]{where_clause}{order_clause}"
+        cur = conn.execute(sql, where_params if where_params else None)
+        columns = [d[0] for d in cur.description]
+        rows = cur.fetchall()
+        result = []
+        for r in rows:
+            row_dict = {}
+            for i, col in enumerate(columns):
+                val = r[i]
+                if hasattr(val, "isoformat"):
+                    val = val.isoformat()
+                row_dict[col] = val
+            result.append(row_dict)
+    finally:
+        conn.close()
+
+    if cfg.get("join_property_name") and "PROPERTY_KEY" in columns:
+        name_map = _get_property_name_map(env)
+        for row in result:
+            pk = row.get("PROPERTY_KEY")
+            name = name_map.get(pk)
+            row["PROPERTY_NAME"] = name if name else (f"(unknown: {pk})" if pk is not None else "(unknown)")
+        columns = ["PROPERTY_NAME"] + [c for c in columns if c != "PROPERTY_NAME"]
+
+    if sort_python_side:
+        def _sort_key(r):
+            name = r.get("PROPERTY_NAME") or ""
+            orphan = name.startswith("(unknown")
+            return (1 if orphan else 0, name.lower(), str(r.get("PROPERTY_KEY") or ""))
+        result.sort(key=_sort_key, reverse=(sort_dir == "DESC"))
+
+    return jsonify({"columns": columns, "rows": result, "config": cfg_out})
+
+
+@scorecard_bp.route("/api/admin/table/<table_key>/distinct")
+@login_required
+def api_admin_table_distinct(table_key):
+    """Return TOP 500 DISTINCT values for one column, respecting the OTHER
+    column filters currently active (so successive dropdowns cascade like
+    Excel). Used by the Table Manager's per-column filter dropdowns."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    cfg = _load_scorecard_tables().get(table_key)
+    if not cfg:
+        return jsonify({"error": "unknown table"}), 404
+
+    col = (request.args.get("col") or "").strip()
+    if not col or not _IDENTIFIER_RE.match(col):
+        return jsonify({"error": "invalid col"}), 400
+    search = (request.args.get("search") or "").strip()
+
+    try:
+        col_filters = json.loads(request.args.get("col_filters") or "{}")
+    except json.JSONDecodeError:
+        return jsonify({"error": "col_filters must be valid JSON"}), 400
+    if not isinstance(col_filters, dict):
+        return jsonify({"error": "col_filters must be a JSON object"}), 400
+    col_filters = _clean_col_filters(col_filters)
+    col_filters.pop(col, None)  # never restrict the dropdown by its own selection
+
+    env = _get_env()
+    try:
+        parts, params = _build_col_filter_where(cfg, env, col_filters)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+    if col == "PROPERTY_NAME":
+        if "PROPERTY_KEY" not in _get_table_columns(env, cfg):
+            return jsonify({"values": [], "capped": False})
+        where = f" WHERE {' AND '.join(parts)}" if parts else ""
+        conn = SafeConnection(env, cfg["db"], None, direct=cfg.get("direct", False))
+        try:
+            sql = f"SELECT DISTINCT TOP 5000 [PROPERTY_KEY] FROM {cfg['schema']}.[{cfg['table']}]{where}"
+            cur = conn.execute(sql, params if params else None)
+            keys = [r[0] for r in cur.fetchall()]
+        finally:
+            conn.close()
+        name_map = _get_property_name_map(env)
+        names = {name_map.get(k) or f"(unknown: {k})" for k in keys if k is not None}
+        if search:
+            s = search.lower()
+            names = {n for n in names if s in n.lower()}
+        sorted_names = sorted(names, key=lambda n: (n.startswith("(unknown"), n.lower()))
+        return jsonify({"values": sorted_names[:500], "capped": len(sorted_names) > 500})
+
+    if search:
+        parts.append(f"CAST([{col}] AS NVARCHAR(400)) LIKE ?")
+        params.append(f"%{search}%")
+    where = f" WHERE {' AND '.join(parts)}" if parts else ""
+    conn = SafeConnection(env, cfg["db"], None, direct=cfg.get("direct", False))
+    try:
+        sql = f"SELECT DISTINCT TOP 500 [{col}] FROM {cfg['schema']}.[{cfg['table']}]{where} ORDER BY [{col}]"
+        cur = conn.execute(sql, params if params else None)
+        raw = [r[0] for r in cur.fetchall()]
+    finally:
+        conn.close()
+    values = [v.isoformat() if hasattr(v, "isoformat") else v for v in raw]
+    return jsonify({"values": values, "capped": len(values) >= 500})
+
+
+def _clean_col_filters(col_filters):
+    """Normalize col_filters into `{col: str | [values]}`, dropping empties."""
+    out = {}
+    for k, v in col_filters.items():
+        if isinstance(v, list):
+            cleaned = [x for x in v if x is not None and str(x).strip() != ""]
+            if cleaned:
+                out[k] = cleaned
+        else:
+            s = str(v or "").strip()
+            if s != "":
+                out[k] = s
+    return out
+
+
+def _build_col_filter_where(cfg, env, col_filters):
+    """Build `(where_parts, params)` from cfg.where_sql + col_filters.
+    Raises ValueError on bad column names."""
+    parts = []
+    params = []
+    base = cfg.get("where_sql") or ""
+    if "{" in base:
+        base = base.format(**_get_registry_tokens(env))
+    if base:
+        parts.append(f"({base})")
+
+    prop_name_val = col_filters.get("PROPERTY_NAME")
+    if prop_name_val is not None:
+        name_map = _get_property_name_map(env)
+        if isinstance(prop_name_val, list):
+            wanted = {str(n).lower() for n in prop_name_val}
+            matching = [k for k, v in name_map.items() if v and v.lower() in wanted]
+        else:
+            needle = str(prop_name_val).lower()
+            matching = [k for k, v in name_map.items() if v and needle in v.lower()]
+        if not matching:
+            parts.append("1 = 0")
+        else:
+            capped = matching[:2000]
+            placeholders = ", ".join(["?"] * len(capped))
+            parts.append(f"[PROPERTY_KEY] IN ({placeholders})")
+            params.extend(capped)
+
+    for col, val in col_filters.items():
+        if col == "PROPERTY_NAME":
+            continue
+        if not _IDENTIFIER_RE.match(col):
+            raise ValueError(f"invalid column name: {col}")
+        if isinstance(val, list):
+            placeholders = ", ".join(["?"] * len(val))
+            parts.append(f"CAST([{col}] AS NVARCHAR(400)) IN ({placeholders})")
+            params.extend([str(x) for x in val])
+        else:
+            parts.append(f"CAST([{col}] AS NVARCHAR(400)) LIKE ?")
+            params.append(f"%{val}%")
+    return parts, params
+
+
+_table_columns_cache = {}
+
+def _get_table_columns(env, cfg):
+    """Cached list of column names for a source table."""
+    key = (cfg["db"], cfg["schema"], cfg["table"])
+    cached = _table_columns_cache.get(key)
+    if cached:
+        return cached
+    conn = SafeConnection(env, cfg["db"], None, direct=cfg.get("direct", False))
+    try:
+        cur = conn.execute(f"SELECT TOP 0 * FROM {cfg['schema']}.[{cfg['table']}]")
+        cols = [d[0] for d in cur.description]
+    finally:
+        conn.close()
+    _table_columns_cache[key] = cols
+    return cols
+
+
+def _get_current_preleasing_ay(env):
+    """Read the AY currently flagged as pre-leasing in ACADEMIC_YEARS."""
+    conn = SafeConnection(env, "WH_PROD2", None, direct=False)
+    try:
+        row = conn.fetchall("SELECT TOP 1 AY_KEY FROM dbo.ACADEMIC_YEARS WHERE FLAG_AY_PRELEASE_AY = 1 ORDER BY AY_KEY DESC")
+        if not row:
+            raise RuntimeError("No AY with FLAG_AY_PRELEASE_AY = 1")
+        return int(row[0][0])
+    finally:
+        conn.close()
+
+
+_property_name_cache = {"ts": 0, "map": {}}
+
+def _get_property_name_map(env):
+    """PROPERTY_KEY -> PROPERTY_NAME, cached for 5 minutes."""
+    import time
+    now = time.time()
+    if _property_name_cache["map"] and now - _property_name_cache["ts"] < 300:
+        return _property_name_cache["map"]
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        rows = conn.fetchall("SELECT PROPERTY_KEY, PROPERTY_NAME FROM dbo.PROPERTY_0")
+        name_map = {r[0]: r[1] for r in rows}
+        _property_name_cache["map"] = name_map
+        _property_name_cache["ts"] = now
+        return name_map
+    finally:
+        conn.close()
+
+
+_ay_cache = {"ts": 0, "preleasing": None, "current": None}
+
+def _get_registry_tokens(env):
+    """Substitution tokens available inside registry `where_sql` templates."""
+    import time, datetime as _dt
+    now_ts = time.time()
+    if _ay_cache["preleasing"] is None or now_ts - _ay_cache["ts"] > 300:
+        conn = SafeConnection(env, "WH_PROD2", None, direct=False)
+        try:
+            rows = conn.fetchall("SELECT AY_KEY, FLAG_AY_PRELEASE_AY, FLAG_AY_CURRENT_AY FROM dbo.ACADEMIC_YEARS WHERE FLAG_AY_PRELEASE_AY = 1 OR FLAG_AY_CURRENT_AY = 1")
+            preleasing = next((int(r[0]) for r in rows if r[1] == 1), None)
+            current = next((int(r[0]) for r in rows if r[2] == 1), None)
+            if preleasing is None or current is None:
+                raise RuntimeError("ACADEMIC_YEARS missing preleasing/current AY flags")
+            _ay_cache["preleasing"] = preleasing
+            _ay_cache["current"] = current
+            _ay_cache["ts"] = now_ts
+        finally:
+            conn.close()
+    today = _dt.date.today()
+    d120 = today - _dt.timedelta(days=120)
+    d200 = today - _dt.timedelta(days=200)
+    return {
+        "preleasing_ay": _ay_cache["preleasing"],
+        "current_ay": _ay_cache["current"],
+        "today": today.isoformat(),
+        "today_int": int(today.strftime("%Y%m%d")),
+        "today_minus_120": d120.isoformat(),
+        "today_minus_120_int": int(d120.strftime("%Y%m%d")),
+        "today_minus_200": d200.isoformat(),
+        "today_minus_200_int": int(d200.strftime("%Y%m%d")),
+    }
+
+
+_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+@scorecard_bp.route("/api/admin/table/<table_key>/edit", methods=["PATCH"])
+@login_required
+def api_admin_table_edit(table_key):
+    """In-place edit of a single row in a registry-whitelisted table.
+    Only fields in the registry's `editable_columns` list can be changed.
+    Every edit writes an append-only row to control.SCORECARD_TABLE_MANAGER_AUDIT
+    (with old + new value) and upserts dbo.SCORECARD_FIELD_OVERRIDES for
+    lock-aware pipeline reads.
+
+    Request body: {"row_key": {<pk_col>: <val>, ...}, "changes": {<col>: <val>, ...},
+                    "reason": "optional note"}"""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+
+    cfg = _load_scorecard_tables().get(table_key)
+    if not cfg:
+        return jsonify({"error": "unknown table"}), 404
+    pk_cols = cfg.get("primary_key") or []
+    editable = set(cfg.get("editable_columns") or [])
+    if not pk_cols or not editable:
+        return jsonify({"error": "this table is not editable"}), 400
+
+    payload = request.get_json(silent=True) or {}
+    row_key = payload.get("row_key") or {}
+    changes = payload.get("changes") or {}
+    reason = (payload.get("reason") or "").strip() or None
+
+    if not isinstance(row_key, dict) or set(row_key.keys()) != set(pk_cols):
+        return jsonify({"error": f"row_key must contain exactly: {pk_cols}"}), 400
+    if not isinstance(changes, dict) or not changes:
+        return jsonify({"error": "changes must be a non-empty object"}), 400
+    for c in changes:
+        if c not in editable:
+            return jsonify({"error": f"field '{c}' is not editable for this table"}), 400
+        if not _IDENTIFIER_RE.match(c):
+            return jsonify({"error": f"field '{c}' has an invalid name"}), 400
+    for c in pk_cols:
+        if not _IDENTIFIER_RE.match(c):
+            return jsonify({"error": f"primary key column '{c}' has an invalid name"}), 400
+
+    user_email = (session.get("user", {}) or {}).get("email", "unknown")
+    env = _get_env()
+    conn = SafeConnection(env, cfg["db"], None, direct=cfg.get("direct", False))
+    conn_bi = SafeConnection(env, "DB_BI_SUPPORT", None, direct=True)
+    conn_app = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True) if cfg["db"] != "DB_APP_SUPPORT" else None
+    try:
+        where_sql = " AND ".join([f"[{c}] = ?" for c in pk_cols])
+        pk_values = [row_key[c] for c in pk_cols]
+        select_cols_sql = ", ".join([f"[{c}]" for c in changes])
+        cur = conn.execute(f"SELECT {select_cols_sql} FROM {cfg['schema']}.[{cfg['table']}] WHERE {where_sql}", pk_values)
+        current = cur.fetchone()
+        if current is None:
+            return jsonify({"error": "row not found"}), 404
+        old_values = {c: current[i] for i, c in enumerate(changes)}
+
+        set_sql = ", ".join([f"[{c}] = ?" for c in changes])
+        conn.execute(f"UPDATE {cfg['schema']}.[{cfg['table']}] SET {set_sql} WHERE {where_sql}",
+                     list(changes.values()) + pk_values)
+
+        row_key_json = json.dumps(row_key, sort_keys=True, default=str)
+        for field_name, new_val in changes.items():
+            old_val = old_values.get(field_name)
+            conn_bi.execute("""
+                INSERT INTO control.SCORECARD_TABLE_MANAGER_AUDIT
+                    (SOURCE_TABLE_KEY, ROW_KEY, FIELD_NAME, OLD_VALUE, NEW_VALUE, ACTION, CHANGED_BY, REASON)
+                VALUES (?, ?, ?, ?, ?, 'UPDATE', ?, ?)
+            """, (table_key, row_key_json, field_name,
+                  None if old_val is None else str(old_val)[:2000],
+                  None if new_val is None else str(new_val)[:2000],
+                  user_email, reason))
+        conn_bi.commit()
+
+        overrides_conn = conn_app if conn_app is not None else conn
+        for field_name, new_val in changes.items():
+            cur_upd = overrides_conn.execute("""
+                UPDATE dbo.SCORECARD_FIELD_OVERRIDES
+                SET OVERRIDE_VALUE = ?, LOCKED = 1, REASON = ?, UPDATED_BY = ?, UPDATED_AT = SYSUTCDATETIME()
+                WHERE SOURCE_TABLE_KEY = ? AND ROW_KEY = ? AND FIELD_NAME = ?
+            """, (None if new_val is None else str(new_val)[:2000], reason, user_email,
+                  table_key, row_key_json, field_name))
+            if cur_upd.rowcount == 0:
+                overrides_conn.execute("""
+                    INSERT INTO dbo.SCORECARD_FIELD_OVERRIDES
+                        (SOURCE_TABLE_KEY, ROW_KEY, FIELD_NAME, OVERRIDE_VALUE, LOCKED, REASON, CREATED_BY)
+                    VALUES (?, ?, ?, ?, 1, ?, ?)
+                """, (table_key, row_key_json, field_name,
+                      None if new_val is None else str(new_val)[:2000], reason, user_email))
+        overrides_conn.commit()
+        conn.commit()
+
+        return jsonify({"ok": True, "updated": list(changes.keys()), "old_values": {k: (None if v is None else str(v)) for k, v in old_values.items()}})
+    finally:
+        conn.close()
+        conn_bi.close()
+        if conn_app is not None:
+            conn_app.close()
+
+
+@scorecard_bp.route("/api/admin/table/<table_key>/bulk-edit", methods=["PATCH"])
+@login_required
+def api_admin_table_bulk_edit(table_key):
+    """Apply the same single-field change to N rows. Same validation +
+    audit-logging as the single-row edit, but wraps a Python loop so we
+    can return per-row success/failure counts.
+
+    Request body: {"row_keys": [{<pk>: v}, ...], "field": "<col>",
+                    "value": <new_value>, "reason": "..."}
+    """
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    cfg = _load_scorecard_tables().get(table_key)
+    if not cfg:
+        return jsonify({"error": "unknown table"}), 404
+    pk_cols = cfg.get("primary_key") or []
+    editable = set(cfg.get("editable_columns") or [])
+    if not pk_cols or not editable:
+        return jsonify({"error": "this table is not editable"}), 400
+
+    payload = request.get_json(silent=True) or {}
+    row_keys = payload.get("row_keys") or []
+    field = payload.get("field")
+    new_val = payload.get("value")
+    reason = (payload.get("reason") or "").strip() or None
+
+    if not isinstance(row_keys, list) or not row_keys:
+        return jsonify({"error": "row_keys must be a non-empty list"}), 400
+    if len(row_keys) > 2000:
+        return jsonify({"error": "row_keys capped at 2000 per request"}), 400
+    if not field or field not in editable:
+        return jsonify({"error": f"field '{field}' is not editable for this table"}), 400
+    if not _IDENTIFIER_RE.match(field):
+        return jsonify({"error": f"invalid field name: {field}"}), 400
+    for rk in row_keys:
+        if not isinstance(rk, dict) or set(rk.keys()) != set(pk_cols):
+            return jsonify({"error": f"each row_key must contain exactly: {pk_cols}"}), 400
+    for c in pk_cols:
+        if not _IDENTIFIER_RE.match(c):
+            return jsonify({"error": f"invalid primary key column: {c}"}), 400
+
+    user_email = (session.get("user", {}) or {}).get("email", "unknown")
+    env = _get_env()
+    conn = SafeConnection(env, cfg["db"], None, direct=cfg.get("direct", False))
+    conn_bi = SafeConnection(env, "DB_BI_SUPPORT", None, direct=True)
+    conn_app = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True) if cfg["db"] != "DB_APP_SUPPORT" else None
+    try:
+        where_sql = " AND ".join([f"[{c}] = ?" for c in pk_cols])
+        updated = 0
+        unchanged = 0
+        missing = 0
+        errors = []
+        new_val_stored = None if new_val is None or new_val == "" else str(new_val)
+        for rk in row_keys:
+            pk_values = [rk[c] for c in pk_cols]
+            try:
+                cur = conn.execute(f"SELECT [{field}] FROM {cfg['schema']}.[{cfg['table']}] WHERE {where_sql}", pk_values)
+                current = cur.fetchone()
+                if current is None:
+                    missing += 1
+                    continue
+                old_val = current[0]
+                # Compare as strings for consistency with the single-row edit path.
+                old_str = "" if old_val is None else str(old_val)
+                new_str = "" if new_val_stored is None else str(new_val_stored)
+                if old_str == new_str:
+                    unchanged += 1
+                    continue
+                conn.execute(f"UPDATE {cfg['schema']}.[{cfg['table']}] SET [{field}] = ? WHERE {where_sql}",
+                             [new_val_stored] + pk_values)
+
+                row_key_json = json.dumps(rk, sort_keys=True, default=str)
+                conn_bi.execute("""
+                    INSERT INTO control.SCORECARD_TABLE_MANAGER_AUDIT
+                        (SOURCE_TABLE_KEY, ROW_KEY, FIELD_NAME, OLD_VALUE, NEW_VALUE, ACTION, CHANGED_BY, REASON)
+                    VALUES (?, ?, ?, ?, ?, 'UPDATE', ?, ?)
+                """, (table_key, row_key_json, field,
+                      None if old_val is None else str(old_val)[:2000],
+                      None if new_val_stored is None else str(new_val_stored)[:2000],
+                      user_email, reason))
+                overrides_conn = conn_app if conn_app is not None else conn
+                cur_upd = overrides_conn.execute("""
+                    UPDATE dbo.SCORECARD_FIELD_OVERRIDES
+                    SET OVERRIDE_VALUE = ?, LOCKED = 1, REASON = ?, UPDATED_BY = ?, UPDATED_AT = SYSUTCDATETIME()
+                    WHERE SOURCE_TABLE_KEY = ? AND ROW_KEY = ? AND FIELD_NAME = ?
+                """, (None if new_val_stored is None else str(new_val_stored)[:2000], reason, user_email,
+                      table_key, row_key_json, field))
+                if cur_upd.rowcount == 0:
+                    overrides_conn.execute("""
+                        INSERT INTO dbo.SCORECARD_FIELD_OVERRIDES
+                            (SOURCE_TABLE_KEY, ROW_KEY, FIELD_NAME, OVERRIDE_VALUE, LOCKED, REASON, CREATED_BY)
+                        VALUES (?, ?, ?, ?, 1, ?, ?)
+                    """, (table_key, row_key_json, field,
+                          None if new_val_stored is None else str(new_val_stored)[:2000], reason, user_email))
+                updated += 1
+            except Exception as row_err:
+                errors.append({"row_key": rk, "error": str(row_err)[:200]})
+        conn.commit(); conn_bi.commit()
+        if conn_app is not None:
+            conn_app.commit()
+
+        return jsonify({
+            "ok": True,
+            "field": field,
+            "attempted": len(row_keys),
+            "updated": updated,
+            "unchanged": unchanged,
+            "missing": missing,
+            "errors": errors,
+        })
+    finally:
+        conn.close()
+        conn_bi.close()
+        if conn_app is not None:
+            conn_app.close()
+
+
+@scorecard_bp.route("/api/admin/table/<table_key>", methods=["POST"])
+@login_required
+def api_admin_table_insert(table_key):
+    """Insert a new row into a registry-whitelisted table (requires
+    `allow_insert: true`). Values may only contain columns from
+    `insertable_columns`. `required_columns` (also from the registry) MUST
+    be provided or the insert is rejected before touching the DB. The
+    generated identity PK is captured via OUTPUT INSERTED and returned.
+    Every column set is logged as its own audit row (ACTION='INSERT',
+    old_value=null, new_value=value)."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    cfg = _load_scorecard_tables().get(table_key)
+    if not cfg:
+        return jsonify({"error": "unknown table"}), 404
+    if not cfg.get("allow_insert"):
+        return jsonify({"error": "this table does not allow inserts"}), 400
+
+    insertable = set(cfg.get("insertable_columns") or [])
+    required = list(cfg.get("required_columns") or [])
+    pk_cols = cfg.get("primary_key") or []
+    if not insertable or not pk_cols:
+        return jsonify({"error": "insertable_columns / primary_key not configured"}), 400
+
+    payload = request.get_json(silent=True) or {}
+    values = payload.get("values") or {}
+    reason = (payload.get("reason") or "").strip() or None
+    if not isinstance(values, dict) or not values:
+        return jsonify({"error": "values must be a non-empty object"}), 400
+    for c in values:
+        if c not in insertable:
+            return jsonify({"error": f"column '{c}' is not insertable for this table"}), 400
+        if not _IDENTIFIER_RE.match(c):
+            return jsonify({"error": f"column '{c}' has an invalid name"}), 400
+    for req in required:
+        v = values.get(req)
+        if v is None or (isinstance(v, str) and v.strip() == ""):
+            return jsonify({"error": f"'{req}' is required"}), 400
+
+    user_email = (session.get("user", {}) or {}).get("email", "unknown")
+    env = _get_env()
+    conn = SafeConnection(env, cfg["db"], None, direct=cfg.get("direct", False))
+    conn_bi = SafeConnection(env, "DB_BI_SUPPORT", None, direct=True)
+    try:
+        col_list = ", ".join([f"[{c}]" for c in values])
+        placeholders = ", ".join(["?"] * len(values))
+        # OUTPUT INSERTED so we get the new PK back even for identity columns.
+        output_cols = ", ".join([f"INSERTED.[{c}]" for c in pk_cols])
+        # Include CREATED_BY if the table has one and we didn't set it explicitly.
+        extra_cols = []
+        extra_vals = []
+        table_cols = _get_table_columns(env, cfg)
+        if "CREATED_BY" in table_cols and "CREATED_BY" not in values:
+            extra_cols.append("[CREATED_BY]"); extra_vals.append(user_email)
+        full_cols = col_list + (", " + ", ".join(extra_cols) if extra_cols else "")
+        full_ph = placeholders + (", " + ", ".join(["?"] * len(extra_vals)) if extra_vals else "")
+        sql = f"INSERT INTO {cfg['schema']}.[{cfg['table']}] ({full_cols}) OUTPUT {output_cols} VALUES ({full_ph})"
+        cur = conn.execute(sql, list(values.values()) + extra_vals)
+        new_pk_row = cur.fetchone()
+        conn.commit()
+        new_row_key = {pk_cols[i]: new_pk_row[i] for i in range(len(pk_cols))}
+        row_key_json = json.dumps(new_row_key, sort_keys=True, default=str)
+
+        for field_name, new_val in values.items():
+            conn_bi.execute("""
+                INSERT INTO control.SCORECARD_TABLE_MANAGER_AUDIT
+                    (SOURCE_TABLE_KEY, ROW_KEY, FIELD_NAME, OLD_VALUE, NEW_VALUE, ACTION, CHANGED_BY, REASON)
+                VALUES (?, ?, ?, NULL, ?, 'INSERT', ?, ?)
+            """, (table_key, row_key_json, field_name,
+                  None if new_val is None else str(new_val)[:2000], user_email, reason))
+        conn_bi.commit()
+
+        return jsonify({"ok": True, "row_key": new_row_key})
+    finally:
+        conn.close()
+        conn_bi.close()
+
+
+@scorecard_bp.route("/api/admin/table/<table_key>", methods=["DELETE"])
+@login_required
+def api_admin_table_delete(table_key):
+    """Delete a row from a registry-whitelisted table (requires
+    `allow_delete: true`). The row's current values are snapshotted into
+    the audit log (ACTION='DELETE', old_value=current, new_value=null) so
+    a manual restore has enough information to rebuild the row."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    cfg = _load_scorecard_tables().get(table_key)
+    if not cfg:
+        return jsonify({"error": "unknown table"}), 404
+    if not cfg.get("allow_delete"):
+        return jsonify({"error": "this table does not allow deletes"}), 400
+    pk_cols = cfg.get("primary_key") or []
+    if not pk_cols:
+        return jsonify({"error": "primary_key not configured"}), 400
+
+    payload = request.get_json(silent=True) or {}
+    row_key = payload.get("row_key") or {}
+    reason = (payload.get("reason") or "").strip() or None
+    if not isinstance(row_key, dict) or set(row_key.keys()) != set(pk_cols):
+        return jsonify({"error": f"row_key must contain exactly: {pk_cols}"}), 400
+    for c in pk_cols:
+        if not _IDENTIFIER_RE.match(c):
+            return jsonify({"error": f"invalid primary key column: {c}"}), 400
+
+    user_email = (session.get("user", {}) or {}).get("email", "unknown")
+    env = _get_env()
+    conn = SafeConnection(env, cfg["db"], None, direct=cfg.get("direct", False))
+    conn_bi = SafeConnection(env, "DB_BI_SUPPORT", None, direct=True)
+    try:
+        where_sql = " AND ".join([f"[{c}] = ?" for c in pk_cols])
+        pk_values = [row_key[c] for c in pk_cols]
+        cur = conn.execute(f"SELECT * FROM {cfg['schema']}.[{cfg['table']}] WHERE {where_sql}", pk_values)
+        columns = [d[0] for d in cur.description]
+        existing = cur.fetchone()
+        if existing is None:
+            return jsonify({"error": "row not found"}), 404
+        snapshot = {columns[i]: existing[i] for i in range(len(columns))}
+
+        del_cur = conn.execute(f"DELETE FROM {cfg['schema']}.[{cfg['table']}] WHERE {where_sql}", pk_values)
+        conn.commit()
+        if del_cur.rowcount == 0:
+            return jsonify({"error": "row disappeared before delete"}), 409
+
+        row_key_json = json.dumps(row_key, sort_keys=True, default=str)
+        for field_name, old_val in snapshot.items():
+            if field_name in pk_cols:
+                continue  # PKs are captured in row_key
+            conn_bi.execute("""
+                INSERT INTO control.SCORECARD_TABLE_MANAGER_AUDIT
+                    (SOURCE_TABLE_KEY, ROW_KEY, FIELD_NAME, OLD_VALUE, NEW_VALUE, ACTION, CHANGED_BY, REASON)
+                VALUES (?, ?, ?, ?, NULL, 'DELETE', ?, ?)
+            """, (table_key, row_key_json, field_name,
+                  None if old_val is None else str(old_val)[:2000], user_email, reason))
+        conn_bi.commit()
+
+        return jsonify({"ok": True, "deleted": row_key})
+    finally:
+        conn.close()
+        conn_bi.close()
+
+
+@scorecard_bp.route("/api/admin/table/<table_key>/audit")
+@login_required
+def api_admin_table_audit(table_key):
+    """Return the most-recent edit history for a table (TOP 500).
+    Optional `row_key` query param filters to a specific row (JSON-encoded
+    same as the PATCH endpoint uses)."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    if not _load_scorecard_tables().get(table_key):
+        return jsonify({"error": "unknown table"}), 404
+
+    row_key_param = request.args.get("row_key")
+    row_key_json = None
+    if row_key_param:
+        try:
+            parsed = json.loads(row_key_param)
+        except json.JSONDecodeError:
+            return jsonify({"error": "row_key must be valid JSON"}), 400
+        row_key_json = json.dumps(parsed, sort_keys=True, default=str)
+
+    env = _get_env()
+    conn_bi = SafeConnection(env, "DB_BI_SUPPORT", None, direct=True)
+    try:
+        if row_key_json is not None:
+            rows = conn_bi.fetchall("""
+                SELECT TOP 500 AUDIT_ID, ROW_KEY, FIELD_NAME, OLD_VALUE, NEW_VALUE, ACTION, CHANGED_BY, CHANGED_AT, REASON
+                FROM control.SCORECARD_TABLE_MANAGER_AUDIT
+                WHERE SOURCE_TABLE_KEY = ? AND ROW_KEY = ?
+                ORDER BY AUDIT_ID DESC
+            """, (table_key, row_key_json))
+        else:
+            rows = conn_bi.fetchall("""
+                SELECT TOP 500 AUDIT_ID, ROW_KEY, FIELD_NAME, OLD_VALUE, NEW_VALUE, ACTION, CHANGED_BY, CHANGED_AT, REASON
+                FROM control.SCORECARD_TABLE_MANAGER_AUDIT
+                WHERE SOURCE_TABLE_KEY = ?
+                ORDER BY AUDIT_ID DESC
+            """, (table_key,))
+        result = []
+        for r in rows:
+            result.append({
+                "audit_id": r[0], "row_key": r[1], "field": r[2],
+                "old_value": r[3], "new_value": r[4], "action": r[5],
+                "changed_by": r[6],
+                "changed_at": r[7].isoformat() if r[7] else None,
+                "reason": r[8],
+            })
+        return jsonify({"audit": result})
+    finally:
+        conn_bi.close()
 
 
 @scorecard_bp.route("/api/whoami")

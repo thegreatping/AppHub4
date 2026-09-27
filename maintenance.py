@@ -4,6 +4,7 @@ from auth import login_required
 from modules import MODULES, APP_ID_MAP
 from nav import build_nav_modules
 import sys
+import os
 from helpers import load_env, SafeConnection
 
 maintenance_bp = Blueprint("maintenance", __name__, url_prefix="/maintenance")
@@ -52,6 +53,32 @@ def index():
 
 
 # ─── MODULE REGISTRY API ────────────────────────────────────────────────────────
+
+
+# ─── DEV & MAINT PLAN (raw HTML docs, embedded via iframe) ─────────────────────────
+
+@maintenance_bp.route("/dev-plan")
+@login_required
+def dev_plan():
+    """Serve the AppHub 4.0 project plan HTML doc for the Dev & Maint Plan tab."""
+    check = _require_admin()
+    if check:
+        return check
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "apphub_project_plan.html")
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+@maintenance_bp.route("/dev-checklist")
+@login_required
+def dev_checklist():
+    """Serve the AppHub 4.0 sprint checklist HTML doc for the Dev & Maint Plan tab."""
+    check = _require_admin()
+    if check:
+        return check
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "apphub_checklist.html")
+    with open(path, encoding="utf-8") as f:
+        return f.read()
 
 @maintenance_bp.route("/api/modules", methods=["GET"])
 @login_required
@@ -137,11 +164,11 @@ def get_audience(module_id):
     # Resolve names for individual/exclude grants (emails)
     emails = [g["grant_value"] for g in grants if g["grant_type"] in ("individual", "exclude")]
     if emails:
-        conn2 = SafeConnection(env, "WH_STAGING", None)
+        conn2 = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
         try:
             placeholders = ",".join(["?" for _ in emails])
             name_rows = conn2.fetchall(f"""
-                SELECT LOWER(EMAIL), NAME_FULL FROM dbo.EMPLOYEE_F
+                SELECT LOWER(EMAIL), NAME_FULL FROM dbo.Emp_Core
                 WHERE LOWER(EMAIL) IN ({placeholders})
             """, tuple(e.lower() for e in emails))
             name_map = {r[0]: r[1] for r in name_rows}
@@ -249,11 +276,11 @@ def user_search():
     if len(q) < 2:
         return jsonify([])
     env = _get_env()
-    conn = SafeConnection(env, "WH_STAGING", None)
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
         rows = conn.fetchall("""
             SELECT TOP 20 NAME_FULL, EMAIL, TITLE_GROUP, PROPERTY_NAME
-            FROM dbo.EMPLOYEE_F
+            FROM dbo.Emp_Core
             WHERE FLAG_ACTIVE = 1 AND UPPER(NAME_FULL) LIKE UPPER(?)
             ORDER BY NAME_FULL
         """, (f"%{q}%",))
@@ -450,11 +477,11 @@ def get_title_groups():
     if check:
         return check
     env = _get_env()
-    conn = SafeConnection(env, "WH_STAGING", None)
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
         rows = conn.fetchall("""
             SELECT DISTINCT TITLE_GROUP
-            FROM dbo.EMPLOYEE_F
+            FROM dbo.Emp_Core
             WHERE FLAG_ACTIVE = 1 AND TITLE_GROUP IS NOT NULL AND TITLE_GROUP != ''
             ORDER BY TITLE_GROUP
         """)

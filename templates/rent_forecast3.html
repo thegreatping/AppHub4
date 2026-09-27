@@ -1,11 +1,11 @@
 {% extends "shell.html" %}
 {% block head %}
 <style>
-/* ── Make RFS2 fill the AppHub content area fully ── */
+/* -- Make RF 3 fill the AppHub content area fully -- */
 .apphub-content{padding:0!important;overflow:hidden!important;display:flex;flex-direction:column;height:calc(100vh - 52px);}
 
-/* ===== THEME VARS — identical to mockup (RF2 does NOT override --nav-bg;
-     shell nav colors from apphub.css cascade through so Light mode stays readable) ===== */
+/* ===== THEME VARS — identical to mockup (RF3 does NOT override --nav-bg;
+       that's owned by the shell so nav stays readable in every theme) ===== */
 :root,[data-theme="dark"]{
   --accent-cyan:#67e8e0;--accent-blue:#64b5f6;
   --accent-gold:#fbbf24;--accent-orange:#fb923c;--accent-green:#4ade80;
@@ -144,7 +144,7 @@
 .pfhdr{background:var(--content-header);border-bottom:2px solid var(--bm);flex-shrink:0;display:flex;flex-direction:column;}
 .pfhdr-row{display:flex;align-items:stretch;gap:0;border-bottom:1px solid var(--bl);}
 .pfhdr-row:last-child{border-bottom:none;}
-.pfhdr-sel-blk{display:flex;flex-direction:column;justify-content:center;padding:10px 18px;border-right:2px solid var(--section-hd-border);min-width:310px;max-width:310px;flex-shrink:0;}
+.pfhdr-sel-blk{display:flex;flex-direction:column;justify-content:center;padding:10px 18px;border-right:2px solid var(--section-hd-border);min-width:310px;width:var(--pfhdr-sel-w,310px);max-width:560px;flex-shrink:0;}
 .pfhdr-sel-blk .plan-trigger{min-width:0;flex:1;margin-top:0;font-size:.72rem;}
 .pfhdr-sel-blk .plan-menu{min-width:260px;}
 .pfhdr-sel-blk .pfhdr-prop-trigger{font-size:1.05rem!important;font-weight:800!important;border:none!important;background:transparent!important;padding:2px 0!important;color:var(--accent-cyan)!important;}
@@ -169,8 +169,9 @@
 .pfhdr-sel{background:transparent;border:none;color:var(--text);font-size:1.05rem;font-weight:800;cursor:pointer;padding:0;width:100%;outline:none;}
 .pfhdr-sel option{background:var(--card);color:var(--text);font-weight:400;font-size:.72rem;}
 .pfhdr-sub{font-size:.7rem;color:var(--text2);margin-top:3px;}
-.pfhdr-metrics{display:flex;align-items:stretch;gap:0;padding:8px 16px;flex:1;overflow-x:auto;gap:16px;}
+.pfhdr-metrics{display:flex;flex-wrap:wrap;align-items:stretch;padding:6px 8px;flex:1;min-width:0;overflow:hidden;gap:8px;row-gap:6px;}
 .pfhdr-sep{width:1px;background:var(--bm);margin:6px 0;flex-shrink:0;}
+.pfhdr-metrics .pfhdr-sep{display:none;}
 
 /* ===== SUMMARY STRIP (kept for compatibility, hidden) ===== */
 .sstrip{display:none;}
@@ -178,23 +179,23 @@
 .ss-fp-name{font-size:1.1rem;font-weight:800;color:var(--accent-cyan);}
 .ss-fp-sub{font-size:.72rem;color:var(--text2);margin-top:2px;}
 .ssep{width:1px;background:var(--bm);margin:4px 0;flex-shrink:0;}
-.kpi-blk{display:flex;flex-direction:column;gap:6px;width:210px;flex-shrink:0;background:rgba(100,181,246,.06);border:1px solid rgba(100,181,246,.18);border-radius:6px;padding:10px 14px;}
+.kpi-blk{display:flex;flex-direction:column;gap:5px;flex:1 1 auto;min-width:170px;background:rgba(100,181,246,.06);border:1px solid rgba(100,181,246,.18);border-radius:6px;padding:8px 10px;}
 .kpi-blk-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);text-align:center;}
-.kpi-cols-hdr{display:flex;gap:6px;margin-top:2px;justify-content:center;}
-.kpi-col-hdr{min-width:62px;text-align:right;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
+.kpi-cols-hdr{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px;margin-top:2px;}
+.kpi-col-hdr{text-align:center;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .kpi-col-hdr.b{color:var(--accent-blue);}
 .kpi-col-hdr.g{color:var(--accent-green);}
 .kpi-col-hdr.f{color:var(--accent-gold);}
 .kpi-col-hdr.p{color:var(--accent-orange);}
-.kpi-vals{display:flex;gap:6px;justify-content:center;}
-.kv{min-width:62px;text-align:right;font-size:.88rem;font-weight:700;}
+.kpi-vals{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px;}
+.kv{text-align:center;font-size:.85rem;font-weight:700;white-space:pre-line;line-height:1.15;min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .kv.b{color:var(--accent-blue);}
 .kv.g{color:var(--accent-green);}
 .kv.f{color:var(--accent-gold);}
 .kv.p{color:var(--accent-orange);}
-.ltb-blk{background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.2);border-radius:6px;padding:10px 18px;display:flex;flex-direction:column;gap:6px;}
-.ltb-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--accent-gold);}
-.ltb-nums{display:flex;gap:20px;margin-top:4px;}
+.ltb-blk{background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.2);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:5px;flex:1 1 auto;min-width:210px;overflow:hidden;}
+.ltb-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--accent-gold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ltb-nums{display:flex;gap:6px;margin-top:2px;justify-content:space-around;}
 .ltb-item{display:flex;flex-direction:column;align-items:center;gap:4px;}
 .ltb-val{font-size:1rem;font-weight:800;}
 .ltb-val.r{color:var(--accent-orange);}
@@ -214,6 +215,22 @@
 .coll-sec-chev.c{transform:rotate(-90deg);}
 .coll-sec-body{padding-bottom:4px;}
 .coll-sec-body.collapsed{display:none;}
+
+/* ===== RF 3 ZONE TINT (Sep 26) — Option 1: subtle bg + colored left border
+       distinguishes Property (blue), Floorplan (amber), Renewal (coral), New (emerald)
+       across Dark / Medium / Light themes. Alpha bumped +50% then +50% again Sep 26 for pop. */
+.rf-zone-property { background:rgba(59,130,246,0.22); border-left:3px solid #3b82f6; }
+.rf-zone-floorplan{ background:rgba(245,158,11,0.22); border-left:3px solid #f59e0b; }
+.rf-zone-renewal  { background:rgba(248,113,113,0.22); border-left:3px solid #f87171; }
+.rf-zone-new      { background:rgba(16,185,129,0.22); border-left:3px solid #10b981; }
+[data-theme="medium"] .rf-zone-property { background:rgba(59,130,246,0.18); }
+[data-theme="medium"] .rf-zone-floorplan{ background:rgba(245,158,11,0.18); }
+[data-theme="medium"] .rf-zone-renewal  { background:rgba(248,113,113,0.18); }
+[data-theme="medium"] .rf-zone-new      { background:rgba(16,185,129,0.18); }
+[data-theme="light"] .rf-zone-property  { background:rgba(59,130,246,0.15); }
+[data-theme="light"] .rf-zone-floorplan { background:rgba(245,158,11,0.15); }
+[data-theme="light"] .rf-zone-renewal   { background:rgba(248,113,113,0.15); }
+[data-theme="light"] .rf-zone-new       { background:rgba(16,185,129,0.15); }
 
 /* ===== TIER ROW ===== */
 .tier-row{display:flex;align-items:stretch;overflow:hidden;}
@@ -367,7 +384,7 @@
   <!-- ══════════════════ TOP BAR (branding + plan controls) ══════════════════ -->
   <div class="topbar">
     <div class="page-icon">&#128176;</div>
-    <span class="page-name">Rent Forecasting 2.0</span>
+    <span class="page-name">RF 3</span>
     <div class="tsep"></div>
     <span class="save-flash" id="saveFlash" title="Saved"></span>
     <div class="ml-auto" style="display:flex;gap:8px;align-items:center;flex-shrink:0;white-space:nowrap">
@@ -398,13 +415,13 @@
       <div class="pfhdr">
 
         <!-- ROW 1: PROPERTY -->
-        <div class="pfhdr-row">
+        <div class="pfhdr-row rf-zone-property">
           <div class="pfhdr-sel-blk">
             <span class="pfhdr-badge prop">&#9632; Property</span>
             <!-- Custom property dropdown -->
             <div class="plan-wrap" id="propWrap">
               <div class="plan-trigger pfhdr-prop-trigger" id="propTrigger" onclick="togglePropMenu()">
-                <span class="plan-trigger-lbl" id="propTriggerLbl">Loading&hellip;</span>
+                <span class="plan-trigger-lbl" id="propTriggerLbl">Choose a property</span>
                 <span class="prop-trigger-beds" id="propTriggerBeds"></span>
                 <span class="plan-chev">&#9660;</span>
               </div>
@@ -413,7 +430,7 @@
             <!-- hidden real select kept for onPropChange compatibility -->
             <select id="propSel" onchange="onPropChange()" style="display:none"></select>
             <div style="display:flex;align-items:center;gap:6px;margin-top:8px">
-              <span class="pfhdr-badge prop" style="margin-top:0">&#9632; Reforecast Plan</span>
+              <span class="pfhdr-badge prop" style="margin-top:0">&#9632; Plan</span>
               <div class="pfhdr-appr" id="apprBtn" onclick="toggleApproved()">&#9675; Pending</div>
               <button class="pfhdr-icon-btn clone" onclick="clonePlan()" title="Clone Plan">&#10697;</button>
               <button class="pfhdr-icon-btn newp" onclick="newPlan()" title="New Plan">&#65291;</button>
@@ -421,7 +438,7 @@
             <div class="pfhdr-plan-row">
               <div class="plan-wrap" id="planWrap" style="flex:1;min-width:0">
                 <div class="plan-trigger" id="planTrigger" onclick="togglePlanMenu()">
-                  <span class="plan-trigger-lbl" id="planTriggerLbl">&mdash; select property &mdash;</span>
+                  <span class="plan-trigger-lbl" id="planTriggerLbl">Choose a plan</span>
                   <span class="plan-chev">&#9660;</span>
                 </div>
                 <div class="plan-menu" id="planMenu"></div>
@@ -447,7 +464,7 @@
               <div class="kpi-vals"><span class="kv b" id="ssRateB">&mdash;</span><span class="kv g" id="ssRateA">&mdash;</span><span class="kv f" id="ssRateF">&mdash;</span></div>
             </div>
             <div class="pfhdr-sep"></div>
-            <div class="kpi-blk" style="width:270px">
+            <div class="kpi-blk">
               <div class="kpi-blk-title">NER</div>
               <div class="kpi-cols-hdr"><span class="kpi-col-hdr b">Budget</span><span class="kpi-col-hdr g">Actual</span><span class="kpi-col-hdr f">Fcst</span><span class="kpi-col-hdr p">w/plan</span></div>
               <div class="kpi-vals"><span class="kv b" id="ssNerB">&mdash;</span><span class="kv g" id="ssNerA">&mdash;</span><span class="kv f" id="ssNerF">&mdash;</span><span class="kv p" id="ssNerPropAdj">&mdash;</span></div>
@@ -458,7 +475,7 @@
             <!-- Revenue vs Budget KPI (items 2 & 3) -->
             <div class="kpi-blk rev-kpi-blk">
               <div class="kpi-blk-title">Revenue vs Budget</div>
-              <div class="kpi-cols-hdr"><span class="kpi-col-hdr b">Budget</span><span class="kpi-col-hdr f">Projected</span><span class="kpi-col-hdr" style="min-width:68px">Variance</span></div>
+              <div class="kpi-cols-hdr"><span class="kpi-col-hdr b">Budget</span><span class="kpi-col-hdr f">Projected</span><span class="kpi-col-hdr">Variance</span></div>
               <div class="kpi-vals"><span class="kv b" id="ssRevB">&mdash;</span><span class="kv f" id="ssRevF">&mdash;</span><span class="kv" id="ssRevVar">&mdash;</span></div>
               <div class="var-attr" id="varAttrRow" style="display:none">
                 <div class="var-attr-row"><span class="var-attr-lbl">Occupancy driver:</span><span class="var-attr-val" id="ssVarOcc">&mdash;</span></div>
@@ -479,13 +496,13 @@
         </div><!-- /row 1 -->
 
         <!-- ROW 2: FLOORPLAN -->
-        <div class="pfhdr-row">
+        <div class="pfhdr-row rf-zone-floorplan">
           <div class="pfhdr-sel-blk">
-            <span class="pfhdr-badge fp">&#9654; Floorplan</span>
+            <span class="pfhdr-badge fp">&#9654; Floor Plan</span>
             <!-- Custom floorplan dropdown -->
             <div class="plan-wrap" id="fpWrap">
               <div class="plan-trigger pfhdr-prop-trigger" id="fpTrigger" onclick="toggleFpMenu()">
-                <span class="plan-trigger-lbl" id="fpTriggerLbl">&mdash; select property first &mdash;</span>
+                <span class="plan-trigger-lbl" id="fpTriggerLbl">Choose a Floor Plan</span>
                 <span class="prop-trigger-beds" id="fpTriggerBeds"></span>
                 <span class="plan-chev">&#9660;</span>
               </div>
@@ -493,25 +510,25 @@
             </div>
             <!-- hidden native select kept for compatibility -->
             <select id="fpSel" style="display:none" onchange="onFpSelChange()">
-              <option value="">— select property first —</option>
+              <option value="">Choose a Floor Plan</option>
             </select>
             <div class="pfhdr-sub" id="ssName" style="color:var(--text2)">&mdash;</div>
           </div>
           <div class="pfhdr-metrics" id="fpMetrics">
             <div class="kpi-blk">
-              <div class="kpi-blk-title">Prelease %</div>
+              <div class="kpi-blk-title">FP Prelease %</div>
               <div class="kpi-cols-hdr"><span class="kpi-col-hdr b">Budget</span><span class="kpi-col-hdr g">Actual</span><span class="kpi-col-hdr f">Fcst</span></div>
               <div class="kpi-vals"><span class="kv b" id="fpPrelB">&mdash;</span><span class="kv g" id="fpPrelA">&mdash;</span><span class="kv f" id="fpPrelF">&mdash;</span></div>
             </div>
             <div class="pfhdr-sep"></div>
             <div class="kpi-blk">
-              <div class="kpi-blk-title">Avg Rate</div>
+              <div class="kpi-blk-title">FP Avg Rate</div>
               <div class="kpi-cols-hdr"><span class="kpi-col-hdr b">Budget</span><span class="kpi-col-hdr g">Actual</span><span class="kpi-col-hdr f">Fcst</span></div>
               <div class="kpi-vals"><span class="kv b" id="fpRateB">&mdash;</span><span class="kv g" id="fpRateA">&mdash;</span><span class="kv f" id="fpRateF">&mdash;</span></div>
             </div>
             <div class="pfhdr-sep"></div>
-            <div class="kpi-blk" style="width:270px">
-              <div class="kpi-blk-title">NER</div>
+            <div class="kpi-blk">
+              <div class="kpi-blk-title">FP NER</div>
               <div class="kpi-cols-hdr"><span class="kpi-col-hdr b">Budget</span><span class="kpi-col-hdr g">Actual</span><span class="kpi-col-hdr f">Fcst</span><span class="kpi-col-hdr p">w/plan</span></div>
               <div class="kpi-vals"><span class="kv b" id="fpNerB">&mdash;</span><span class="kv g" id="fpNerA">&mdash;</span><span class="kv f" id="fpNerF">&mdash;</span><span class="kv p" id="ssNerFpAdj">&mdash;</span></div>
             </div>
@@ -527,7 +544,7 @@
             </div>
             <div class="pfhdr-sep"></div>
             <div class="ltb-blk">
-              <div class="ltb-title">Left to Budget &middot; <span id="ssLtbFpName" style="color:var(--accent-cyan)">&mdash;</span></div>
+              <div class="ltb-title">FP Left to Budget &middot; <span id="ssLtbFpName" style="color:var(--accent-cyan)">&mdash;</span></div>
               <div class="ltb-nums">
                 <div class="ltb-item"><div class="ltb-val r" id="ltbAct">&mdash;</div><div class="ltb-lbl">Actuals</div></div>
                 <div class="ltb-item"><div class="ltb-val n" id="ltbFc">&mdash;</div><div class="ltb-lbl">Forecast</div></div>
@@ -570,9 +587,9 @@
             <div class="tier-row">
 
               <!-- RENEWALS -->
-              <div class="tier-inner">
+              <div class="tier-inner rf-zone-renewal">
                 <div class="tier-sec-hdr">
-                  <span style="color:var(--accent-orange);font-weight:700;font-size:.75rem">&#9654; Renewals</span>
+                  <span style="color:var(--accent-orange);font-weight:700;font-size:.75rem">&#9654; Renewals<span id="renewalFpName" style="color:var(--text2);font-weight:600"></span></span>
                 </div>
                 <div class="tcols">
                   <!-- Budget -->
@@ -620,9 +637,9 @@
               <div class="tier-divider"></div>
 
               <!-- NEW LEASES -->
-              <div class="tier-inner">
+              <div class="tier-inner rf-zone-new">
                 <div class="tier-sec-hdr">
-                  <span style="color:var(--accent-green);font-weight:700;font-size:.75rem">&#9654; New Leases</span>
+                  <span style="color:var(--accent-green);font-weight:700;font-size:.75rem">&#9654; New Leases<span id="newFpName" style="color:var(--text2);font-weight:600"></span></span>
                 </div>
                 <div class="tcols">
                   <!-- Budget -->
@@ -826,7 +843,7 @@
 
 <script>
 // =============================================================
-//  RFS 2.0 — JavaScript
+//  RF 3 — JavaScript (copy of Rent Forecasting 2.0, redesign target)
 // =============================================================
 const _$ = id => document.getElementById(id);
 
@@ -845,20 +862,50 @@ const _fn  = v => (v == null || v === '') ? '\u2014' : Math.round(Number(v)).toS
 function _esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function _esc2(s) { return String(s || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
+// ── Header-column autosize ────────────────────────────────────
+// Measures the widest of property / floorplan trigger labels and grows the
+// left selector column to fit (respecting the CSS max-width cap).
+let _pfhdrMeasureSpan = null;
+function _measureLabelPx(text, refEl) {
+  if (!_pfhdrMeasureSpan) {
+    _pfhdrMeasureSpan = document.createElement('span');
+    _pfhdrMeasureSpan.style.cssText = 'position:absolute;left:-9999px;top:0;white-space:nowrap;visibility:hidden;';
+    document.body.appendChild(_pfhdrMeasureSpan);
+  }
+  const cs = refEl ? getComputedStyle(refEl) : { fontSize: '1.05rem', fontWeight: '800', fontFamily: 'Segoe UI, system-ui, sans-serif', letterSpacing: 'normal' };
+  _pfhdrMeasureSpan.style.font = `${cs.fontStyle||''} ${cs.fontVariant||''} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`.trim();
+  _pfhdrMeasureSpan.style.letterSpacing = cs.letterSpacing || 'normal';
+  _pfhdrMeasureSpan.textContent = text || '';
+  return _pfhdrMeasureSpan.getBoundingClientRect().width;
+}
+function autosizePfhdrSelBlk() {
+  const propLbl = document.getElementById('propTriggerLbl');
+  const fpLbl   = document.getElementById('fpTriggerLbl');
+  if (!propLbl && !fpLbl) return;
+  const propW = propLbl ? _measureLabelPx(propLbl.textContent, propLbl) : 0;
+  const fpW   = fpLbl   ? _measureLabelPx(fpLbl.textContent, fpLbl)     : 0;
+  // Add room for the beds badge (up to ~60px) + padding + chev + border
+  const contentW = Math.max(propW, fpW);
+  const chromePx = 36 /*L+R padding*/ + 60 /*beds badge*/ + 22 /*chev+gap*/;
+  const target = Math.ceil(contentW + chromePx);
+  document.documentElement.style.setProperty('--pfhdr-sel-w', target + 'px');
+}
+window.addEventListener('resize', () => autosizePfhdrSelBlk());
+
 // ── HTTP helpers ──────────────────────────────────────────────
 async function _get(url) {
   try {
     const r = await fetch(url);
-    if (!r.ok) { console.error('RFS2 GET', url, r.status); return null; }
+    if (!r.ok) { console.error('RF3 GET', url, r.status); return null; }
     return r.json();
-  } catch(e) { console.error('RFS2 GET', url, e); return null; }
+  } catch(e) { console.error('RF3 GET', url, e); return null; }
 }
 async function _post(url, body) {
   try {
     const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (!r.ok) { console.error('RFS2 POST', url, r.status); return null; }
+    if (!r.ok) { console.error('RF3 POST', url, r.status); return null; }
     return r.json();
-  } catch(e) { console.error('RFS2 POST', url, e); return null; }
+  } catch(e) { console.error('RF3 POST', url, e); return null; }
 }
 
 // ── Flash indicator ───────────────────────────────────────────
@@ -904,6 +951,9 @@ function _applyTierState() {
 function resetTierToDefault() {
   _tierState = 'default';
   _applyTierState();
+  // Clear dynamic FP name from Renewal/New section headers
+  if (_$('renewalFpName')) _$('renewalFpName').textContent = '';
+  if (_$('newFpName'))     _$('newFpName').textContent     = '';
   // Also ensure section is not collapsed
   const sec = _$('tierSec');
   if (sec) {
@@ -975,12 +1025,12 @@ async function selectPlan(key) {
 }
 async function archivePlan(key) {
   if (!confirm('Archive this plan?')) return;
-  await _post('/rfs2/api/forecasts/archive', { forecast_key: key });
+  await _post('/rfs3/api/forecasts/archive', { forecast_key: key });
   await loadForecasts();
   if (_fp) loadTierData();
 }
 async function revivePlan(key) {
-  await _post('/rfs2/api/forecasts/revive', { forecast_key: key });
+  await _post('/rfs3/api/forecasts/revive', { forecast_key: key });
   await loadForecasts();
 }
 
@@ -990,12 +1040,12 @@ function togglePropMenu() {
   _$('propMenu').classList.toggle('open');
 }
 async function loadProperties() {
-  const data = await _get('/rfs2/api/properties');
+  const data = await _get('/rfs3/api/properties');
   if (!data) return;
   _propData = data;
   // Populate hidden select for legacy compat
   const sel = _$('propSel');
-  sel.innerHTML = '<option value="">\u2014 select property \u2014</option>';
+  sel.innerHTML = '<option value="">Choose a property</option>';
   data.forEach(p => {
     const o = document.createElement('option');
     o.value = p.PROPERTY_KEY;
@@ -1010,7 +1060,7 @@ async function loadProperties() {
     (p.BED_COUNT_COMPILED ? `<span class="pmi-beds">${p.BED_COUNT_COMPILED}bd</span>` : '') +
     `</div>`
   ).join('');
-  _$('propTriggerLbl').textContent = '\u2014 select property \u2014';
+  _$('propTriggerLbl').textContent = 'Choose a property';
   if (_$('propTriggerBeds')) _$('propTriggerBeds').textContent = '';
 }
 function selectPropFromMenu(key) {
@@ -1024,7 +1074,7 @@ function selectPropFromMenu(key) {
   _prop = key; _propName = p.PROPERTY_NAME;
   _fp = null; _fk = null; _fpName = ''; _fpCode = ''; _compType = '';
   _fpPuCache = {};  // new property — clear all cached FP inducements
-  _$('planTriggerLbl').textContent = '\u2014 select plan \u2014';
+  _$('planTriggerLbl').textContent = 'Choose a plan';
   resetTierToDefault();
   resetKpis();
   Promise.all([loadForecasts(), loadFloorplans()]).then(async () => { await loadAllFpInducements(); loadLeasingTrend(); });
@@ -1035,7 +1085,7 @@ async function onPropChange() {
   _propName = sel.options[sel.selectedIndex]?.text || '';
   _fp = null; _fk = null; _fpName = ''; _fpCode = ''; _compType = '';
   _fpPuCache = {};  // new property — clear all cached FP inducements
-  _$('planTriggerLbl').textContent = '\u2014 select plan \u2014';
+  _$('planTriggerLbl').textContent = 'Choose a plan';
   resetTierToDefault();
   resetKpis();
   if (!_prop) return;
@@ -1051,7 +1101,7 @@ async function onAyChange() {
 // ── Forecasts ─────────────────────────────────────────────────
 async function loadForecasts() {
   // Load ALL AYs so plans from prior years (e.g. AY=2025) remain visible
-  const data = await _get(`/rfs2/api/forecasts?property_key=${_prop}`);
+  const data = await _get(`/rfs3/api/forecasts?property_key=${_prop}`);
   if (!data) return;
   _plans = data.map(f => ({
     key: f.FORECAST_KEY, name: f.FORECAST_NAME, ay: f.AY,
@@ -1074,7 +1124,7 @@ async function loadForecasts() {
 // ── Floorplans ────────────────────────────────────────────────
 let _fpData = []; // cache for dropdown
 async function loadFloorplans() {
-  const data = await _get(`/rfs2/api/floorplans?property_key=${_prop}`);
+  const data = await _get(`/rfs3/api/floorplans?property_key=${_prop}`);
   _fpData = data || [];
   const sel = _$('fpSel');
   const menu = _$('fpMenu');
@@ -1097,7 +1147,7 @@ async function loadFloorplans() {
      </div>`
   ).join('');
   // Sync hidden native select
-  if (sel) sel.innerHTML = '<option value="">— select floorplan —</option>' +
+  if (sel) sel.innerHTML = '<option value="">Choose a Floor Plan</option>' +
     _fpData.map(f =>
       `<option value="${f.FLOORPLAN_KEY}" data-ct="${_esc2(f.COMPARE_AS_FLOORPLAN_TYPE||'')}" data-code="${_esc2(f.FLOORPLAN_CODE||f.FLOORPLAN)}">${f.FLOORPLAN} \u00b7 ${f.BEDS}bd</option>`
     ).join('');
@@ -1109,7 +1159,7 @@ async function loadFloorplans() {
      </div>`
   ).join('');
   // Reset trigger to prompt
-  _$('fpTriggerLbl').textContent = '\u2014 select floorplan \u2014';
+  _$('fpTriggerLbl').textContent = 'Choose a Floor Plan';
   _$('fpTriggerBeds').textContent = '';
   // Re-select if a floorplan was already active
   if (_fp) {
@@ -1157,6 +1207,8 @@ async function selectFloorplan(key, name, code, ct) {
   _$('ssSub').textContent       = 'Floorplan \u00b7 ' + (ct || '\u2014') + ' type';
   if (_$('rateFpLbl')) _$('rateFpLbl').textContent  = name;
   _$('compsFpName').textContent = name;
+  if (_$('renewalFpName')) _$('renewalFpName').textContent = ' \u2014 ' + name;
+  if (_$('newFpName'))     _$('newFpName').textContent     = ' \u2014 ' + name;
   await loadFpInducement();
   await loadTierData();
 }
@@ -1167,15 +1219,15 @@ async function loadTierData() {
   const base = `property_key=${_prop}&floorplan_key=${_fp}&ay=${_ay}`;
   const fkStr = _fk ? '&forecast_key=' + _fk : '';
   const [budR, budN, actR, actN, fcR, fcN, summ, ltb, comps] = await Promise.all([
-    _get(`/rfs2/api/budget-tiers?${base}&lease_type=RENEWAL`),
-    _get(`/rfs2/api/budget-tiers?${base}&lease_type=NEW`),
-    _get(`/rfs2/api/actuals?${base}&lease_type=RENEWAL`),
-    _get(`/rfs2/api/actuals?${base}&lease_type=NEW`),
-    _fk ? _get(`/rfs2/api/forecast-tiers?forecast_key=${_fk}&floorplan_key=${_fp}&lease_type=RENEWAL`) : Promise.resolve([]),
-    _fk ? _get(`/rfs2/api/forecast-tiers?forecast_key=${_fk}&floorplan_key=${_fp}&lease_type=NEW`)     : Promise.resolve([]),
-    _get(`/rfs2/api/property-summary?${base}${fkStr}`),
-    _get(`/rfs2/api/left-to-budget?${base}${fkStr}`),
-    _fk ? _get(`/rfs2/api/comps?forecast_key=${_fk}&property_key=${_prop}&compare_type=${encodeURIComponent(_compType)}`) : Promise.resolve([]),
+    _get(`/rfs3/api/budget-tiers?${base}&lease_type=RENEWAL`),
+    _get(`/rfs3/api/budget-tiers?${base}&lease_type=NEW`),
+    _get(`/rfs3/api/actuals?${base}&lease_type=RENEWAL`),
+    _get(`/rfs3/api/actuals?${base}&lease_type=NEW`),
+    _fk ? _get(`/rfs3/api/forecast-tiers?forecast_key=${_fk}&floorplan_key=${_fp}&lease_type=RENEWAL`) : Promise.resolve([]),
+    _fk ? _get(`/rfs3/api/forecast-tiers?forecast_key=${_fk}&floorplan_key=${_fp}&lease_type=NEW`)     : Promise.resolve([]),
+    _get(`/rfs3/api/property-summary?${base}${fkStr}`),
+    _get(`/rfs3/api/left-to-budget?${base}${fkStr}`),
+    _fk ? _get(`/rfs3/api/comps?forecast_key=${_fk}&property_key=${_prop}&compare_type=${encodeURIComponent(_compType)}`) : Promise.resolve([]),
   ]);
   if (budR)  renderBudget('r', budR);
   if (budN)  renderBudget('n', budN);
@@ -1271,7 +1323,7 @@ async function saveTier(tk, lt) {
   const lc   = parseFloat(row.querySelector('[data-f="ct"]').value)   || 0;
   const rate = parseFloat(row.querySelector('[data-f="rate"]').value) || 0;
   const ord  = Array.from(row.parentNode.children).indexOf(row) + 1;
-  const res  = await _post('/rfs2/api/forecast-tiers/save', { forecast_tiers_key: tk, lease_count: lc, rate: rate, tier_order: ord });
+  const res  = await _post('/rfs3/api/forecast-tiers/save', { forecast_tiers_key: tk, lease_count: lc, rate: rate, tier_order: ord });
   if (res?.ok) {
     _$('nerCell' + tk).textContent = _fc(res.ner);
     flash();
@@ -1283,22 +1335,22 @@ async function addTier(lt) {
   const side    = lt === 'RENEWAL' ? 'r' : 'n';
   const rows    = document.querySelectorAll(`[data-lt="${lt}"]`);
   const lastRate = rows.length ? (parseFloat(rows[rows.length-1].querySelector('[data-f="rate"]')?.value) || 0) : 0;
-  const res = await _post('/rfs2/api/forecast-tiers/add', {
+  const res = await _post('/rfs3/api/forecast-tiers/add', {
     forecast_key: _fk, floorplan_key: _fp, floorplan_code: _fpCode,
     property_key: _prop, property_name: _propName,
     lease_type: lt, rate: lastRate
   });
   if (res?.ok) {
-    const fc = await _get(`/rfs2/api/forecast-tiers?forecast_key=${_fk}&floorplan_key=${_fp}&lease_type=${lt}`);
+    const fc = await _get(`/rfs3/api/forecast-tiers?forecast_key=${_fk}&floorplan_key=${_fp}&lease_type=${lt}`);
     if (fc) renderForecast(side, fc);
   }
 }
 async function delTier(tk, lt) {
   if (!confirm('Delete this tier?')) return;
-  const res = await _post('/rfs2/api/forecast-tiers/delete', { forecast_tiers_key: tk });
+  const res = await _post('/rfs3/api/forecast-tiers/delete', { forecast_tiers_key: tk });
   if (res?.ok) {
     const side = lt === 'RENEWAL' ? 'r' : 'n';
-    const fc   = await _get(`/rfs2/api/forecast-tiers?forecast_key=${_fk}&floorplan_key=${_fp}&lease_type=${lt}`);
+    const fc   = await _get(`/rfs3/api/forecast-tiers?forecast_key=${_fk}&floorplan_key=${_fp}&lease_type=${lt}`);
     if (fc) renderForecast(side, fc);
     loadRateTrends();
   }
@@ -1321,8 +1373,10 @@ function renderSummary(s) {
   const bud_r = s.bud_r || {}, bud_n = s.bud_n || {};
   const act_r = s.act_r || {}, act_n = s.act_n || {};
   const fcd_r = s.fcd_r || {}, fcd_n = s.fcd_n || {};
-  // FP beds from budget tiers (best proxy for prelease denominator)
-  const fp_beds = (bud_r.count || 0) + (bud_n.count || 0) || 1;
+  // FP bed count: use FLOORPLANS_F.BEDS (authoritative), fall back to budget-tier sum.
+  const _fpObj = _fpData?.find(x => x.FLOORPLAN_KEY === _fp);
+  const _fpBedsAuth = _fpObj?.BEDS ? +_fpObj.BEDS : 0;
+  const fp_beds = _fpBedsAuth || ((bud_r.count || 0) + (bud_n.count || 0)) || 1;
   const bud_cnt = (bud_r.count || 0) + (bud_n.count || 0);
   const act_cnt = (act_r.count || 0) + (act_n.count || 0);
   const fcd_cnt = (fcd_r.count || 0) + (fcd_n.count || 0);
@@ -1363,7 +1417,7 @@ function renderSummary(s) {
   if (rvEl) {
     const revSign = rev_var >= 0 ? '+' : '-';
     const pctSign = rev_pct >= 0 ? '+' : '-';
-    rvEl.textContent = revSign + _fc(Math.abs(rev_var)) + ' / ' + pctSign + Math.abs(rev_pct).toFixed(1) + '%';
+    rvEl.textContent = revSign + _fc(Math.abs(rev_var)) + '\n' + pctSign + Math.abs(rev_pct).toFixed(1) + '%';
     rvEl.style.color = rev_var >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
   }
 
@@ -1448,7 +1502,7 @@ let _fpPuSaveTimer = null;
 async function loadAllFpInducements() {
   _fpPuCache = {};
   if (!_fk) return;
-  const rows = await _get(`/rfs2/api/fp-inducements?forecast_key=${_fk}`);
+  const rows = await _get(`/rfs3/api/fp-inducements?forecast_key=${_fk}`);
   if (rows) rows.forEach(r => { _fpPuCache[r.floorplan_key] = r.planned_use || 0; });
 }
 
@@ -1459,7 +1513,7 @@ async function loadFpInducement() {
   if (_fpPuCache[_fp] !== undefined) {
     _fpPu = _fpPuCache[_fp];
   } else {
-    const d = await _get(`/rfs2/api/fp-inducement?forecast_key=${_fk}&floorplan_key=${_fp}`);
+    const d = await _get(`/rfs3/api/fp-inducement?forecast_key=${_fk}&floorplan_key=${_fp}`);
     _fpPu = d?.planned_use || 0;
     _fpPuCache[_fp] = _fpPu;
   }
@@ -1482,7 +1536,7 @@ function calcFpPu(rawVal) {
   clearTimeout(_fpPuSaveTimer);
   _fpPuSaveTimer = setTimeout(() => {
     if (_fk && _fp) {
-      _post('/rfs2/api/fp-inducement', { forecast_key: _fk, floorplan_key: _fp, planned_use: _fpPu });
+      _post('/rfs3/api/fp-inducement', { forecast_key: _fk, floorplan_key: _fp, planned_use: _fpPu });
       flash();
     }
   }, 800);
@@ -1542,7 +1596,7 @@ function _recalcAll() {
 // ── Planned inducement ────────────────────────────────────────
 async function savePlannedUse(val) {
   if (!_fk) return;
-  await _post('/rfs2/api/forecasts/planned-use', { forecast_key: _fk, planned_use: +val || 0 });
+  await _post('/rfs3/api/forecasts/planned-use', { forecast_key: _fk, planned_use: +val || 0 });
   flash();
   const p = _plans.find(x => x.key === _fk);
   if (p) p.plannedUse = +val || 0;
@@ -1555,7 +1609,7 @@ async function toggleApproved() {
   if (!p) return;
   // Run checks only when moving to Approved state
   if (!p.approved && _prop && _ay) {
-    const checks = await _get(`/rfs2/api/approval-check?forecast_key=${_fk}&property_key=${_prop}&ay=${_ay}`);
+    const checks = await _get(`/rfs3/api/approval-check?forecast_key=${_fk}&property_key=${_prop}&ay=${_ay}`);
     if (checks && checks.warnings && checks.warnings.length > 0) {
       _showApprovalModal(checks.warnings);
       return;
@@ -1565,7 +1619,7 @@ async function toggleApproved() {
 }
 async function _doApprove(p) {
   p.approved = !p.approved;
-  await _post('/rfs2/api/forecasts/approve', { forecast_key: _fk, approved: p.approved });
+  await _post('/rfs3/api/forecasts/approve', { forecast_key: _fk, approved: p.approved });
   updatePlanLabel(); renderPlanMenu(); flash();
 }
 async function _confirmApprove() {
@@ -1593,14 +1647,14 @@ async function clonePlan() {
   const p    = _plans.find(x => x.key === _fk);
   const name = prompt('New plan name:', (p?.name || '') + ' (Copy)');
   if (!name) return;
-  const res = await _post('/rfs2/api/forecasts/clone', { forecast_key: _fk, new_name: name });
+  const res = await _post('/rfs3/api/forecasts/clone', { forecast_key: _fk, new_name: name });
   if (res?.ok) { await loadForecasts(); _fk = res.forecast_key; updatePlanLabel(); renderPlanMenu(); if (_fp) loadTierData(); }
 }
 async function newPlan() {
   if (!_prop) { alert('Select a property first.'); return; }
   const name = prompt('Plan name:', 'RFC \u00b7 ' + new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
   if (!name) return;
-  const res = await _post('/rfs2/api/forecasts/create', { property_key: _prop, property_name: _propName, forecast_name: name, ay: _ay });
+  const res = await _post('/rfs3/api/forecasts/create', { property_key: _prop, property_name: _propName, forecast_name: name, ay: _ay });
   if (res?.ok) { await loadForecasts(); _fk = res.forecast_key; updatePlanLabel(); renderPlanMenu(); if (_fp) loadTierData(); }
 }
 
@@ -1636,8 +1690,8 @@ function renderComps(rows) {
   _$('cLcCnt').textContent   = leasing.length;
 }
 async function toggleComp(fak) {
-  await _post('/rfs2/api/comps/toggle', { floorplan_assignment_key: fak, forecast_key: _fk });
-  const comps = await _get(`/rfs2/api/comps?forecast_key=${_fk}&property_key=${_prop}&compare_type=${encodeURIComponent(_compType)}`);
+  await _post('/rfs3/api/comps/toggle', { floorplan_assignment_key: fak, forecast_key: _fk });
+  const comps = await _get(`/rfs3/api/comps?forecast_key=${_fk}&property_key=${_prop}&compare_type=${encodeURIComponent(_compType)}`);
   if (comps) renderComps(comps);
 }
 
@@ -1693,7 +1747,7 @@ function setRateType(t) {
 
 async function loadRateTrends() {
   if (!_fp || !_fk) return;
-  const data = await _get(`/rfs2/api/rate-trends?property_key=${_prop}&floorplan_key=${_fp}&ay=${_ay}&forecast_key=${_fk}`);
+  const data = await _get(`/rfs3/api/rate-trends?property_key=${_prop}&floorplan_key=${_fp}&ay=${_ay}&forecast_key=${_fk}`);
   if (data) { _rateData = data; drawRateChart(data); }
 }
 function drawRateChart(data) {
@@ -1782,7 +1836,7 @@ function drawRateChart(data) {
 // ── Leasing Trend SVG ─────────────────────────────────────────
 async function loadLeasingTrend() {
   if (!_prop || !_fp) return;
-  const data = await _get(`/rfs2/api/leasing-trend?property_key=${_prop}&ay=${_ay}&floorplan_key=${_fp}`);
+  const data = await _get(`/rfs3/api/leasing-trend?property_key=${_prop}&ay=${_ay}&floorplan_key=${_fp}`);
   if (data) drawTrendChart(data);
 }
 function drawTrendChart(data) {
@@ -1891,6 +1945,18 @@ function drawTrendChart(data) {
 }
 
 // ── Init ──────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', loadProperties);
+document.addEventListener('DOMContentLoaded', () => {
+  loadProperties();
+  // Auto-resize the property/floorplan header column whenever their label
+  // text changes so long names aren't ellipsis-truncated.
+  const observeLabel = id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    new MutationObserver(autosizePfhdrSelBlk).observe(el, { childList: true, characterData: true, subtree: true });
+  };
+  observeLabel('propTriggerLbl');
+  observeLabel('fpTriggerLbl');
+  autosizePfhdrSelBlk();
+});
 </script>
 {% endblock %}

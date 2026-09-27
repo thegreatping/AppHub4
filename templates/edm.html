@@ -237,6 +237,8 @@
             <div class="edm-tab" data-panel="entrataassign">Entrata Users</div>
             <div class="edm-tab" data-panel="softterm">Soft Terminations</div>
             <div class="edm-tab" data-panel="leomap">LEO Mapping</div>
+            <div class="edm-tab" data-panel="procrules">Processing Rules</div>
+            <div class="edm-tab" data-panel="exportctrl">Export Controls</div>
             <div class="edm-tab" data-panel="empTables">Emp Tables</div>
             <div class="edm-tab" data-panel="dataflow">Emp Data Flow</div>
         </div>
@@ -580,6 +582,101 @@
             </div>
         </div>
 
+        <!-- PROCESSING RULES PANEL (i-1-16) -->
+        <div class="edm-panel" id="panel-procrules">
+            <div class="info-blurb" id="blurb-procrules">
+                <div class="blurb-header" onclick="toggleBlurb('procrules')">
+                    <span class="blurb-title">Processing Rules</span>
+                    <span class="blurb-toggle" id="blurbToggle-procrules">&#9660;</span>
+                </div>
+                <div class="blurb-body" id="blurbBody-procrules">
+                    Configurable business rules that drive column derivations in the <code>PROCESSING_APPLY_RULES</code> step of <code>NB_EMP_PIPELINE</code>. Each rule sets one <code>TARGET_COL</code> on <code>Emp_Core</code> based on a source column value.
+                    <br><br>
+                    <strong>How to use:</strong>
+                    <ul style="margin:4px 0 0 16px;padding:0">
+                        <li><strong>Enable / disable</strong> a rule per row -- disabled rules are skipped on the next pipeline run without changing anything else.</li>
+                        <li><strong>Inline edit</strong> the <code>MATCH_VALUE</code>, <code>OUTPUT_TRUE</code>, <code>OUTPUT_FALSE</code>, or <code>NOTES</code> cells. Read-only columns (rule id, group, name, target, type, source, priority) are structural and only changeable via direct SQL.</li>
+                        <li><strong>Filter</strong> by any text across all fields. Rows are grouped by <code>RULE_GROUP</code> then <code>PRIORITY</code>.</li>
+                    </ul>
+                    <br>
+                    <strong>Source table:</strong> <code>DB_BI_SUPPORT.control.EMP_PROCESSING_RULES</code>.
+                    <br><br>
+                    <strong>Consumed by:</strong> <code>NB_EMP_PIPELINE</code> Cell 8F (<code>PROCESSING_APPLY_RULES</code>) reads this table every run.
+                </div>
+            </div>
+            <div class="filter-bar">
+                <input type="text" id="procRulesFilter" placeholder="Filter rules...">
+                <span class="count-label" id="procRulesCount"></span>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table" id="procRulesTable">
+                    <thead>
+                        <tr>
+                            <th class="sortable" onclick="sortProcRulesCol('rule_group')">Group <span class="sort-arrow" id="procRulesArrow_rule_group"></span></th>
+                            <th class="sortable" onclick="sortProcRulesCol('rule_name')">Rule <span class="sort-arrow" id="procRulesArrow_rule_name"></span></th>
+                            <th class="sortable" onclick="sortProcRulesCol('target_col')">Target Col <span class="sort-arrow" id="procRulesArrow_target_col"></span></th>
+                            <th class="sortable" onclick="sortProcRulesCol('rule_type')">Type <span class="sort-arrow" id="procRulesArrow_rule_type"></span></th>
+                            <th>Source Col</th>
+                            <th>Match Value</th>
+                            <th>Output True</th>
+                            <th>Output False</th>
+                            <th class="sortable" onclick="sortProcRulesCol('priority')">Priority <span class="sort-arrow" id="procRulesArrow_priority"></span></th>
+                            <th class="sortable" onclick="sortProcRulesCol('enabled')">Enabled <span class="sort-arrow" id="procRulesArrow_enabled"></span></th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- EXPORT CONTROLS PANEL (i-1-17) -->
+        <div class="edm-panel" id="panel-exportctrl">
+            <div class="info-blurb" id="blurb-exportctrl">
+                <div class="blurb-header" onclick="toggleBlurb('exportctrl')">
+                    <span class="blurb-title">Export Controls</span>
+                    <span class="blurb-toggle" id="blurbToggle-exportctrl">&#9660;</span>
+                </div>
+                <div class="blurb-body" id="blurbBody-exportctrl">
+                    Enable / disable each export target on <code>NB_EMP_PIPELINE</code>. A disabled export is skipped entirely on the next run (logged as SKIPPED); everything downstream that reads that target keeps working from the prior run's output.
+                    <br><br>
+                    <strong>How to use:</strong>
+                    <ul style="margin:4px 0 0 16px;padding:0">
+                        <li><strong>Enabled</strong> -- uncheck to skip that export on the next pipeline run. <code>LAST_MODIFIED</code> and <code>MODIFIED_BY</code> are stamped automatically.</li>
+                        <li><strong>Abort on failure</strong> -- when set, an error in this step aborts the whole pipeline. Rarely needed for exports (most use TRUNCATE+RELOAD so a partial run is harmless), but useful for the compat exports where downstream systems read the target.</li>
+                        <li><strong>Last run</strong> -- status / end time / duration / rows written, sourced from the most recent <code>control.EMP_PIPELINE_RUN_LOG</code> entry for each step.</li>
+                        <li><strong>Notes</strong> -- free-text field for documenting why an export is disabled, or any other context.</li>
+                    </ul>
+                    <br>
+                    <strong>Source tables:</strong> <code>DB_BI_SUPPORT.control.EMP_PIPELINE_CONTROL</code> (config) and <code>control.EMP_PIPELINE_RUN_LOG</code> (last-run status).
+                </div>
+            </div>
+            <div class="filter-bar">
+                <input type="text" id="exportCtrlFilter" placeholder="Filter exports...">
+                <span class="count-label" id="exportCtrlCount"></span>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table" id="exportCtrlTable">
+                    <thead>
+                        <tr>
+                            <th class="sortable" onclick="sortExportCtrlCol('step_order')">Order <span class="sort-arrow" id="exportCtrlArrow_step_order"></span></th>
+                            <th class="sortable" onclick="sortExportCtrlCol('step_name')">Step <span class="sort-arrow" id="exportCtrlArrow_step_name"></span></th>
+                            <th class="sortable" onclick="sortExportCtrlCol('enabled')">Enabled <span class="sort-arrow" id="exportCtrlArrow_enabled"></span></th>
+                            <th>Abort on Failure</th>
+                            <th class="sortable" onclick="sortExportCtrlCol('last_status')">Last Status <span class="sort-arrow" id="exportCtrlArrow_last_status"></span></th>
+                            <th class="sortable" onclick="sortExportCtrlCol('last_end_utc')">Last Run (UTC) <span class="sort-arrow" id="exportCtrlArrow_last_end_utc"></span></th>
+                            <th>Duration (s)</th>
+                            <th>Rows</th>
+                            <th>Last Modified</th>
+                            <th>Modified By</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- EMP TABLES PANEL -- list-box nav (like the AppHub sidebar) + PDM-style browsable tables -->
         <div class="edm-panel" id="panel-empTables">
             <div class="emp-tables-toolbar">
@@ -854,6 +951,8 @@
             if (tab.dataset.panel === 'entrataassign' && !entrataAssignLoaded) loadEntrataAssignments();
             if (tab.dataset.panel === 'softterm' && !softTermLoaded) loadSoftTerminations();
             if (tab.dataset.panel === 'leomap' && !leoMapLoaded) loadLeoMapping();
+            if (tab.dataset.panel === 'procrules' && !procRulesLoaded) loadProcessingRules();
+            if (tab.dataset.panel === 'exportctrl' && !exportCtrlLoaded) loadExportControls();
             if (tab.dataset.panel === 'empTables') initEmpTablesDefault();
         });
     });
@@ -939,7 +1038,8 @@
         { group: 'Config / Rules', key: 'empPropertyAssignments', label: 'EMP_PROPERTY_ASSIGNMENTS', url: '/edm/api/emp-pipeline-table/emp_property_assignments', sourceTable: 'DB_APP_SUPPORT.dbo.EMP_PROPERTY_ASSIGNMENTS', blurb: "Manual employee-to-property assignment overrides feeding the Entrata property-assignment computation." },
         { group: 'Config / Rules', key: 'empProcessingRules', label: 'EMP_PROCESSING_RULES', url: '/edm/api/emp-pipeline-table/emp_processing_rules', sourceTable: 'DB_BI_SUPPORT.control.EMP_PROCESSING_RULES', blurb: "Business rules consumed during row assembly (<code>PROCESSING_MAIN_JOIN</code>)." },
         { group: 'Observability', key: 'empPipelineIngestionLog', label: 'EMP_PIPELINE_INGESTION_LOG', url: '/edm/api/emp-pipeline-table/emp_pipeline_ingestion_log', sourceTable: 'DB_BI_SUPPORT.control.EMP_PIPELINE_INGESTION_LOG', defaultCols: ['ingestion_log_id', 'pipeline_run_id', 'run_datetime', 'step_name', 'source_label', 'status', 'normalized_employee_code', 'exclusion_reason'], blurb: "Schema-drift + row-level ingestion audit trail, added 2026-09-23. <code>STATUS='SCHEMA_WARNING'</code> rows flag a source file (Paycom CSV/prehire xlsx) whose header columns no longer match what this pipeline reads -- check <code>EXCLUSION_REASON</code> for the missing/new column names. <code>STATUS='PARSED'</code> rows are one per prehire record (US/Canada only, not the large main Paycom file) with the full raw source row in <code>RAW_JSON</code> (toggle it on via &#9881; Columns). Never blocks the pipeline -- purely diagnostic." },
-        { group: 'Observability', key: 'empPipelineParityLog', label: 'EMP_PIPELINE_PARITY_LOG', url: '/edm/api/emp-pipeline-table/emp_pipeline_parity_log', sourceTable: 'DB_BI_SUPPORT.control.EMP_PIPELINE_PARITY_LOG', defaultCols: ['parity_log_id', 'pipeline_run_id', 'run_datetime', 'table_label', 'real_count', 'clone_count', 'only_real_count', 'only_clone_count', 'mismatched_rows', 'alert_worthy'], blurb: "One row per shadow/clone table compared each run by the <code>VALIDATE_PARITY</code> step, logged whether clean or not. <code>ALERT_WORTHY=1</code> rows are the discrepancies that triggered an email alert and (if unexpected) failed the pipeline run -- see <code>DETAIL_JSON</code> (toggle via &#9881; Columns) for per-column mismatch counts and example rows." },
+        { group: 'Observability', key: 'empPipelineParityLog', label: 'EMP_PIPELINE_PARITY_LOG', url: '/edm/api/emp-pipeline-table/emp_pipeline_parity_log', sourceTable: 'DB_BI_SUPPORT.control.EMP_PIPELINE_PARITY_LOG', defaultCols: ['parity_log_id', 'pipeline_run_id', 'run_datetime', 'table_label', 'real_count', 'clone_count', 'only_real_count', 'only_clone_count', 'mismatched_rows', 'alert_worthy', 'consecutive_alert_count'], blurb: "One row per shadow/clone table compared each run by the <code>VALIDATE_PARITY</code> step, logged whether clean or not. <code>ALERT_WORTHY=1</code> rows are the discrepancies that triggered an email alert and (if unexpected) failed the pipeline run -- see <code>DETAIL_JSON</code> (toggle via &#9881; Columns) for per-column mismatch counts and example rows. <code>CONSECUTIVE_ALERT_COUNT</code> (added 2026-09-25) counts back-to-back alert-worthy runs for that same table -- 0 means clean, 1 means a brand-new discrepancy, higher means an already-known issue still recurring." },
+        { group: 'Observability', key: 'empPipelineDependencyLog', label: 'EMP_PIPELINE_DEPENDENCY_LOG', url: '/edm/api/emp-pipeline-table/emp_pipeline_dependency_log', sourceTable: 'DB_BI_SUPPORT.control.EMP_PIPELINE_DEPENDENCY_LOG', defaultCols: ['dependency_log_id', 'pipeline_run_id', 'run_datetime', 'dependency_name', 'last_run_status', 'last_run_end_utc', 'minutes_since_last_run'], blurb: "Added 2026-09-25 after the A4KM title-override incident. Every <code>VALIDATE_PARITY</code> run snapshots the most recent <code>control.EXECUTION_STEP_LOG</code> status of the legacy jobs this pipeline depends on (<code>NB_EMPLOYEE_SYNC_COMBO</code>, <code>EMPLOYEE_F_COMBO_SP</code>, <code>EMPLOYEES_LOAD_SP</code>) -- answers 'is legacy's own sync chain healthy right now' from one table instead of an ad-hoc script." },
     ];
 
     const genericLoaded = {}, genericData = {}, genericSort = {}, genericAllCols = {}, genericVisibleCols = {}, genericColFilters = {};
@@ -2620,6 +2720,8 @@
     }
 
     document.getElementById('leoMapFilter').addEventListener('input', renderLeoMap);
+    document.getElementById('procRulesFilter').addEventListener('input', renderProcRules);
+    document.getElementById('exportCtrlFilter').addEventListener('input', renderExportCtrl);
 
     function editLeoMapCell(td, mapId, field, current) {
         if (td.querySelector('input,select')) return;
@@ -2705,6 +2807,182 @@
             ],
             leoMapFilteredSorted()
         );
+    }
+
+    // ─── PROCESSING RULES TAB (i-1-16) ─────────────────────────────────────────
+    let procRulesLoaded = false;
+    let procRulesData = [];
+    let procRulesSort = { col: 'rule_group', dir: 1 };
+    const PROC_RULES_EDITABLE = ['match_value', 'output_true', 'output_false', 'notes'];
+
+    function sortProcRulesCol(col) {
+        if (procRulesSort.col === col) procRulesSort.dir *= -1;
+        else { procRulesSort.col = col; procRulesSort.dir = 1; }
+        renderProcRules();
+    }
+
+    async function loadProcessingRules() {
+        const res = await fetch('/edm/api/processing-rules');
+        if (!res.ok) { toast('Failed to load Processing Rules', 'error'); return; }
+        procRulesData = await res.json();
+        procRulesLoaded = true;
+        renderProcRules();
+    }
+
+    function procRulesFilteredSorted() {
+        const q = (document.getElementById('procRulesFilter').value || '').toLowerCase();
+        let list = procRulesData;
+        if (q) {
+            list = list.filter(r => Object.values(r).some(v =>
+                v != null && String(v).toLowerCase().includes(q)));
+        }
+        const { col, dir } = procRulesSort;
+        list = [...list].sort((a, b) => {
+            const av = a[col], bv = b[col];
+            if (av == null && bv == null) return 0;
+            if (av == null) return 1;
+            if (bv == null) return -1;
+            if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+            return String(av).localeCompare(String(bv)) * dir;
+        });
+        return list;
+    }
+
+    function renderProcRules() {
+        const tbody = document.querySelector('#procRulesTable tbody');
+        const rows = procRulesFilteredSorted();
+        document.getElementById('procRulesCount').textContent = `${rows.length} rule${rows.length === 1 ? '' : 's'}`;
+        document.querySelectorAll('#procRulesTable .sort-arrow').forEach(el => el.textContent = '');
+        const arrow = document.getElementById(`procRulesArrow_${procRulesSort.col}`);
+        if (arrow) arrow.textContent = procRulesSort.dir > 0 ? ' ▲' : ' ▼';
+        tbody.innerHTML = rows.map(r => `
+            <tr>
+                <td>${esc(r.rule_group || '')}</td>
+                <td>${esc(r.rule_name || '')}</td>
+                <td><code>${esc(r.target_col || '')}</code></td>
+                <td>${esc(r.rule_type || '')}</td>
+                <td>${esc(r.source_col || '')}</td>
+                <td><input type="text" value="${esc(r.match_value || '')}" style="width:100%"
+                        onchange="saveProcRuleField(${r.rule_id}, 'match_value', this.value)"></td>
+                <td><input type="text" value="${esc(r.output_true || '')}" style="width:100%"
+                        onchange="saveProcRuleField(${r.rule_id}, 'output_true', this.value)"></td>
+                <td><input type="text" value="${esc(r.output_false || '')}" style="width:100%"
+                        onchange="saveProcRuleField(${r.rule_id}, 'output_false', this.value)"></td>
+                <td>${r.priority ?? ''}</td>
+                <td><input type="checkbox" ${r.enabled ? 'checked' : ''}
+                        onchange="saveProcRuleField(${r.rule_id}, 'enabled', this.checked)"></td>
+                <td><input type="text" value="${esc(r.notes || '')}" style="width:100%"
+                        onchange="saveProcRuleField(${r.rule_id}, 'notes', this.value)"></td>
+            </tr>
+        `).join('');
+    }
+
+    async function saveProcRuleField(ruleId, field, value) {
+        const res = await fetch('/edm/api/processing-rules', {
+            method: 'PATCH', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({rule_id: ruleId, field, value})
+        });
+        if (res.ok) {
+            toast('Saved');
+            const r = procRulesData.find(x => x.rule_id === ruleId);
+            if (r) r[field] = (field === 'enabled') ? value : (value || null);
+        } else {
+            const e = await res.json();
+            toast(e.error || 'Error', 'error');
+            loadProcessingRules();
+        }
+    }
+
+    // ─── EXPORT CONTROLS TAB (i-1-17) ──────────────────────────────────────────
+    let exportCtrlLoaded = false;
+    let exportCtrlData = [];
+    let exportCtrlSort = { col: 'step_order', dir: 1 };
+
+    function sortExportCtrlCol(col) {
+        if (exportCtrlSort.col === col) exportCtrlSort.dir *= -1;
+        else { exportCtrlSort.col = col; exportCtrlSort.dir = 1; }
+        renderExportCtrl();
+    }
+
+    async function loadExportControls() {
+        const res = await fetch('/edm/api/export-controls');
+        if (!res.ok) { toast('Failed to load Export Controls', 'error'); return; }
+        exportCtrlData = await res.json();
+        exportCtrlLoaded = true;
+        renderExportCtrl();
+    }
+
+    function exportCtrlFilteredSorted() {
+        const q = (document.getElementById('exportCtrlFilter').value || '').toLowerCase();
+        let list = exportCtrlData;
+        if (q) {
+            list = list.filter(r => Object.values(r).some(v =>
+                v != null && String(v).toLowerCase().includes(q)));
+        }
+        const { col, dir } = exportCtrlSort;
+        list = [...list].sort((a, b) => {
+            const av = a[col], bv = b[col];
+            if (av == null && bv == null) return 0;
+            if (av == null) return 1;
+            if (bv == null) return -1;
+            if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+            return String(av).localeCompare(String(bv)) * dir;
+        });
+        return list;
+    }
+
+    function formatUtcShort(iso) {
+        if (!iso) return '';
+        try {
+            const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
+            return d.toISOString().slice(0, 19).replace('T', ' ');
+        } catch { return iso; }
+    }
+
+    function renderExportCtrl() {
+        const tbody = document.querySelector('#exportCtrlTable tbody');
+        const rows = exportCtrlFilteredSorted();
+        document.getElementById('exportCtrlCount').textContent = `${rows.length} step${rows.length === 1 ? '' : 's'}`;
+        document.querySelectorAll('#exportCtrlTable .sort-arrow').forEach(el => el.textContent = '');
+        const arrow = document.getElementById(`exportCtrlArrow_${exportCtrlSort.col}`);
+        if (arrow) arrow.textContent = exportCtrlSort.dir > 0 ? ' ▲' : ' ▼';
+        tbody.innerHTML = rows.map(r => {
+            const statusClass = r.last_status === 'COMPLETE' ? 'color:var(--accent-cyan)'
+                : r.last_status === 'FAILED' ? 'color:#c00;font-weight:600'
+                : r.last_status === 'SKIPPED' ? 'color:var(--text-secondary)' : '';
+            return `
+                <tr>
+                    <td>${r.step_order ?? ''}</td>
+                    <td><code>${esc(r.step_name || '')}</code></td>
+                    <td><input type="checkbox" ${r.enabled ? 'checked' : ''}
+                            onchange="saveExportCtrlField(${r.step_id}, 'enabled', this.checked)"></td>
+                    <td><input type="checkbox" ${r.abort_on_failure ? 'checked' : ''}
+                            onchange="saveExportCtrlField(${r.step_id}, 'abort_on_failure', this.checked)"></td>
+                    <td style="${statusClass}">${esc(r.last_status || '')}</td>
+                    <td>${esc(formatUtcShort(r.last_end_utc))}</td>
+                    <td>${r.last_duration_sec != null ? r.last_duration_sec.toFixed(1) : ''}</td>
+                    <td>${r.last_rows_affected ?? ''}</td>
+                    <td>${esc(formatUtcShort(r.last_modified))}</td>
+                    <td>${esc(r.modified_by || '')}</td>
+                    <td><input type="text" value="${esc(r.notes || '')}" style="width:100%"
+                            onchange="saveExportCtrlField(${r.step_id}, 'notes', this.value)"></td>
+                </tr>`;
+        }).join('');
+    }
+
+    async function saveExportCtrlField(stepId, field, value) {
+        const res = await fetch('/edm/api/export-controls', {
+            method: 'PATCH', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({step_id: stepId, field, value})
+        });
+        if (res.ok) {
+            toast('Saved');
+            loadExportControls();  // refresh LAST_MODIFIED/MODIFIED_BY stamps
+        } else {
+            const e = await res.json();
+            toast(e.error || 'Error', 'error');
+            loadExportControls();
+        }
     }
 
     // ─── Utility ───────────────────────────────────────────────────────────────

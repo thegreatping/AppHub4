@@ -129,10 +129,10 @@
 <div id="header">
   <h1><span>AppHub 4.0</span> &nbsp;&middot;&nbsp; Project Plan</h1>
   <div class="subtitle">
-    1 Developer (AI-assisted, 6 hrs/day) &nbsp;&middot;&nbsp; 26 Modules (all Flask native -- 15 done/in-progress, 11 planned builds)
+    1 Developer (AI-assisted, 6 hrs/day) &nbsp;&middot;&nbsp; 26 Modules (all Flask native -- 15 done, 4 in-progress, 7 planned builds)
     &nbsp;&middot;&nbsp; Flask 3 + Entra ID SSO + SharePoint Graph API
     &nbsp;&middot;&nbsp; <strong style="color:#f1c40f;">Target Go-Live: Oct 1, 2026</strong>
-    &nbsp;&middot;&nbsp; Updated: Aug 10
+    &nbsp;&middot;&nbsp; Updated: Sep 24
   </div>
 </div>
 
@@ -148,17 +148,17 @@
     <div class="card">
       <h3>Modules Total</h3>
       <div class="value">26</div>
-      <div class="detail">15 Flask native (done/in progress) + 11 planned builds</div>
+      <div class="detail">15 Flask native done + 4 in progress + 7 planned builds</div>
     </div>
     <div class="card">
       <h3>Progress</h3>
-      <div class="value" style="color:#4ade80;">46%</div>
-      <div class="detail">12 modules done, 3 in progress, 11 builds queued</div>
+      <div class="value" style="color:#4ade80;">58%</div>
+      <div class="detail">15 modules done, 4 in progress, 7 builds queued</div>
     </div>
     <div class="card">
       <h3>Remaining Work</h3>
-      <div class="value" style="color:#f59e0b;">~22 days</div>
-      <div class="detail">3 in-progress + 11 builds + testing + infra + UAT</div>
+      <div class="value" style="color:#f59e0b;">~10 days</div>
+      <div class="detail">4 in-progress + 7 builds + testing + infra + UAT</div>
     </div>
     <div class="card">
       <h3 style="color:#f1c40f;">Target Go-Live</h3>
@@ -169,9 +169,22 @@
 
   <!-- Resolved blocker -->
   <div class="blocker-box" style="background:rgba(39,174,96,.1);border-color:#27ae60;">
-    <strong style="color:#27ae60;">&#10003; Resolved Aug 10:</strong> Mindset Award Nomination data now loading.
-    <strong>Sites.FullControl.All</strong> granted to FabricPipelineApp; site-level Graph permission posted; token cache fixed to respect expiry.
-    Nominations confirmed loading from SharePoint list.</div>
+    <strong style="color:#27ae60;">&#10003; Resolved Sep 24:</strong> QA pass across 11 Flask modules (Cultivate, FastTrack, Mentor Cert, Mindset, New Hire, PAF, Peak Link, Rush Check, Special Handling, The Pitch, Vendor Setup) --
+    all submit successfully. Found and fixed <strong>2 real bugs</strong> shared by Rush Check + Special Handling: a shipping-method choice-list mismatch
+    against the live SharePoint column, and an incorrect Graph API field format (<code>{"Value": ...}</code> object instead of a plain string) that was
+    silently failing <strong>every single submission</strong>. One known issue remains open -- attachment uploads for those two modules return 401/connection-reset
+    via the classic SharePoint REST API and likely need an Entra admin to grant/verify API permissions for the FabricPipelineApp service principal.
+    <br><br>
+    <strong style="color:#27ae60;">&#10003; Also Sep 24:</strong> Module Registry Testing column set to Pass for all 11 modules above -- the left nav now
+    shows a bright green outline (<code>#22ff5b</code>, 2px, soft glow) around each passed module so status is visible at a glance while navigating.</div>
+  </div>
+
+  <!-- RF 3 module created -->
+  <div class="blocker-box" style="background:rgba(244,114,182,.1);border-color:#f472b6;">
+    <strong style="color:#f472b6;">&#9733; Sep 25:</strong> Users reported Rent Forecasting 2.0's UI is too "busy." Rather than redesign it in place and risk the
+    existing work, the module was <strong>copied wholesale</strong> to a new module, <strong>RF 3</strong> (<code>rent_forecast3.py</code> / <code>rent_forecast3.html</code>,
+    App_ID 37, route <code>/rfs3/</code>) -- same connections, screens, and API endpoints, fully independent of RF 2.0. Verified both run side-by-side without
+    interference. All future redesign work (right-side slideout for New/Renewal, reorganized metrics/selectors) happens in RF 3; <strong>Rent Forecasting 2.0 is now frozen</strong>.</div>
   </div>
 
   <!-- Legend -->
@@ -363,7 +376,7 @@
     <div class="track-header">
       <div class="dot" style="background:#16a085;"></div>
       <h2>All 26 Modules</h2>
-      <span class="cap">12 done &bull; 3 in progress &bull; 11 not started</span>
+      <span class="cap">15 done &bull; 4 in progress &bull; 7 not started</span>
     </div>
     <table class="mod-table">
       <thead>
@@ -401,37 +414,37 @@
         <tr>
           <td>Cultivate Nomination</td><td>/cultivate/</td><td>cultivate.py</td><td>SharePoint (Graph API)</td>
           <td><span class="badge b-done">Done</span></td><td class="est">--</td>
-          <td>Nomination submit + admin All Noms view</td>
+          <td>Nomination submit + admin All Noms view; QA-tested Sep 24, submission confirmed working</td>
         </tr>
         <tr>
           <td>FastTrack Recommendation</td><td>/fasttrack/</td><td>fasttrack.py</td><td>DB_APP_SUPPORT</td>
           <td><span class="badge b-done">Done</span></td><td class="est">--</td>
-          <td>Submit + admin review; sort fixed</td>
+          <td>Submit + admin review; sort fixed; QA-tested Sep 24, submission confirmed working</td>
         </tr>
         <tr>
           <td>Mindset Award Nomination</td><td>/mindset/</td><td>mindset.py</td><td>SharePoint (Graph API)</td>
           <td><span class="badge b-done">Done</span></td><td class="est">--</td>
-          <td>Unblocked Aug 10 -- Sites.FullControl.All granted, nominations loading</td>
+          <td>Unblocked Aug 10 -- Sites.FullControl.All granted, nominations loading; QA-tested Sep 24, submission confirmed working</td>
         </tr>
         <tr>
           <td>New Hire Alert</td><td>/new-hire/</td><td>new_hire.py</td><td>DB_APP_SUPPORT</td>
           <td><span class="badge b-done">Done</span></td><td class="est">--</td>
-          <td>Alerts table, admin view; sort fixed</td>
+          <td>Alerts table, admin view; sort fixed; QA-tested Sep 24, submission confirmed working</td>
         </tr>
         <tr>
           <td>Mentor Certification</td><td>/mentor-cert/</td><td>mentor_cert.py</td><td>DB_APP_SUPPORT</td>
           <td><span class="badge b-done">Done</span></td><td class="est">--</td>
-          <td>Cert tracking, admin view; sort fixed</td>
+          <td>Cert tracking, admin view; sort fixed; QA-tested Sep 24, submission confirmed working</td>
         </tr>
         <tr>
           <td>Peak Link (Ideas)</td><td>/peak-link/</td><td>peak_link.py</td><td>SharePoint (Graph API)</td>
           <td><span class="badge b-done">Done</span></td><td class="est">--</td>
-          <td>Idea submission + admin view; sort fixed</td>
+          <td>Idea submission + admin view; sort fixed; QA-tested Sep 24, submission confirmed working</td>
         </tr>
         <tr>
           <td>Promotion / Transfer (PAF)</td><td>/paf/</td><td>paf.py</td><td>SharePoint (Graph API)</td>
           <td><span class="badge b-done">Done</span></td><td class="est">--</td>
-          <td>PAF form submit + admin review</td>
+          <td>PAF form submit + admin review; QA-tested Sep 24, submission confirmed working (SharePoint item creation verified)</td>
         </tr>
         <tr>
           <td>Milestones</td><td>/milestones/</td><td>milestones.py</td><td>DB_APP_SUPPORT + WH_STAGING</td>
@@ -446,7 +459,12 @@
         <tr>
           <td>Rent Forecasting 2.0</td><td>/rfs2/</td><td>rfs2.py</td><td>WH_PROD2 + DB_APP_SUPPORT</td>
           <td><span class="badge b-active">In Progress</span></td><td class="est">2 d</td>
-          <td>Template exists; tier editing, market comps, charts</td>
+          <td>Template exists; tier editing, market comps, charts. <strong>FROZEN Sep 25</strong> -- users reported the UI is too busy; copied to RF 3 (below) for the redesign so this module's existing work is preserved untouched</td>
+        </tr>
+        <tr>
+          <td>RF 3</td><td>/rfs3/</td><td>rent_forecast3.py</td><td>WH_PROD2 + DB_APP_SUPPORT</td>
+          <td><span class="badge b-active">In Progress</span></td><td class="est">TBD</td>
+          <td>Exact copy of Rent Forecasting 2.0 (App_ID 37) created Sep 25 as the redesign target -- right-side slideout for New/Renewal sections, reorganized metrics/selectors to reduce visual density. Verified independently working (own API, own nav entry) alongside the untouched RF 2.0. <strong>Sep 26:</strong> added zone-color tinting (blue = Property, amber = Floorplan, coral = Renewal, emerald = New) with theme-aware alpha across Dark/Medium/Light</td>
         </tr>
         <tr>
           <td>Market Benchmark</td><td>/mrb/ (port 5055)</td><td>app.py (standalone)</td><td>DB_APP_SUPPORT</td>
@@ -459,9 +477,9 @@
           <td>Survey form + responses admin view</td>
         </tr>
         <tr>
-          <td>Rush Check Request</td><td>/rush-check/</td><td>rush_check.py</td><td>DB_APP_SUPPORT</td>
-          <td><span class="badge b-pending">Not Started</span></td><td class="est">1 d</td>
-          <td>Check request form + approvals tracking</td>
+          <td>Rush Check Request</td><td>/rush-check/</td><td>rush_check.py</td><td>DB_APP_SUPPORT + SharePoint (Graph API)</td>
+          <td><span class="badge b-done">Done</span></td><td class="est">--</td>
+          <td>QA-tested Sep 24; fixed ShippingMethod choice-list mismatch + wrong Graph field format (was blocking every submission)</td>
         </tr>
         <tr>
           <td>SAM Ad Spend Planning</td><td>/sam-adspend/</td><td>sam_adspend.py</td><td>DB_APP_SUPPORT</td>
@@ -474,9 +492,9 @@
           <td>Contract list, status tracking, document links</td>
         </tr>
         <tr>
-          <td>Special Handling Form</td><td>/special-handling/</td><td>special_handling.py</td><td>DB_APP_SUPPORT</td>
-          <td><span class="badge b-pending">Not Started</span></td><td class="est">0.5 d</td>
-          <td>Exception request form + ops admin view</td>
+          <td>Special Handling Form</td><td>/special-handling/</td><td>special_handling.py</td><td>DB_APP_SUPPORT + SharePoint (Graph API)</td>
+          <td><span class="badge b-done">Done</span></td><td class="est">--</td>
+          <td>QA-tested Sep 24; shared same ShippingMethod/SubmissionType field-format bug as Rush Check, fixed</td>
         </tr>
         <tr>
           <td>Support Data Manager</td><td>/support-dm/</td><td>support_dm.py</td><td>DB_APP_SUPPORT</td>
@@ -484,14 +502,14 @@
           <td>Support ticket/data management table + admin</td>
         </tr>
         <tr>
-          <td>The Pitch Workflow</td><td>/pitch/</td><td>pitch.py</td><td>DB_APP_SUPPORT</td>
-          <td><span class="badge b-pending">Not Started</span></td><td class="est">1.5 d</td>
-          <td>Idea submission, voting/scoring, admin approval workflow</td>
+          <td>The Pitch Workflow</td><td>/pitch/</td><td>pitch.py</td><td>SharePoint (Graph API)</td>
+          <td><span class="badge b-done">Done</span></td><td class="est">--</td>
+          <td>QA-tested Sep 24; idea submission confirmed working end-to-end</td>
         </tr>
         <tr>
           <td>Vendor Setup Form</td><td>/vendor-setup/</td><td>vendor_setup.py</td><td>DB_APP_SUPPORT</td>
-          <td><span class="badge b-pending">Not Started</span></td><td class="est">0.5 d</td>
-          <td>New vendor onboarding form + admin review queue</td>
+          <td><span class="badge b-done">Done</span></td><td class="est">--</td>
+          <td>QA-tested Sep 24; new vendor creation confirmed working</td>
         </tr>
         <tr>
           <td>ACH Request</td><td>/ach-request/</td><td>ach_request.py</td><td>DB_APP_SUPPORT</td>
@@ -511,156 +529,6 @@
       </tbody>
     </table>
   </div>
-      <thead>
-        <tr>
-          <th>Module</th>
-          <th>Route</th>
-          <th>Backend</th>
-          <th>Data Source</th>
-          <th>Status</th>
-          <th>Est.</th>
-          <th>Notes</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>AppHub Maintenance</td>
-          <td>/maintenance/</td>
-          <td>maintenance.py</td>
-          <td>DB_APP_SUPPORT</td>
-          <td><span class="badge b-done">Done</span></td>
-          <td class="est">--</td>
-          <td>Admin tools, module registry, audience mgmt</td>
-        </tr>
-        <tr>
-          <td>Property Data Manager</td>
-          <td>/pdm/</td>
-          <td>pdm.py</td>
-          <td>DB_APP_SUPPORT + WH_PROD2</td>
-          <td><span class="badge b-done">Done</span></td>
-          <td class="est">--</td>
-          <td>Full 3-tab UI, detail panel, property search</td>
-        </tr>
-        <tr>
-          <td>Employee Data Manager</td>
-          <td>/edm/</td>
-          <td>edm.py</td>
-          <td>DB_APP_SUPPORT + WH_STAGING</td>
-          <td><span class="badge b-done">Done</span></td>
-          <td class="est">--</td>
-          <td>Title groups, Entrata mappings, overrides</td>
-        </tr>
-        <tr>
-          <td>Dashboard</td>
-          <td>/</td>
-          <td>routes.py</td>
-          <td>DB_APP_SUPPORT</td>
-          <td><span class="badge b-done">Done</span></td>
-          <td class="est">--</td>
-          <td>Module launcher with audience-filtered cards</td>
-        </tr>
-        <tr>
-          <td>Cultivate Nomination</td>
-          <td>/cultivate/</td>
-          <td>cultivate.py</td>
-          <td>SharePoint (Graph API)</td>
-          <td><span class="badge b-done">Done</span></td>
-          <td class="est">--</td>
-          <td>Nomination submit + admin All Noms view</td>
-        </tr>
-        <tr>
-          <td>FastTrack Recommendation</td>
-          <td>/fasttrack/</td>
-          <td>fasttrack.py</td>
-          <td>DB_APP_SUPPORT</td>
-          <td><span class="badge b-done">Done</span></td>
-          <td class="est">--</td>
-          <td>Submit + admin review; sort fixed</td>
-        </tr>
-        <tr>
-          <td>Mindset Award Nomination</td>
-          <td>/mindset/</td>
-          <td>mindset.py</td>
-          <td>SharePoint (Graph API)</td>
-          <td><span class="badge b-done">Done</span></td>
-          <td class="est">--</td>
-          <td>All code done; Mindset data unblocked Aug 10 -- Sites.FullControl.All granted, Graph site permission posted</td>
-        </tr>
-        <tr>
-          <td>New Hire Alert</td>
-          <td>/new-hire/</td>
-          <td>new_hire.py</td>
-          <td>DB_APP_SUPPORT</td>
-          <td><span class="badge b-done">Done</span></td>
-          <td class="est">--</td>
-          <td>Alerts table, admin view; sort fixed</td>
-        </tr>
-        <tr>
-          <td>Mentor Certification</td>
-          <td>/mentor-cert/</td>
-          <td>mentor_cert.py</td>
-          <td>DB_APP_SUPPORT</td>
-          <td><span class="badge b-done">Done</span></td>
-          <td class="est">--</td>
-          <td>Cert tracking, admin view; sort fixed</td>
-        </tr>
-        <tr>
-          <td>Peak Link (Ideas)</td>
-          <td>/peak-link/</td>
-          <td>peak_link.py</td>
-          <td>SharePoint (Graph API)</td>
-          <td><span class="badge b-done">Done</span></td>
-          <td class="est">--</td>
-          <td>Idea submission + admin view; sort fixed</td>
-        </tr>
-        <tr>
-          <td>Promotion / Transfer (PAF)</td>
-          <td>/paf/</td>
-          <td>paf.py</td>
-          <td>SharePoint (Graph API)</td>
-          <td><span class="badge b-done">Done</span></td>
-          <td class="est">--</td>
-          <td>PAF form submit + admin review</td>
-        </tr>
-        <tr>
-          <td>Milestones</td>
-          <td>/milestones/</td>
-          <td>milestones.py</td>
-          <td>DB_APP_SUPPORT + WH_STAGING</td>
-          <td><span class="badge b-active">In Progress</span></td>
-          <td class="est">0.5 d</td>
-          <td>Template exists; backend and data wiring needed</td>
-        </tr>
-        <tr>
-          <td>Rent Forecasting 1.0</td>
-          <td>/rfs/</td>
-          <td>rfs.py</td>
-          <td>WH_PROD2 + DB_APP_SUPPORT</td>
-          <td><span class="badge b-active">In Progress</span></td>
-          <td class="est">2 d</td>
-          <td>Template exists; full backend impl needed</td>
-        </tr>
-        <tr>
-          <td>Rent Forecasting 2.0</td>
-          <td>/rfs2/</td>
-          <td>rfs2.py</td>
-          <td>WH_PROD2 + DB_APP_SUPPORT</td>
-          <td><span class="badge b-active">In Progress</span></td>
-          <td class="est">2 d</td>
-          <td>Template exists; tier editing, market comps, charts</td>
-        </tr>
-        <tr>
-          <td>Market Benchmark</td>
-          <td>/mrb/ (port 5055)</td>
-          <td>app.py (standalone)</td>
-          <td>DB_APP_SUPPORT</td>
-          <td><span class="badge b-active">In Progress</span></td>
-          <td class="est">1 d</td>
-          <td>5 of 6 tabs done; Floor Plans tab pending</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
 
   <div class="module-section">
     <div class="track-header">
@@ -673,7 +541,7 @@
         <tr><th>Task</th><th>Status</th><th>Est.</th><th>Notes</th></tr>
       </thead>
       <tbody>
-        <tr><td>Integration &amp; regression testing (all 26 modules)</td><td><span class="badge b-pending">Not Started</span></td><td class="est">2 d</td><td>Each module: submit, admin view, sort, edge cases</td></tr>
+        <tr><td>Integration &amp; regression testing (all 26 modules)</td><td><span class="badge b-active">In Progress</span></td><td class="est">2 d</td><td>11 modules QA-tested Sep 24 (Cultivate, FastTrack, Mentor Cert, Mindset, New Hire, PAF, Peak Link, Rush Check, Special Handling, The Pitch, Vendor Setup) -- 2 bugs found + fixed; remaining modules still pending</td></tr>
         <tr><td>Azure App Service provisioning</td><td><span class="badge b-pending">Not Started</span></td><td class="est">0.5 d</td><td>Linux App Service, Python 3.12, startup command</td></tr>
         <tr><td>Environment variables (prod .env)</td><td><span class="badge b-pending">Not Started</span></td><td class="est">0.25 d</td><td>All Azure AD + DB + Graph credentials in App Service config</td></tr>
         <tr><td>ODBC Driver 18 on Linux App Service</td><td><span class="badge b-pending">Not Started</span></td><td class="est">0.25 d</td><td>Custom startup script: apt-get install msodbcsql18</td></tr>

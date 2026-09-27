@@ -61,12 +61,12 @@ def index():
                            version=APP_VERSION)
 
 
-# ─── EMPLOYEES TAB (read-only from EMPLOYEE_F) ─────────────────────────────────
+# ─── EMPLOYEES TAB (read-only from Emp_Core) ───────────────────────────────────
 
 @edm_bp.route("/api/employees/search", methods=["GET"])
 @login_required
 def search_employees():
-    """Search/filter EMPLOYEE_F. Supports q (text search) and filter params."""
+    """Search/filter Emp_Core. Supports q (text search) and filter params."""
     check = _require_access()
     if check:
         return check
@@ -76,7 +76,10 @@ def search_employees():
     property_name = request.args.get("property", "").strip()
 
     env = _get_env()
-    conn = SafeConnection(env, "WH_STAGING", None)
+    # LEO decorative fields still live in WH_STAGING.dbo.LEO_USERS_EXPORT until
+    # LEO_USERS_EXPORT_SP is migrated (checklist i-4-35). Base employee identity
+    # now comes from DB_APP_SUPPORT.dbo.Emp_Core, LEO enrichment merged in Python.
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
         conditions = ["LOAD_TYPE <> 'PRE-HIRE'"]
         params = []
@@ -106,24 +109,47 @@ def search_employees():
 
         where = " AND ".join(conditions)
         cur = conn.execute(f"""
-            SELECT TOP 3000 e.*,
-                leo.TIMEZONE AS LEO_TIMEZONE,
-                leo.ROLE AS LEO_ROLE,
-                leo.PORTFOLIOS AS LEO_PORTFOLIOS,
-                leo.PROPERTIES AS LEO_PROPERTIES,
-                leo.REPORT_TO AS LEO_REPORT_TO,
-                leo.NOTIFY_NOTE_IMPORTANT AS LEO_NOTIFY_NOTE_IMPORTANT,
-                leo.NOTIFY_PROPERTY_CRITICAL AS LEO_NOTIFY_PROPERTY_CRITICAL
-            FROM dbo.EMPLOYEE_F e
-            LEFT JOIN dbo.LEO_USERS_EXPORT leo ON leo.EMAIL = e.EMAIL
+            SELECT TOP 3000 *
+            FROM dbo.Emp_Core
             WHERE {where}
-            ORDER BY e.NAME_FIRST, e.NAME_LAST
+            ORDER BY NAME_FIRST, NAME_LAST
         """, tuple(params) if params else None)
         columns = [desc[0].lower() for desc in cur.description]
         rows = cur.fetchall()
-        return jsonify(_rows_to_dicts(rows, columns))
+        emp_dicts = _rows_to_dicts(rows, columns)
     finally:
         conn.close()
+
+    emails = {(d.get("email") or "").lower() for d in emp_dicts if d.get("email")}
+    leo_map = {}
+    if emails:
+        # LEO_USERS_EXPORT is ~900 rows total -- fetch all and filter in Python.
+        # Avoids pyodbc's ~2100-param IN-list ceiling when result set is large.
+        conn_leo = SafeConnection(env, "WH_STAGING", None)
+        try:
+            leo_rows = conn_leo.fetchall("""
+                SELECT EMAIL, TIMEZONE, ROLE, PORTFOLIOS, PROPERTIES, REPORT_TO,
+                       NOTIFY_NOTE_IMPORTANT, NOTIFY_PROPERTY_CRITICAL
+                FROM dbo.LEO_USERS_EXPORT
+            """)
+            for r in leo_rows:
+                email_lower = (r[0] or "").lower()
+                if email_lower and email_lower in emails:
+                    leo_map[email_lower] = {
+                        "leo_timezone": r[1], "leo_role": r[2], "leo_portfolios": r[3],
+                        "leo_properties": r[4], "leo_report_to": r[5],
+                        "leo_notify_note_important": r[6], "leo_notify_property_critical": r[7],
+                    }
+        finally:
+            conn_leo.close()
+
+    for d in emp_dicts:
+        d.update(leo_map.get((d.get("email") or "").lower(), {
+            "leo_timezone": None, "leo_role": None, "leo_portfolios": None,
+            "leo_properties": None, "leo_report_to": None,
+            "leo_notify_note_important": None, "leo_notify_property_critical": None,
+        }))
+    return jsonify(emp_dicts)
 
 
 @edm_bp.route("/api/employees/filter-options", methods=["GET"])
@@ -134,20 +160,20 @@ def employee_filter_options():
     if check:
         return check
     env = _get_env()
-    conn = SafeConnection(env, "WH_STAGING", None)
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
         statuses = conn.fetchall("""
-            SELECT DISTINCT STATUS FROM dbo.EMPLOYEE_F
+            SELECT DISTINCT STATUS FROM dbo.Emp_Core
             WHERE LOAD_TYPE <> 'PRE-HIRE' AND STATUS IS NOT NULL
             ORDER BY STATUS
         """)
         title_groups = conn.fetchall("""
-            SELECT DISTINCT TITLE_GROUP FROM dbo.EMPLOYEE_F
+            SELECT DISTINCT TITLE_GROUP FROM dbo.Emp_Core
             WHERE LOAD_TYPE <> 'PRE-HIRE' AND TITLE_GROUP IS NOT NULL
             ORDER BY TITLE_GROUP
         """)
         properties = conn.fetchall("""
-            SELECT DISTINCT PROPERTY_NAME FROM dbo.EMPLOYEE_F
+            SELECT DISTINCT PROPERTY_NAME FROM dbo.Emp_Core
             WHERE LOAD_TYPE <> 'PRE-HIRE' AND PROPERTY_NAME IS NOT NULL
             ORDER BY PROPERTY_NAME
         """)
@@ -608,11 +634,11 @@ def _entrata_option_usage(conn, kind, value):
 
 def _lookup_employee(emp_code):
     env = _get_env()
-    conn = SafeConnection(env, "WH_STAGING", None)
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
         rows = conn.fetchall("""
             SELECT TOP 1 EMPLOYEE_KEY, EMPLOYEE_CODE, NAME_FIRST, NAME_LAST
-            FROM dbo.EMPLOYEE_F
+            FROM dbo.Emp_Core
             WHERE EMPLOYEE_CODE = ? AND LOAD_TYPE <> 'PRE-HIRE'
             ORDER BY CASE WHEN STATUS NOT IN ('TERMINATED', 'DECEASED') THEN 0 ELSE 1 END
         """, (emp_code,))
@@ -908,11 +934,11 @@ def search_entrata_assignment_employees():
     if len(q) < 2:
         return jsonify([])
     env = _get_env()
-    conn = SafeConnection(env, "WH_STAGING", None)
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
         rows = conn.fetchall("""
             SELECT TOP 20 EMPLOYEE_CODE, NAME_FIRST, NAME_LAST, TITLE, PROPERTY_NAME
-            FROM dbo.EMPLOYEE_F
+            FROM dbo.Emp_Core
             WHERE LOAD_TYPE <> 'PRE-HIRE'
               AND STATUS NOT IN ('TERMINATED', 'DECEASED')
               AND (UPPER(NAME_FIRST) LIKE UPPER(?) + '%'
@@ -974,11 +1000,11 @@ def search_soft_termination_employees():
     if len(q) < 2:
         return jsonify([])
     env = _get_env()
-    conn = SafeConnection(env, "WH_STAGING", None)
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
         rows = conn.fetchall("""
             SELECT TOP 20 EMPLOYEE_CODE, NAME_FIRST, NAME_LAST, TITLE, PROPERTY_NAME, STATUS
-            FROM dbo.EMPLOYEE_F
+            FROM dbo.Emp_Core
             WHERE LOAD_TYPE <> 'PRE-HIRE'
               AND (UPPER(EMPLOYEE_CODE) = UPPER(?)
                    OR UPPER(NAME_FIRST) LIKE UPPER(?) + '%'
@@ -1012,12 +1038,12 @@ def add_soft_termination():
     user_email = session.get("user", {}).get("email", "unknown")
     env = _get_env()
 
-    # Look up employee name from EMPLOYEE_F
-    conn_wh = SafeConnection(env, "WH_STAGING", None)
+    # Look up employee name from Emp_Core
+    conn_wh = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
         emp = conn_wh.fetchall("""
             SELECT TOP 1 NAME_FIRST, NAME_LAST
-            FROM dbo.EMPLOYEE_F
+            FROM dbo.Emp_Core
             WHERE EMPLOYEE_CODE = ? AND LOAD_TYPE <> 'PRE-HIRE'
         """, (emp_code,))
     finally:
@@ -1123,6 +1149,148 @@ def get_title_groups():
             ORDER BY TITLE_GROUP
         """)
         return jsonify([r[0] for r in rows])
+    finally:
+        conn.close()
+
+
+# ─── PROCESSING RULES TAB (control.EMP_PROCESSING_RULES, checklist i-1-16) ────
+
+@edm_bp.route("/api/processing-rules", methods=["GET"])
+@login_required
+def get_processing_rules():
+    """List all rules from control.EMP_PROCESSING_RULES, grouped by RULE_GROUP."""
+    check = _require_access()
+    if check:
+        return check
+    env = _get_env()
+    conn = SafeConnection(env, "DB_BI_SUPPORT", None, direct=True)
+    try:
+        rows = conn.fetchall("""
+            SELECT RULE_ID, RULE_GROUP, RULE_NAME, TARGET_COL, RULE_TYPE, SOURCE_COL,
+                   MATCH_VALUE, OUTPUT_TRUE, OUTPUT_FALSE, COALESCE_COLS, PRIORITY,
+                   ENABLED, NOTES
+            FROM control.EMP_PROCESSING_RULES
+            ORDER BY RULE_GROUP, PRIORITY, RULE_ID
+        """)
+        return jsonify([{
+            "rule_id": r[0], "rule_group": r[1], "rule_name": r[2],
+            "target_col": r[3], "rule_type": r[4], "source_col": r[5],
+            "match_value": r[6], "output_true": r[7], "output_false": r[8],
+            "coalesce_cols": r[9], "priority": r[10], "enabled": bool(r[11]),
+            "notes": r[12],
+        } for r in rows])
+    finally:
+        conn.close()
+
+
+@edm_bp.route("/api/processing-rules", methods=["PATCH"])
+@login_required
+def update_processing_rule():
+    """Inline-edit one field on one rule. Only value/output/enabled/notes are
+    editable via this UI -- structural fields (rule group/name, target col,
+    rule type, source col, priority) are read-only to avoid breaking Cell 8F
+    semantics; change those via direct SQL if needed."""
+    check = _require_access()
+    if check:
+        return check
+    data = request.get_json()
+    rule_id = data.get("rule_id")
+    field = data.get("field")
+    value = data.get("value")
+    allowed = {
+        "match_value": "MATCH_VALUE", "output_true": "OUTPUT_TRUE",
+        "output_false": "OUTPUT_FALSE", "enabled": "ENABLED", "notes": "NOTES",
+    }
+    if not rule_id or field not in allowed:
+        return jsonify({"error": "invalid request"}), 400
+    col = allowed[field]
+    if field == "enabled":
+        value = 1 if value in (True, "true", "1", 1) else 0
+    else:
+        value = (value or "").strip() or None
+    env = _get_env()
+    conn = SafeConnection(env, "DB_BI_SUPPORT", None, direct=True)
+    try:
+        conn.execute(
+            f"UPDATE control.EMP_PROCESSING_RULES SET [{col}] = ? WHERE RULE_ID = ?",
+            (value, rule_id))
+        conn.commit()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
+# ─── EXPORT CONTROLS TAB (control.EMP_PIPELINE_CONTROL WHERE STEP_GROUP='EXPORT', i-1-17) ─
+
+@edm_bp.route("/api/export-controls", methods=["GET"])
+@login_required
+def get_export_controls():
+    """List every EXPORT step + its most recent run status. OUTER APPLY joins
+    each step to its newest control.EMP_PIPELINE_RUN_LOG row by STEP_NAME."""
+    check = _require_access()
+    if check:
+        return check
+    env = _get_env()
+    conn = SafeConnection(env, "DB_BI_SUPPORT", None, direct=True)
+    try:
+        rows = conn.fetchall("""
+            SELECT c.STEP_ID, c.STEP_NAME, c.STEP_ORDER, c.ENABLED,
+                   c.ABORT_ON_FAILURE, c.NOTES, c.LAST_MODIFIED, c.MODIFIED_BY,
+                   last.STATUS, last.RUN_TIMESTAMP_END_UTC,
+                   last.DURATION_SEC, last.ROWS_AFFECTED
+            FROM control.EMP_PIPELINE_CONTROL c
+            OUTER APPLY (
+                SELECT TOP 1 STATUS, RUN_TIMESTAMP_END_UTC, DURATION_SEC, ROWS_AFFECTED
+                FROM control.EMP_PIPELINE_RUN_LOG
+                WHERE STEP_NAME = c.STEP_NAME
+                ORDER BY RUN_LOG_ID DESC
+            ) last
+            WHERE c.STEP_GROUP = 'EXPORT'
+            ORDER BY c.STEP_ORDER
+        """)
+        return jsonify([{
+            "step_id": r[0], "step_name": r[1], "step_order": r[2],
+            "enabled": bool(r[3]), "abort_on_failure": bool(r[4]), "notes": r[5],
+            "last_modified": r[6].isoformat() if r[6] else None,
+            "modified_by": r[7],
+            "last_status": r[8],
+            "last_end_utc": r[9].isoformat() if r[9] else None,
+            "last_duration_sec": r[10], "last_rows_affected": r[11],
+        } for r in rows])
+    finally:
+        conn.close()
+
+
+@edm_bp.route("/api/export-controls", methods=["PATCH"])
+@login_required
+def update_export_control():
+    """Toggle ENABLED / ABORT_ON_FAILURE or edit NOTES on one export step.
+    Auto-stamps LAST_MODIFIED + MODIFIED_BY from the current session email."""
+    check = _require_access()
+    if check:
+        return check
+    data = request.get_json()
+    step_id = data.get("step_id")
+    field = data.get("field")
+    value = data.get("value")
+    allowed = {"enabled": "ENABLED", "abort_on_failure": "ABORT_ON_FAILURE", "notes": "NOTES"}
+    if not step_id or field not in allowed:
+        return jsonify({"error": "invalid request"}), 400
+    col = allowed[field]
+    if field in ("enabled", "abort_on_failure"):
+        value = 1 if value in (True, "true", "1", 1) else 0
+    else:
+        value = (value or "").strip() or None
+    user_email = (session.get("user") or {}).get("email", "unknown")
+    env = _get_env()
+    conn = SafeConnection(env, "DB_BI_SUPPORT", None, direct=True)
+    try:
+        conn.execute(
+            f"UPDATE control.EMP_PIPELINE_CONTROL SET [{col}] = ?, "
+            "LAST_MODIFIED = SYSUTCDATETIME(), MODIFIED_BY = ? WHERE STEP_ID = ?",
+            (value, user_email, step_id))
+        conn.commit()
+        return jsonify({"ok": True})
     finally:
         conn.close()
 
@@ -1274,6 +1442,7 @@ EMP_PIPELINE_TABLES = {
     # keeps the newest rows as each log grows past that cap, not the oldest.
     "emp_pipeline_ingestion_log":     {"db": "DB_BI_SUPPORT",  "direct": True,  "schema": "control",  "table": "EMP_PIPELINE_INGESTION_LOG", "order_by": "INGESTION_LOG_ID DESC"},
     "emp_pipeline_parity_log":        {"db": "DB_BI_SUPPORT",  "direct": True,  "schema": "control",  "table": "EMP_PIPELINE_PARITY_LOG",    "order_by": "PARITY_LOG_ID DESC"},
+    "emp_pipeline_dependency_log":    {"db": "DB_BI_SUPPORT",  "direct": True,  "schema": "control",  "table": "EMP_PIPELINE_DEPENDENCY_LOG", "order_by": "DEPENDENCY_LOG_ID DESC"},
 }
 
 # DB engines a user is allowed to pick from when adding a custom table, and

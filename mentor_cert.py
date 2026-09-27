@@ -82,7 +82,7 @@ def api_employees():
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     cur = conn.execute("""
         SELECT NAME_FULL, TITLE, PROPERTY_NAME, DATETIME_HIRED
-        FROM xtemp.EMPLOYEE_F
+        FROM dbo.Emp_Core
         WHERE STATUS = 'ACTIVE'
         ORDER BY NAME_FULL
     """)

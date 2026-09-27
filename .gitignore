@@ -34,3 +34,6 @@ _deploy.zip
 # Extracted msapp source (reference only, not app code)
 msapp_extracted/
 msapp_extract/
+
+# Fabric REST API token (client_credentials); mirror of .fabric_token.json
+.fabric_api_token.json

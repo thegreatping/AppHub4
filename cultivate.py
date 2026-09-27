@@ -91,7 +91,7 @@ def api_employees():
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     sql = """
         SELECT NAME_FULL, TITLE, PROPERTY_NAME, DATETIME_HIRED, EMAIL
-        FROM xtemp.EMPLOYEE_F
+        FROM dbo.Emp_Core
         WHERE STATUS = 'ACTIVE'
           AND (LOCATION IN ('PEAK HOME OFFICE', 'REMOTE ASSOCIATES')
                OR TITLE LIKE '%%MANAGER%%'

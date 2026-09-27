@@ -1,0 +1,310 @@
+{% extends "shell.html" %}
+{% block head %}
+<style>
+    .spr-container { padding: 18px 24px 40px; max-width: 100%; }
+    .spr-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border-medium); }
+    .spr-title { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); }
+    .spr-subtitle { font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; }
+    .spr-back { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 6px 12px; border-radius: 4px; font-size: 0.78rem; cursor: pointer; text-decoration: none; }
+    .spr-back:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .spr-refresh { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 5px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; margin-left: 6px; }
+    .spr-refresh:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .spr-run-now { background: var(--accent-cyan); border: 1px solid var(--accent-cyan); color: #fff; padding: 5px 12px; border-radius: 4px; font-size: 0.78rem; font-weight: 600; cursor: pointer; }
+    .spr-run-now:hover { filter: brightness(1.1); }
+    .spr-run-now:disabled { opacity: 0.5; cursor: not-allowed; }
+    .spr-trigger-banner { display: none; margin-bottom: 10px; padding: 8px 14px; border-radius: 5px; font-size: 0.78rem; align-items: center; gap: 10px; }
+    .spr-trigger-banner.on { display: flex; }
+    .spr-trigger-banner.pending { background: rgba(59,130,246,0.10); border: 1px solid rgba(59,130,246,0.35); color: var(--text-primary); }
+    .spr-trigger-banner.ok { background: rgba(78,194,106,0.10); border: 1px solid rgba(78,194,106,0.35); color: var(--text-primary); }
+    .spr-trigger-banner.err { background: rgba(248,113,113,0.10); border: 1px solid rgba(248,113,113,0.35); color: var(--text-primary); }
+    .spr-trigger-banner .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.2); border-top-color: var(--accent-cyan); border-radius: 50%; animation: spr-spin 0.8s linear infinite; }
+    @keyframes spr-spin { to { transform: rotate(360deg); } }
+    .spr-trigger-close { margin-left: auto; background: transparent; border: none; color: var(--text-secondary); font-size: 0.9rem; cursor: pointer; }
+    .spr-trigger-close:hover { color: var(--text-primary); }
+
+    .spr-layout { display: flex; gap: 16px; align-items: flex-start; }
+    .spr-runs-nav { width: 300px; flex-shrink: 0; max-height: calc(100vh - 190px); overflow-y: auto; border: 1px solid var(--border-medium); border-radius: 6px; }
+    .spr-run-item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 4px; font-size: 0.72rem; }
+    .spr-run-item:hover { background: var(--input-bg); }
+    .spr-run-item.active { background: rgba(0,169,200,0.12); border-left: 3px solid var(--accent-cyan); padding-left: 9px; }
+    .spr-run-item .top { display: flex; align-items: center; gap: 6px; }
+    .spr-run-item .when { color: var(--text-primary); font-weight: 600; }
+    .spr-run-item .dur { color: var(--text-secondary); font-family: Consolas, monospace; font-size: 0.68rem; margin-left: auto; }
+    .spr-run-item .runid { font-family: Consolas, monospace; color: var(--text-secondary); font-size: 0.62rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .spr-run-item .counts { font-family: Consolas, monospace; color: var(--text-secondary); font-size: 0.68rem; }
+    .spr-run-item .counts .fail { color: #f87171; font-weight: 700; }
+    .spr-run-item .counts .skip { color: #f59e0b; font-weight: 700; }
+
+    .spr-status { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+    .spr-status.COMPLETE { background: rgba(78,194,106,0.18); color: #4ec26a; border: 1px solid rgba(78,194,106,0.4); }
+    .spr-status.FAILED   { background: rgba(248,113,113,0.18); color: #f87171; border: 1px solid rgba(248,113,113,0.4); }
+    .spr-status.SKIPPED  { background: rgba(161,161,170,0.18); color: #a1a1aa; border: 1px solid rgba(161,161,170,0.4); }
+    .spr-status.PARTIAL  { background: rgba(245,158,11,0.18); color: #f59e0b; border: 1px solid rgba(245,158,11,0.4); }
+    .spr-status.RUNNING  { background: rgba(59,130,246,0.18); color: #60a5fa; border: 1px solid rgba(59,130,246,0.4); }
+
+    .spr-detail { flex: 1; min-width: 0; }
+    .spr-meta { background: var(--input-bg); border: 1px solid var(--border-input); border-radius: 5px; padding: 10px 14px; margin-bottom: 10px; font-size: 0.78rem; color: var(--text-primary); }
+    .spr-meta .row { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+    .spr-meta .k { color: var(--text-secondary); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.4px; }
+    .spr-meta .v { font-family: Consolas, monospace; font-weight: 600; }
+    .spr-runid { font-family: Consolas, monospace; font-size: 0.75rem; color: var(--text-primary); }
+
+    .spr-steps-wrap { border: 1px solid var(--border-medium); border-radius: 6px; overflow: auto; max-height: calc(100vh - 340px); }
+    .spr-steps { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+    .spr-steps th { position: sticky; top: 0; background: var(--surface-raised); color: var(--text-primary); text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border-medium); font-weight: 700; white-space: nowrap; z-index: 1; }
+    .spr-steps td { padding: 5px 10px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); vertical-align: top; }
+    .spr-steps tr:hover td { background: var(--input-bg); }
+    .spr-steps tr.failed td { background: rgba(248,113,113,0.06); }
+    .spr-step-order { color: var(--text-secondary); font-family: Consolas, monospace; text-align: right; }
+    .spr-step-group { font-size: 0.62rem; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-secondary); white-space: nowrap; }
+    .spr-step-name { font-family: Consolas, monospace; font-weight: 600; }
+    .spr-step-dur, .spr-step-rows { font-family: Consolas, monospace; text-align: right; color: var(--text-secondary); }
+    .spr-step-err { font-family: Consolas, monospace; color: #f87171; max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+    .spr-step-err:hover { white-space: normal; overflow: visible; }
+    .spr-step-err-expanded { white-space: pre-wrap; overflow: auto; max-height: 240px; background: rgba(248,113,113,0.06); padding: 6px 8px; border-radius: 3px; margin-top: 4px; font-size: 0.7rem; }
+
+    .spr-empty { text-align: center; padding: 60px 20px; color: var(--text-secondary); font-size: 0.85rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="spr-container">
+    <div class="spr-header">
+        <div>
+            <div class="spr-title"><i class="fa-solid fa-play-circle" style="color: var(--accent-cyan); margin-right: 6px;"></i> Scorecard Pipeline Runs</div>
+            <div class="spr-subtitle">Recent executions of NB_SCORECARD_PIPELINE (last 50) with per-step outcomes. Admin-only.</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+            <button class="spr-run-now" id="sprRunNow" onclick="triggerSprRun()" title="Kick off NB_SCORECARD_PIPELINE in Fabric right now">&#9658; Run now</button>
+            <button class="spr-refresh" onclick="loadSprRuns()" title="Refresh">&#8635; Refresh</button>
+            <a href="/scorecard/admin/tables" class="spr-back" title="Scorecard Table Manager"><i class="fa-solid fa-database"></i> Table Manager</a>
+            <a href="/scorecard/" class="spr-back">&larr; Back to Scorecard</a>
+        </div>
+    </div>
+
+    <div class="spr-trigger-banner" id="sprTriggerBanner"></div>
+
+    <div class="spr-layout">
+        <div class="spr-runs-nav" id="sprRunsNav">Loading&hellip;</div>
+        <div class="spr-detail" id="sprDetail">
+            <div class="spr-empty">Select a run from the left to see per-step detail.</div>
+        </div>
+    </div>
+</div>
+
+<script>
+let sprRuns = [];
+let sprCurrentRunId = null;
+let sprCurrentDetail = null;
+
+function sprEsc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function sprFmtDur(sec) {
+    if (sec === null || sec === undefined) return '';
+    if (sec < 60) return sec.toFixed(1) + 's';
+    const m = Math.floor(sec / 60);
+    const s = (sec - m * 60).toFixed(0);
+    return `${m}m ${s}s`;
+}
+
+function sprFmtWhen(iso) {
+    if (!iso) return '';
+    // Server sends UTC; render in local time as MM/DD HH:MM.
+    const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const HH = String(d.getHours()).padStart(2, '0');
+    const MM = String(d.getMinutes()).padStart(2, '0');
+    return `${mm}/${dd} ${HH}:${MM}`;
+}
+
+async function loadSprRuns() {
+    const nav = document.getElementById('sprRunsNav');
+    nav.innerHTML = '<div class="spr-empty" style="padding:20px;">Loading&hellip;</div>';
+    try {
+        const r = await fetch('/scorecard/api/admin/runs');
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || r.status);
+        sprRuns = j.runs || [];
+        renderSprNav();
+        // Deep-link support: ?run_id=X in the URL wins over "select latest".
+        const urlRunId = new URLSearchParams(location.search).get('run_id');
+        if (urlRunId && sprRuns.some(x => x.run_id === urlRunId)) {
+            selectSprRun(urlRunId);
+        } else if (sprCurrentRunId && sprRuns.some(x => x.run_id === sprCurrentRunId)) {
+            selectSprRun(sprCurrentRunId);
+        } else if (sprRuns.length) {
+            selectSprRun(sprRuns[0].run_id);
+        }
+    } catch (e) {
+        nav.innerHTML = `<div class="spr-empty">Failed: ${sprEsc(e.message || e)}</div>`;
+    }
+}
+
+function renderSprNav() {
+    const nav = document.getElementById('sprRunsNav');
+    if (!sprRuns.length) {
+        nav.innerHTML = '<div class="spr-empty">No runs recorded.</div>';
+        return;
+    }
+    nav.innerHTML = sprRuns.map(run => {
+        const counts = [`${run.n_complete}/${run.steps}`];
+        if (run.n_failed) counts.push(`<span class="fail">F:${run.n_failed}</span>`);
+        if (run.n_skipped) counts.push(`<span class="skip">S:${run.n_skipped}</span>`);
+        const active = run.run_id === sprCurrentRunId ? ' active' : '';
+        return `<div class="spr-run-item${active}" data-run-id="${sprEsc(run.run_id)}" onclick="selectSprRun('${run.run_id.replace(/'/g, "\\'")}')">
+            <div class="top">
+                <span class="spr-status ${sprEsc(run.overall_status)}">${sprEsc(run.overall_status)}</span>
+                <span class="when">${sprEsc(sprFmtWhen(run.run_end_utc || run.run_start_utc))}</span>
+                <span class="dur">${sprEsc(sprFmtDur(run.total_duration_sec))}</span>
+            </div>
+            <div class="runid" title="${sprEsc(run.run_id)}">${sprEsc(run.run_id)}</div>
+            <div class="counts">${counts.join(' &middot; ')} &middot; ${run.total_rows.toLocaleString()} rows</div>
+        </div>`;
+    }).join('');
+}
+
+async function selectSprRun(runId) {
+    sprCurrentRunId = runId;
+    _sprSyncUrl();
+    document.querySelectorAll('.spr-run-item').forEach(el => el.classList.toggle('active', el.dataset.runId === runId));
+    const detail = document.getElementById('sprDetail');
+    detail.innerHTML = '<div class="spr-empty">Loading&hellip;</div>';
+    try {
+        const r = await fetch(`/scorecard/api/admin/runs/${encodeURIComponent(runId)}`);
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || r.status);
+        sprCurrentDetail = j;
+        renderSprDetail();
+    } catch (e) {
+        detail.innerHTML = `<div class="spr-empty">Failed: ${sprEsc(e.message || e)}</div>`;
+    }
+}
+
+function _sprSyncUrl() {
+    const p = new URLSearchParams();
+    if (sprCurrentRunId) p.set('run_id', sprCurrentRunId);
+    const url = p.toString() ? `${location.pathname}?${p.toString()}` : location.pathname;
+    history.replaceState(null, '', url);
+}
+
+function renderSprDetail() {
+    if (!sprCurrentDetail) return;
+    const runSummary = sprRuns.find(r => r.run_id === sprCurrentDetail.run_id) || {};
+    const steps = sprCurrentDetail.steps || [];
+    const totalRows = steps.reduce((a, s) => a + (s.rows_affected || 0), 0);
+    const failedCount = steps.filter(s => s.status === 'FAILED').length;
+
+    const meta = `<div class="spr-meta">
+        <div class="row">
+            <div><span class="k">Run ID</span> <span class="spr-runid">${sprEsc(sprCurrentDetail.run_id)}</span></div>
+            <div><span class="k">Status</span> <span class="spr-status ${sprEsc(runSummary.overall_status || '')}">${sprEsc(runSummary.overall_status || '')}</span></div>
+            <div><span class="k">Started (local)</span> <span class="v">${sprEsc(sprFmtWhen(runSummary.run_start_utc))}</span></div>
+            <div><span class="k">Ended (local)</span> <span class="v">${sprEsc(sprFmtWhen(runSummary.run_end_utc))}</span></div>
+            <div><span class="k">Total duration</span> <span class="v">${sprEsc(sprFmtDur(runSummary.total_duration_sec))}</span></div>
+            <div><span class="k">Total rows processed</span> <span class="v">${totalRows.toLocaleString()}</span></div>
+            <div><span class="k">Steps</span> <span class="v">${steps.length} (${failedCount} failed)</span></div>
+        </div>
+    </div>`;
+
+    const stepsHtml = `<div class="spr-steps-wrap"><table class="spr-steps">
+        <thead><tr>
+            <th style="text-align:right;">#</th>
+            <th>Group</th>
+            <th>Step</th>
+            <th>Status</th>
+            <th style="text-align:right;">Duration</th>
+            <th style="text-align:right;">Rows</th>
+            <th>Error</th>
+        </tr></thead>
+        <tbody>${steps.map(s => {
+            const isFailed = s.status === 'FAILED';
+            const err = s.error_msg && s.error_msg.trim() !== ''
+                ? `<div class="spr-step-err" onclick="this.classList.toggle('spr-step-err-expanded')" title="Click to expand">${sprEsc(s.error_msg)}</div>`
+                : '';
+            return `<tr class="${isFailed ? 'failed' : ''}">
+                <td class="spr-step-order">${s.step_order}</td>
+                <td><span class="spr-step-group">${sprEsc(s.step_group)}</span></td>
+                <td class="spr-step-name">${sprEsc(s.step_name)}</td>
+                <td><span class="spr-status ${sprEsc(s.status)}">${sprEsc(s.status)}</span></td>
+                <td class="spr-step-dur">${sprEsc(sprFmtDur(s.duration_sec))}</td>
+                <td class="spr-step-rows">${(s.rows_affected || 0).toLocaleString()}</td>
+                <td>${err}</td>
+            </tr>`;
+        }).join('')}</tbody>
+    </table></div>`;
+
+    document.getElementById('sprDetail').innerHTML = meta + stepsHtml;
+}
+
+loadSprRuns();
+
+// ── Trigger a Fabric run ─────────────────────────────────────────────────
+let sprTriggerPoll = null;
+let sprTriggerStartTime = null;
+let sprPreTriggerRunIds = new Set();
+
+async function triggerSprRun() {
+    if (!confirm('Trigger a Fabric run of NB_SCORECARD_PIPELINE right now?\n\nThe run typically takes ~30 seconds. It will appear in the list at the top once Fabric writes the first log row.')) return;
+    const btn = document.getElementById('sprRunNow');
+    btn.disabled = true;
+    _sprBanner('pending', '<span class="spinner"></span> Sending trigger to Fabric&hellip;');
+    sprPreTriggerRunIds = new Set(sprRuns.map(r => r.run_id));
+    try {
+        const r = await fetch('/scorecard/api/admin/runs/trigger', { method: 'POST' });
+        const j = await r.json();
+        if (!r.ok) {
+            _sprBanner('err', `Trigger failed: ${sprEsc(j.error || r.status)}`);
+            btn.disabled = false;
+            return;
+        }
+        sprTriggerStartTime = Date.now();
+        _sprBanner('pending', `<span class="spinner"></span> Trigger accepted by Fabric (${sprEsc(j.triggered_at)}). Watching for the new run to appear&hellip; <span class="spr-trigger-close" onclick="_sprCancelWatch()">Stop watching &times;</span>`);
+        if (sprTriggerPoll) clearInterval(sprTriggerPoll);
+        sprTriggerPoll = setInterval(_sprWatchForNewRun, 8000);
+        setTimeout(_sprWatchForNewRun, 4000);
+    } catch (e) {
+        _sprBanner('err', `Trigger error: ${sprEsc(e.message || e)}`);
+        btn.disabled = false;
+    }
+}
+
+async function _sprWatchForNewRun() {
+    try {
+        const r = await fetch('/scorecard/api/admin/runs');
+        const j = await r.json();
+        const newRun = (j.runs || []).find(x => !sprPreTriggerRunIds.has(x.run_id));
+        if (newRun) {
+            sprRuns = j.runs;
+            renderSprNav();
+            selectSprRun(newRun.run_id);
+            _sprBanner('ok', `New run <code>${sprEsc(newRun.run_id)}</code> appeared &mdash; selected on the left. <span class="spr-trigger-close" onclick="_sprCancelWatch()">&times;</span>`);
+            clearInterval(sprTriggerPoll); sprTriggerPoll = null;
+            document.getElementById('sprRunNow').disabled = false;
+            return;
+        }
+        const elapsed = Math.round((Date.now() - sprTriggerStartTime) / 1000);
+        if (elapsed > 240) {
+            _sprBanner('err', `No new run appeared in ${elapsed}s. Check Fabric portal manually. <span class="spr-trigger-close" onclick="_sprCancelWatch()">&times;</span>`);
+            clearInterval(sprTriggerPoll); sprTriggerPoll = null;
+            document.getElementById('sprRunNow').disabled = false;
+        } else {
+            _sprBanner('pending', `<span class="spinner"></span> Watching for new run (${elapsed}s elapsed)&hellip; typical time to first log row is 15-45s. <span class="spr-trigger-close" onclick="_sprCancelWatch()">Stop watching &times;</span>`);
+        }
+    } catch (e) { /* keep polling */ }
+}
+
+function _sprCancelWatch() {
+    if (sprTriggerPoll) { clearInterval(sprTriggerPoll); sprTriggerPoll = null; }
+    document.getElementById('sprRunNow').disabled = false;
+    document.getElementById('sprTriggerBanner').classList.remove('on');
+}
+
+function _sprBanner(state, html) {
+    const b = document.getElementById('sprTriggerBanner');
+    b.className = 'spr-trigger-banner on ' + state;
+    b.innerHTML = html;
+}
+</script>
+{% endblock %}
