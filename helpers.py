@@ -165,8 +165,9 @@ def _get_fabric_api_token(env):
       1. In-memory cache (not expired)
       2. .fabric_api_token.json disk cache (not expired)
       3. MSAL silent refresh (.msal_cache.json)
-      4. azure.identity silent via auth record
-      5. Interactive browser login (last resort)
+      4. MSAL client credentials (AZURE_CLIENT_ID/SECRET/TENANT_ID) — works on Azure App Service
+      5. azure.identity silent via auth record
+      6. Interactive browser login (last resort, local-dev only)
     """
     import time as _time
     scope = "https://api.fabric.microsoft.com/.default"
@@ -203,7 +204,33 @@ def _get_fabric_api_token(env):
             pass
         return token
 
-    # 4 & 5. azure.identity — silent via auth record, then interactive
+    # 4. Client credentials: works on Azure App Service (no browser needed).
+    #    AZURE_CLIENT_ID/SECRET/TENANT_ID are the same app registration used for SSO.
+    try:
+        import msal as _msal
+        _cc_id = env.get("AZURE_CLIENT_ID")
+        _cc_secret = env.get("AZURE_CLIENT_SECRET")
+        _cc_tenant = env.get("AZURE_TENANT_ID")
+        if _cc_id and _cc_secret and _cc_tenant:
+            _cc_app = _msal.ConfidentialClientApplication(
+                _cc_id,
+                client_credential=_cc_secret,
+                authority=f"https://login.microsoftonline.com/{_cc_tenant}",
+            )
+            _cc_result = _cc_app.acquire_token_for_client(scopes=[scope])
+            if _cc_result and "access_token" in _cc_result:
+                _cc_exp = int(_time.time()) + int(_cc_result.get("expires_in", 3600))
+                _fabric_token_cache[cache_key] = {"token": _cc_result["access_token"], "expires_on": _cc_exp}
+                try:
+                    with open(_FABRIC_API_TOKEN_CACHE_PATH, "w") as f:
+                        json.dump({"token": _cc_result["access_token"], "expires_on": _cc_exp}, f)
+                except Exception:
+                    pass
+                return _cc_result["access_token"]
+    except Exception:
+        pass
+
+    # 5 & 6. azure.identity — silent via auth record, then interactive
     from azure.identity import InteractiveBrowserCredential, TokenCachePersistenceOptions
     cache_options = TokenCachePersistenceOptions(name="helpdesk_triage")
     kwargs = {"cache_persistence_options": cache_options}
