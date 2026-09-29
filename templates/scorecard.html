@@ -8,6 +8,23 @@
     .sc-tab:hover { color: var(--text-primary); }
     .sc-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
 
+    /* Collapsible "About this tab" blurb -- collapsed by default; open state
+       persisted per tab in localStorage so users don't have to re-collapse.
+       Class is deliberately .sc-tab-blurb (not .sc-blurb) to avoid colliding
+       with the slideout per-measure .sc-blurb which is display:none until
+       toggled on -- that later rule was hiding this one otherwise. */
+    .sc-tab-blurb { margin: 0 0 12px; background: var(--input-bg); border: 1px solid var(--border-input); border-radius: 6px; }
+    .sc-tab-blurb summary { list-style: none; padding: 8px 14px; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px; user-select: none; }
+    .sc-tab-blurb summary::-webkit-details-marker { display: none; }
+    .sc-tab-blurb summary::before { content: '\25B6'; color: var(--accent-cyan); font-size: 0.7rem; transition: transform 0.15s; }
+    .sc-tab-blurb[open] summary::before { transform: rotate(90deg); }
+    .sc-tab-blurb summary:hover { color: var(--accent-cyan); }
+    .sc-tab-blurb-body { padding: 4px 18px 14px 30px; font-size: 0.85rem; line-height: 1.55; color: var(--text-primary); }
+    .sc-tab-blurb-body p { margin: 0 0 8px; }
+    .sc-tab-blurb-body strong { color: var(--text-primary); }
+    .sc-tab-blurb-body ul { margin: 4px 0 8px; padding-left: 20px; }
+    .sc-tab-blurb-body li { margin-bottom: 4px; }
+
     /* Ribbon stat bar */
     .sc-ribbon { display: flex; align-items: center; gap: 22px; padding: 12px 16px; background: var(--surface-raised); border: 1px solid var(--border-medium); border-radius: 8px; margin-bottom: 12px; flex-wrap: wrap; }
     .sc-stat { display: flex; flex-direction: column; gap: 2px; }
@@ -78,8 +95,27 @@
     .sc-override-by { font-size: 0.68rem; color: #ff9800; margin-left: 8px; white-space: nowrap; }
     .sc-blurb-toggle { align-self: flex-start; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-secondary); padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; }
     .sc-blurb-toggle:hover { border-color: var(--accent-cyan); color: var(--text-primary); }
-    .sc-blurb { font-size: 0.7rem; color: var(--text-secondary); line-height: 1.4; margin-top: 2px; max-width: 260px; white-space: normal; display: none; }
-    #scDetailContent.blurbs-on .sc-blurb { display: block; }
+
+    /* Slideout header subtotals: Leadership + Maintenance + RM Score = Overall.
+       Reconciliation cell tints red when the math doesn't add up (catches
+       backend inconsistencies before a stakeholder emails asking). */
+    .sc-detail-subtotals { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; font-size: 0.78rem; color: var(--text-secondary); }
+    .sc-detail-subtotal { padding: 2px 8px; background: var(--input-bg); border: 1px solid var(--border-input); border-radius: 4px; }
+    .sc-detail-subtotal b { color: var(--text-primary); font-family: Consolas, monospace; font-weight: 700; }
+    .sc-detail-subtotal-eq { padding: 2px 10px; background: rgba(0,169,200,0.10); border: 1px solid var(--accent-cyan); border-radius: 4px; color: var(--accent-cyan); font-weight: 600; }
+    .sc-detail-subtotal-eq b { color: var(--accent-cyan); font-family: Consolas, monospace; }
+    .sc-detail-subtotal-eq.mismatch { background: rgba(248,113,113,0.15); border-color: #f87171; color: #f87171; }
+    .sc-detail-subtotal-eq.mismatch b { color: #f87171; }
+
+    /* Per-measure "How was this scored?" explanation. Hidden by default; shown
+       when the header toggle is on (adds .explains-on to the scroll container).
+       Full-width under the score row (flex-basis 100% forces .popout-row to
+       wrap and puts the explanation on its own line beneath the label+value). */
+    .sc-score-explain { display: none; flex-basis: 100%; width: 100%; margin-top: 6px; padding: 8px 12px; border-left: 3px solid var(--accent-cyan); background: rgba(0,169,200,0.06); border-radius: 3px; font-size: 1.14rem; line-height: 1.5; }
+    .popout-scroll.explains-on .sc-score-explain { display: block; }
+    .popout-scroll.explains-on .popout-row { flex-wrap: wrap; }
+    .sc-score-explain-verdict { color: var(--text-primary); }
+    .sc-score-explain-rule { color: var(--text-secondary); margin-top: 4px; font-size: 1.08rem; font-style: italic; }
 
     .sc-dd-icon { cursor: pointer; opacity: 0.7; font-size: 1.2rem; }
     .sc-dd-icon:hover { opacity: 1; }
@@ -237,7 +273,50 @@
         color: #ffffff; background: #dc8e8e; font-weight: 800;
     }
     .sc-chip-na { color: var(--text-secondary); }
-    .sc-table td.sc-overridden { box-shadow: inset 0 0 0 2px #ff9800; }
+    /* Overridden cells: the "orange border" wraps the value block only (not the whole
+       td) so the visual pop stays tight against the data. */
+    .sc-table td.sc-overridden { box-shadow: none; }
+    .sc-table td.sc-overridden .sc-chip-pass,
+    .sc-table td.sc-overridden .sc-chip-fail,
+    .sc-table td.sc-overridden .sc-chip-neutral,
+    .sc-table td.sc-overridden .sc-hug {
+        box-shadow: 0 0 0 2px #ff9800;
+    }
+    .sc-hug { display: inline-block; padding: 1px 6px; border-radius: 3px; }
+
+    /* RM Score chip: same shape as P/F chips (padded, min-width, monospace,
+       centered) but neutral -- no colored fill, inherits the row background
+       like Overall Score. Border only shows when the cell is overridden. */
+    .sc-chip-neutral {
+        display: inline-block; min-width: 48px; padding: 1px 7px; border-radius: 3px;
+        font-family: Consolas, monospace; font-weight: 700; text-align: center;
+        color: var(--text-primary);
+    }
+
+    /* TEMP debug marker (per user request): bright orange border on every button
+       currently visible so we can point out which ones are admin-only and should
+       be ghosted. Remove once we've walked through the buttons together. */
+    .content-header button,
+    .content-header .sc-reference-btn,
+    .sc-container button,
+    .sc-container .sc-reference-btn,
+    .sc-container .col-filter-btn,
+    .scDetailBackdrop button,
+    #scDetailOverlay button,
+    .popout-overlay button {
+        border: 2px solid #ff8c00 !important;
+    }
+
+    /* "View as RM" admin simulator: dropdown to pick an RM to impersonate + a
+       persistent purple banner once active, so it's impossible to forget you're
+       in simulation mode. */
+    .sc-view-as-picker select { background: var(--input-bg); color: var(--text-primary); border: 1px solid var(--border-input); padding: 5px 10px; border-radius: 4px; font-size: 0.78rem; cursor: pointer; }
+    .sc-view-as-picker select:hover { border-color: var(--accent-cyan); }
+    .sc-view-as-banner { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; background: rgba(168,85,247,0.18); border: 1px solid #a855f7; color: #d8b4fe; border-radius: 4px; font-size: 0.78rem; font-weight: 600; }
+    .sc-view-as-banner b { color: #ffffff; font-family: Consolas, monospace; }
+    .sc-view-as-clear { background: transparent; border: 1px solid rgba(216,180,254,0.5); color: #d8b4fe; padding: 2px 8px; border-radius: 3px; font-size: 0.72rem; cursor: pointer; }
+    .sc-view-as-clear:hover { background: rgba(168,85,247,0.3); color: #fff; }
+
     .sc-total-val { font-family: Consolas, monospace; font-weight: 700; color: var(--text-primary); }
     .sc-prior-val { font-family: Consolas, monospace; font-size: 0.72rem; color: var(--accent-gold); }
     .sc-prior-col { background: rgba(251,191,36,0.06); }
@@ -262,21 +341,21 @@
     .sc-reference-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
     .sc-ref-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 1100; align-items: center; justify-content: center; }
     .sc-ref-overlay.open { display: flex; }
-    .sc-ref-modal { background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 8px; width: 90vw; max-width: 900px; height: 85vh; display: flex; flex-direction: column; overflow: hidden; }
+    .sc-ref-modal { background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 8px; width: 96vw; max-width: 1400px; height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
     .sc-ref-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border-input); flex-shrink: 0; }
-    .sc-ref-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
-    .sc-ref-close { background: none; border: none; color: var(--text-secondary); font-size: 1.4rem; line-height: 1; cursor: pointer; }
+    .sc-ref-title { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
+    .sc-ref-close { background: none; border: none; color: var(--text-secondary); font-size: 1.7rem; line-height: 1; cursor: pointer; }
     .sc-ref-close:hover { color: var(--text-primary); }
     .sc-ref-tabs { display: flex; gap: 4px; padding: 8px 16px 0; border-bottom: 1px solid var(--border-input); flex-shrink: 0; }
-    .sc-ref-tab { background: none; border: none; color: var(--text-secondary); padding: 8px 14px; font-size: 0.8rem; cursor: pointer; border-bottom: 2px solid transparent; }
+    .sc-ref-tab { background: none; border: none; color: var(--text-secondary); padding: 8px 14px; font-size: 1.2rem; cursor: pointer; border-bottom: 2px solid transparent; }
     .sc-ref-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); font-weight: 600; }
     .sc-ref-body { flex: 1; overflow-y: auto; padding: 18px 24px; }
-    .sc-ref-intro { color: var(--text-secondary); font-size: 0.82rem; margin: 0 0 16px; }
+    .sc-ref-intro { color: var(--text-secondary); font-size: 1.23rem; margin: 0 0 16px; }
     .sc-crit-item { border: 1px solid var(--border-input); border-radius: 6px; padding: 12px 14px; margin-bottom: 10px; }
-    .sc-crit-name { font-weight: 700; color: var(--text-primary); font-size: 0.88rem; margin-bottom: 4px; }
-    .sc-crit-src { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 6px; }
+    .sc-crit-name { font-weight: 700; color: var(--text-primary); font-size: 1.32rem; margin-bottom: 4px; }
+    .sc-crit-src { font-size: 1.05rem; color: var(--text-secondary); margin-bottom: 6px; }
     .sc-crit-src a { color: var(--accent-cyan); }
-    .sc-crit-body { font-size: 0.8rem; color: var(--text-primary); line-height: 1.5; }
+    .sc-crit-body { font-size: 1.2rem; color: var(--text-primary); line-height: 1.5; }
     .sc-crit-body ul { margin: 4px 0; padding-left: 18px; }
     .sc-crit-body ul ul { margin: 2px 0; }
     .sc-guide-section { margin-bottom: 16px; }
@@ -303,6 +382,20 @@
         <span class="page-subtitle" id="scQuarterLabel">Loading...</span>
     </div>
     <div class="header-right">
+        {% if is_real_admin %}
+        {% if view_as_email %}
+        <span class="sc-view-as-banner" title="Simulating this RM's view of the Scorecard">
+            <i class="fa-solid fa-eye"></i> Viewing as: <b>{{ view_as_email }}</b>
+            <button type="button" class="sc-view-as-clear" onclick="scViewAsClear()" title="Return to admin view">&times; Exit</button>
+        </span>
+        {% else %}
+        <span class="sc-view-as-picker">
+            <select id="scViewAsSelect" onchange="scViewAsPick(this.value)">
+                <option value="">&#128065; View as RM...</option>
+            </select>
+        </span>
+        {% endif %}
+        {% endif %}
         <button type="button" class="sc-reference-btn" onclick="openScReference()"><i class="fa-solid fa-book"></i> Criteria &amp; Guides</button>
         {% if is_admin %}
         <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/tables'" title="Browse every table feeding or produced by the Scorecard pipeline (admin only)"><i class="fa-solid fa-database"></i> Table Manager</button>
@@ -321,6 +414,20 @@
     </div>
 
     <div id="scView_scorecard">
+    <details class="sc-tab-blurb" id="scBlurbScorecard">
+        <summary><i class="fa-solid fa-info-circle"></i> About the Scorecard tab &mdash; click to expand</summary>
+        <div class="sc-tab-blurb-body">
+            <p><strong>Purpose.</strong> Quarterly performance snapshot per property, broken into Leadership (measures the Property Manager owns) and Maintenance (measures the Maintenance Supervisor owns). Overall Score is the total across every measure plus the RM's subjective RM Score.</p>
+            <p><strong>How to use it.</strong></p>
+            <ul>
+                <li>Rows are your properties. Each row totals to the Overall Score at the far left.</li>
+                <li>Green <span class="sc-chip-pass" style="min-width:24px;">P</span> = pass, red <span class="sc-chip-fail" style="min-width:24px;">F</span> = fail; the number in the RM Score column is the RM's subjective 0-5 rating. Cells with an orange border have been manually overridden &mdash; hover for who and why.</li>
+                <li>Click any row to open the property's slideout for detail, notes, and RM score entry.</li>
+                <li>The ribbon at the top shows how many communities you're seeing, how many RM Scores you've saved, and how many communities have comments.</li>
+                <li>Click any column header to sort. Use the filter row under the header names to narrow down. Use the search box for a quick free-text filter.</li>
+            </ul>
+        </div>
+    </details>
     <div class="sc-ribbon">
         <div class="sc-stat">
             <span class="k">Communities</span>
@@ -340,8 +447,10 @@
                 Show prior quarter totals
             </label>
             <input type="text" class="sc-search" id="scSearch" placeholder="Search property, entity, or RM..." oninput="onSearchInput(this.value)">
+            {% if not is_pm %}
             <button type="button" class="sc-export-btn" onclick="showCalPrompt()">&#128197; Add to Outlook</button>
             <button type="button" class="sc-export-btn" onclick="exportSubjectiveScores()">&#9993; Email My Scores</button>
+            {% endif %}
             <button type="button" class="sc-export-btn" id="scFullExportBtn" style="display:none;" onclick="exportFullSummary()">&#128190; Full Summary Export</button>
         </div>
     </div>
@@ -358,6 +467,19 @@
     </div>
 
     <div id="scView_fallforecast" style="display:none;">
+    <details class="sc-tab-blurb" id="scBlurbForecast">
+        <summary><i class="fa-solid fa-info-circle"></i> About the Fall Forecast tab &mdash; click to expand</summary>
+        <div class="sc-tab-blurb-body">
+            <p><strong>Purpose.</strong> Snapshot of each property's current preleasing progress vs. target for the upcoming Fall academic year. Splits into Complete, New, and Renewal buckets so you can see whether target-vs-actual is off because renewals are slow, new leases are slow, or both.</p>
+            <p><strong>How to use it.</strong></p>
+            <ul>
+                <li>Rows are your properties; columns pair actual (CY) vs. target with a variance column showing how far ahead or behind you are.</li>
+                <li>Positive variance = ahead of target (good). Negative = behind (needs attention).</li>
+                <li>Search box narrows to a specific property, entity, or RM.</li>
+                <li>The <strong>Bonus Calc Form Export</strong> button generates the standardized workbook for finance sign-off.</li>
+            </ul>
+        </div>
+    </details>
     <div class="sc-ribbon">
         <div class="sc-stat">
             <span class="k">Snapshot</span>
@@ -387,7 +509,16 @@
         <div class="popout-title" id="scDetailTitle"></div>
         <div class="popout-subtitle" id="scDetailSubtitle"></div>
         <div class="popout-subtitle">Overall Score: <span class="sc-detail-overall" id="scDetailOverall">--</span></div>
-        <button type="button" class="sc-blurb-toggle" id="scBlurbToggleBtn" onclick="toggleBlurbs()">Show explanations</button>
+        <div class="sc-detail-subtotals">
+            <span class="sc-detail-subtotal">Leadership: <b id="scDetailLdrTotal">--</b></span>
+            <span class="sc-detail-subtotal">Maintenance: <b id="scDetailMsTotal">--</b></span>
+            <span class="sc-detail-subtotal">RM Score: <b id="scDetailRmScore">--</b></span>
+            <span class="sc-detail-subtotal-eq">= <b id="scDetailReconOverall">--</b></span>
+        </div>
+        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+            <button type="button" class="sc-blurb-toggle" id="scExplainToggleBtn" onclick="toggleScoreExplain()">Show "How was this scored?"</button>
+            <button type="button" class="sc-blurb-toggle" onclick="exportScDetailEmail()">&#9993; Export to email (Outlook)</button>
+        </div>
     </div>
     <div class="popout-scroll" id="scDetailContent"></div>
 </div>
@@ -501,6 +632,8 @@
 <script>
 window.SC_MEASURE_DEFS = {{ measure_defs | tojson }};
 window.SC_IS_ADMIN = {{ 'true' if is_admin else 'false' }};
+window.SC_IS_PM = {{ 'true' if is_pm else 'false' }};
+window.SC_PM_PROPERTY_KEY = {{ pm_property_key if pm_property_key is not none else 'null' }};
 </script>
 <script>
 // ── Criteria & Guides static reference content (ported from the original prototype) ──
@@ -823,7 +956,7 @@ async function loadData() {
     }
     scQuarterLabel = data.quarter_label || '';
     document.getElementById('scQuarterLabel').innerHTML = data.quarter_label
-        ? `<span class="sc-quarter-badge">${esc(data.quarter_label)}</span> -- ${data.is_admin ? 'All Properties (Admin)' : 'My Portfolio'}`
+        ? `<span class="sc-quarter-badge">${esc(data.quarter_label)}</span> -- ${data.is_admin ? 'All Properties (Admin)' : (window.SC_IS_PM ? 'My Property (Read-only)' : 'My Portfolio')}`
         : 'No data available yet';
     document.getElementById('scFullExportBtn').style.display = window.SC_IS_ADMIN ? '' : 'none';
     render();
@@ -978,8 +1111,15 @@ function cellHtml(c, row) {
         if (v === null || v === undefined) return `<td class="sc-chip-na sc-bool-cell${lockedCls}"${titleAttr}>--</td>`;
         return `<td class="sc-bool-cell${lockedCls}"${titleAttr}>${v ? '<span class="sc-chip-pass">P</span>' : '<span class="sc-chip-fail">F</span>'}</td>`;
     }
+    // RM Score: neutral chip (same shape as P/F chips, no color fill).
+    if (c.key === 'RMSCORE') {
+        const display = v === null || v === undefined ? '--' : v;
+        return `<td class="sc-bool-cell${lockedCls}"${titleAttr}><span class="sc-chip-neutral">${display}</span></td>`;
+    }
     if (c.type === 'total' || c.type === 'num') {
-        return `<td class="sc-total-val${lockedCls}"${titleAttr}>${v === null || v === undefined ? '--' : v}</td>`;
+        const display = v === null || v === undefined ? '--' : v;
+        // Wrap value in .sc-hug so the override "border" hugs the text block, not the whole td.
+        return `<td class="sc-total-val${lockedCls}"${titleAttr}><span class="sc-hug">${display}</span></td>`;
     }
     return `<td class="${lockedCls.trim()}"${titleAttr}>${esc(v ?? '--')}</td>`;
 }
@@ -1137,13 +1277,6 @@ window.addEventListener('resize', () => applyStickyHeaderOffsets());
 let scDetailPopout = null;
 let scDetailData = null;
 let scDetailBaseline = null;   // measure values as first loaded this session -- "the incoming value in the slideout"
-let blurbsVisible = false;
-
-function toggleBlurbs() {
-    blurbsVisible = !blurbsVisible;
-    document.getElementById('scDetailContent').classList.toggle('blurbs-on', blurbsVisible);
-    document.getElementById('scBlurbToggleBtn').textContent = blurbsVisible ? 'Hide explanations' : 'Show explanations';
-}
 
 let scDrilldownData = null;
 let scDdMeasureCode = null;
@@ -1330,6 +1463,7 @@ function openScDetail(propertyKey) {
             window.SC_MEASURE_DEFS.forEach(m => { scDetailBaseline[m.key] = data[m.key]; });
             renderScDetail();
             scDetailPopout.open();
+            loadScWhySummary(propertyKey);
         });
 }
 
@@ -1342,6 +1476,7 @@ function renderScDetail() {
     document.getElementById('scDetailTitle').textContent = d.PROPERTY_NAME || `Property ${d.PROPERTY_KEY}`;
     document.getElementById('scDetailSubtitle').innerHTML = `Entity ${esc(d.ENTITY_NUMBER || '--')} \u00B7 ${esc(d.RM_NAME || '--')} \u00B7 <span class="sc-quarter-badge">${esc(d.QUARTER_YEAR || '')}</span>`;
     document.getElementById('scDetailOverall').textContent = d.OVERALL ?? '--';
+    _scUpdateSubtotals(d);
 
     const leadership = window.SC_MEASURE_DEFS.filter(m => m.group === 'leadership' && m.key !== 'RMSCORE');
     const maintenance = window.SC_MEASURE_DEFS.filter(m => m.group === 'maintenance');
@@ -1360,7 +1495,152 @@ function renderScDetail() {
             <div class="popout-section-body">${notesSectionHtml(d)}</div>
         </div>
     `;
-    document.getElementById('scDetailContent').classList.toggle('blurbs-on', blurbsVisible);
+    document.getElementById('scDetailContent').classList.toggle('explains-on', scoreExplainVisible);
+}
+
+// Header math: Leadership + Maintenance + RM Score should equal Overall Score.
+// Uses the same LDRTOTAL / MSTOTAL / RMSCORE fields the backend already returns
+// so this is a display-only reconciliation (nothing gets re-computed here).
+function _scUpdateSubtotals(d) {
+    const ldr = d.LDRTOTAL, ms = d.MSTOTAL, rm = d.RMSCORE, overall = d.OVERALL;
+    const fmt = v => (v === null || v === undefined) ? '--' : v;
+    document.getElementById('scDetailLdrTotal').textContent = fmt(ldr);
+    document.getElementById('scDetailMsTotal').textContent = fmt(ms);
+    document.getElementById('scDetailRmScore').textContent = fmt(rm);
+    // Reconciliation: compute sum locally and flag if it doesn't match Overall.
+    const nums = [ldr, ms, rm].map(x => (typeof x === 'number' ? x : parseFloat(x))).filter(x => !isNaN(x));
+    const sum = nums.length ? nums.reduce((a, b) => a + b, 0) : null;
+    const reconEl = document.getElementById('scDetailReconOverall');
+    reconEl.textContent = fmt(sum);
+    const overallNum = typeof overall === 'number' ? overall : parseFloat(overall);
+    const mismatch = sum !== null && !isNaN(overallNum) && Math.abs(sum - overallNum) > 0.01;
+    reconEl.parentElement.classList.toggle('mismatch', mismatch);
+}
+
+let scoreExplainVisible = false;
+// Per-property tailored explanations from /api/property/<key>/why-summary.
+// {measure_code: {status, text}} -- null while loading; populated on slideout open.
+let scWhySummaries = null;
+let scWhySummariesForPropertyKey = null;
+
+function toggleScoreExplain() {
+    scoreExplainVisible = !scoreExplainVisible;
+    document.getElementById('scExplainToggleBtn').textContent =
+        scoreExplainVisible ? 'Hide "How was this scored?"' : 'Show "How was this scored?"';
+    if (scDetailData) renderScDetail();
+}
+
+// Fetch tailored per-measure summaries for the currently open property. Cached
+// per-property_key so re-toggling the panel doesn't re-query.
+function loadScWhySummary(propertyKey) {
+    if (scWhySummariesForPropertyKey === propertyKey && scWhySummaries) return;
+    scWhySummariesForPropertyKey = propertyKey;
+    scWhySummaries = null;
+    fetch(`/scorecard/api/property/${propertyKey}/why-summary`).then(r => r.json()).then(j => {
+        if (scWhySummariesForPropertyKey !== propertyKey) return; // stale
+        scWhySummaries = (j && j.summaries) || {};
+        if (scoreExplainVisible && scDetailData) renderScDetail();
+    }).catch(() => { scWhySummaries = {}; });
+}
+
+// Per-measure verdict rendering. Prefers the property-specific text from
+// scWhySummaries (tailored counts, thresholds, etc.); falls back to a
+// generic pass/fail sentence + the rule blurb from SC_MEASURE_DEFS.
+function scoreExplanationHtml(m, row) {
+    if (!scoreExplainVisible) return '';
+    // Preferred path: tailored per-property summary from the backend.
+    if (scWhySummaries && scWhySummaries[m.key]) {
+        const s = scWhySummaries[m.key];
+        const statusColor = {
+            pass: '#4ade80', fail: '#f38ba8', override: '#f59e0b',
+            nodata: 'var(--text-secondary)', info: 'var(--accent-cyan)',
+            pass_generic: '#4ade80', fail_generic: '#f38ba8', generic: 'var(--text-secondary)',
+        }[s.status] || 'var(--text-primary)';
+        return `<div class="sc-score-explain">
+            <div class="sc-score-explain-verdict" style="color:${statusColor};">${esc(s.text)}</div>
+            <div class="sc-score-explain-rule"><b>Rule:</b> ${esc(m.blurb || '')}</div>
+        </div>`;
+    }
+    // Fallback (while loading or if the endpoint failed).
+    const v = row[m.key];
+    const locked = !!row[`${m.key}_LOCKED`];
+    const lockedBy = row[`${m.key}_LOCKED_BY`];
+    const reason = row[`${m.key}_REASON`];
+    let verdict;
+    if (locked) {
+        verdict = `<b>Manually overridden</b> to <b>${v === null || v === undefined ? '(no value)' : v}</b>` +
+            (lockedBy ? ` by ${esc(lockedBy)}` : '') +
+            (reason ? `. Reason: <em>${esc(reason)}</em>` : '.');
+    } else if (m.type === 'bool') {
+        if (v === null || v === undefined) verdict = 'No data available &mdash; defaulted to PASS per the rule.';
+        else if (v) verdict = '<b style="color:#4ade80;">Passed</b> the rule described below.';
+        else verdict = '<b style="color:#f38ba8;">Failed</b> the rule described below.';
+    } else if (m.type === 'bool01') {
+        if (v === null || v === undefined) verdict = 'Not entered yet (RM subjective, defaults to no answer).';
+        else if (v) verdict = '<b style="color:#4ade80;">Yes</b> &mdash; RM confirmed.';
+        else verdict = '<b style="color:#f38ba8;">No</b> &mdash; RM confirmed not completed.';
+    } else if (m.type === 'num5') {
+        verdict = v === null || v === undefined
+            ? 'Not yet entered by the RM (0-5 subjective).'
+            : `RM entered <b>${v} / 5</b>.`;
+    } else {
+        verdict = `Value: <b>${v === null || v === undefined ? '(none)' : v}</b>.`;
+    }
+    return `<div class="sc-score-explain"><div class="sc-score-explain-verdict">${verdict}</div>
+        <div class="sc-score-explain-rule">${esc(m.blurb || '')}</div></div>`;
+}
+
+// Build an HTML email body for the current slideout view and open it in Outlook
+// via the mailto: fallback (which the Outlook COM approach would prefer, but
+// mailto is browser-safe and works for both dev and deployed).
+function exportScDetailEmail() {
+    if (!scDetailData) return;
+    const d = scDetailData;
+    const measureRow = m => {
+        const v = d[m.key];
+        const locked = !!d[`${m.key}_LOCKED`];
+        const val = v === null || v === undefined ? '--' : v;
+        const badge = m.type === 'bool'
+            ? (v ? '<span style="color:#0a7f2e;font-weight:700;">PASS</span>' : v === false ? '<span style="color:#a1273b;font-weight:700;">FAIL</span>' : '--')
+            : val;
+        const locNote = locked ? '<span style="color:#c07a00;font-size:0.85em;"> (overridden)</span>' : '';
+        return `<tr><td style="padding:4px 8px;border:1px solid #ccc;">${esc(m.label)}</td><td style="padding:4px 8px;border:1px solid #ccc;text-align:center;">${badge}${locNote}</td></tr>`;
+    };
+    const leadership = window.SC_MEASURE_DEFS.filter(m => m.group === 'leadership' && m.key !== 'RMSCORE');
+    const maintenance = window.SC_MEASURE_DEFS.filter(m => m.group === 'maintenance');
+    const html = `<!DOCTYPE html><html><body style="font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#222;">
+<h2 style="margin:0 0 6px;">${esc(d.PROPERTY_NAME || '')}
+    <span style="font-size:12pt;color:#666;font-weight:400;">&mdash; ${esc(d.QUARTER_YEAR || '')}</span></h2>
+<p style="margin:0 0 12px;color:#555;">Entity ${esc(d.ENTITY_NUMBER || '--')} &nbsp;&middot;&nbsp; RM: ${esc(d.RM_NAME || '--')}</p>
+<table style="border-collapse:collapse;font-size:11pt;margin-bottom:10px;">
+    <tr><td style="padding:4px 10px;font-weight:700;">Overall Score</td>
+        <td style="padding:4px 10px;font-weight:700;font-size:14pt;color:#0a7f2e;">${d.OVERALL ?? '--'}</td></tr>
+    <tr><td style="padding:2px 10px;">Leadership Total</td><td style="padding:2px 10px;">${d.LDRTOTAL ?? '--'}</td></tr>
+    <tr><td style="padding:2px 10px;">Maintenance Total</td><td style="padding:2px 10px;">${d.MSTOTAL ?? '--'}</td></tr>
+    <tr><td style="padding:2px 10px;">RM Score</td><td style="padding:2px 10px;">${d.RMSCORE ?? '--'}</td></tr>
+</table>
+<h3 style="margin:14px 0 4px;">Leadership</h3>
+<table style="border-collapse:collapse;font-size:10pt;"><tr><th style="padding:4px 8px;border:1px solid #ccc;background:#f0f0f0;">Measure</th><th style="padding:4px 8px;border:1px solid #ccc;background:#f0f0f0;">Result</th></tr>
+${leadership.map(measureRow).join('')}</table>
+<h3 style="margin:14px 0 4px;">Maintenance</h3>
+<table style="border-collapse:collapse;font-size:10pt;"><tr><th style="padding:4px 8px;border:1px solid #ccc;background:#f0f0f0;">Measure</th><th style="padding:4px 8px;border:1px solid #ccc;background:#f0f0f0;">Result</th></tr>
+${maintenance.map(measureRow).join('')}</table>
+${d.NOTES ? `<h3 style="margin:14px 0 4px;">Notes</h3><p style="margin:0;">${esc(d.NOTES)}</p>` : ''}
+</body></html>`;
+
+    const subject = `Scorecard - ${d.PROPERTY_NAME || 'Property'} - ${d.QUARTER_YEAR || ''}`;
+    fetch(`/scorecard/api/property/${d.PROPERTY_KEY}/email-scorecard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, html_body: html }),
+    }).then(r => r.json().then(res => ({ status: r.status, res })))
+      .then(({ status, res }) => {
+        if (status !== 200) { alert(res.error || 'Email failed'); return; }
+        alert(res.message || (res.mode === 'local_outlook_draft'
+            ? 'Draft opened in your Outlook.'
+            : 'Email sent.'));
+      })
+      .catch(err => alert('Email failed: ' + err.message));
 }
 
 function rmScoreHeaderHtml(d) {
@@ -1406,6 +1686,7 @@ function saveScRmScore(valueStr) {
         scDetailData.RMSCORE_LOCKED_BY = res.updated_by ?? scDetailData.RMSCORE_LOCKED_BY;
         scDetailData.LDRTOTAL = res.ldrtotal; scDetailData.MSTOTAL = res.mstotal; scDetailData.OVERALL = res.overall;
         document.getElementById('scDetailOverall').textContent = res.overall;
+        _scUpdateSubtotals(scDetailData);
         renderScDetail();
         const row = allRows.find(r => r.PROPERTY_KEY === scDetailData.PROPERTY_KEY);
         if (row) {
@@ -1485,6 +1766,7 @@ function measureRowHtml(m) {
         return `<div class="popout-row">
             <div class="popout-label">${esc(m.label)}${infoIcon}<div class="sc-blurb">${esc(m.blurb)}</div></div>
             <div class="sc-readonly-val ${cls}">${displayText}</div>
+            ${scoreExplanationHtml(m, d)}
         </div>`;
     }
 
@@ -1505,6 +1787,7 @@ function measureRowHtml(m) {
             </label>
             ${byHtml}
         </div>
+        ${scoreExplanationHtml(m, d)}
     </div>`;
 }
 
@@ -1519,6 +1802,7 @@ function saveScMeasure(field, valueStr, selectEl) {
         scDetailData[field] = value;
         scDetailData.LDRTOTAL = res.ldrtotal; scDetailData.MSTOTAL = res.mstotal; scDetailData.OVERALL = res.overall;
         document.getElementById('scDetailOverall').textContent = res.overall;
+        _scUpdateSubtotals(scDetailData);
         if (selectEl) {
             const m = window.SC_MEASURE_DEFS.find(x => x.key === field);
             selectEl.className = measureValClass(m, value);
@@ -1729,6 +2013,61 @@ function showScTab(tab) {
     });
     if (tab === 'fallforecast') renderFallForecast();
 }
+
+// Populate the "View as RM" dropdown on load (real-admin only; endpoint 403s
+// otherwise). Picking a value triggers a POST + reload; the server-rendered
+// banner is the source of truth for whether we're currently simulating.
+(function _wireScViewAs() {
+    const sel = document.getElementById('scViewAsSelect');
+    if (!sel) return; // Not real-admin, or already simulating -- picker not rendered.
+    fetch('/scorecard/api/admin/rms').then(r => r.json()).then(j => {
+        if (j.error) return;
+        for (const rm of (j.rms || [])) {
+            const opt = document.createElement('option');
+            opt.value = rm.email;
+            opt.textContent = `${rm.name}  (${rm.email})`;
+            sel.appendChild(opt);
+        }
+    });
+})();
+
+function scViewAsPick(email) {
+    if (!email) return;
+    fetch('/scorecard/api/admin/view-as-rm', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+    }).then(r => r.json()).then(j => {
+        if (j.error) { alert(j.error); return; }
+        location.reload();
+    });
+}
+
+function scViewAsClear() {
+    fetch('/scorecard/api/admin/view-as-clear', { method: 'POST' })
+        .then(r => r.json()).then(j => {
+            if (j.error) { alert(j.error); return; }
+            location.reload();
+        });
+}
+
+// Persist blurb collapsed/open state so users don't have to re-collapse each visit.
+(function _wireScBlurbs() {
+    const setup = (id, storageKey) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        try {
+            if (localStorage.getItem(storageKey) === '1') el.setAttribute('open', '');
+        } catch { /* ignore */ }
+        el.addEventListener('toggle', () => {
+            try { localStorage.setItem(storageKey, el.open ? '1' : '0'); } catch { /* ignore */ }
+        });
+    };
+    // Wait until the DOM has the blurb elements rendered.
+    document.addEventListener('DOMContentLoaded', () => {
+        setup('scBlurbScorecard', 'scorecard_blurb_scorecard');
+        setup('scBlurbForecast', 'scorecard_blurb_forecast');
+    });
+})();
 
 function sortFFCol(key) {
     scFFSort.dir = (scFFSort.col === key) ? -scFFSort.dir : 1;

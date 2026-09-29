@@ -112,11 +112,10 @@ def _require_access():
     return jsonify({"error": "unauthorized"}), 403
 
 
-def _is_admin():
-    """Check if current user is an admin for Leadership Scorecard (APP_ID=36).
-    Same dbo.APP_ADMINS-backed pattern used by every other AppHub module
-    (cultivate.py/fasttrack.py/etc.) -- admins see every property; everyone
-    else is scoped to their own RM_EMAIL via SCORECARD_CORE."""
+def _is_real_admin():
+    """Same admin check as _is_admin, but ignores any active "view as RM" simulation
+    so we always know whether the underlying user CAN toggle view-as (needed by
+    the view-as management endpoints themselves)."""
     if session.get("is_developer"):
         return True
     user = session.get("user", {})
@@ -132,6 +131,70 @@ def _is_admin():
         ) > 0
     finally:
         conn.close()
+
+
+def _is_admin():
+    """Check if current user is an admin for Leadership Scorecard (APP_ID=36).
+    Same dbo.APP_ADMINS-backed pattern used by every other AppHub module
+    (cultivate.py/fasttrack.py/etc.) -- admins see every property; everyone
+    else is scoped to their own RM_EMAIL via SCORECARD_CORE.
+
+    IF the admin has activated "View as <RM>" simulation (session key
+    sc_view_as_email), returns False so all scoping/gating treats them as
+    that RM. Use _is_real_admin() when you need the underlying flag (e.g.
+    to toggle out of the simulation)."""
+    if session.get("sc_view_as_email"):
+        return False
+    return _is_real_admin()
+
+
+def _effective_rm_email():
+    """The email used for RM-scoping in every read/write endpoint.
+    Returns the "view as" email if a real admin is currently simulating an
+    RM, else the signed-in user's own email."""
+    if session.get("sc_view_as_email") and _is_real_admin():
+        return session["sc_view_as_email"].lower()
+    return (session.get("user", {}).get("email") or "").lower()
+
+
+def _pm_property_key():
+    """Return the PROPERTY_KEY a Property Manager is scoped to, or None if
+    the current user is not a PM. Cached in the session after first lookup.
+
+    PM identification: Emp_Core.TITLE_GROUP contains 'Property Manager'
+    (case-insensitive) AND the user is NOT an admin (admin always wins).
+    Real admins simulating a PM via "view as" are NOT treated as PM here --
+    view-as only exists for RM simulation."""
+    if _is_real_admin():
+        return None
+    if "sc_pm_property_key" in session:
+        val = session["sc_pm_property_key"]
+        return val if val else None
+    user = session.get("user", {})
+    email = (user.get("email") or "").lower()
+    if not email:
+        session["sc_pm_property_key"] = 0
+        return None
+    profile = None
+    try:
+        profile = get_rm_profile(email)
+    except Exception:
+        profile = None
+    if not profile:
+        session["sc_pm_property_key"] = 0
+        return None
+    tg = (profile.get("title_group") or "").lower()
+    prop_key = profile.get("property_key")
+    if "property manager" in tg and prop_key:
+        session["sc_pm_property_key"] = int(prop_key)
+        return int(prop_key)
+    session["sc_pm_property_key"] = 0
+    return None
+
+
+def _is_pm():
+    """True if the current user is a Property Manager (single-property, read-only)."""
+    return _pm_property_key() is not None
 
 
 def get_rm_profile(email):
@@ -182,6 +245,8 @@ def _ctx(**kwargs):
             rm_profile = get_rm_profile(email)
         except Exception:
             rm_profile = None
+    view_as_email = session.get("sc_view_as_email") if _is_real_admin() else None
+    pm_prop_key = _pm_property_key()
     ctx = dict(
         modules=build_nav_modules(),
         active_module="leadership_scorecard",
@@ -190,6 +255,10 @@ def _ctx(**kwargs):
         is_dev_mode=session.get("is_dev_mode", False),
         rm_profile=rm_profile,
         is_admin=_is_admin(),
+        is_real_admin=_is_real_admin(),
+        view_as_email=view_as_email,
+        is_pm=pm_prop_key is not None,
+        pm_property_key=pm_prop_key,
         measure_defs=_MEASURE_DEFS,
     )
     ctx.update(kwargs)
@@ -1209,6 +1278,68 @@ def whoami():
     return jsonify({"session_email": user.get("email"), "emp_core_profile": profile})
 
 
+# ── "View as RM" admin simulation ────────────────────────────────────────
+# Lets a real admin browse the Scorecard exactly as any RM would see it,
+# for testing that RM_EMAIL scoping actually works in every view/list/API.
+# Session key sc_view_as_email holds the target email; when set, _is_admin
+# returns False and _effective_rm_email returns that email for scoping.
+
+@scorecard_bp.route("/api/admin/rms")
+@login_required
+def api_admin_rms():
+    """List distinct RM_EMAIL / RM_NAME pairs from SCORECARD_CORE so the
+    'View as RM' picker in the header can populate a dropdown. Real-admin
+    only (uses _is_real_admin so it stays available while simulating)."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_real_admin():
+        return jsonify({"error": "admin only"}), 403
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        rows = conn.fetchall("""
+            SELECT DISTINCT RM_EMAIL, RM_NAME
+            FROM dbo.SCORECARD_CORE
+            WHERE FLAG_CURRENT = 1 AND RM_EMAIL IS NOT NULL AND RM_EMAIL <> ''
+            ORDER BY RM_NAME
+        """)
+        return jsonify({"rms": [{"email": r[0], "name": r[1] or r[0]} for r in rows]})
+    finally:
+        conn.close()
+
+
+@scorecard_bp.route("/api/admin/view-as-rm", methods=["POST"])
+@login_required
+def api_admin_view_as_rm():
+    """Activate the 'view as RM' simulation. Requires the caller to be a
+    real admin. Payload: {'email': '<rm_email>'}."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_real_admin():
+        return jsonify({"error": "admin only"}), 403
+    payload = request.get_json(silent=True) or {}
+    email = (payload.get("email") or "").strip().lower()
+    if not email:
+        return jsonify({"error": "email required"}), 400
+    session["sc_view_as_email"] = email
+    return jsonify({"ok": True, "view_as_email": email})
+
+
+@scorecard_bp.route("/api/admin/view-as-clear", methods=["POST"])
+@login_required
+def api_admin_view_as_clear():
+    """Exit the 'view as RM' simulation. Available to real admins (so they
+    can toggle back) AND to anyone whose session has the key set (so a
+    stale key from a demoted user can always be cleared)."""
+    check = _require_access()
+    if check:
+        return check
+    session.pop("sc_view_as_email", None)
+    return jsonify({"ok": True})
+
+
 @scorecard_bp.route("/api/data")
 @login_required
 def api_data():
@@ -1228,8 +1359,8 @@ def api_data():
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
         admin = _is_admin()
-        user = session.get("user", {})
-        email = (user.get("email") or "").lower()
+        email = _effective_rm_email()
+        pm_key = _pm_property_key()
 
         latest = conn.fetchall("""
             SELECT TOP 1 AY, QUARTER FROM dbo.SCORECARD_CORE
@@ -1248,6 +1379,12 @@ def api_data():
                 WHERE FLAG_CURRENT = 1 AND AY = ? AND QUARTER = ?
                 ORDER BY PROPERTY_NAME
             """, (ay, quarter))
+        elif pm_key:
+            rows = conn.fetchall(f"""
+                SELECT {cols_sql} FROM dbo.SCORECARD_CORE
+                WHERE FLAG_CURRENT = 1 AND AY = ? AND QUARTER = ? AND PROPERTY_KEY = ?
+                ORDER BY PROPERTY_NAME
+            """, (ay, quarter, pm_key))
         else:
             rows = conn.fetchall(f"""
                 SELECT {cols_sql} FROM dbo.SCORECARD_CORE
@@ -1269,6 +1406,11 @@ def api_data():
                     SELECT {prior_cols_sql} FROM dbo.SCORECARD_CORE
                     WHERE FLAG_CURRENT = 1 AND AY = ? AND QUARTER = ?
                 """, (prev_ay, prev_q))
+            elif pm_key:
+                prior_rows = conn.fetchall(f"""
+                    SELECT {prior_cols_sql} FROM dbo.SCORECARD_CORE
+                    WHERE FLAG_CURRENT = 1 AND AY = ? AND QUARTER = ? AND PROPERTY_KEY = ?
+                """, (prev_ay, prev_q, pm_key))
             else:
                 prior_rows = conn.fetchall(f"""
                     SELECT {prior_cols_sql} FROM dbo.SCORECARD_CORE
@@ -1307,9 +1449,17 @@ def _scoped_property_row(conn, property_key, ay, quarter, admin, email, cols):
             f"SELECT {cols_sql} FROM dbo.SCORECARD_CORE WHERE PROPERTY_KEY = ? AND AY = ? AND QUARTER = ? AND FLAG_CURRENT = 1",
             (property_key, ay, quarter))
     else:
-        rows = conn.fetchall(
-            f"SELECT {cols_sql} FROM dbo.SCORECARD_CORE WHERE PROPERTY_KEY = ? AND AY = ? AND QUARTER = ? AND FLAG_CURRENT = 1 AND LOWER(RM_EMAIL) = ?",
-            (property_key, ay, quarter, email))
+        pm_key = _pm_property_key()
+        if pm_key:
+            if int(pm_key) != int(property_key):
+                return None
+            rows = conn.fetchall(
+                f"SELECT {cols_sql} FROM dbo.SCORECARD_CORE WHERE PROPERTY_KEY = ? AND AY = ? AND QUARTER = ? AND FLAG_CURRENT = 1",
+                (property_key, ay, quarter))
+        else:
+            rows = conn.fetchall(
+                f"SELECT {cols_sql} FROM dbo.SCORECARD_CORE WHERE PROPERTY_KEY = ? AND AY = ? AND QUARTER = ? AND FLAG_CURRENT = 1 AND LOWER(RM_EMAIL) = ?",
+                (property_key, ay, quarter, email))
     return rows[0] if rows else None
 
 
@@ -1326,8 +1476,7 @@ def api_property_detail(property_key):
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
         admin = _is_admin()
-        user = session.get("user", {})
-        email = (user.get("email") or "").lower()
+        email = _effective_rm_email()
         ay, quarter = _latest_period(conn)
         if ay is None:
             return jsonify({"error": "no data available"}), 404
@@ -1346,10 +1495,259 @@ def api_property_detail(property_key):
         # Reaching this line already proves the caller is either an admin or
         # the RM who owns this property (see _scoped_property_row) -- both
         # are allowed to override, per stakeholder direction 2026-09-22.
-        data["can_edit"] = True
+        # PMs are always read-only regardless of ownership match.
+        data["can_edit"] = not _is_pm()
         return jsonify(data)
     finally:
         conn.close()
+
+
+@scorecard_bp.route("/api/property/<int:property_key>/why-summary")
+@login_required
+def api_property_why_summary(property_key):
+    """Per-property tailored "how was this scored?" summary. Reads the property's
+    row + queries source tables for measures where we can compute a concrete
+    number (transactions counted, avg open days, etc.) and returns a plain-English
+    sentence per measure. Fallback to a generic pass/fail sentence for measures
+    we don't yet summarize with hard numbers (TC, TR, REP, RA)."""
+    check = _require_access()
+    if check:
+        return check
+    env = _get_env()
+    conn_app = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        admin = _is_admin()
+        email = _effective_rm_email()
+        ay, quarter = _latest_period(conn_app)
+        if ay is None:
+            return jsonify({"error": "no data available"}), 404
+        cols = ["PROPERTY_KEY", "PROPERTY_NAME", "ENTITY_NUMBER"]
+        for k in _MEASURE_KEYS:
+            cols += [k, f"{k}_LOCKED", f"{k}_LOCKED_BY", f"{k}_REASON"]
+        row = _scoped_property_row(conn_app, property_key, ay, quarter, admin, email, cols)
+        if row is None:
+            return jsonify({"error": "not found or not authorized"}), 404
+        property_row = dict(zip(cols, row))
+    finally:
+        conn_app.close()
+    summaries = _build_measure_summaries(env, property_key, property_row, ay, quarter)
+    return jsonify({"summaries": summaries, "quarter_label": f"{quarter} {ay}"})
+
+
+def _build_measure_summaries(env, property_key, property_row, ay, quarter):
+    """Per-measure tailored text for the "How was this scored?" slideout. One
+    dict per measure with {status, text}."""
+    q_start, q_end = _quarter_bounds(ay, quarter)
+    q_start_int = int(q_start.strftime("%Y%m%d"))
+    q_end_int = int(q_end.strftime("%Y%m%d"))
+    summaries = {}
+    conn_wh = SafeConnection(env, "WH_PROD2", None)
+    try:
+        # PCARD: count Prepaid Visa transactions in the quarter
+        try:
+            r = conn_wh.fetchall("""
+                SELECT COUNT(*) FROM dbo.LS_PREPAID_VISA
+                WHERE PROPERTY_KEY = ? AND PROPERTY_KEY IS NOT NULL
+                      AND DATETIME_RECONCILIATION BETWEEN ? AND ?
+            """, (property_key, q_start, q_end))
+            cnt = r[0][0] if r else 0
+            if cnt == 0:
+                summaries["PCARD"] = {"status": "pass", "text": f"PASSED. Zero prepaid Visa transactions in {quarter} {ay}. Rule: any transaction = fail."}
+            else:
+                summaries["PCARD"] = {"status": "fail", "text": f"FAILED. This property had {cnt} prepaid Visa transaction{'s' if cnt != 1 else ''} in {quarter} {ay}. Rule: zero transactions required to pass."}
+        except Exception as e:
+            summaries["PCARD"] = {"status": "generic", "text": f"(Could not summarize: {e})"}
+
+        # IIPP / LFA / PMLEO / MSLEO: monthly LEO snapshots
+        leo_map = {"IIPP": "IIPP_COMPLETE", "LFA": "LEASE_FILE_AUDIT_COMPLETE",
+                   "PMLEO": "BONUS_PM_SCORE", "MSLEO": "BONUS_MS_SCORE"}
+        for m, col in leo_map.items():
+            try:
+                r = conn_wh.fetchall(f"""
+                    SELECT COUNT(*), SUM(CASE WHEN [{col}] = 0 THEN 1 ELSE 0 END)
+                    FROM dbo.LEO_COMPLIANCE_EXPORT_FACT
+                    WHERE PROPERTY_KEY = ? AND DATE_KEY BETWEEN ? AND ?
+                """, (property_key, q_start_int, q_end_int))
+                total, failing = (r[0][0], r[0][1] or 0) if r else (0, 0)
+                if total == 0:
+                    summaries[m] = {"status": "nodata", "text": f"No LEO Compliance snapshots recorded for this property in {quarter} {ay}. Rule defaults such properties to PASS."}
+                elif failing > 0:
+                    summaries[m] = {"status": "fail", "text": f"FAILED. {failing} of {total} monthly LEO snapshot{'s' if total != 1 else ''} for {m} showed incomplete in {quarter} {ay}. Rule: any monthly incomplete = quarter fails."}
+                else:
+                    summaries[m] = {"status": "pass", "text": f"PASSED. All {total} monthly LEO snapshot{'s' if total != 1 else ''} for {m} showed complete in {quarter} {ay}."}
+            except Exception as e:
+                summaries[m] = {"status": "generic", "text": f"(Could not summarize: {e})"}
+
+        # CURB / PUBLICAREAS / MAINT / LOGS: RM Quarterly Inspection scores
+        insp_map = {"CURB": "SCORE_CURB_APPEAL", "PUBLICAREAS": "SCORE_PUBLIC_AREAS_AND_AMENITIES",
+                    "MAINT": "SCORE_MAINTENANCE", "LOGS": "SCORE_LOGS_AND_BINDERS"}
+        try:
+            r = conn_wh.fetchall("""
+                SELECT SCORE_CURB_APPEAL, SCORE_PUBLIC_AREAS_AND_AMENITIES,
+                       SCORE_MAINTENANCE, SCORE_LOGS_AND_BINDERS
+                FROM dbo.LS_RM_QUARTERLY_INSPECTION_SCORES_FACT
+                WHERE PROPERTY_KEY = ? AND AY = ? AND QUARTER = ?
+            """, (property_key, ay, quarter))
+            if r:
+                for i, m in enumerate(insp_map):
+                    score = r[0][i]
+                    if score is None:
+                        summaries[m] = {"status": "nodata", "text": f"RM Inspection did not include a {m} score for {quarter} {ay}."}
+                    elif float(score) >= 85:
+                        summaries[m] = {"status": "pass", "text": f"PASSED. RM Inspection {m} score for {quarter} {ay} = {score}. Rule: >= 85 to pass."}
+                    else:
+                        summaries[m] = {"status": "fail", "text": f"FAILED. RM Inspection {m} score for {quarter} {ay} = {score} (needed >= 85 to pass)."}
+            else:
+                for m in insp_map:
+                    summaries[m] = {"status": "nodata", "text": f"No RM Quarterly Inspection recorded for this property in {quarter} {ay}."}
+        except Exception as e:
+            for m in insp_map:
+                summaries[m] = {"status": "generic", "text": f"(Could not summarize: {e})"}
+
+        # WO / MSWO: avg net open days across completed work orders in the quarter
+        try:
+            r = conn_wh.fetchall("""
+                SELECT AVG(CAST(NET_OPEN_DAY_COUNT AS DECIMAL(10,2))), COUNT(*)
+                FROM dbo.WORK_ORDER_REQUESTS
+                WHERE PROPERTY_KEY = ? AND STATUS IN ('Complete', 'COMPLETED')
+                      AND COMPLETED_DATE BETWEEN ? AND ?
+                      AND NET_OPEN_DAY_COUNT IS NOT NULL
+            """, (property_key, q_start, q_end))
+            avg_days, wo_count = (r[0][0], r[0][1] or 0) if r else (None, 0)
+            for m in ["WO", "MSWO"]:
+                if wo_count == 0:
+                    summaries[m] = {"status": "nodata", "text": f"No completed work orders recorded for this property in {quarter} {ay}."}
+                else:
+                    avg_val = float(avg_days) if avg_days is not None else 0
+                    if avg_val <= 1.0:
+                        summaries[m] = {"status": "pass", "text": f"PASSED. Avg net open days across {wo_count} completed work order{'s' if wo_count != 1 else ''} in {quarter} {ay} = {avg_val:.2f}. Rule: <= 1 day to pass."}
+                    else:
+                        summaries[m] = {"status": "fail", "text": f"FAILED. Avg net open days across {wo_count} completed work order{'s' if wo_count != 1 else ''} in {quarter} {ay} = {avg_val:.2f} (needed <= 1 day)."}
+        except Exception as e:
+            for m in ["WO", "MSWO"]:
+                summaries[m] = {"status": "generic", "text": f"(Could not summarize: {e})"}
+    finally:
+        conn_wh.close()
+
+    # Subjective measures: use property_row directly (no DB query needed)
+    rm_val = property_row.get("RMSCORE")
+    if rm_val is None:
+        summaries["RMSCORE"] = {"status": "nodata", "text": "Not yet entered. This is the RM's subjective 0-5 rating of the Property Manager's leadership this quarter."}
+    else:
+        summaries["RMSCORE"] = {"status": "info", "text": f"RM entered {rm_val} / 5."}
+    surveys_val = property_row.get("SURVEYS")
+    if surveys_val is None:
+        summaries["SURVEYS"] = {"status": "nodata", "text": "Not yet entered by the RM."}
+    else:
+        summaries["SURVEYS"] = {"status": "pass" if surveys_val else "fail", "text": f"RM entered: {'Yes (surveys completed).' if surveys_val else 'No (surveys not completed).'}"}
+    noi_val = property_row.get("NOI")
+    if noi_val is None:
+        summaries["NOI"] = {"status": "nodata", "text": "Not yet entered by the RM. NOI is manually entered here; there is no automated file feed today."}
+    else:
+        summaries["NOI"] = {"status": "pass" if noi_val else "fail", "text": f"RM entered: {'Yes (NOI met budget).' if noi_val else 'No (NOI did not meet budget).'}"}
+
+    # Measures we don't yet summarize with hard numbers -- generic sentence.
+    for m in ["TC", "TR", "REP", "RA"]:
+        val = property_row.get(m)
+        if val is None:
+            summaries[m] = {"status": "nodata", "text": f"No data for the {m} measure yet in {quarter} {ay}. Per the rule, missing data defaults to PASS."}
+        elif val:
+            summaries[m] = {"status": "pass_generic", "text": f"PASSED the {m} measure this quarter. (Click the measure name in the grid header to see the underlying rows behind this result.)"}
+        else:
+            summaries[m] = {"status": "fail_generic", "text": f"FAILED the {m} measure this quarter. (Click the measure name in the grid header to see the underlying rows that drove this result.)"}
+
+    # Overrides trump everything else.
+    for m in list(summaries):
+        if property_row.get(f"{m}_LOCKED"):
+            v = property_row.get(m)
+            v_disp = "(no value)" if v is None else v
+            lb = property_row.get(f"{m}_LOCKED_BY") or "unknown"
+            reason = property_row.get(f"{m}_REASON")
+            reason_bit = f' Reason: "{reason}".' if reason else ""
+            summaries[m] = {"status": "override",
+                            "text": f'MANUALLY OVERRIDDEN to "{v_disp}" by {lb}.{reason_bit}'}
+
+    return summaries
+
+
+@scorecard_bp.route("/api/property/<int:property_key>/email-scorecard", methods=["POST"])
+@login_required
+def api_property_email_scorecard(property_key):
+    """Send the property's scorecard as an HTML email to the signed-in user.
+    Local Windows dev: creates a draft in the user's Outlook client via
+    win32com (so they can review before hitting Send). Everywhere else
+    (Azure App Service): sends immediately via Graph API sendMail using
+    the FabricPipelineApp's already-granted Mail.Send app permission.
+    Request body: {"subject": "...", "html_body": "..."}"""
+    check = _require_access()
+    if check:
+        return check
+    payload = request.get_json(silent=True) or {}
+    subject = (payload.get("subject") or f"Scorecard - Property {property_key}").strip()[:250]
+    html_body = payload.get("html_body") or ""
+    if not html_body:
+        return jsonify({"error": "html_body required"}), 400
+    user = session.get("user", {})
+    to_email = (user.get("email") or "").strip()
+    if not to_email:
+        return jsonify({"error": "no email on session"}), 400
+
+    if os.name == "nt":
+        try:
+            import win32com.client
+            outlook = win32com.client.Dispatch("Outlook.Application")
+            mail = outlook.CreateItem(0)
+            mail.Subject = subject
+            mail.To = to_email
+            mail.HTMLBody = html_body
+            mail.Display()
+            return jsonify({"ok": True, "mode": "local_outlook_draft",
+                            "message": f"Draft opened in your Outlook (to {to_email})."})
+        except Exception:
+            pass
+
+    try:
+        _send_via_graph(to_email, subject, html_body)
+        return jsonify({"ok": True, "mode": "graph_sent",
+                        "message": f"Email sent to {to_email}."})
+    except Exception as e:
+        return jsonify({"error": f"Send failed: {e}"}), 500
+
+
+def _send_via_graph(to_email, subject, html_body):
+    """POST /users/{email}/sendMail using the FabricPipelineApp client-credentials
+    token. The app already has Mail.Send app permission (verified 2026-09-28)."""
+    import msal
+    import requests as _requests
+    env = _get_env()
+    tenant_id = env.get("AZURE_TENANT_ID") or env.get("PBI_TENANT_ID")
+    client_id = env.get("AZURE_CLIENT_ID") or env.get("GRAPH_CLIENT_ID")
+    client_secret = env.get("AZURE_CLIENT_SECRET") or env.get("GRAPH_CLIENT_SECRET")
+    if not (tenant_id and client_id and client_secret):
+        raise RuntimeError("Graph API credentials missing on this environment")
+    app = msal.ConfidentialClientApplication(
+        client_id, authority=f"https://login.microsoftonline.com/{tenant_id}",
+        client_credential=client_secret,
+    )
+    result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
+    if "access_token" not in result:
+        raise RuntimeError(f"MSAL token: {result.get('error_description', result.get('error', 'unknown'))}")
+    tok = result["access_token"]
+    r = _requests.post(
+        f"https://graph.microsoft.com/v1.0/users/{to_email}/sendMail",
+        headers={"Authorization": f"Bearer {tok}", "Content-Type": "application/json"},
+        json={
+            "message": {
+                "subject": subject,
+                "body": {"contentType": "HTML", "content": html_body},
+                "toRecipients": [{"emailAddress": {"address": to_email}}],
+            },
+            "saveToSentItems": True,
+        },
+        timeout=30,
+    )
+    if r.status_code not in (200, 202):
+        raise RuntimeError(f"Graph sendMail HTTP {r.status_code}: {r.text[:300]}")
 
 
 def _update_own_property(conn, property_key, ay, quarter, admin, email, set_clause, params):
@@ -1385,6 +1783,8 @@ def api_toggle_override(property_key):
     check = _require_access()
     if check:
         return check
+    if _is_pm():
+        return jsonify({"error": "read-only for Property Managers"}), 403
     payload = request.get_json(force=True) or {}
     field = payload.get("field")
     enabled = bool(payload.get("enabled"))
@@ -1396,8 +1796,7 @@ def api_toggle_override(property_key):
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
         admin = _is_admin()
-        user = session.get("user", {})
-        email = (user.get("email") or "").lower()
+        email = _effective_rm_email()
         ay, quarter = _latest_period(conn)
         if ay is None:
             return jsonify({"error": "no data available"}), 404
@@ -1434,6 +1833,8 @@ def api_patch_property(property_key):
     check = _require_access()
     if check:
         return check
+    if _is_pm():
+        return jsonify({"error": "read-only for Property Managers"}), 403
     payload = request.get_json(force=True) or {}
     field = next(iter(payload.keys()), None)
     if field not in _MEASURE_KEYS:
@@ -1444,8 +1845,7 @@ def api_patch_property(property_key):
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
         admin = _is_admin()
-        user = session.get("user", {})
-        email = (user.get("email") or "").lower()
+        email = _effective_rm_email()
         ay, quarter = _latest_period(conn)
         if ay is None:
             return jsonify({"error": "no data available"}), 404
@@ -1491,6 +1891,8 @@ def api_save_notes(property_key):
     check = _require_access()
     if check:
         return check
+    if _is_pm():
+        return jsonify({"error": "read-only for Property Managers"}), 403
     payload = request.get_json(force=True) or {}
     notes = (payload.get("notes") or "").strip() or None
 
@@ -1498,8 +1900,7 @@ def api_save_notes(property_key):
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
         admin = _is_admin()
-        user = session.get("user", {})
-        email = (user.get("email") or "").lower()
+        email = _effective_rm_email()
         ay, quarter = _latest_period(conn)
         if ay is None:
             return jsonify({"error": "no data available"}), 404
@@ -1912,8 +2313,7 @@ def api_drilldown(measure_code):
     conn_app = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
         admin = _is_admin()
-        user = session.get("user", {})
-        email = (user.get("email") or "").lower()
+        email = _effective_rm_email()
         ay, quarter = _latest_period(conn_app)
         if ay is None:
             return jsonify({"error": "no data available"}), 404

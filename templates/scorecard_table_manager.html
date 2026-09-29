@@ -9,13 +9,18 @@
     .stm-back:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
 
     .stm-layout { display: flex; gap: 16px; align-items: flex-start; }
-    .stm-nav { width: 260px; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; max-height: calc(100vh - 190px); overflow-y: auto; }
-    .stm-nav-divider { padding: 12px 10px 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
-    .stm-nav-item { padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.78rem; color: var(--text-primary); display: flex; flex-direction: column; gap: 2px; }
+    .stm-nav-wrap { position: relative; flex-shrink: 0; }
+    .stm-nav { width: 340px; display: flex; flex-direction: column; gap: 2px; max-height: calc(100vh - 190px); overflow-y: auto; transition: width 0.18s ease, opacity 0.18s ease; }
+    .stm-nav-wrap.collapsed .stm-nav { width: 0; opacity: 0; pointer-events: none; overflow: hidden; }
+    .stm-nav-toggle { position: absolute; top: 4px; right: -14px; width: 22px; height: 40px; background: var(--input-bg); border: 1px solid var(--border-input); border-radius: 4px; color: var(--text-secondary); font-size: 0.9rem; cursor: pointer; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 0; line-height: 1; }
+    .stm-nav-toggle:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .stm-nav-wrap.collapsed .stm-nav-toggle { right: -22px; }
+    .stm-nav-divider { padding: 12px 10px 4px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+    .stm-nav-item { padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 1.02rem; color: var(--text-primary); display: flex; flex-direction: column; gap: 2px; }
     .stm-nav-item:hover { background: var(--input-bg); }
     .stm-nav-item.active { background: var(--accent-cyan); color: #fff; }
     .stm-nav-item .lbl { font-weight: 600; }
-    .stm-nav-item .sub { font-size: 0.65rem; color: var(--text-secondary); }
+    .stm-nav-item .sub { font-size: 0.85rem; color: var(--text-secondary); }
     .stm-nav-item.active .sub { color: rgba(255,255,255,0.85); }
 
     .stm-content { flex: 1; min-width: 0; }
@@ -187,7 +192,10 @@
     </div>
 
     <div class="stm-layout">
-        <div class="stm-nav" id="stmNav">Loading...</div>
+        <div class="stm-nav-wrap" id="stmNavWrap">
+            <div class="stm-nav" id="stmNav">Loading...</div>
+            <button class="stm-nav-toggle" onclick="toggleStmNav()" title="Collapse / expand left nav" id="stmNavToggle">&#9664;</button>
+        </div>
         <div class="stm-content" id="stmContent">
             <div class="stm-empty">Select a table from the left to browse.</div>
         </div>
@@ -254,6 +262,13 @@ function stmEsc(s) {
 }
 
 async function stmInit() {
+    // Restore nav collapsed state before first paint so no flicker.
+    try {
+        if (localStorage.getItem('scorecard_tm_nav_collapsed') === '1') {
+            document.getElementById('stmNavWrap').classList.add('collapsed');
+            document.getElementById('stmNavToggle').innerHTML = '&#9654;';
+        }
+    } catch { /* localStorage may not exist */ }
     const r = await fetch('/scorecard/api/admin/tables');
     if (!r.ok) {
         document.getElementById('stmNav').innerHTML = '<div class="stm-empty">Failed to load registry.</div>';
@@ -262,6 +277,14 @@ async function stmInit() {
     stmRegistry = await r.json();
     renderStmNav();
     _stmRestoreFromUrl();
+}
+
+function toggleStmNav() {
+    const wrap = document.getElementById('stmNavWrap');
+    const btn = document.getElementById('stmNavToggle');
+    const collapsed = wrap.classList.toggle('collapsed');
+    btn.innerHTML = collapsed ? '&#9654;' : '&#9664;';
+    try { localStorage.setItem('scorecard_tm_nav_collapsed', collapsed ? '1' : '0'); } catch { /* ignore */ }
 }
 
 // Restore table / filters / sort from the URL so admins can share links to a
