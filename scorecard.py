@@ -25,6 +25,7 @@ APP_ID = 36
 # read-only Phase 2 grid; Phase 3 subjective-entry adds its own save endpoint).
 _GRID_COLUMNS = [
     "PROPERTY_KEY", "ENTITY_NUMBER", "PROPERTY_NAME", "QUARTER_YEAR",
+    "PROPERTY_TYPE",
     "RM_EMAIL", "RM_NAME",
     "RMSCORE",
     "TC", "TR", "PCARD", "RA", "IIPP", "LFA", "PMLEO", "REP", "WO",
@@ -139,11 +140,11 @@ def _is_admin():
     (cultivate.py/fasttrack.py/etc.) -- admins see every property; everyone
     else is scoped to their own RM_EMAIL via SCORECARD_CORE.
 
-    IF the admin has activated "View as <RM>" simulation (session key
-    sc_view_as_email), returns False so all scoping/gating treats them as
-    that RM. Use _is_real_admin() when you need the underlying flag (e.g.
-    to toggle out of the simulation)."""
-    if session.get("sc_view_as_email"):
+    IF the admin has activated "View as <RM>" or "View as <PM>" simulation
+    (session keys sc_view_as_email or sc_view_as_pm_property_key), returns
+    False so all scoping/gating treats them as that role. Use _is_real_admin()
+    when you need the underlying flag (e.g. to toggle out of the simulation)."""
+    if session.get("sc_view_as_email") or session.get("sc_view_as_pm_property_key"):
         return False
     return _is_real_admin()
 
@@ -161,12 +162,13 @@ def _pm_property_key():
     """Return the PROPERTY_KEY a Property Manager is scoped to, or None if
     the current user is not a PM. Cached in the session after first lookup.
 
-    PM identification: Emp_Core.TITLE_GROUP contains 'Property Manager'
-    (case-insensitive) AND the user is NOT an admin (admin always wins).
-    Real admins simulating a PM via "view as" are NOT treated as PM here --
-    view-as only exists for RM simulation."""
+    Precedence:
+    1. Real admin currently simulating a PM (sc_view_as_pm_property_key) -- returns that key.
+    2. Real admin not simulating -- returns None (admins are not PMs).
+    3. Non-admin -- looks up Emp_Core.TITLE_GROUP for 'Property Manager' + PROPERTY_KEY."""
     if _is_real_admin():
-        return None
+        pm_sim = session.get("sc_view_as_pm_property_key")
+        return int(pm_sim) if pm_sim else None
     if "sc_pm_property_key" in session:
         val = session["sc_pm_property_key"]
         return val if val else None
@@ -246,6 +248,22 @@ def _ctx(**kwargs):
         except Exception:
             rm_profile = None
     view_as_email = session.get("sc_view_as_email") if _is_real_admin() else None
+    view_as_pm_key = session.get("sc_view_as_pm_property_key") if _is_real_admin() else None
+    view_as_pm_label = None
+    if view_as_pm_key:
+        try:
+            env = _get_env()
+            conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+            try:
+                name = conn.scalar(
+                    "SELECT TOP 1 PROPERTY_NAME FROM dbo.SCORECARD_CORE WHERE PROPERTY_KEY = ? AND FLAG_CURRENT = 1",
+                    [int(view_as_pm_key)],
+                )
+                view_as_pm_label = name or f"Property {view_as_pm_key}"
+            finally:
+                conn.close()
+        except Exception:
+            view_as_pm_label = f"Property {view_as_pm_key}"
     pm_prop_key = _pm_property_key()
     ctx = dict(
         modules=build_nav_modules(),
@@ -257,6 +275,8 @@ def _ctx(**kwargs):
         is_admin=_is_admin(),
         is_real_admin=_is_real_admin(),
         view_as_email=view_as_email,
+        view_as_pm_property_key=view_as_pm_key,
+        view_as_pm_label=view_as_pm_label,
         is_pm=pm_prop_key is not None,
         pm_property_key=pm_prop_key,
         measure_defs=_MEASURE_DEFS,
@@ -1287,9 +1307,11 @@ def whoami():
 @scorecard_bp.route("/api/admin/rms")
 @login_required
 def api_admin_rms():
-    """List distinct RM_EMAIL / RM_NAME pairs from SCORECARD_CORE so the
-    'View as RM' picker in the header can populate a dropdown. Real-admin
-    only (uses _is_real_admin so it stays available while simulating)."""
+    """List distinct RM_EMAIL / RM_NAME pairs from dbo.PROPERTY_0 (the
+    authoritative source for property assignments) so the 'View as RM'
+    picker reflects current reality, not the last pipeline snapshot.
+    Real-admin only (uses _is_real_admin so it stays available while
+    simulating)."""
     check = _require_access()
     if check:
         return check
@@ -1300,8 +1322,8 @@ def api_admin_rms():
     try:
         rows = conn.fetchall("""
             SELECT DISTINCT RM_EMAIL, RM_NAME
-            FROM dbo.SCORECARD_CORE
-            WHERE FLAG_CURRENT = 1 AND RM_EMAIL IS NOT NULL AND RM_EMAIL <> ''
+            FROM dbo.PROPERTY_0
+            WHERE FLAG_REPORTABLE = 1 AND RM_EMAIL IS NOT NULL AND RM_EMAIL <> ''
             ORDER BY RM_NAME
         """)
         return jsonify({"rms": [{"email": r[0], "name": r[1] or r[0]} for r in rows]})
@@ -1323,20 +1345,77 @@ def api_admin_view_as_rm():
     email = (payload.get("email") or "").strip().lower()
     if not email:
         return jsonify({"error": "email required"}), 400
+    session.pop("sc_view_as_pm_property_key", None)  # RM and PM simulation are mutually exclusive
     session["sc_view_as_email"] = email
     return jsonify({"ok": True, "view_as_email": email})
+
+
+@scorecard_bp.route("/api/admin/pms")
+@login_required
+def api_admin_pms():
+    """List active Property Managers from Emp_Core so the 'View as PM' picker
+    can populate. Real-admin only. Returns email + name + PROPERTY_KEY +
+    PROPERTY_NAME (joined against the property's row in SCORECARD_CORE for
+    the current AY/QUARTER so the display shows the property they'd see)."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_real_admin():
+        return jsonify({"error": "admin only"}), 403
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        rows = conn.fetchall("""
+            SELECT DISTINCT e.EMAIL, e.NAME_FULL, e.PROPERTY_KEY,
+                   (SELECT TOP 1 PROPERTY_NAME FROM dbo.SCORECARD_CORE sc
+                    WHERE sc.PROPERTY_KEY = e.PROPERTY_KEY AND sc.FLAG_CURRENT = 1) AS PROPERTY_NAME
+            FROM dbo.Emp_Core e
+            WHERE e.FLAG_CURRENT = 1
+              AND e.FLAG_ACTIVE = 1
+              AND e.TITLE_GROUP LIKE '%Property Manager%'
+              AND e.PROPERTY_KEY IS NOT NULL
+              AND e.EMAIL IS NOT NULL AND e.EMAIL <> ''
+            ORDER BY e.NAME_FULL
+        """)
+        return jsonify({"pms": [
+            {"email": r[0], "name": r[1] or r[0], "property_key": r[2], "property_name": r[3] or f"Property {r[2]}"}
+            for r in rows
+        ]})
+    finally:
+        conn.close()
+
+
+@scorecard_bp.route("/api/admin/view-as-pm", methods=["POST"])
+@login_required
+def api_admin_view_as_pm():
+    """Activate the 'view as PM' simulation. Real-admin only.
+    Payload: {'property_key': <int>}."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_real_admin():
+        return jsonify({"error": "admin only"}), 403
+    payload = request.get_json(silent=True) or {}
+    try:
+        prop_key = int(payload.get("property_key"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "property_key required (int)"}), 400
+    session.pop("sc_view_as_email", None)  # PM and RM simulation are mutually exclusive
+    session["sc_view_as_pm_property_key"] = prop_key
+    return jsonify({"ok": True, "view_as_pm_property_key": prop_key})
 
 
 @scorecard_bp.route("/api/admin/view-as-clear", methods=["POST"])
 @login_required
 def api_admin_view_as_clear():
-    """Exit the 'view as RM' simulation. Available to real admins (so they
-    can toggle back) AND to anyone whose session has the key set (so a
-    stale key from a demoted user can always be cleared)."""
+    """Exit any active 'view as' simulation (RM or PM). Available to real
+    admins (so they can toggle back) AND to anyone whose session has the
+    key set (so a stale key from a demoted user can always be cleared)."""
     check = _require_access()
     if check:
         return check
     session.pop("sc_view_as_email", None)
+    session.pop("sc_view_as_pm_property_key", None)
     return jsonify({"ok": True})
 
 
@@ -1372,24 +1451,34 @@ def api_data():
         ay, quarter = latest[0][0], latest[0][1]
 
         all_cols = _GRID_COLUMNS + _LOCK_COLUMNS + _LOCK_BY_COLUMNS + _REASON_COLUMNS
-        cols_sql = ", ".join(all_cols)
+        # PROPERTY_0 is the authoritative source for RM assignment + property type;
+        # SCORECARD_CORE's copies can lag the last pipeline run. Prefer PROPERTY_0
+        # via COALESCE so a fresh reassignment shows up immediately in the UI.
+        p0_overrides = {"PROPERTY_TYPE", "RM_EMAIL", "RM_NAME"}
+        cols_sql = ", ".join(
+            f"COALESCE(p.{c}, sc.{c}) AS {c}" if c in p0_overrides and c != "PROPERTY_TYPE"
+            else "p.PROPERTY_TYPE" if c == "PROPERTY_TYPE"
+            else f"sc.{c}"
+            for c in all_cols
+        )
+        base_from = "FROM dbo.SCORECARD_CORE sc LEFT JOIN dbo.PROPERTY_0 p ON p.PROPERTY_KEY = sc.PROPERTY_KEY"
         if admin:
             rows = conn.fetchall(f"""
-                SELECT {cols_sql} FROM dbo.SCORECARD_CORE
-                WHERE FLAG_CURRENT = 1 AND AY = ? AND QUARTER = ?
-                ORDER BY PROPERTY_NAME
+                SELECT {cols_sql} {base_from}
+                WHERE sc.FLAG_CURRENT = 1 AND sc.AY = ? AND sc.QUARTER = ?
+                ORDER BY sc.PROPERTY_NAME
             """, (ay, quarter))
         elif pm_key:
             rows = conn.fetchall(f"""
-                SELECT {cols_sql} FROM dbo.SCORECARD_CORE
-                WHERE FLAG_CURRENT = 1 AND AY = ? AND QUARTER = ? AND PROPERTY_KEY = ?
-                ORDER BY PROPERTY_NAME
+                SELECT {cols_sql} {base_from}
+                WHERE sc.FLAG_CURRENT = 1 AND sc.AY = ? AND sc.QUARTER = ? AND sc.PROPERTY_KEY = ?
+                ORDER BY sc.PROPERTY_NAME
             """, (ay, quarter, pm_key))
         else:
             rows = conn.fetchall(f"""
-                SELECT {cols_sql} FROM dbo.SCORECARD_CORE
-                WHERE FLAG_CURRENT = 1 AND AY = ? AND QUARTER = ? AND LOWER(RM_EMAIL) = ?
-                ORDER BY PROPERTY_NAME
+                SELECT {cols_sql} {base_from}
+                WHERE sc.FLAG_CURRENT = 1 AND sc.AY = ? AND sc.QUARTER = ? AND LOWER(COALESCE(p.RM_EMAIL, sc.RM_EMAIL)) = ?
+                ORDER BY sc.PROPERTY_NAME
             """, (ay, quarter, email))
         data = [dict(zip(all_cols, r)) for r in rows]
         for r in data:
@@ -1413,8 +1502,9 @@ def api_data():
                 """, (prev_ay, prev_q, pm_key))
             else:
                 prior_rows = conn.fetchall(f"""
-                    SELECT {prior_cols_sql} FROM dbo.SCORECARD_CORE
-                    WHERE FLAG_CURRENT = 1 AND AY = ? AND QUARTER = ? AND LOWER(RM_EMAIL) = ?
+                    SELECT sc.PROPERTY_KEY, sc.PRERM, sc.LDRTOTAL, sc.MSTOTAL
+                    FROM dbo.SCORECARD_CORE sc LEFT JOIN dbo.PROPERTY_0 p ON p.PROPERTY_KEY = sc.PROPERTY_KEY
+                    WHERE sc.FLAG_CURRENT = 1 AND sc.AY = ? AND sc.QUARTER = ? AND LOWER(COALESCE(p.RM_EMAIL, sc.RM_EMAIL)) = ?
                 """, (prev_ay, prev_q, email))
             prior_payload = {
                 "ay": prev_ay, "quarter": prev_q, "quarter_label": f"{prev_q} {prev_ay}",
@@ -1443,10 +1533,23 @@ def _latest_period(conn):
 
 
 def _scoped_property_row(conn, property_key, ay, quarter, admin, email, cols):
-    cols_sql = ", ".join(cols)
+    # PROPERTY_0 is the source of truth for RM assignment + PROPERTY_TYPE;
+    # every other requested column lives on SCORECARD_CORE. Rewrite the SELECT
+    # so RM_EMAIL/RM_NAME come from PROPERTY_0 (fallback to sc), and use
+    # PROPERTY_0.RM_EMAIL for the RM-scoping WHERE clause so a fresh
+    # reassignment is honored immediately without waiting for the pipeline.
+    p0_overrides = {"RM_EMAIL", "RM_NAME"}
+    def _col_sql(c):
+        if c == "PROPERTY_TYPE":
+            return "p.PROPERTY_TYPE"
+        if c in p0_overrides:
+            return f"COALESCE(p.{c}, sc.{c}) AS {c}"
+        return f"sc.{c}"
+    cols_sql = ", ".join(_col_sql(c) for c in cols)
+    base = "FROM dbo.SCORECARD_CORE sc LEFT JOIN dbo.PROPERTY_0 p ON p.PROPERTY_KEY = sc.PROPERTY_KEY"
     if admin:
         rows = conn.fetchall(
-            f"SELECT {cols_sql} FROM dbo.SCORECARD_CORE WHERE PROPERTY_KEY = ? AND AY = ? AND QUARTER = ? AND FLAG_CURRENT = 1",
+            f"SELECT {cols_sql} {base} WHERE sc.PROPERTY_KEY = ? AND sc.AY = ? AND sc.QUARTER = ? AND sc.FLAG_CURRENT = 1",
             (property_key, ay, quarter))
     else:
         pm_key = _pm_property_key()
@@ -1454,11 +1557,11 @@ def _scoped_property_row(conn, property_key, ay, quarter, admin, email, cols):
             if int(pm_key) != int(property_key):
                 return None
             rows = conn.fetchall(
-                f"SELECT {cols_sql} FROM dbo.SCORECARD_CORE WHERE PROPERTY_KEY = ? AND AY = ? AND QUARTER = ? AND FLAG_CURRENT = 1",
+                f"SELECT {cols_sql} {base} WHERE sc.PROPERTY_KEY = ? AND sc.AY = ? AND sc.QUARTER = ? AND sc.FLAG_CURRENT = 1",
                 (property_key, ay, quarter))
         else:
             rows = conn.fetchall(
-                f"SELECT {cols_sql} FROM dbo.SCORECARD_CORE WHERE PROPERTY_KEY = ? AND AY = ? AND QUARTER = ? AND FLAG_CURRENT = 1 AND LOWER(RM_EMAIL) = ?",
+                f"SELECT {cols_sql} {base} WHERE sc.PROPERTY_KEY = ? AND sc.AY = ? AND sc.QUARTER = ? AND sc.FLAG_CURRENT = 1 AND LOWER(COALESCE(p.RM_EMAIL, sc.RM_EMAIL)) = ?",
                 (property_key, ay, quarter, email))
     return rows[0] if rows else None
 

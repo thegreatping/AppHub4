@@ -60,6 +60,8 @@
     .sc-table th.grp-maintenance { background: rgba(251,191,36,0.10); }
     .sc-table th.id-col, .sc-table td.id-col { text-align: left; }
     .sc-table td.id-col.name-col { font-weight: 600; color: var(--text-primary); }
+    #scFFTable td { text-align: center; }
+    #scFFTable td.id-col { text-align: left; }
     .sc-table tbody tr { cursor: pointer; }
     .sc-table tbody tr:hover td { background: var(--hover-bg-strong); }
     .sc-table td.notes-col { text-align: left; max-width: 220px; overflow: hidden; text-overflow: ellipsis; color: var(--text-secondary); }
@@ -293,25 +295,14 @@
         color: var(--text-primary);
     }
 
-    /* TEMP debug marker (per user request): bright orange border on every button
-       currently visible so we can point out which ones are admin-only and should
-       be ghosted. Remove once we've walked through the buttons together. */
-    .content-header button,
-    .content-header .sc-reference-btn,
-    .sc-container button,
-    .sc-container .sc-reference-btn,
-    .sc-container .col-filter-btn,
-    .scDetailBackdrop button,
-    #scDetailOverlay button,
-    .popout-overlay button {
-        border: 2px solid #ff8c00 !important;
-    }
-
     /* "View as RM" admin simulator: dropdown to pick an RM to impersonate + a
        persistent purple banner once active, so it's impossible to forget you're
        in simulation mode. */
-    .sc-view-as-picker select { background: var(--input-bg); color: var(--text-primary); border: 1px solid var(--border-input); padding: 5px 10px; border-radius: 4px; font-size: 0.78rem; cursor: pointer; }
+    .sc-view-as-picker select { background: var(--input-bg); color: var(--text-primary); border: 1px solid var(--border-input); padding: 5px 10px; border-radius: 4px; font-size: 0.78rem; cursor: pointer; color-scheme: dark; }
     .sc-view-as-picker select:hover { border-color: var(--accent-cyan); }
+    .sc-view-as-picker select option { background: var(--nav-bg); color: var(--text-primary); padding: 4px 6px; }
+    .sc-view-as-picker select option:checked { background: var(--accent-cyan); color: #fff; }
+    .sc-view-as-picker select optgroup { background: var(--nav-bg); color: var(--accent-cyan); font-weight: 700; }
     .sc-view-as-banner { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; background: rgba(168,85,247,0.18); border: 1px solid #a855f7; color: #d8b4fe; border-radius: 4px; font-size: 0.78rem; font-weight: 600; }
     .sc-view-as-banner b { color: #ffffff; font-family: Consolas, monospace; }
     .sc-view-as-clear { background: transparent; border: 1px solid rgba(216,180,254,0.5); color: #d8b4fe; padding: 2px 8px; border-radius: 3px; font-size: 0.72rem; cursor: pointer; }
@@ -385,13 +376,18 @@
         {% if is_real_admin %}
         {% if view_as_email %}
         <span class="sc-view-as-banner" title="Simulating this RM's view of the Scorecard">
-            <i class="fa-solid fa-eye"></i> Viewing as: <b>{{ view_as_email }}</b>
+            <i class="fa-solid fa-eye"></i> Viewing as RM: <b>{{ view_as_email }}</b>
+            <button type="button" class="sc-view-as-clear" onclick="scViewAsClear()" title="Return to admin view">&times; Exit</button>
+        </span>
+        {% elif view_as_pm_property_key %}
+        <span class="sc-view-as-banner" title="Simulating a Property Manager's read-only view">
+            <i class="fa-solid fa-eye"></i> Viewing as PM: <b>{{ view_as_pm_label or view_as_pm_property_key }}</b>
             <button type="button" class="sc-view-as-clear" onclick="scViewAsClear()" title="Return to admin view">&times; Exit</button>
         </span>
         {% else %}
         <span class="sc-view-as-picker">
             <select id="scViewAsSelect" onchange="scViewAsPick(this.value)">
-                <option value="">&#128065; View as RM...</option>
+                <option value="">&#128065; View as...</option>
             </select>
         </span>
         {% endif %}
@@ -446,7 +442,6 @@
                 <input type="checkbox" id="q1ToggleCb" onchange="toggleQ1History(this.checked)">
                 Show prior quarter totals
             </label>
-            <input type="text" class="sc-search" id="scSearch" placeholder="Search property, entity, or RM..." oninput="onSearchInput(this.value)">
             {% if not is_pm %}
             <button type="button" class="sc-export-btn" onclick="showCalPrompt()">&#128197; Add to Outlook</button>
             <button type="button" class="sc-export-btn" onclick="exportSubjectiveScores()">&#9993; Email My Scores</button>
@@ -486,8 +481,10 @@
             <span class="v" id="statFFSnapshot">--</span>
         </div>
         <div class="sc-toolbar">
+            {% if is_admin %}
             <input type="text" class="sc-search" id="scFFSearch" placeholder="Search property, entity, or RM..." oninput="renderFallForecast()">
-            <button type="button" class="sc-export-btn" onclick="exportBonusCalcForm()">&#128190; Bonus Calc Form Export</button>
+            {% endif %}
+            <button type="button" class="sc-export-btn" onclick="exportBonusCalcForm()">&#128190; Export to Excel</button>
         </div>
     </div>
     <div class="sc-table-wrap">
@@ -891,6 +888,7 @@ function showScReferenceTab(tab) {
 const ID_COLS = [
     { key: 'PROPERTY_NAME', label: 'Property', type: 'text', css: 'name-col' },
     { key: 'ENTITY_NUMBER', label: 'Entity', type: 'text' },
+    { key: 'PROPERTY_TYPE', label: 'Type', type: 'text' },
     { key: 'RM_NAME', label: 'RM', type: 'text' },
 ];
 const OVERALL_COL = { key: 'OVERALL', label: 'Overall Score', type: 'total' };
@@ -1161,12 +1159,12 @@ function render() {
 }
 
 function onSearchInput(val) { searchQuery = val; render(); }
-function clearSearch() { searchQuery = ''; document.getElementById('scSearch').value = ''; render(); }
+function clearSearch() { searchQuery = ''; const el = document.getElementById('scSearch'); if (el) el.value = ''; render(); }
 function toggleQuickFilter(name) { quickFilters[name] = !quickFilters[name]; render(); }
 function clearColFilter(key) { delete colFilters[key]; render(); }
 function clearSort() { sort = { col: null, dir: 1 }; render(); }
 function clearAllFilters() {
-    searchQuery = ''; document.getElementById('scSearch').value = '';
+    searchQuery = ''; const el = document.getElementById('scSearch'); if (el) el.value = '';
     quickFilters = { needsInput: false, hasNotes: false };
     colFilters = {}; sort = { col: null, dir: 1 };
     render();
@@ -1764,7 +1762,7 @@ function measureRowHtml(m) {
 
     if (!d.can_edit) {
         return `<div class="popout-row">
-            <div class="popout-label">${esc(m.label)}${infoIcon}<div class="sc-blurb">${esc(m.blurb)}</div></div>
+            <div class="popout-label">${esc(m.label)}${infoIcon}</div>
             <div class="sc-readonly-val ${cls}">${displayText}</div>
             ${scoreExplanationHtml(m, d)}
         </div>`;
@@ -1778,7 +1776,7 @@ function measureRowHtml(m) {
         ? `<span class="sc-override-by">Overridden by ${esc(lockedBy)}${reasonTxt ? ' -- ' + esc(reasonTxt) : ''}</span>`
         : '';
     return `<div class="popout-row">
-        <div class="popout-label">${esc(m.label)}${infoIcon}<div class="sc-blurb">${esc(m.blurb)}</div></div>
+        <div class="popout-label">${esc(m.label)}${infoIcon}</div>
         <div class="sc-measure-value">
             <select class="${cls}" onchange="saveScMeasure('${m.key}', this.value, this)">${optHtml}</select>
             <label class="sc-override-wrap ${locked ? 'active' : ''}" title="Override: protect this value from being overwritten by the next pipeline run">
@@ -1993,6 +1991,7 @@ function exportFullSummary() {
 const FF_COLS = [
     { key: 'PROPERTY_NAME', label: 'Property' },
     { key: 'ENTITY_NUMBER', label: 'Entity' },
+    { key: 'PROPERTY_TYPE', label: 'Type' },
     { key: 'RM_NAME', label: 'RM' },
     { key: 'COMPLETE_CY', label: 'Complete CY' },
     { key: 'COMPLETE_TARGET', label: 'Complete Target' },
@@ -2014,32 +2013,62 @@ function showScTab(tab) {
     if (tab === 'fallforecast') renderFallForecast();
 }
 
-// Populate the "View as RM" dropdown on load (real-admin only; endpoint 403s
-// otherwise). Picking a value triggers a POST + reload; the server-rendered
-// banner is the source of truth for whether we're currently simulating.
+// Populate the "View as..." dropdown on load with two optgroups (RMs and PMs).
+// Real-admin only (endpoints 403 otherwise). Values are prefixed to route to
+// the right POST endpoint: "rm:<email>" or "pm:<property_key>".
 (function _wireScViewAs() {
     const sel = document.getElementById('scViewAsSelect');
-    if (!sel) return; // Not real-admin, or already simulating -- picker not rendered.
-    fetch('/scorecard/api/admin/rms').then(r => r.json()).then(j => {
-        if (j.error) return;
-        for (const rm of (j.rms || [])) {
-            const opt = document.createElement('option');
-            opt.value = rm.email;
-            opt.textContent = `${rm.name}  (${rm.email})`;
-            sel.appendChild(opt);
+    if (!sel) return;
+    Promise.all([
+        fetch('/scorecard/api/admin/rms').then(r => r.json()).catch(() => ({})),
+        fetch('/scorecard/api/admin/pms').then(r => r.json()).catch(() => ({})),
+    ]).then(([rmRes, pmRes]) => {
+        if (rmRes && Array.isArray(rmRes.rms) && rmRes.rms.length) {
+            const g = document.createElement('optgroup');
+            g.label = 'Regional Managers';
+            for (const rm of rmRes.rms) {
+                const opt = document.createElement('option');
+                opt.value = `rm:${rm.email}`;
+                opt.textContent = `${rm.name}  (${rm.email})`;
+                g.appendChild(opt);
+            }
+            sel.appendChild(g);
+        }
+        if (pmRes && Array.isArray(pmRes.pms) && pmRes.pms.length) {
+            const g = document.createElement('optgroup');
+            g.label = 'Property Managers (read-only)';
+            for (const pm of pmRes.pms) {
+                const opt = document.createElement('option');
+                opt.value = `pm:${pm.property_key}`;
+                opt.textContent = `${pm.name} @ ${pm.property_name}`;
+                g.appendChild(opt);
+            }
+            sel.appendChild(g);
         }
     });
 })();
 
-function scViewAsPick(email) {
-    if (!email) return;
-    fetch('/scorecard/api/admin/view-as-rm', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-    }).then(r => r.json()).then(j => {
-        if (j.error) { alert(j.error); return; }
-        location.reload();
-    });
+function scViewAsPick(val) {
+    if (!val) return;
+    if (val.startsWith('rm:')) {
+        const email = val.slice(3);
+        fetch('/scorecard/api/admin/view-as-rm', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        }).then(r => r.json()).then(j => {
+            if (j.error) { alert(j.error); return; }
+            location.reload();
+        });
+    } else if (val.startsWith('pm:')) {
+        const property_key = parseInt(val.slice(3), 10);
+        fetch('/scorecard/api/admin/view-as-pm', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ property_key }),
+        }).then(r => r.json()).then(j => {
+            if (j.error) { alert(j.error); return; }
+            location.reload();
+        });
+    }
 }
 
 function scViewAsClear() {
@@ -2097,7 +2126,24 @@ function ffRows() {
 }
 
 function renderFallForecast() {
-    document.getElementById('statFFSnapshot').textContent = scQuarterLabel ? `${scQuarterLabel} (last week of quarter)` : '--';
+    let snapText = '--';
+    if (scQuarterLabel) {
+        // scQuarterLabel is like "Q2 2026" -- compute the last day of that quarter
+        // (proxy for the snapshot date; no explicit column on SCORECARD_CORE).
+        const m = /Q([1-4])\s+(\d{4})/.exec(scQuarterLabel);
+        if (m) {
+            const q = parseInt(m[1], 10);
+            const yr = parseInt(m[2], 10);
+            const endMonth = q * 3;
+            const endDay = new Date(yr, endMonth, 0).getDate();
+            const dt = new Date(yr, endMonth - 1, endDay);
+            const asOf = dt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+            snapText = `${scQuarterLabel} (As of ${asOf}, the last week of the quarter)`;
+        } else {
+            snapText = `${scQuarterLabel} (last week of quarter)`;
+        }
+    }
+    document.getElementById('statFFSnapshot').textContent = snapText;
     const rows = ffRows();
     document.getElementById('scFFThead').innerHTML = `<tr>${FF_COLS.map(c => {
         const arrow = scFFSort.col === c.key ? `<span class="sort-arrow">${scFFSort.dir === 1 ? '\u25B2' : '\u25BC'}</span>` : '';
