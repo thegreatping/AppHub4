@@ -516,6 +516,46 @@ body {
 .nav-item[data-testing="PENDING"] { border: 1px solid #eab308; }
 .nav-item.active[data-testing]    { border-left: 3px solid var(--nav-active-border); }
 
+/* Beta ghost tile: nav entry the current user has no grant for. Visible
+   (so users see the roadmap) but grayscale + dimmed + non-clickable, with
+   a small BETA pill matching the version-badge style. Once the user has a
+   MODULE_AUDIENCE grant for this app, the ghost becomes a live link. */
+.nav-item.beta-ghost {
+    cursor: not-allowed;
+    opacity: 0.45;
+    filter: grayscale(0.6);
+    border: 1px dashed rgba(148,163,184,0.5);
+}
+.nav-item.beta-ghost:hover {
+    opacity: 0.6;
+    background: rgba(148,163,184,0.08);
+}
+.nav-item.beta-ghost .ghost-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    text-decoration: none;
+    color: var(--nav-text, #94a3b8);
+    pointer-events: none;
+    user-select: none;
+    width: 100%;
+}
+.nav-item.beta-ghost .beta-badge {
+    margin-left: auto;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.7px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--accent-cyan, #22d3ee);
+    color: #0b1220;
+    text-transform: uppercase;
+    line-height: 1;
+}
+.nav-collapsed .nav-item.beta-ghost .ghost-link { justify-content: center; gap: 0; padding: 8px 0; }
+.nav-collapsed .nav-item.beta-ghost .ghost-link > span:not(.nav-icon-dot) { display: none; }
+
 /* Nav Footer */
 .nav-footer {
     padding: 12px 16px;

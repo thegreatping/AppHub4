@@ -6,6 +6,11 @@ from helpers import load_env, SafeConnection
 _env = None
 _ALWAYS_VISIBLE = {"rent_forecasting_2"}
 
+# Admin-only tools that should NOT show as ghost tiles for users who lack a
+# grant -- they're skipped entirely instead. Live-tile behavior for granted
+# users is unchanged.
+_HIDE_WITHOUT_GRANT = {"apphub_maintenance"}
+
 
 def _get_env():
     global _env
@@ -17,10 +22,17 @@ def _get_env():
 def build_nav_modules():
     """Return the list of modules to show in the left nav for the current user.
 
-    Intersects the user's audience access (session) with Flag_Active=1 from DB.
+    Every Flag_Active=1 module is returned. Each entry carries a `state`:
+      - 'live'  : user has an audience grant (or is a developer) -> normal link
+      - 'ghost' : no grant -> dimmed BETA-labeled tile, non-clickable (nav is
+                  a roadmap; click is blocked in the template)
+
+    Modules in _HIDE_WITHOUT_GRANT are omitted entirely when the user has no
+    grant (admin-only utilities we don't want to advertise). Developers see
+    everything as 'live'.
     """
     user_modules = session.get("user_modules", [])
-    is_developer  = session.get("is_developer", False)
+    is_developer = session.get("is_developer", False)
 
     try:
         conn = SafeConnection(_get_env(), "DB_APP_SUPPORT", None, direct=True)
@@ -28,38 +40,31 @@ def build_nav_modules():
         active_ids = {APP_ID_MAP[r[0]] for r in rows if r[0] in APP_ID_MAP and r[1] == 1}
         testing_status = {APP_ID_MAP[r[0]]: r[2] for r in rows if r[0] in APP_ID_MAP}
     except Exception:
-        active_ids = None  # DB unavailable: fall back to session only
+        active_ids = None
         testing_status = {}
 
-    def _with_testing_status(mods):
-        out = []
-        for m in mods:
-            m2 = dict(m)
-            m2["testing_status"] = testing_status.get(m["id"], "PENDING")
-            out.append(m2)
-        return out
+    granted_ids = {APP_ID_MAP[m["id"]] for m in user_modules if m["id"] in APP_ID_MAP}
+    granted_ids |= _ALWAYS_VISIBLE
 
     if active_ids is None:
-        if not user_modules:
-            return _with_testing_status(sorted(MODULES, key=lambda m: m["name"].lower()))
-        allowed = {APP_ID_MAP[m["id"]] for m in user_modules if m["id"] in APP_ID_MAP}
-        allowed |= _ALWAYS_VISIBLE
-        return _with_testing_status(sorted(
-            [m for m in MODULES if m["id"] in allowed],
-            key=lambda m: m["name"].lower()
-        ))
-
-    if is_developer:
-        # Dev users see everything that's active — don't constrain by stale session list
-        allowed = set(active_ids)
-    elif user_modules:
-        allowed = {APP_ID_MAP[m["id"]] for m in user_modules if m["id"] in APP_ID_MAP}
-        allowed &= active_ids  # must be both in user's access AND active in DB
+        candidate_ids = granted_ids or {m["id"] for m in MODULES}
     else:
-        allowed = set(active_ids)
+        candidate_ids = set(active_ids) | granted_ids
 
-    allowed |= _ALWAYS_VISIBLE
-    return _with_testing_status(sorted(
-        [m for m in MODULES if m["id"] in allowed],
-        key=lambda m: m["name"].lower()
-    ))
+    def _decorate(m):
+        out = dict(m)
+        out["testing_status"] = testing_status.get(m["id"], "PENDING")
+        if is_developer or m["id"] in granted_ids:
+            out["state"] = "live"
+        else:
+            out["state"] = "ghost"
+        return out
+
+    visible = []
+    for m in sorted(MODULES, key=lambda x: x["name"].lower()):
+        if m["id"] not in candidate_ids:
+            continue
+        if m["id"] in _HIDE_WITHOUT_GRANT and m["id"] not in granted_ids and not is_developer:
+            continue
+        visible.append(_decorate(m))
+    return visible

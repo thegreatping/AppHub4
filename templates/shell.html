@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Peak AppHub 4.0</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/apphub.css') }}?v=49">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/apphub.css') }}?v=50">
     <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('apphub_theme') || 'dark');</script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/fontawesome.min.css') }}?v=2">
     {% block head %}{% endblock %}
@@ -43,6 +43,20 @@
 
                 <li class="nav-section-label" id="navAppsLabel">Apps</li>
                 {% for mod in modules %}
+                {% if mod.state == 'ghost' %}
+                <li class="nav-item beta-ghost"
+                    data-module-id="{{ mod.id }}"
+                    data-module-type="{{ mod.type }}"
+                    data-testing="{{ mod.testing_status | default('PENDING') }}"
+                    title="{{ mod.name }} is in limited beta -- you don't have access yet"
+                    data-tooltip="{{ mod.name }} (BETA)">
+                    <span class="ghost-link">
+                        <span class="nav-icon-dot" style="background: {{ mod.color | default('#64748b') }}"><i class="{{ mod.icon }}"></i></span>
+                        <span>{{ mod.name }}</span>
+                        <span class="beta-badge">BETA</span>
+                    </span>
+                </li>
+                {% else %}
                 <li class="nav-item {% if mod.id == active_module %}active{% endif %}"
                     data-module-id="{{ mod.id }}"
                     data-module-type="{{ mod.type }}"
@@ -55,6 +69,7 @@
                         <i class="fa-regular fa-heart"></i>
                     </button>
                 </li>
+                {% endif %}
                 {% endfor %}
             </ul>
 
