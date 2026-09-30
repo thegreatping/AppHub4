@@ -476,12 +476,12 @@ def api_admin_run_detail(run_id):
 
 # Scorecard pipeline notebook lookup — display name in the ETL workspace.
 _SCORECARD_ETL_WORKSPACE_ID = "a28164c3-c392-4848-83d4-b4a26f4bdef3"
-_SCORECARD_NOTEBOOK_NAME = "NB_SCORECARD_PIPELINE"
+_SCORECARD_NOTEBOOK_NAME = "NB_LEADERSHIP_SCORECARD_UPDATE"
 _scorecard_notebook_id_cache = {"id": None}
 
 
 def _resolve_scorecard_notebook_id(env):
-    """Look up NB_SCORECARD_PIPELINE's item id in the ETL workspace, cached."""
+    """Look up NB_LEADERSHIP_SCORECARD_UPDATE's item id in the ETL workspace, cached."""
     if _scorecard_notebook_id_cache["id"]:
         return _scorecard_notebook_id_cache["id"]
     import requests as _requests
@@ -503,7 +503,7 @@ def _resolve_scorecard_notebook_id(env):
 @scorecard_bp.route("/api/admin/runs/trigger", methods=["POST"])
 @login_required
 def api_admin_run_trigger():
-    """Trigger a Fabric run of NB_SCORECARD_PIPELINE. Returns the monitor URL
+    """Trigger a Fabric run of NB_LEADERSHIP_SCORECARD_UPDATE. Returns the monitor URL
     for the job instance; UI polls the runs list to see when the new
     PIPELINE_RUN_ID appears in the log."""
     check = _require_access()
@@ -1999,7 +1999,7 @@ def api_toggle_override(property_key):
     SCORECARD_CORE's own *_LOCKED companion column instead of a separate
     override table (this table was designed with that convention already
     built in, per Emp_Core). Locking a measure protects it from being
-    overwritten the next time NB_SCORECARD_PIPELINE runs; it does not by
+    overwritten the next time NB_LEADERSHIP_SCORECARD_UPDATE runs; it does not by
     itself change the value -- pair with a PATCH to /api/properties/<key>
     to actually set an override value. Optional "reason" text is stored in
     <measure>_REASON (matches the original app's exception-badge concept,
@@ -2233,14 +2233,14 @@ def _quarter_bounds(ay, quarter):
 
 
 def _last_friday_on_or_before(d):
-    """d.weekday(): Monday=0..Sunday=6, Friday=4 -- matches NB_SCORECARD_PIPELINE's helper,
+    """d.weekday(): Monday=0..Sunday=6, Friday=4 -- matches NB_LEADERSHIP_SCORECARD_UPDATE's helper,
     used here to find the exact 2 closing-Friday snapshots the REP measure compares."""
     offset = (d.weekday() - 4) % 7
     return d - datetime.timedelta(days=offset)
 
 
 def _norm_entity(x):
-    """Matches NB_SCORECARD_PIPELINE._consolidate_entity_number's normalization
+    """Matches NB_LEADERSHIP_SCORECARD_UPDATE._consolidate_entity_number's normalization
     (strip trailing .0 from numeric-but-string entity numbers) so DEPARTMENT_CODE
     values line up with SCORECARD_CORE's ENTITY_NUMBER regardless of formatting."""
     try:
@@ -2264,7 +2264,7 @@ def _drilldown_portfolio(conn_app, admin, email, ay, quarter):
 
 
 def _lookup_due_date(date_approved, due_date_calendar):
-    """Matches NB_SCORECARD_PIPELINE._lookup_due_date exactly."""
+    """Matches NB_LEADERSHIP_SCORECARD_UPDATE._lookup_due_date exactly."""
     for start, end, due in due_date_calendar:
         if start <= date_approved <= end:
             return due

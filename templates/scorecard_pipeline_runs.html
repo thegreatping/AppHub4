@@ -71,10 +71,10 @@
     <div class="spr-header">
         <div>
             <div class="spr-title"><i class="fa-solid fa-play-circle" style="color: var(--accent-cyan); margin-right: 6px;"></i> Scorecard Pipeline Runs</div>
-            <div class="spr-subtitle">Recent executions of NB_SCORECARD_PIPELINE (last 50) with per-step outcomes. Admin-only.</div>
+            <div class="spr-subtitle">Recent executions of NB_LEADERSHIP_SCORECARD_UPDATE (last 50) with per-step outcomes. Admin-only.</div>
         </div>
         <div style="display:flex; align-items:center; gap:6px;">
-            <button class="spr-run-now" id="sprRunNow" onclick="triggerSprRun()" title="Kick off NB_SCORECARD_PIPELINE in Fabric right now">&#9658; Run now</button>
+            <button class="spr-run-now" id="sprRunNow" onclick="triggerSprRun()" title="Kick off NB_LEADERSHIP_SCORECARD_UPDATE in Fabric right now">&#9658; Run now</button>
             <button class="spr-refresh" onclick="loadSprRuns()" title="Refresh">&#8635; Refresh</button>
             <a href="/scorecard/admin/tables" class="spr-back" title="Scorecard Table Manager"><i class="fa-solid fa-database"></i> Table Manager</a>
             <a href="/scorecard/" class="spr-back">&larr; Back to Scorecard</a>
@@ -246,7 +246,7 @@ let sprTriggerStartTime = null;
 let sprPreTriggerRunIds = new Set();
 
 async function triggerSprRun() {
-    if (!confirm('Trigger a Fabric run of NB_SCORECARD_PIPELINE right now?\n\nThe run typically takes ~30 seconds. It will appear in the list at the top once Fabric writes the first log row.')) return;
+    if (!confirm('Trigger a Fabric run of NB_LEADERSHIP_SCORECARD_UPDATE right now?\n\nThe run typically takes ~30 seconds. It will appear in the list at the top once Fabric writes the first log row.')) return;
     const btn = document.getElementById('sprRunNow');
     btn.disabled = true;
     _sprBanner('pending', '<span class="spinner"></span> Sending trigger to Fabric&hellip;');
