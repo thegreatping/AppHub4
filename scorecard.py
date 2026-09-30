@@ -1729,6 +1729,109 @@ def _build_measure_summaries(env, property_key, property_row, ay, quarter):
         except Exception as e:
             for m in ["WO", "MSWO"]:
                 summaries[m] = {"status": "generic", "text": f"(Could not summarize: {e})"}
+
+        # TR (Training Compliance): average of monthly compliance % rows across the quarter
+        try:
+            dk_start = int(q_start.strftime("%Y%m%d"))
+            dk_end = int(q_end.strftime("%Y%m%d"))
+            r = conn_wh.fetchall("""
+                SELECT DATE_KEY, COMPLIANCE_PERCENTAGE
+                FROM dbo.GRACEHILL_LOCATION_COMPLIANCE_IMPORT_FACT
+                WHERE PROPERTY_KEY = ? AND DATE_KEY >= ? AND DATE_KEY <= ?
+                      AND COMPLIANCE_PERCENTAGE IS NOT NULL
+                ORDER BY DATE_KEY
+            """, (property_key, dk_start, dk_end))
+            vals = [float(pct) for _, pct in r]
+            if not vals:
+                summaries["TR"] = {"status": "nodata", "text": f"No Gracehill compliance data recorded for this property in {quarter} {ay}. Per the rule, missing data defaults to PASS."}
+            else:
+                avg_pct = sum(vals) / len(vals)
+                pct_disp = avg_pct * 100 if avg_pct <= 1.5 else avg_pct
+                if avg_pct >= 0.94:
+                    summaries["TR"] = {"status": "pass", "text": f"PASSED. Avg Gracehill compliance across {len(vals)} monthly snapshot{'s' if len(vals) != 1 else ''} in {quarter} {ay} = {pct_disp:.1f}%. Rule: >= 94% to pass."}
+                else:
+                    summaries["TR"] = {"status": "fail", "text": f"FAILED. Avg Gracehill compliance across {len(vals)} monthly snapshot{'s' if len(vals) != 1 else ''} in {quarter} {ay} = {pct_disp:.1f}% (needed >= 94%)."}
+        except Exception as e:
+            summaries["TR"] = {"status": "generic", "text": f"(Could not summarize TR: {e})"}
+
+        # RA (Risk Assessment): count Complete vs non-Complete action items
+        try:
+            r = conn_wh.fetchall("""
+                SELECT STATUS, COUNT(*) FROM dbo.LS_COMPLIANCE_IMPORT
+                WHERE PROPERTY_KEY = ?
+                GROUP BY STATUS
+            """, (property_key,))
+            if not r:
+                summaries["RA"] = {"status": "nodata", "text": f"No Risk Assessment action items recorded for this property. Per the rule, missing data defaults to PASS."}
+            else:
+                by = {(s or "").strip(): int(c) for s, c in r}
+                complete_n = by.get("Complete", 0)
+                total = sum(by.values())
+                incomplete_n = total - complete_n
+                if incomplete_n == 0:
+                    summaries["RA"] = {"status": "pass", "text": f"PASSED. All {total} Risk Assessment action item{'s' if total != 1 else ''} for this property are Complete."}
+                else:
+                    parts = [f"{n} {s}" for s, n in sorted(by.items()) if s != "Complete"]
+                    summaries["RA"] = {"status": "fail", "text": f"FAILED. Of {total} Risk Assessment action items, {complete_n} Complete and {incomplete_n} not Complete ({', '.join(parts)}). Rule: 100% must be Complete."}
+        except Exception as e:
+            summaries["RA"] = {"status": "generic", "text": f"(Could not summarize RA: {e})"}
+
+        # REP (Reputation): quarter-over-quarter % change between closing-Friday snapshots
+        try:
+            prev_q_end = q_start - datetime.timedelta(days=1)
+            f_curr = _last_friday_on_or_before(q_end)
+            f_prev = _last_friday_on_or_before(prev_q_end)
+            r = conn_wh.fetchall("""
+                SELECT CAST(DATERANGETO AS DATE), SCORE
+                FROM dbo.REPUTATION_COM_SUMMARY_FACT
+                WHERE PROPERTY_KEY = ? AND SCORE IS NOT NULL
+                      AND CAST(DATERANGETO AS DATE) IN (?, ?)
+            """, (property_key, f_curr, f_prev))
+            by_date = {row[0]: float(row[1]) for row in r}
+            curr, prev = by_date.get(f_curr), by_date.get(f_prev)
+            if curr is None or prev is None:
+                summaries["REP"] = {"status": "nodata", "text": f"Reputation.com snapshots for {quarter} {ay} closing-Friday comparison are not both present (this quarter's Friday {f_curr}: {'yes' if curr is not None else 'missing'}, prior quarter's Friday {f_prev}: {'yes' if prev is not None else 'missing'}). Per the rule, missing data defaults to PASS."}
+            elif prev == 0:
+                summaries["REP"] = {"status": "nodata", "text": f"Cannot compute % change -- prior quarter's Reputation score was 0."}
+            else:
+                pct_change = (curr - prev) / prev
+                if pct_change > 0.01:
+                    summaries["REP"] = {"status": "pass", "text": f"PASSED. Reputation score improved from {prev:.2f} ({f_prev}) to {curr:.2f} ({f_curr}) = +{pct_change * 100:.2f}%. Rule: > +1% improvement to pass."}
+                else:
+                    summaries["REP"] = {"status": "fail", "text": f"FAILED. Reputation score went from {prev:.2f} ({f_prev}) to {curr:.2f} ({f_curr}) = {pct_change * 100:+.2f}% (needed > +1%)."}
+        except Exception as e:
+            summaries["REP"] = {"status": "generic", "text": f"(Could not summarize REP: {e})"}
+
+        # TC (Timecard Approvals): count of Supervisor approvals in the quarter.
+        # Full on-time/late calc requires the NY / West-Coast due-date calendars
+        # and per-row buffer arithmetic -- that lives on the drilldown page. We
+        # summarize the row count here so the RM knows how many approvals landed
+        # in the quarter, and defer the breakdown of on-time vs late to the
+        # drilldown click-through.
+        try:
+            entity_number = property_row.get("ENTITY_NUMBER")
+            if entity_number is not None:
+                # DEPARTMENT_CODE in LS_TIMESHEET is the entity number (possibly
+                # zero-padded or with a suffix). Match on the leading digits.
+                r = conn_wh.fetchall("""
+                    SELECT COUNT(*)
+                    FROM dbo.LS_TIMESHEET
+                    WHERE APRROVAL_TYPE = 'Supervisor'
+                      AND DATE_APPROVED BETWEEN ? AND ?
+                      AND (DEPARTMENT_CODE = ? OR DEPARTMENT_CODE LIKE ? + '%')
+                """, (q_start, q_end, str(entity_number), str(entity_number)))
+                approvals = int(r[0][0]) if r else 0
+            else:
+                approvals = 0
+            tc_val = property_row.get("TC")
+            if approvals == 0:
+                summaries["TC"] = {"status": "nodata", "text": f"No Supervisor timecard approvals recorded for entity {entity_number} in {quarter} {ay}. Per the rule, missing data defaults to PASS."}
+            elif tc_val:
+                summaries["TC"] = {"status": "pass", "text": f"PASSED. {approvals} Supervisor timecard approval{'s' if approvals != 1 else ''} recorded for entity {entity_number} in {quarter} {ay}. Rule: ~100% approved on time (NY/Non-NY due-date calendars + buffer). Click the measure header for the per-approval on-time/late breakdown."}
+            else:
+                summaries["TC"] = {"status": "fail", "text": f"FAILED. {approvals} Supervisor timecard approval{'s' if approvals != 1 else ''} recorded for entity {entity_number} in {quarter} {ay}, but at least one was late per the NY/Non-NY due-date + buffer rule. Click the measure header for the per-approval breakdown."}
+        except Exception as e:
+            summaries["TC"] = {"status": "generic", "text": f"(Could not summarize TC: {e})"}
     finally:
         conn_wh.close()
 
@@ -1750,15 +1853,7 @@ def _build_measure_summaries(env, property_key, property_row, ay, quarter):
         summaries["NOI"] = {"status": "pass" if noi_val else "fail", "text": f"RM entered: {'Yes (NOI met budget).' if noi_val else 'No (NOI did not meet budget).'}"}
 
     # Measures we don't yet summarize with hard numbers -- generic sentence.
-    for m in ["TC", "TR", "REP", "RA"]:
-        val = property_row.get(m)
-        if val is None:
-            summaries[m] = {"status": "nodata", "text": f"No data for the {m} measure yet in {quarter} {ay}. Per the rule, missing data defaults to PASS."}
-        elif val:
-            summaries[m] = {"status": "pass_generic", "text": f"PASSED the {m} measure this quarter. (Click the measure name in the grid header to see the underlying rows behind this result.)"}
-        else:
-            summaries[m] = {"status": "fail_generic", "text": f"FAILED the {m} measure this quarter. (Click the measure name in the grid header to see the underlying rows that drove this result.)"}
-
+    # (TC / TR / REP / RA are now handled with concrete numbers above.)
     # Overrides trump everything else.
     for m in list(summaries):
         if property_row.get(f"{m}_LOCKED"):
@@ -1853,6 +1948,36 @@ def _send_via_graph(to_email, subject, html_body):
         raise RuntimeError(f"Graph sendMail HTTP {r.status_code}: {r.text[:300]}")
 
 
+def _audit_scorecard_change(source_table_key, row_key_dict, field_name, old_value, new_value, action, changed_by, reason=None):
+    """Insert a row-level change record into control.SCORECARD_TABLE_MANAGER_AUDIT
+    (DB_BI_SUPPORT). Called by the RM-facing write endpoints so field-level
+    change history is complete regardless of whether the edit came from the app
+    (RM slideout) or the admin Table Manager. Fire-and-forget: any audit failure
+    is logged and swallowed -- the user's primary write must not fail because
+    the audit database was briefly unreachable."""
+    try:
+        env = _get_env()
+        bi = SafeConnection(env, "DB_BI_SUPPORT", None, direct=True)
+        try:
+            bi.execute(
+                """INSERT INTO control.SCORECARD_TABLE_MANAGER_AUDIT
+                    (SOURCE_TABLE_KEY, ROW_KEY, FIELD_NAME, OLD_VALUE, NEW_VALUE,
+                     ACTION, CHANGED_BY, CHANGED_AT, REASON)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, SYSUTCDATETIME(), ?)""",
+                (source_table_key,
+                 json.dumps(row_key_dict, sort_keys=True),
+                 field_name,
+                 None if old_value is None else str(old_value),
+                 None if new_value is None else str(new_value),
+                 action, changed_by, reason))
+            bi.commit()
+        finally:
+            bi.close()
+    except Exception as e:
+        # Deliberately swallowed -- audit failure must not block user writes.
+        print(f"[_audit_scorecard_change] failed for {source_table_key}/{field_name}: {e}")
+
+
 def _update_own_property(conn, property_key, ay, quarter, admin, email, set_clause, params):
     """UPDATE scoped to admin-or-owning-RM -- same RM_EMAIL-match rule every
     read endpoint already enforces, applied here as defense-in-depth (the
@@ -1888,6 +2013,7 @@ def api_toggle_override(property_key):
         return check
     if _is_pm():
         return jsonify({"error": "read-only for Property Managers"}), 403
+    user = session.get("user", {})
     payload = request.get_json(force=True) or {}
     field = payload.get("field")
     enabled = bool(payload.get("enabled"))
@@ -1903,9 +2029,11 @@ def api_toggle_override(property_key):
         ay, quarter = _latest_period(conn)
         if ay is None:
             return jsonify({"error": "no data available"}), 404
-        owned = _scoped_property_row(conn, property_key, ay, quarter, admin, email, ["PROPERTY_KEY"])
+        owned = _scoped_property_row(conn, property_key, ay, quarter, admin, email,
+                                     ["PROPERTY_KEY", f"{field}_LOCKED", f"{field}_LOCKED_BY", f"{field}_REASON"])
         if owned is None:
             return jsonify({"error": "not found or not authorized"}), 404
+        old_locked = owned[1]
 
         locked_by = (user.get("name") or user.get("email") or "") if enabled else None
         reason_val = reason if enabled else None
@@ -1914,6 +2042,16 @@ def api_toggle_override(property_key):
             f"{field}_LOCKED = ?, {field}_LOCKED_BY = ?, {field}_REASON = ?, DATE_UPDATED = SYSUTCDATETIME(), UPDATED_BY = ?",
             [1 if enabled else 0, locked_by, reason_val, user.get("email", "")])
         conn.commit()
+        _audit_scorecard_change(
+            source_table_key="scorecard_core",
+            row_key_dict={"PROPERTY_KEY": property_key, "AY": ay, "QUARTER": quarter},
+            field_name=f"{field}_LOCKED",
+            old_value=int(old_locked) if old_locked is not None else 0,
+            new_value=1 if enabled else 0,
+            action="UPDATE",
+            changed_by=user.get("email", ""),
+            reason=reason_val,
+        )
         return jsonify({"ok": True, "rows_affected": cur.rowcount, "locked_by": locked_by, "reason": reason_val})
     finally:
         conn.close()
@@ -1938,6 +2076,7 @@ def api_patch_property(property_key):
         return check
     if _is_pm():
         return jsonify({"error": "read-only for Property Managers"}), 403
+    user = session.get("user", {})
     payload = request.get_json(force=True) or {}
     field = next(iter(payload.keys()), None)
     if field not in _MEASURE_KEYS:
@@ -1952,9 +2091,10 @@ def api_patch_property(property_key):
         ay, quarter = _latest_period(conn)
         if ay is None:
             return jsonify({"error": "no data available"}), 404
-        owned = _scoped_property_row(conn, property_key, ay, quarter, admin, email, ["PROPERTY_KEY"])
+        owned = _scoped_property_row(conn, property_key, ay, quarter, admin, email, ["PROPERTY_KEY", field])
         if owned is None:
             return jsonify({"error": "not found or not authorized"}), 404
+        old_value = owned[1]
 
         updated_by_name = None
         if field == "RMSCORE":
@@ -1978,6 +2118,16 @@ def api_patch_property(property_key):
             "UPDATE dbo.SCORECARD_CORE SET PRERM = ?, LDRTOTAL = ?, MSTOTAL = ? WHERE PROPERTY_KEY = ? AND AY = ? AND QUARTER = ?",
             (prerm, ldrtotal, mstotal, property_key, ay, quarter))
         conn.commit()
+        _audit_scorecard_change(
+            source_table_key="scorecard_core",
+            row_key_dict={"PROPERTY_KEY": property_key, "AY": ay, "QUARTER": quarter},
+            field_name=field,
+            old_value=old_value,
+            new_value=value,
+            action="UPDATE",
+            changed_by=user.get("email", ""),
+            reason=("RM slideout save" if field == "RMSCORE" else "RM slideout override edit"),
+        )
         return jsonify({"ok": True, "prerm": prerm, "ldrtotal": ldrtotal, "mstotal": mstotal, "overall": ldrtotal + mstotal, "updated_by": updated_by_name})
     finally:
         conn.close()
@@ -1996,6 +2146,7 @@ def api_save_notes(property_key):
         return check
     if _is_pm():
         return jsonify({"error": "read-only for Property Managers"}), 403
+    user = session.get("user", {})
     payload = request.get_json(force=True) or {}
     notes = (payload.get("notes") or "").strip() or None
 
@@ -2007,9 +2158,10 @@ def api_save_notes(property_key):
         ay, quarter = _latest_period(conn)
         if ay is None:
             return jsonify({"error": "no data available"}), 404
-        owned = _scoped_property_row(conn, property_key, ay, quarter, admin, email, ["PROPERTY_KEY"])
+        owned = _scoped_property_row(conn, property_key, ay, quarter, admin, email, ["PROPERTY_KEY", "NOTES"])
         if owned is None:
             return jsonify({"error": "not found or not authorized"}), 404
+        old_notes = owned[1]
 
         note_by = (user.get("name") or user.get("email") or "") if notes else None
         cur = _update_own_property(
@@ -2017,6 +2169,16 @@ def api_save_notes(property_key):
             "NOTES = ?, NOTE_BY = ?, NOTE_AT = SYSUTCDATETIME(), DATE_UPDATED = SYSUTCDATETIME(), UPDATED_BY = ?",
             [notes, note_by, user.get("email", "")])
         conn.commit()
+        _audit_scorecard_change(
+            source_table_key="scorecard_core",
+            row_key_dict={"PROPERTY_KEY": property_key, "AY": ay, "QUARTER": quarter},
+            field_name="NOTES",
+            old_value=old_notes,
+            new_value=notes,
+            action="UPDATE",
+            changed_by=user.get("email", ""),
+            reason="RM note save",
+        )
         return jsonify({"ok": True, "rows_affected": cur.rowcount, "notes": notes, "note_by": note_by})
     finally:
         conn.close()

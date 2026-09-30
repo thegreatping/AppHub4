@@ -48,7 +48,7 @@
     .sc-empty { padding: 60px 20px; text-align: center; color: var(--text-secondary); font-size: 0.9rem; }
 
     /* Grouped sticky-header table */
-    .sc-table-wrap { overflow: auto; max-height: calc(100vh - 260px); border: 1px solid var(--border-medium); border-radius: 8px; }
+    .sc-table-wrap { overflow: auto; max-height: calc(100vh - 300px); border: 1px solid var(--border-medium); border-radius: 8px; }
     .sc-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
     .sc-table th, .sc-table td { padding: 6px 8px; border-bottom: 1px solid var(--border-subtle); white-space: nowrap; }
     .sc-table th { position: sticky; background: var(--surface-raised); z-index: 2; text-align: center; }
@@ -56,8 +56,8 @@
     .sc-table thead tr:nth-child(2) th { font-weight: 700; color: var(--text-primary); cursor: pointer; user-select: none; }
     .sc-table thead tr:nth-child(2) th:hover { color: var(--accent-cyan); }
     .sc-table thead tr:nth-child(3) th { z-index: 2; }
-    .sc-table th.grp-leadership { background: rgba(103,232,224,0.10); }
-    .sc-table th.grp-maintenance { background: rgba(251,191,36,0.10); }
+    .sc-table th.grp-leadership { background: rgba(103,232,224,0.55); color: #04222c !important; font-weight: 900; letter-spacing: 0.6px; }
+    .sc-table th.grp-maintenance { background: rgba(251,191,36,0.55); color: #3b2200 !important; font-weight: 900; letter-spacing: 0.6px; }
     .sc-table th.id-col, .sc-table td.id-col { text-align: left; }
     .sc-table td.id-col.name-col { font-weight: 600; color: var(--text-primary); }
     #scFFTable td { text-align: center; }
@@ -2097,6 +2097,29 @@ function scViewAsClear() {
         setup('scBlurbForecast', 'scorecard_blurb_forecast');
     });
 })();
+
+// Dynamically size each .sc-table-wrap so its horizontal scrollbar always
+// sits within the viewport regardless of monitor height. The CSS max-height
+// is a fallback; this measurement handles small laptops + tall desktops.
+function _sizeScTableWraps() {
+    const wraps = document.querySelectorAll('.sc-table-wrap');
+    const bottomBuffer = 24; // room for the horizontal scrollbar + a hair of margin
+    wraps.forEach(w => {
+        const top = w.getBoundingClientRect().top;
+        const h = Math.max(200, window.innerHeight - top - bottomBuffer);
+        w.style.maxHeight = `${h}px`;
+    });
+}
+window.addEventListener('load', _sizeScTableWraps);
+window.addEventListener('resize', _sizeScTableWraps);
+// Also re-run after tab switches (Fall Forecast wrap not measurable until visible).
+const _origShowScTab = window.showScTab;
+if (typeof _origShowScTab === 'function') {
+    window.showScTab = function (...args) {
+        _origShowScTab.apply(this, args);
+        setTimeout(_sizeScTableWraps, 0);
+    };
+}
 
 function sortFFCol(key) {
     scFFSort.dir = (scFFSort.col === key) ? -scFFSort.dir : 1;
