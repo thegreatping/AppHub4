@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Peak AppHub 4.0</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/apphub.css') }}?v=50">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/apphub.css') }}?v=51">
     <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('apphub_theme') || 'dark');</script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/fontawesome.min.css') }}?v=2">
     {% block head %}{% endblock %}
@@ -291,9 +291,10 @@
             })();
 
             function renderOptions(employees) {
-                impSelect.innerHTML = employees.map(e =>
-                    `<option value="${e.email}">${e.name} — ${e.title_group} (${e.property})</option>`
-                ).join('');
+                impSelect.innerHTML = employees.map(e => {
+                    const label = `${e.name} — ${e.title_group} (${e.property})`;
+                    return `<option value="${e.email}" title="${label.replace(/"/g, '&quot;')}">${label}</option>`;
+                }).join('');
             }
 
             impFilter.addEventListener('input', function() {

@@ -72,7 +72,7 @@ def module(module_id):
 @login_required
 def toggle_dev_mode():
     """Toggle developer mode. Only developers can use this."""
-    if not session.get("is_developer"):
+    if not (session.get("is_developer") or session.get("real_is_developer")):
         return jsonify({"error": "unauthorized"}), 403
     session["is_dev_mode"] = not session.get("is_dev_mode", False)
     # If turning off dev mode, also stop impersonation
@@ -84,8 +84,12 @@ def toggle_dev_mode():
 @main_bp.route("/api/impersonate", methods=["POST"])
 @login_required
 def impersonate():
-    """Start impersonating another user. Developer-only."""
-    if not session.get("is_developer") or not session.get("is_dev_mode"):
+    """Start impersonating another user. Developer-only.
+    Fully swaps session identity (user, is_developer, user_modules) so
+    every downstream module treats the request as coming from the target
+    user -- required so role gates (PM/RVP/RM/admin) trigger correctly."""
+    real_is_dev = session.get("is_developer") or session.get("real_is_developer")
+    if not real_is_dev or not session.get("is_dev_mode"):
         return jsonify({"error": "unauthorized"}), 403
 
     data = request.get_json()
@@ -93,18 +97,17 @@ def impersonate():
     if not target_email:
         return jsonify({"error": "email required"}), 400
 
-    # Look up the target employee
     emp = get_employee_info(target_email)
     if not emp:
         return jsonify({"error": "employee not found"}), 404
 
-    # Resolve their access
     access = resolve_access(emp["title_group"], target_email)
 
-    # Store impersonation state (preserve real user info)
+    # First-time impersonation: snapshot the real identity so stop can restore.
     if not session.get("is_impersonating"):
         session["real_user"] = session.get("user")
         session["real_modules"] = session.get("user_modules")
+        session["real_is_developer"] = session.get("is_developer", False)
 
     session["is_impersonating"] = True
     session["impersonating_user"] = {
@@ -113,10 +116,22 @@ def impersonate():
         "title_group": emp["title_group"],
         "property": emp["property"],
     }
+    session["user"] = {
+        "name": emp["name"],
+        "email": emp["email"],
+        # Preserve real oid for audit trails; nothing scopes on it.
+        "oid": session.get("real_user", {}).get("oid") or session.get("user", {}).get("oid"),
+    }
+    session["is_developer"] = False
     session["user_modules"] = [
         {"id": m["id"], "name": m["name"], "access": m["access"]}
         for m in access["modules"]
     ]
+    # Scorecard caches PM/RVP detection per session -- clear so re-detection
+    # runs against the new identity.
+    for k in ("sc_pm_property_key", "sc_is_rvp",
+              "sc_view_as_email", "sc_view_as_pm_property_key", "sc_view_as_rvp_email"):
+        session.pop(k, None)
 
     return jsonify({
         "success": True,
@@ -129,7 +144,7 @@ def impersonate():
 @login_required
 def stop_impersonation():
     """Stop impersonating and restore real user."""
-    if not session.get("is_developer"):
+    if not (session.get("is_developer") or session.get("real_is_developer")):
         return jsonify({"error": "unauthorized"}), 403
     _stop_impersonation()
     return jsonify({"success": True})
@@ -146,7 +161,7 @@ def refresh_nav():
 @login_required
 def employees_list():
     """Get list of active employees for impersonation dropdown. Developer-only."""
-    if not session.get("is_developer") or not session.get("is_dev_mode"):
+    if not (session.get("is_developer") or session.get("real_is_developer")) or not session.get("is_dev_mode"):
         return jsonify({"error": "unauthorized"}), 403
     employees = get_all_active_employees()
     return jsonify(employees)
@@ -157,9 +172,13 @@ def _stop_impersonation():
     session["is_impersonating"] = False
     session["impersonating_user"] = None
     if session.get("real_user"):
+        session["user"] = session.get("real_user")
         session["user_modules"] = session.get("real_modules")
-    session.pop("real_user", None)
-    session.pop("real_modules", None)
+        session["is_developer"] = session.get("real_is_developer", False)
+    for k in ("real_user", "real_modules", "real_is_developer",
+              "sc_pm_property_key", "sc_is_rvp",
+              "sc_view_as_email", "sc_view_as_pm_property_key", "sc_view_as_rvp_email"):
+        session.pop(k, None)
 
 
 # ── Theme Settings (server-side, per-app per-theme) ───────────────────────────
