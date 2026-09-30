@@ -4,11 +4,16 @@ from modules import MODULES, APP_ID_MAP
 from helpers import load_env, SafeConnection
 
 _env = None
-_ALWAYS_VISIBLE = {"rent_forecasting_2"}
 
-# Admin-only tools that should NOT show as ghost tiles for users who lack a
-# grant -- they're skipped entirely instead. Live-tile behavior for granted
-# users is unchanged.
+# BETA GATE (2026-09-30): during the AppHub 4.0 limited beta, non-developer
+# users only ever see the modules listed here. Developers (cpell@peakmade.com
+# and anyone else with GRANT_TYPE='developer' on module 0) still see
+# everything. When more modules open beta, add them here. When we go fully
+# GA, set _BETA_MODE=False (or delete the gate).
+_BETA_MODE = True
+_BETA_ALLOWED_MODULES = {"leadership_scorecard"}
+
+_ALWAYS_VISIBLE = {"rent_forecasting_2"}
 _HIDE_WITHOUT_GRANT = {"apphub_maintenance"}
 
 
@@ -22,20 +27,14 @@ def _get_env():
 def build_nav_modules():
     """Return the list of modules to show in the left nav for the current user.
 
-    Every Flag_Active=1 module is returned. Each entry carries a `state`:
-      - 'live'  : user has an audience grant (or is a developer) -> normal link
-      - 'ghost' : no grant -> dimmed BETA-labeled tile, non-clickable (nav is
-                  a roadmap; click is blocked in the template)
+    BETA MODE: non-developers see ONLY modules in _BETA_ALLOWED_MODULES.
+    Developers see every Flag_Active=1 module (unchanged).
 
-    Modules in _HIDE_WITHOUT_GRANT are omitted entirely when the user has no
-    grant (admin-only utilities we don't want to advertise). Developers see
-    everything as 'live'.
+    Every returned entry carries a `state` = 'live' (kept for template compat;
+    nothing renders as ghost during beta).
     """
     user_modules = session.get("user_modules", [])
     is_developer = session.get("is_developer", False)
-    # Impersonating a real user? Treat the impersonated user's grants as the
-    # source of truth for ghost/live decisions -- otherwise the developer
-    # flag would shortcut everything to 'live' and we'd never see ghosts.
     is_impersonating = session.get("is_impersonating", False)
     treat_as_developer = is_developer and not is_impersonating
 
@@ -59,10 +58,7 @@ def build_nav_modules():
     def _decorate(m):
         out = dict(m)
         out["testing_status"] = testing_status.get(m["id"], "PENDING")
-        if treat_as_developer or m["id"] in granted_ids:
-            out["state"] = "live"
-        else:
-            out["state"] = "ghost"
+        out["state"] = "live"
         return out
 
     visible = []
@@ -70,6 +66,9 @@ def build_nav_modules():
         if m["id"] not in candidate_ids:
             continue
         if m["id"] in _HIDE_WITHOUT_GRANT and m["id"] not in granted_ids and not treat_as_developer:
+            continue
+        # BETA GATE: non-devs only see whitelisted modules.
+        if _BETA_MODE and not treat_as_developer and m["id"] not in _BETA_ALLOWED_MODULES:
             continue
         visible.append(_decorate(m))
     return visible

@@ -24,10 +24,16 @@ def dev_auto_login():
         }
         session["is_developer"] = True
         session["is_dev_mode"] = False  # Start with dev mode OFF
-    # Always keep user_modules in sync with current APP_ID_MAP so new modules
-    # appear immediately -- UNLESS impersonation is active, in which case the
-    # impersonated user's grants (set by routes.py:impersonate) must persist.
+    # When NOT impersonating, guarantee cpell is signed in as themselves with
+    # developer privileges. Guards against orphaned is_developer=False left
+    # over from a previous impersonation that didn't clean up properly.
     if not session.get("is_impersonating"):
+        session["user"] = {
+            "name": "Craig Pell",
+            "email": "cpell@peakmade.com",
+            "oid": session.get("user", {}).get("oid", "dev-mode"),
+        }
+        session["is_developer"] = True
         session["user_modules"] = all_modules
 
 
