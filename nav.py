@@ -6,12 +6,15 @@ from helpers import load_env, SafeConnection
 _env = None
 
 # BETA GATE (2026-09-30): during the AppHub 4.0 limited beta, non-developer
-# users only ever see the modules listed here. Developers (cpell@peakmade.com
-# and anyone else with GRANT_TYPE='developer' on module 0) still see
-# everything. When more modules open beta, add them here. When we go fully
-# GA, set _BETA_MODE=False (or delete the gate).
+# users only ever see the modules listed here. Developers see everything.
+# When more modules open beta, add them here. When we go fully GA, set
+# _BETA_MODE=False (or delete the gate).
 _BETA_MODE = True
 _BETA_ALLOWED_MODULES = {"leadership_scorecard"}
+
+# Hardcoded developer emails so the gate can never accidentally lock cpell
+# out even if session flags / MODULE_AUDIENCE are wrong.
+_BETA_ALWAYS_DEV = {"cpell@peakmade.com"}
 
 _ALWAYS_VISIBLE = {"rent_forecasting_2"}
 _HIDE_WITHOUT_GRANT = {"apphub_maintenance"}
@@ -36,6 +39,12 @@ def build_nav_modules():
     user_modules = session.get("user_modules", [])
     is_developer = session.get("is_developer", False)
     is_impersonating = session.get("is_impersonating", False)
+    email = (session.get("user", {}).get("email") or "").lower()
+    # Belt-and-suspenders: session flags CAN be stale after a code deploy.
+    # An email in the hardcoded allowlist is always treated as dev when not
+    # actively impersonating someone else.
+    if email in _BETA_ALWAYS_DEV and not is_impersonating:
+        is_developer = True
     treat_as_developer = is_developer and not is_impersonating
 
     try:
