@@ -5,7 +5,7 @@
     <div class="header-left">
         <i class="fa-solid fa-clipboard-check" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
         <span class="page-title">Leadership Scorecard - QA Sign-Off</span>
-        <span class="page-subtitle">Shared collaborative checklist (admin only)</span>
+        <span class="page-subtitle">Shared collaborative checklist -- all testers welcome</span>
     </div>
     <div class="header-right">
         <a href="?popout=1" target="_blank" rel="noopener" class="sc-reference-btn" title="Open this checklist in a new browser tab so you can test the Scorecard side-by-side"><i class="fa-solid fa-up-right-from-square"></i> Open in new tab</a>
@@ -105,7 +105,9 @@ body.qas-popout .qas-body { padding: 16px 24px !important; }
 
 <div class="qas-controls">
   <button class="secondary" onclick="loadState()"><i class="fa-solid fa-rotate"></i> Refresh (see other testers' updates)</button>
+  {% if is_admin %}
   <button class="secondary" onclick="if (confirm('Wipe every checkbox and result across all testers? Meta fields (tester name, sign-off, etc.) are kept.')) resetAll();">Reset All Rows</button>
+  {% endif %}
   <span class="qas-saved" id="qas_saved_msg">Ready.</span>
 </div>
 

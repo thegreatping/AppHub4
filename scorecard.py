@@ -390,12 +390,11 @@ def admin_runs_page():
 @scorecard_bp.route("/admin/qa")
 @login_required
 def admin_qa_page():
-    """Admin-only QA Sign-Off page -- collaborative pre-beta test checklist."""
+    """Shared QA Sign-Off page -- any Scorecard user can participate as a tester.
+    Reset-all remains admin-only (see api_admin_qa_reset)."""
     check = _require_access()
     if check:
         return check
-    if not _is_admin():
-        return jsonify({"error": "admin only"}), 403
     return render_template("scorecard_qa_signoff.html", **_ctx())
 
 
@@ -406,8 +405,6 @@ def api_admin_qa_state():
     check = _require_access()
     if check:
         return check
-    if not _is_admin():
-        return jsonify({"error": "admin only"}), 403
     env = _get_env()
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
@@ -447,8 +444,6 @@ def api_admin_qa_row(scenario_key):
     check = _require_access()
     if check:
         return check
-    if not _is_admin():
-        return jsonify({"error": "admin only"}), 403
     if len(scenario_key) > 50 or not scenario_key.replace("_", "").isalnum():
         return jsonify({"error": "invalid scenario_key"}), 400
     payload = request.get_json(silent=True) or {}
@@ -482,12 +477,11 @@ def api_admin_qa_row(scenario_key):
 @scorecard_bp.route("/api/admin/qa/meta", methods=["PUT"])
 @login_required
 def api_admin_qa_meta():
-    """Update the singleton meta row. Any admin can edit any field."""
+    """Update the singleton meta row. Any Scorecard user can edit any field
+    (testers collaborate on tester/date/env/browser/decision/blockers)."""
     check = _require_access()
     if check:
         return check
-    if not _is_admin():
-        return jsonify({"error": "admin only"}), 403
     payload = request.get_json(silent=True) or {}
     allowed = ["TESTER", "TEST_DATE", "ENV", "BROWSER", "ROLE_TESTED",
                "SIGNOFF_TESTER", "SIGNOFF_APPROVER", "DECISION", "BLOCKERS"]
