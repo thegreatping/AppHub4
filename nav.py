@@ -33,6 +33,11 @@ def build_nav_modules():
     """
     user_modules = session.get("user_modules", [])
     is_developer = session.get("is_developer", False)
+    # Impersonating a real user? Treat the impersonated user's grants as the
+    # source of truth for ghost/live decisions -- otherwise the developer
+    # flag would shortcut everything to 'live' and we'd never see ghosts.
+    is_impersonating = session.get("is_impersonating", False)
+    treat_as_developer = is_developer and not is_impersonating
 
     try:
         conn = SafeConnection(_get_env(), "DB_APP_SUPPORT", None, direct=True)
@@ -54,7 +59,7 @@ def build_nav_modules():
     def _decorate(m):
         out = dict(m)
         out["testing_status"] = testing_status.get(m["id"], "PENDING")
-        if is_developer or m["id"] in granted_ids:
+        if treat_as_developer or m["id"] in granted_ids:
             out["state"] = "live"
         else:
             out["state"] = "ghost"
@@ -64,7 +69,7 @@ def build_nav_modules():
     for m in sorted(MODULES, key=lambda x: x["name"].lower()):
         if m["id"] not in candidate_ids:
             continue
-        if m["id"] in _HIDE_WITHOUT_GRANT and m["id"] not in granted_ids and not is_developer:
+        if m["id"] in _HIDE_WITHOUT_GRANT and m["id"] not in granted_ids and not treat_as_developer:
             continue
         visible.append(_decorate(m))
     return visible

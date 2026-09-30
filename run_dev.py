@@ -24,8 +24,11 @@ def dev_auto_login():
         }
         session["is_developer"] = True
         session["is_dev_mode"] = False  # Start with dev mode OFF
-    # Always keep user_modules in sync with current APP_ID_MAP so new modules appear immediately
-    session["user_modules"] = all_modules
+    # Always keep user_modules in sync with current APP_ID_MAP so new modules
+    # appear immediately -- UNLESS impersonation is active, in which case the
+    # impersonated user's grants (set by routes.py:impersonate) must persist.
+    if not session.get("is_impersonating"):
+        session["user_modules"] = all_modules
 
 
 if __name__ == "__main__":
