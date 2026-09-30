@@ -212,14 +212,15 @@ def add_audience_grant():
         if existing:
             return jsonify({"error": "grant already exists"}), 409
 
-        # Get next ID
-        max_id = conn.fetchall("SELECT ISNULL(MAX(ID), 0) FROM dbo.MODULE_AUDIENCE")
-        new_id = max_id[0][0] + 1
-
-        conn.execute("""
-            INSERT INTO dbo.MODULE_AUDIENCE (ID, MODULE_ID, GRANT_TYPE, GRANT_VALUE, ACCESS_LEVEL)
-            VALUES (?, ?, ?, ?, ?)
-        """, (new_id, module_id, grant_type, grant_value, access_level))
+        # ID is IDENTITY -- let SQL Server assign it and capture via OUTPUT.
+        user = session.get("user", {})
+        created_by = user.get("email") or user.get("name") or "unknown"
+        row = conn.fetchall("""
+            INSERT INTO dbo.MODULE_AUDIENCE (MODULE_ID, GRANT_TYPE, GRANT_VALUE, ACCESS_LEVEL, DATE_CREATED, CREATED_BY)
+            OUTPUT INSERTED.ID
+            VALUES (?, ?, ?, ?, SYSUTCDATETIME(), ?)
+        """, (module_id, grant_type, grant_value, access_level, created_by))
+        new_id = row[0][0] if row else None
         return jsonify({"success": True, "id": new_id})
     finally:
         conn.close()
