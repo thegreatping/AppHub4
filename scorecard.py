@@ -367,6 +367,8 @@ def _ctx(**kwargs):
         user=user,
         is_developer=is_dev,
         is_dev_mode=session.get("is_dev_mode", False),
+        is_impersonating=session.get("is_impersonating", False),
+        impersonating_user=session.get("impersonating_user", None),
         rm_profile=rm_profile,
         is_admin=_is_admin(),
         is_real_admin=_is_real_admin(),
