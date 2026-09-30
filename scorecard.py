@@ -67,13 +67,13 @@ _MEASURE_DEFS = [
     {"key": "MSLEO", "label": "MS LEO Compliance", "group": "maintenance", "type": "bool",
      "blurb": "CONFIRMED (2026-09-22): any monthly snapshot in the quarter showing incomplete fails the whole quarter -- not a simple single-flag passthrough."},
     {"key": "CURB", "label": "Curb Appeal", "group": "maintenance", "type": "bool",
-     "blurb": "RM Quarterly Inspection score for this section. Pass threshold is >=85 points."},
+     "blurb": "RM Quarterly Inspection score for this section. When a property has more than one inspection in the quarter, the best score of any inspection is used. Pass threshold is >=85 points."},
     {"key": "PUBLICAREAS", "label": "Public Areas", "group": "maintenance", "type": "bool",
-     "blurb": "RM Quarterly Inspection score for this section. Pass threshold is >=85 points."},
+     "blurb": "RM Quarterly Inspection score for this section. When a property has more than one inspection in the quarter, the best score of any inspection is used. Pass threshold is >=85 points."},
     {"key": "MAINT", "label": "Maintenance", "group": "maintenance", "type": "bool",
-     "blurb": "RM Quarterly Inspection score for this section. Pass threshold is >=85 points."},
+     "blurb": "RM Quarterly Inspection score for this section. When a property has more than one inspection in the quarter, the best score of any inspection is used. Pass threshold is >=85 points."},
     {"key": "LOGS", "label": "Safety Logs & Binders", "group": "maintenance", "type": "bool",
-     "blurb": "RM Quarterly Inspection score for this section. Pass threshold is >=85 points."},
+     "blurb": "RM Quarterly Inspection score for this section. When a property has more than one inspection in the quarter, the best score of any inspection is used. Pass threshold is >=85 points."},
     {"key": "MSWO", "label": "Work Orders (Maintenance)", "group": "maintenance", "type": "bool",
      "blurb": "Same work-order turnaround figure as WO, applied to the Maintenance Supervisor's score. Pass threshold is <=1 day."},
     {"key": "SURVEYS", "label": "Surveys", "group": "maintenance", "type": "bool01",
@@ -379,6 +379,155 @@ def admin_runs_page():
     if not _is_admin():
         return jsonify({"error": "admin only"}), 403
     return render_template("scorecard_pipeline_runs.html", **_ctx())
+
+
+# ── QA Sign-Off admin page + shared-state API ────────────────────────────
+# In-app version of the standalone LEADERSHIP_SCORECARD_QA_SIGNOFF.html.
+# All state lives in dbo.SCORECARD_QA_STATE / SCORECARD_QA_META so multiple
+# testers see and update the same checklist. Any admin can edit; per-row
+# LAST_UPDATED_BY + LAST_UPDATED_AT provide an audit trail.
+
+@scorecard_bp.route("/admin/qa")
+@login_required
+def admin_qa_page():
+    """Admin-only QA Sign-Off page -- collaborative pre-beta test checklist."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    return render_template("scorecard_qa_signoff.html", **_ctx())
+
+
+@scorecard_bp.route("/api/admin/qa/state")
+@login_required
+def api_admin_qa_state():
+    """Return the full current checklist state: all row entries + meta singleton."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        rows = conn.fetchall("""
+            SELECT SCENARIO_KEY, CHECKED, STATUS, NOTES,
+                   LAST_UPDATED_BY, LAST_UPDATED_AT
+            FROM dbo.SCORECARD_QA_STATE
+        """)
+        state = {r[0]: {"checked": bool(r[1]), "status": r[2], "notes": r[3],
+                        "last_updated_by": r[4],
+                        "last_updated_at": r[5].isoformat() if r[5] else None}
+                 for r in rows}
+        meta_row = conn.fetchall("""
+            SELECT TESTER, TEST_DATE, ENV, BROWSER, ROLE_TESTED,
+                   SIGNOFF_TESTER, SIGNOFF_APPROVER, DECISION, BLOCKERS,
+                   LAST_UPDATED_BY, LAST_UPDATED_AT
+            FROM dbo.SCORECARD_QA_META WHERE META_ID = 1
+        """)
+        m = meta_row[0] if meta_row else (None,) * 11
+        meta = {
+            "tester": m[0], "test_date": m[1].isoformat() if m[1] else None,
+            "env": m[2], "browser": m[3], "role_tested": m[4],
+            "signoff_tester": m[5], "signoff_approver": m[6],
+            "decision": m[7], "blockers": m[8],
+            "last_updated_by": m[9],
+            "last_updated_at": m[10].isoformat() if m[10] else None,
+        }
+        return jsonify({"state": state, "meta": meta})
+    finally:
+        conn.close()
+
+
+@scorecard_bp.route("/api/admin/qa/row/<scenario_key>", methods=["PUT"])
+@login_required
+def api_admin_qa_row(scenario_key):
+    """Upsert one scenario's checked / status / notes. Body: {checked, status, notes}."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    if len(scenario_key) > 50 or not scenario_key.replace("_", "").isalnum():
+        return jsonify({"error": "invalid scenario_key"}), 400
+    payload = request.get_json(silent=True) or {}
+    checked = 1 if payload.get("checked") else 0
+    status = payload.get("status") or None
+    if status not in (None, "pass", "fail", "block"):
+        return jsonify({"error": "invalid status"}), 400
+    notes = (payload.get("notes") or "")[:2000] or None
+    user = session.get("user", {})
+    by = user.get("email") or user.get("name") or "unknown"
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        conn.execute("""
+            MERGE dbo.SCORECARD_QA_STATE AS tgt
+            USING (SELECT ? AS SCENARIO_KEY, ? AS CHECKED, ? AS STATUS, ? AS NOTES, ? AS BY_) AS src
+              ON tgt.SCENARIO_KEY = src.SCENARIO_KEY
+            WHEN MATCHED THEN UPDATE SET
+                CHECKED = src.CHECKED, STATUS = src.STATUS, NOTES = src.NOTES,
+                LAST_UPDATED_BY = src.BY_, LAST_UPDATED_AT = SYSUTCDATETIME()
+            WHEN NOT MATCHED THEN INSERT
+                (SCENARIO_KEY, CHECKED, STATUS, NOTES, LAST_UPDATED_BY, LAST_UPDATED_AT)
+                VALUES (src.SCENARIO_KEY, src.CHECKED, src.STATUS, src.NOTES, src.BY_, SYSUTCDATETIME());
+        """, (scenario_key, checked, status, notes, by))
+        conn.commit()
+        return jsonify({"ok": True, "last_updated_by": by})
+    finally:
+        conn.close()
+
+
+@scorecard_bp.route("/api/admin/qa/meta", methods=["PUT"])
+@login_required
+def api_admin_qa_meta():
+    """Update the singleton meta row. Any admin can edit any field."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    payload = request.get_json(silent=True) or {}
+    allowed = ["TESTER", "TEST_DATE", "ENV", "BROWSER", "ROLE_TESTED",
+               "SIGNOFF_TESTER", "SIGNOFF_APPROVER", "DECISION", "BLOCKERS"]
+    updates = {k.upper(): payload.get(k.lower()) for k in allowed if k.lower() in payload}
+    if not updates:
+        return jsonify({"error": "no valid fields provided"}), 400
+    user = session.get("user", {})
+    by = user.get("email") or user.get("name") or "unknown"
+    set_clause = ", ".join(f"{k} = ?" for k in updates.keys())
+    params = list(updates.values()) + [by]
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        conn.execute(
+            f"UPDATE dbo.SCORECARD_QA_META SET {set_clause}, LAST_UPDATED_BY = ?, LAST_UPDATED_AT = SYSUTCDATETIME() WHERE META_ID = 1",
+            params)
+        conn.commit()
+        return jsonify({"ok": True, "last_updated_by": by})
+    finally:
+        conn.close()
+
+
+@scorecard_bp.route("/api/admin/qa/reset", methods=["POST"])
+@login_required
+def api_admin_qa_reset():
+    """Wipe all row state (does NOT touch meta). Requires admin. Meant for
+    starting a fresh QA pass after a big code change."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        conn.execute("DELETE FROM dbo.SCORECARD_QA_STATE")
+        conn.commit()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
 
 
 @scorecard_bp.route("/api/admin/runs")
@@ -1681,25 +1830,34 @@ def _build_measure_summaries(env, property_key, property_row, ay, quarter):
             except Exception as e:
                 summaries[m] = {"status": "generic", "text": f"(Could not summarize: {e})"}
 
-        # CURB / PUBLICAREAS / MAINT / LOGS: RM Quarterly Inspection scores
+        # CURB / PUBLICAREAS / MAINT / LOGS: RM Quarterly Inspection scores.
+        # When a property has more than one inspection record for the quarter,
+        # apply "best score of any inspection" per column (stakeholder decision
+        # 2026-09-30). NULLs are ignored so a partial second inspection can't
+        # override a valid earlier one.
         insp_map = {"CURB": "SCORE_CURB_APPEAL", "PUBLICAREAS": "SCORE_PUBLIC_AREAS_AND_AMENITIES",
                     "MAINT": "SCORE_MAINTENANCE", "LOGS": "SCORE_LOGS_AND_BINDERS"}
         try:
             r = conn_wh.fetchall("""
-                SELECT SCORE_CURB_APPEAL, SCORE_PUBLIC_AREAS_AND_AMENITIES,
-                       SCORE_MAINTENANCE, SCORE_LOGS_AND_BINDERS
+                SELECT MAX(CAST(SCORE_CURB_APPEAL             AS DECIMAL(10,4))),
+                       MAX(CAST(SCORE_PUBLIC_AREAS_AND_AMENITIES AS DECIMAL(10,4))),
+                       MAX(CAST(SCORE_MAINTENANCE            AS DECIMAL(10,4))),
+                       MAX(CAST(SCORE_LOGS_AND_BINDERS       AS DECIMAL(10,4))),
+                       COUNT(*)
                 FROM dbo.LS_RM_QUARTERLY_INSPECTION_SCORES_FACT
                 WHERE PROPERTY_KEY = ? AND AY = ? AND QUARTER = ?
             """, (property_key, ay, quarter))
-            if r:
+            insp_count = int(r[0][4]) if r and r[0][4] is not None else 0
+            if insp_count > 0:
+                insp_qualifier = f"best of {insp_count} inspection{'s' if insp_count != 1 else ''}"
                 for i, m in enumerate(insp_map):
                     score = r[0][i]
                     if score is None:
                         summaries[m] = {"status": "nodata", "text": f"RM Inspection did not include a {m} score for {quarter} {ay}."}
                     elif float(score) >= 85:
-                        summaries[m] = {"status": "pass", "text": f"PASSED. RM Inspection {m} score for {quarter} {ay} = {score}. Rule: >= 85 to pass."}
+                        summaries[m] = {"status": "pass", "text": f"PASSED. RM Inspection {m} score ({insp_qualifier}) for {quarter} {ay} = {float(score):.2f}. Rule: best score of any inspection this quarter, >= 85 to pass."}
                     else:
-                        summaries[m] = {"status": "fail", "text": f"FAILED. RM Inspection {m} score for {quarter} {ay} = {score} (needed >= 85 to pass)."}
+                        summaries[m] = {"status": "fail", "text": f"FAILED. RM Inspection {m} score ({insp_qualifier}) for {quarter} {ay} = {float(score):.2f} (needed >= 85 to pass, using the best score of any inspection this quarter)."}
             else:
                 for m in insp_map:
                     summaries[m] = {"status": "nodata", "text": f"No RM Quarterly Inspection recorded for this property in {quarter} {ay}."}

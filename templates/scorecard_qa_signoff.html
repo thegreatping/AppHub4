@@ -1,0 +1,407 @@
+{% extends "shell.html" %}
+{% block title %}Leadership Scorecard - QA Sign-Off{% endblock %}
+{% block content %}
+<div class="content-header">
+    <div class="header-left">
+        <i class="fa-solid fa-clipboard-check" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
+        <span class="page-title">Leadership Scorecard - QA Sign-Off</span>
+        <span class="page-subtitle">Shared collaborative checklist (admin only)</span>
+    </div>
+    <div class="header-right">
+        <a href="/scorecard/" class="sc-reference-btn" title="Back to Scorecard"><i class="fa-solid fa-arrow-left"></i> Back to Scorecard</a>
+        <a href="/scorecard/admin/runs" class="sc-reference-btn" title="Notebook Runs viewer">&#9654; Notebook Runs</a>
+    </div>
+</div>
+
+<style>
+.qas-body { padding: 20px 40px; color: var(--text-primary); font-size: 13.5px; line-height: 1.55; }
+.qas-body h2 { font-size: 16px; color: var(--accent-yellow); text-transform: uppercase; letter-spacing: 0.8px; margin: 28px 0 14px; padding-bottom: 6px; border-bottom: 1px solid var(--border-medium); }
+.qas-body h3 { font-size: 14.5px; color: var(--accent-cyan); margin: 12px 0 8px; }
+.qas-hero { background: var(--surface-raised); border-radius: 8px; padding: 18px 22px; margin-bottom: 22px; border-left: 4px solid var(--accent-cyan); }
+.qas-hero p { color: var(--text-secondary); font-size: 13.5px; line-height: 1.7; }
+.qas-meta { background: var(--surface); border-radius: 6px; padding: 14px 18px; margin-bottom: 22px; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px,1fr)); gap: 12px; border: 1px solid var(--border-medium); }
+.qas-meta label { color: var(--text-secondary); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 3px; }
+.qas-meta input, .qas-meta select, .qas-meta textarea { width: 100%; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 6px 8px; border-radius: 4px; font-size: 13px; font-family: inherit; }
+.qas-meta textarea { min-height: 40px; resize: vertical; }
+.qas-meta input:focus, .qas-meta select:focus, .qas-meta textarea:focus { outline: none; border-color: var(--accent-cyan); }
+.qas-controls { margin: 12px 0 22px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.qas-controls button { background: var(--accent-cyan); border: none; color: #04222c; padding: 8px 16px; border-radius: 5px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.qas-controls button:hover { filter: brightness(1.1); }
+.qas-controls button.secondary { background: var(--surface); color: var(--text-primary); border: 1px solid var(--border-input); }
+.qas-controls .qas-saved { color: var(--text-secondary); font-size: 12px; margin-left: auto; }
+.qas-progress { background: var(--surface); border-radius: 6px; padding: 14px 18px; margin-bottom: 20px; border: 1px solid var(--border-medium); }
+.qas-progress-bar { background: var(--input-bg); border-radius: 4px; height: 12px; overflow: hidden; margin: 6px 0; }
+.qas-progress-bar-fill { background: linear-gradient(90deg, #4ade80, var(--accent-cyan)); height: 100%; transition: width .3s; }
+.qas-progress-nums { display: flex; gap: 20px; font-size: 12px; margin-top: 8px; }
+.qas-progress-nums .n { color: var(--accent-cyan); font-weight: 700; }
+.qas-table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 8px; overflow: hidden; margin-bottom: 18px; border: 1px solid var(--border-medium); }
+.qas-table th { background: var(--surface-raised); color: var(--text-secondary); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.7px; padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--border-medium); }
+.qas-table td { padding: 9px 12px; border-bottom: 1px solid var(--border-subtle); font-size: 13px; vertical-align: top; }
+.qas-table tr:last-child td { border-bottom: none; }
+.qas-table td.col-check { text-align: center; width: 60px; }
+.qas-table td.col-status { width: 110px; }
+.qas-table td.col-notes { width: 28%; }
+.qas-table td.col-scenario { width: 40%; }
+.qas-table td.col-role { width: 8%; text-align: center; }
+.qas-table td.col-touched { width: 14%; font-size: 11px; color: var(--text-secondary); }
+.qas-table td.col-check input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; }
+.qas-status-sel { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 4px 6px; border-radius: 3px; font-size: 12px; width: 100%; font-family: inherit; }
+.qas-status-sel:focus { outline: none; border-color: var(--accent-cyan); }
+.qas-status-sel option { background: var(--nav-bg); color: var(--text-primary); }
+.qas-notes-area { width: 100%; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 5px 7px; border-radius: 3px; font-size: 12px; font-family: inherit; min-height: 36px; resize: vertical; }
+.qas-notes-area:focus { outline: none; border-color: var(--accent-cyan); }
+.qas-badge { display: inline-block; padding: 2px 9px; border-radius: 9px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+.qas-b-admin { background: rgba(0,212,255,0.15); color: var(--accent-cyan); }
+.qas-b-rm { background: rgba(74,222,128,0.15); color: #4ade80; }
+.qas-b-pm { background: rgba(192,132,252,0.15); color: #c084fc; }
+.qas-b-all { background: rgba(251,191,36,0.15); color: #fbbf24; }
+.qas-signoff { background: var(--surface-raised); border-radius: 8px; padding: 16px 20px; margin: 22px 0; border-left: 4px solid #fbbf24; }
+</style>
+
+<div class="qas-body">
+<div class="qas-hero">
+  <p>Every scenario below has been verified by developer smoke test. This is the collaborative pre-beta sign-off &mdash; changes save to the database instantly and are visible to every admin. Test in Chrome first, then repeat critical rows in Edge. Note any failures with as much detail as possible.</p>
+</div>
+
+<div class="qas-meta">
+  <div><label>Tester Name</label><input type="text" id="meta_tester" placeholder="Your name" onchange="saveMeta()"></div>
+  <div><label>Test Date</label><input type="date" id="meta_test_date" onchange="saveMeta()"></div>
+  <div><label>Test Environment</label>
+    <select id="meta_env" onchange="saveMeta()">
+      <option>Production (apphub40-...)</option>
+      <option>Local dev (localhost:5001)</option>
+    </select>
+  </div>
+  <div><label>Browser</label>
+    <select id="meta_browser" onchange="saveMeta()">
+      <option>Chrome desktop</option>
+      <option>Edge desktop</option>
+      <option>Safari desktop</option>
+      <option>Firefox desktop</option>
+      <option>Chrome mobile</option>
+      <option>Safari mobile / iPad</option>
+    </select>
+  </div>
+  <div><label>Test Role</label>
+    <select id="meta_role_tested" onchange="saveMeta()">
+      <option>Admin</option>
+      <option>Regional Manager (View As)</option>
+      <option>Property Manager (View As)</option>
+      <option>Real RM (production account)</option>
+      <option>Real PM (production account)</option>
+    </select>
+  </div>
+</div>
+
+<div class="qas-controls">
+  <button class="secondary" onclick="loadState()"><i class="fa-solid fa-rotate"></i> Refresh (see other testers' updates)</button>
+  <button class="secondary" onclick="if (confirm('Wipe every checkbox and result across all testers? Meta fields (tester name, sign-off, etc.) are kept.')) resetAll();">Reset All Rows</button>
+  <span class="qas-saved" id="qas_saved_msg">Ready.</span>
+</div>
+
+<div class="qas-progress">
+  <h3 style="margin-top:0;">Progress</h3>
+  <div class="qas-progress-bar"><div class="qas-progress-bar-fill" id="progressBar" style="width:0%;"></div></div>
+  <div class="qas-progress-nums">
+    <div><span class="n" id="numChecked">0</span> checked of <span class="n" id="numTotal">0</span> total</div>
+    <div><span class="n" id="numPass">0</span> pass</div>
+    <div><span class="n" id="numFail">0</span> fail</div>
+    <div><span class="n" id="numBlock">0</span> blocked/skip</div>
+  </div>
+</div>
+
+<div id="checklistContent"></div>
+
+<div class="qas-signoff">
+  <h3 style="color:#fbbf24;margin-top:0;">Sign-Off</h3>
+  <p style="color:var(--text-secondary);margin-bottom:12px;">Once every row above is validated, sign off below. Any Fail rows must have context in Notes and be triaged with the developer.</p>
+  <div class="qas-meta">
+    <div><label>Tester Signature (name + date)</label><input type="text" id="meta_signoff_tester" onchange="saveMeta()"></div>
+    <div><label>Approver Signature (owner + date)</label><input type="text" id="meta_signoff_approver" onchange="saveMeta()"></div>
+    <div><label>Beta Go / No-Go decision</label>
+      <select id="meta_decision" onchange="saveMeta()">
+        <option value="">-- pending --</option>
+        <option>GO - open beta to invited users</option>
+        <option>NO-GO - fix blockers, retest</option>
+        <option>CONDITIONAL GO - listed caveats</option>
+      </select>
+    </div>
+    <div><label>If NO-GO or CONDITIONAL, list blockers</label><textarea id="meta_blockers" onchange="saveMeta()" placeholder="Row #s or short description"></textarea></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+// ============================================================================
+// Scenario definitions (must match the standalone HTML by scenario_key).
+// role: 'ALL' | 'ADMIN' | 'RM' | 'PM'
+// ============================================================================
+const SCENARIOS = [
+  { section: '1. Access & Authentication', rows: [
+    { role: 'ALL',   text: 'Navigate to /scorecard/. Login redirect completes without errors. Home page renders.' },
+    { role: 'ALL',   text: 'Refresh the page. Session persists (does not force re-login).' },
+    { role: 'ALL',   text: 'Logging out returns to login page.' },
+  ]},
+
+  { section: '2. Header, Buttons, Navigation', rows: [
+    { role: 'ALL',   text: 'Big cyan "?" Help button visible in top-right. Click opens Help modal.' },
+    { role: 'ALL',   text: 'Help modal shows role-appropriate tabs (Admin sees Admin Features tab; RM/PM do not).' },
+    { role: 'ALL',   text: 'All Help tabs load content on click. Content adapts to role in "Your Role" tab.' },
+    { role: 'ALL',   text: '"Criteria & Guides" button opens the reference modal. All 3 sub-tabs load.' },
+    { role: 'ADMIN', text: '"Table Manager", "Notebook Runs", "QA Sign-Off", "Data Flow", "Diagram" buttons visible; each opens its own page/tab.' },
+    { role: 'RM',    text: 'Admin-only buttons (Table Manager, Notebook Runs, QA Sign-Off, etc.) are NOT visible.' },
+    { role: 'PM',    text: 'Admin-only buttons are NOT visible. "Add to Outlook" / "Email My Scores" buttons are NOT visible.' },
+  ]},
+
+  { section: '3. Scorecard Grid Rendering', rows: [
+    { role: 'ADMIN', text: 'All 110-ish reportable properties shown. Header subtitle reads "All Properties (Admin)".' },
+    { role: 'RM',    text: 'Only own portfolio properties shown. Header reads "My Portfolio".' },
+    { role: 'PM',    text: 'Exactly 1 property shown. Header reads "My Property (Read-only)".' },
+    { role: 'ALL',   text: 'Columns render in expected order: Property, Entity, Type, RM, Overall, Leadership measures, then Maintenance measures.' },
+    { role: 'ALL',   text: 'Leadership and Maintenance group headers are visible and high-contrast (cyan and amber tints).' },
+    { role: 'ALL',   text: 'Green P chips for passing measures. Red F chips for failing. Neutral chip for RM Score.' },
+    { role: 'ALL',   text: 'Properties with overrides show orange border on the overridden cell.' },
+    { role: 'ALL',   text: 'Table max-height adjusts to viewport; horizontal scrollbar is visible without scrolling to reach it.' },
+  ]},
+
+  { section: '4. Grid Filters, Sort, Search', rows: [
+    { role: 'ADMIN', text: 'Click any column header to sort. Click again reverses direction.' },
+    { role: 'ADMIN', text: 'Funnel filter icon opens per-column multi-select filter menu. Applying it narrows the grid.' },
+    { role: 'ADMIN', text: '"RM Inputs Saved" click filters to properties needing RM Score input.' },
+    { role: 'ADMIN', text: '"Comments" click filters to properties with notes.' },
+    { role: 'ADMIN', text: '"Show prior quarter totals" checkbox reveals prior-quarter PreRM/Ldr/MS columns.' },
+  ]},
+
+  { section: '5. Property Slideout', rows: [
+    { role: 'ALL',   text: 'Clicking any row opens the slideout for that property. Header shows property name, entity, quarter.' },
+    { role: 'ALL',   text: 'Slideout displays subtotals: Leadership, Maintenance, RM Score, =Sum. =Sum matches Overall (no red tint).' },
+    { role: 'ALL',   text: '"Show \'How was this scored?\'" button toggles per-measure explanation blocks with concrete numbers.' },
+    { role: 'ALL',   text: 'Explanations use color coding (green pass / red fail / amber override / muted no-data).' },
+    { role: 'RM',    text: 'RM Score dropdown (0-5) present. Selecting saves immediately; Overall Score updates behind slideout.' },
+    { role: 'RM',    text: 'Objective measure dropdowns (Timecard, etc.) editable. Override checkbox toggles orange border in grid.' },
+    { role: 'RM',    text: 'Notes textarea + Save/Clear buttons work. Saved note persists on reopening slideout.' },
+    { role: 'PM',    text: 'All value cells shown as read-only. No dropdowns. No Override checkboxes. No Notes save button.' },
+    { role: 'ALL',   text: '"Export to Email" button either opens Outlook draft (dev) or sends via Graph (prod). Email arrives with formatted HTML body.' },
+  ]},
+
+  { section: '6. Drilldown Pages', rows: [
+    { role: 'ALL',   text: 'Clicking a measure column header opens the drilldown page for that measure.' },
+    { role: 'ALL',   text: 'Drilldown shows raw source rows with "failing" rows tinted red.' },
+    { role: 'ALL',   text: 'Portfolio scope filter (default: All in view; can restrict to single property) works.' },
+    { role: 'ALL',   text: '"Fails business rule only" filter narrows to violation rows.' },
+    { role: 'ALL',   text: 'Export button downloads a CSV/Excel of the drilldown.' },
+  ]},
+
+  { section: '7. Fall Forecast Tab', rows: [
+    { role: 'ALL',   text: 'Fall Forecast tab loads. Snapshot header shows "As of <date>, the last week of the quarter".' },
+    { role: 'ALL',   text: 'Value columns (Complete CY, New CY, Renewal CY and their Target/vs Target siblings) are center-aligned.' },
+    { role: 'ALL',   text: 'Identity columns (Property, Entity, Type, RM) are left-aligned.' },
+    { role: 'ADMIN', text: 'Search box present. Typing narrows the grid.' },
+    { role: 'RM',    text: 'Search box NOT present.' },
+    { role: 'PM',    text: 'Search box NOT present. Exactly 1 row.' },
+    { role: 'ALL',   text: '"Export to Excel" button downloads the Bonus Calc Form spreadsheet.' },
+  ]},
+
+  { section: '8. Admin-only: View As Simulator', rows: [
+    { role: 'ADMIN', text: '"View as..." dropdown in header shows two optgroups: Regional Managers and Property Managers (read-only).' },
+    { role: 'ADMIN', text: 'Picking an RM reloads the page. Purple banner shows "Viewing as RM: <email>". Grid scopes to that RM.' },
+    { role: 'ADMIN', text: 'Picking a PM reloads the page. Purple banner shows "Viewing as PM: <property name>". Grid shows 1 row, read-only.' },
+    { role: 'ADMIN', text: '"x Exit" button in purple banner returns to full admin view.' },
+    { role: 'ADMIN', text: 'While simulating a PM, PATCH/POST calls to write endpoints return 403 with "read-only for Property Managers".' },
+  ]},
+
+  { section: '9. Admin-only: Table Manager', rows: [
+    { role: 'ADMIN', text: 'Table Manager page loads. Left nav shows every scorecard-related table.' },
+    { role: 'ADMIN', text: 'Left nav is collapsible via < button, persists collapsed state across reloads.' },
+    { role: 'ADMIN', text: 'Selecting a table shows its columns and top 3000 rows.' },
+    { role: 'ADMIN', text: 'Editing any editable cell writes a row to SCORECARD_TABLE_MANAGER_AUDIT.' },
+    { role: 'ADMIN', text: 'Bulk edit and column-visibility toggle work.' },
+    { role: 'ADMIN', text: 'Back link to "Notebook Runs" is visible and functional.' },
+  ]},
+
+  { section: '10. Admin-only: Notebook Runs', rows: [
+    { role: 'ADMIN', text: 'Notebook Runs page loads. Recent 50 run rows are visible.' },
+    { role: 'ADMIN', text: 'Each run expands to show per-step status, duration, and any error message.' },
+    { role: 'ADMIN', text: '"Run now" button triggers an immediate Fabric run. Refreshing the list shows the new run within ~60 seconds.' },
+    { role: 'ADMIN', text: 'URL parameter ?run_id=<id> deep-links directly to that run and auto-expands it.' },
+  ]},
+
+  { section: '11. Audit Trail Verification', rows: [
+    { role: 'ADMIN', text: 'Save an RM Score via slideout. Row appears in control.SCORECARD_TABLE_MANAGER_AUDIT with FIELD_NAME=RMSCORE.' },
+    { role: 'ADMIN', text: 'Toggle an override via slideout. Row appears in audit table with FIELD_NAME=<measure>_LOCKED.' },
+    { role: 'ADMIN', text: 'Save a note via slideout. Row appears in audit table with FIELD_NAME=NOTES.' },
+    { role: 'ADMIN', text: 'Audit rows include CHANGED_BY, CHANGED_AT, OLD_VALUE, NEW_VALUE, REASON.' },
+  ]},
+
+  { section: '12. Pipeline / Update Behavior', rows: [
+    { role: 'ADMIN', text: '"Run now" completes successfully. Notebook Runs list shows all 18 steps complete.' },
+    { role: 'ADMIN', text: 'After a run with unchanged source data, DATE_UPDATED on SCORECARD_CORE rows is preserved (not stamped to now).' },
+    { role: 'ADMIN', text: 'After a run with fresh source data, DATE_UPDATED advances for affected rows only.' },
+    { role: 'ADMIN', text: 'RM manually entered subjective values (RMSCORE, SURVEYS, NOI, NOTES) survive re-runs without being overwritten.' },
+    { role: 'ADMIN', text: 'PROPERTY_0 RM_EMAIL / RM_NAME reflected in grid within seconds of change (no waiting for next run).' },
+  ]},
+
+  { section: '13. Cross-Browser Sanity', rows: [
+    { role: 'ALL',   text: 'CHROME: everything above passes.' },
+    { role: 'ALL',   text: 'EDGE: page renders identically. View-as dropdown options are legible. All modals open. All buttons responsive.' },
+    { role: 'ALL',   text: 'MOBILE / iPad safari: grid horizontally scrollable, slideout usable, tap targets large enough. (Nice-to-have, not blocking.)' },
+  ]},
+
+  { section: '14. Error Handling & Edge Cases', rows: [
+    { role: 'ALL',   text: 'Direct URL to a property that does not exist returns 404 with clean message (not a stack trace).' },
+    { role: 'ALL',   text: 'Session timeout mid-edit fails gracefully (redirects to login, does not corrupt saved data).' },
+    { role: 'ALL',   text: 'Simulated network drop during a PATCH shows a user-visible error (not a silent failure).' },
+    { role: 'ADMIN', text: 'Empty state: if pipeline has not run for the current AY/QUARTER, /api/data returns "no data available" and grid shows "No data".' },
+  ]},
+];
+
+const roleClass = { ADMIN: 'qas-b-admin', RM: 'qas-b-rm', PM: 'qas-b-pm', ALL: 'qas-b-all' };
+const roleLabel = { ADMIN: 'Admin', RM: 'RM', PM: 'PM', ALL: 'All' };
+
+let TOTAL_ROWS = 0;
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+function timeAgo(iso) {
+  if (!iso) return '';
+  const t = new Date(iso).getTime();
+  const now = Date.now();
+  const diff = Math.max(0, Math.floor((now - t) / 1000));
+  if (diff < 60) return diff + 's ago';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return Math.floor(diff/86400) + 'd ago';
+}
+
+function renderChecklist() {
+  const wrap = document.getElementById('checklistContent');
+  let total = 0;
+  let html = '';
+  SCENARIOS.forEach((section, sIdx) => {
+    html += `<h2>${esc(section.section)}</h2><table class="qas-table"><tr><th class="col-check">Done</th><th class="col-role">Role</th><th class="col-scenario">Scenario</th><th class="col-status">Result</th><th class="col-notes">Notes</th><th class="col-touched">Last touched</th></tr>`;
+    section.rows.forEach((row, rIdx) => {
+      const key = `s${sIdx}_r${rIdx}`;
+      html += `<tr data-row-key="${key}">
+        <td class="col-check"><input type="checkbox" id="chk_${key}" onchange="saveRow('${key}')"></td>
+        <td class="col-role"><span class="qas-badge ${roleClass[row.role]}">${roleLabel[row.role]}</span></td>
+        <td class="col-scenario">${esc(row.text)}</td>
+        <td class="col-status"><select class="qas-status-sel" id="sta_${key}" onchange="saveRow('${key}')">
+          <option value="">-- pending --</option>
+          <option value="pass">Pass</option>
+          <option value="fail">Fail</option>
+          <option value="block">Blocked / Skip</option>
+        </select></td>
+        <td class="col-notes"><textarea class="qas-notes-area" id="not_${key}" onchange="saveRow('${key}')"></textarea></td>
+        <td class="col-touched" id="tch_${key}"></td>
+      </tr>`;
+      total++;
+    });
+    html += '</table>';
+  });
+  wrap.innerHTML = html;
+  TOTAL_ROWS = total;
+  document.getElementById('numTotal').textContent = total;
+}
+
+function applyState(state, meta) {
+  Object.entries(state).forEach(([key, row]) => {
+    const chk = document.getElementById('chk_' + key);
+    const sta = document.getElementById('sta_' + key);
+    const not = document.getElementById('not_' + key);
+    const tch = document.getElementById('tch_' + key);
+    if (chk) chk.checked = !!row.checked;
+    if (sta) sta.value = row.status || '';
+    if (not) not.value = row.notes || '';
+    if (tch && row.last_updated_by) {
+      tch.innerHTML = `<div>${esc(row.last_updated_by.split('@')[0])}</div><div>${esc(timeAgo(row.last_updated_at))}</div>`;
+    }
+  });
+  ['tester','test_date','env','browser','role_tested','signoff_tester','signoff_approver','decision','blockers'].forEach(k => {
+    const el = document.getElementById('meta_' + k);
+    if (el && meta[k] != null) el.value = meta[k];
+  });
+  updateProgress();
+}
+
+function updateProgress() {
+  let checked = 0, pass = 0, fail = 0, block = 0;
+  document.querySelectorAll('tr[data-row-key]').forEach(tr => {
+    const key = tr.dataset.rowKey;
+    if (document.getElementById('chk_' + key).checked) checked++;
+    const s = document.getElementById('sta_' + key).value;
+    if (s === 'pass') pass++;
+    else if (s === 'fail') fail++;
+    else if (s === 'block') block++;
+  });
+  document.getElementById('numChecked').textContent = checked;
+  document.getElementById('numPass').textContent = pass;
+  document.getElementById('numFail').textContent = fail;
+  document.getElementById('numBlock').textContent = block;
+  document.getElementById('progressBar').style.width = (100 * checked / Math.max(1, TOTAL_ROWS)) + '%';
+}
+
+let _saveTimer = null;
+function _flashSaved(msg) {
+  const el = document.getElementById('qas_saved_msg');
+  el.textContent = msg;
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => { el.textContent = 'All changes saved.'; }, 3000);
+}
+
+function saveRow(key) {
+  const body = {
+    checked: document.getElementById('chk_' + key).checked,
+    status: document.getElementById('sta_' + key).value || null,
+    notes: document.getElementById('not_' + key).value || null,
+  };
+  fetch(`/scorecard/api/admin/qa/row/${key}`, {
+    method: 'PUT', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  }).then(r => r.json()).then(j => {
+    if (j.error) { _flashSaved('Save failed: ' + j.error); return; }
+    const tch = document.getElementById('tch_' + key);
+    if (tch) tch.innerHTML = `<div>${esc((j.last_updated_by || '').split('@')[0])}</div><div>just now</div>`;
+    _flashSaved('Saved.');
+    updateProgress();
+  }).catch(e => _flashSaved('Save failed: ' + e.message));
+}
+
+function saveMeta() {
+  const body = {};
+  ['tester','test_date','env','browser','role_tested','signoff_tester','signoff_approver','decision','blockers'].forEach(k => {
+    const el = document.getElementById('meta_' + k);
+    if (el) body[k] = el.value || null;
+  });
+  fetch('/scorecard/api/admin/qa/meta', {
+    method: 'PUT', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  }).then(r => r.json()).then(j => {
+    if (j.error) { _flashSaved('Meta save failed: ' + j.error); return; }
+    _flashSaved('Meta saved.');
+  }).catch(e => _flashSaved('Meta save failed: ' + e.message));
+}
+
+function loadState() {
+  _flashSaved('Loading...');
+  fetch('/scorecard/api/admin/qa/state').then(r => r.json()).then(d => {
+    if (d.error) { _flashSaved('Load failed: ' + d.error); return; }
+    applyState(d.state || {}, d.meta || {});
+    _flashSaved('Loaded.');
+  }).catch(e => _flashSaved('Load failed: ' + e.message));
+}
+
+function resetAll() {
+  fetch('/scorecard/api/admin/qa/reset', {method: 'POST'})
+    .then(r => r.json()).then(j => {
+      if (j.error) { alert(j.error); return; }
+      loadState();
+    });
+}
+
+renderChecklist();
+loadState();
+// Poll every 45s so multiple concurrent testers see each other's updates
+setInterval(loadState, 45000);
+</script>
+{% endblock %}

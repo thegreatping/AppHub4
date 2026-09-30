@@ -330,6 +330,9 @@
 
     .sc-reference-btn { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 7px 14px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; }
     .sc-reference-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .sc-help-btn { background: var(--accent-cyan); border: 2px solid var(--accent-cyan); color: #04222c; padding: 4px 10px; border-radius: 999px; font-size: 1.35rem; line-height: 1; cursor: pointer; font-weight: 700; box-shadow: 0 0 12px rgba(103,232,224,0.35); transition: transform .1s, box-shadow .1s; }
+    .sc-help-btn:hover { transform: scale(1.08); box-shadow: 0 0 18px rgba(103,232,224,0.6); }
+    .sc-help-btn i { font-size: 1.35rem; }
     .sc-ref-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 1100; align-items: center; justify-content: center; }
     .sc-ref-overlay.open { display: flex; }
     .sc-ref-modal { background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 8px; width: 96vw; max-width: 1400px; height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -392,10 +395,12 @@
         </span>
         {% endif %}
         {% endif %}
+        <button type="button" class="sc-help-btn" onclick="openScHelp()" title="Help &amp; user guide"><i class="fa-solid fa-circle-question"></i></button>
         <button type="button" class="sc-reference-btn" onclick="openScReference()"><i class="fa-solid fa-book"></i> Criteria &amp; Guides</button>
         {% if is_admin %}
         <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/tables'" title="Browse every table feeding or produced by the Scorecard pipeline (admin only)"><i class="fa-solid fa-database"></i> Table Manager</button>
         <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/runs'" title="Recent notebook executions with per-step outcomes (admin only)"><i class="fa-solid fa-play-circle"></i> Notebook Runs</button>
+        <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/qa'" title="Formal pre-beta QA sign-off checklist (admin only, shared state)"><i class="fa-solid fa-clipboard-check"></i> QA Sign-Off</button>
         <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/admin/diagram/dataflow','_blank','noopener')" title="Interactive data-flow diagram (admin only)"><i class="fa-solid fa-diagram-project"></i> Data Flow</button>
         <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/admin/diagram/table_manager','_blank','noopener')" title="Interactive table-manager diagram (admin only)"><i class="fa-solid fa-sitemap"></i> Diagram</button>
         {% endif %}
@@ -608,6 +613,29 @@
             <button type="button" class="sc-ref-tab" id="scRefTab_paycom" onclick="showScReferenceTab('paycom')">Paycom Guide</button>
         </div>
         <div class="sc-ref-body" id="scRefBody"></div>
+    </div>
+</div>
+
+<!-- Help / user guide -->
+<div class="sc-ref-overlay" id="scHelpOverlay">
+    <div class="sc-ref-modal">
+        <div class="sc-ref-header">
+            <div class="sc-ref-title"><i class="fa-solid fa-circle-question" style="color: var(--accent-cyan); margin-right: 8px;"></i> Leadership Scorecard &mdash; Help &amp; User Guide</div>
+            <button type="button" class="sc-ref-close" onclick="closeScHelp()">&times;</button>
+        </div>
+        <div class="sc-ref-tabs">
+            <button type="button" class="sc-ref-tab" id="scHelpTab_welcome" onclick="showScHelpTab('welcome')">Welcome</button>
+            <button type="button" class="sc-ref-tab" id="scHelpTab_grid" onclick="showScHelpTab('grid')">Reading the Grid</button>
+            <button type="button" class="sc-ref-tab" id="scHelpTab_slideout" onclick="showScHelpTab('slideout')">The Slideout</button>
+            <button type="button" class="sc-ref-tab" id="scHelpTab_forecast" onclick="showScHelpTab('forecast')">Fall Forecast</button>
+            <button type="button" class="sc-ref-tab" id="scHelpTab_rm" onclick="showScHelpTab('rm')">Your Role</button>
+            {% if is_admin %}
+            <button type="button" class="sc-ref-tab" id="scHelpTab_admin" onclick="showScHelpTab('admin')">Admin Features</button>
+            {% endif %}
+            <button type="button" class="sc-ref-tab" id="scHelpTab_faq" onclick="showScHelpTab('faq')">FAQ</button>
+            <button type="button" class="sc-ref-tab" id="scHelpTab_contact" onclick="showScHelpTab('contact')">Get Help</button>
+        </div>
+        <div class="sc-ref-body" id="scHelpBody"></div>
     </div>
 </div>
 
@@ -883,6 +911,325 @@ function showScReferenceTab(tab) {
         body.innerHTML = h;
     }
 }
+
+// ============================================================================
+// Help & user guide -- tabbed modal opened by the big ? button in the header.
+// Non-technical content aimed at end users. Tabs and content adapt to the
+// current role (admin sees an Admin Features tab; RMs/PMs do not).
+// ============================================================================
+let scHelpTab = 'welcome';
+
+function openScHelp() {
+    document.getElementById('scHelpOverlay').classList.add('open');
+    showScHelpTab(scHelpTab);
+}
+function closeScHelp() {
+    document.getElementById('scHelpOverlay').classList.remove('open');
+}
+function showScHelpTab(tab) {
+    scHelpTab = tab;
+    const tabs = ['welcome', 'grid', 'slideout', 'forecast', 'rm', 'admin', 'faq', 'contact'];
+    tabs.forEach(t => {
+        const el = document.getElementById(`scHelpTab_${t}`);
+        if (el) el.classList.toggle('active', t === tab);
+    });
+    document.getElementById('scHelpBody').innerHTML = SC_HELP_CONTENT[tab] || '<p>Content not found.</p>';
+}
+
+// Role-aware content bank. Uses window.SC_IS_ADMIN and window.SC_IS_PM to
+// customize each tab's copy. All content is written for non-technical users.
+const _roleLabel = window.SC_IS_ADMIN ? 'Admin' : (window.SC_IS_PM ? 'Property Manager' : 'Regional Manager');
+
+const SC_HELP_CONTENT = {
+    welcome: `
+        <p class="sc-ref-intro">Welcome to the Leadership Scorecard. This is your quarterly view of how each property is performing across the measures that determine RM bonuses.</p>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">You're signed in as: <span style="color:var(--accent-cyan);">${_roleLabel}</span></div>
+          <div class="sc-crit-body">
+            ${window.SC_IS_ADMIN ? '<p>As an Admin you can see all properties, run the update notebook, use "View as..." to see the app from any RM or PM\'s point of view, and edit or override any measure.</p>' : ''}
+            ${!window.SC_IS_ADMIN && !window.SC_IS_PM ? '<p>As a Regional Manager you see only your own portfolio. You can enter your RM Score, save notes, and override measures on your properties.</p>' : ''}
+            ${window.SC_IS_PM ? '<p>As a Property Manager you see only your assigned property, in read-only mode. You can browse everything, but editing is reserved for RMs and Admins.</p>' : ''}
+          </div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">The two tabs</div>
+          <div class="sc-crit-body">
+            <p><b>Scorecard</b> &mdash; the quarterly pass/fail grid, with all measures rolled up to an Overall Score per property.</p>
+            <p><b>Fall Forecast</b> &mdash; a weekly snapshot of leasing performance (Complete / New / Renewal counts vs. target), used for the Bonus Calc Form.</p>
+          </div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Where do the numbers come from?</div>
+          <div class="sc-crit-body">
+            <p>Every objective measure is pulled automatically from the systems that already track that data (Paycom for timecards, Grace Hill for training, Entrata for work orders, etc.). Nothing on the Scorecard tab is hand-entered on the objective side.</p>
+            <p>Subjective inputs (your RM Score of 0-5, whether Surveys were completed, whether NOI met budget, and notes) are entered by you in the slideout.</p>
+          </div>
+        </div>
+    `,
+
+    grid: `
+        <p class="sc-ref-intro">The main grid is one row per property, one column per measure. Here's how to read it.</p>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">The Overall Score column (far left)</div>
+          <div class="sc-crit-body"><p>This is Leadership Total + Maintenance Total + your RM Score. It's the number bonus decisions ultimately land on.</p></div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Green P / Red F chips</div>
+          <div class="sc-crit-body"><p>Green <span class="sc-chip-pass" style="min-width:24px;">P</span> = the property passed that measure this quarter. Red <span class="sc-chip-fail" style="min-width:24px;">F</span> = failed. Two dashes (--) means no data yet for that measure. Some measures default to PASS when there's no data; you'll see this called out in the slideout.</p></div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">The RM Score column</div>
+          <div class="sc-crit-body"><p>This is the RM's subjective 0-5 rating of how well the Property Manager is leading their community. It shows a neutral chip because it's a number, not a pass/fail. This is the one measure only you (as the RM) can fill in.</p></div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">The orange border on a cell</div>
+          <div class="sc-crit-body"><p>Means someone manually overrode that measure. Hover over the cell to see who did it and why. Overrides survive the next automatic update run &mdash; the pipeline won't silently overwrite your call.</p></div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Column headers &mdash; sort, filter, drill in</div>
+          <div class="sc-crit-body">
+            <p><b>Click a header</b> to sort. Click again to reverse. <b>Click the funnel icon</b> next to a header to filter (Excel-style multi-select).</p>
+            <p><b>Click the measure name</b> (Timecard, Training, IIPP, etc.) to drill into the source rows that produced that pass/fail &mdash; useful when someone disagrees with a fail.</p>
+          </div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">The ribbon above the grid</div>
+          <div class="sc-crit-body">
+            <p><b>Communities</b> = how many properties are in your view. <b>RM Inputs Saved</b> = how many of your RM Scores you've saved this quarter. <b>Comments</b> = properties with notes. Click either of the last two to filter down to just those rows.</p>
+            <p><b>Show prior quarter totals</b> adds a Q1 History column so you can see the previous quarter's PreRM, Ldr Total, and Ms Total right next to this quarter's.</p>
+          </div>
+        </div>
+    `,
+
+    slideout: `
+        <p class="sc-ref-intro">Click any row in the grid to open that property's slideout. This is where you enter your RM Score, save notes, and (for RMs and Admins) override measures if you have a reason to.</p>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">The header block</div>
+          <div class="sc-crit-body"><p>Property name, entity number, quarter label at the top. Below that: Overall Score plus the sub-totals (Leadership, Maintenance, RM Score, =Sum). If the sum doesn't match the Overall (rare, but happens after edits), you'll see a red tint on the =Sum chip. That's a heads-up that something is inconsistent &mdash; usually resolves itself on the next update run.</p></div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">The three buttons under the header</div>
+          <div class="sc-crit-body">
+            <p><b>Show "How was this scored?"</b> &mdash; turn on to see a plain-English explanation next to each measure ("PASSED. 354 Supervisor timecard approvals recorded for entity 175..." or "FAILED. Avg net open days = 1.06, needed &lt;= 1 day"). Turn off when you just want to see the values.</p>
+            <p><b>Export to Email</b> &mdash; sends this property's full scorecard as a nicely-formatted HTML email to your Outlook inbox, ready to forward or archive.</p>
+          </div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">RM Score row</div>
+          <div class="sc-crit-body">
+            ${window.SC_IS_PM ? '<p>You can see the RM Score set by the RM but you cannot change it.</p>' : ''}
+            ${!window.SC_IS_PM ? '<p>Pick 0-5 from the dropdown. It saves the moment you pick, and the property\'s Overall Score updates immediately in the grid behind the slideout. Whoever last saved this Score is shown right next to the dropdown.</p>' : ''}
+          </div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Leadership and Maintenance sections</div>
+          <div class="sc-crit-body">
+            ${window.SC_IS_PM ? '<p>Each measure shows its current value (Pass, Fail, a score, etc.) with an explanation of how it was computed. Everything here is read-only for you.</p>' : ''}
+            ${!window.SC_IS_PM ? '<p>Each measure shows its current value. You can change any objective measure with the dropdown, and check the <b>Override</b> box to protect that value from being overwritten by the next automatic update. Add an optional reason ("credit of 1 from Director of Ops Support"). Uncheck Override to hand control back to the automatic pipeline.</p>' : ''}
+          </div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Notes</div>
+          <div class="sc-crit-body">
+            ${window.SC_IS_PM ? '<p>You can read any note left by the RM or Admin. You cannot save new notes.</p>' : ''}
+            ${!window.SC_IS_PM ? '<p>Free-text field, no character limit. Great for capturing "why did this measure fail?" reasoning, quarterly PM highlights, or a paper trail for the bonus discussion. The person who saved it and the date/time are tracked.</p>' : ''}
+          </div>
+        </div>
+    `,
+
+    forecast: `
+        <p class="sc-ref-intro">The Fall Forecast tab is a weekly leasing snapshot rolled up per property. It feeds the Bonus Calc Form for the fall pre-lease bonus.</p>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">What am I looking at?</div>
+          <div class="sc-crit-body"><p>Three leasing metrics &mdash; Complete Leases, New Leases, Renewal Leases &mdash; each shown as: Current Year count / Target count / Variance vs. Target. The snapshot is "as of" the last day of the quarter (e.g., Q2 2026 = Jun 30).</p></div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Which properties are in your view?</div>
+          <div class="sc-crit-body">
+            ${window.SC_IS_ADMIN ? '<p>As an Admin you see every property that is set to reportable in PROPERTY_0.</p>' : ''}
+            ${!window.SC_IS_ADMIN && !window.SC_IS_PM ? '<p>You see your own portfolio (the properties where you\'re the assigned RM).</p>' : ''}
+            ${window.SC_IS_PM ? '<p>You see just your assigned property.</p>' : ''}
+          </div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Export to Excel</div>
+          <div class="sc-crit-body"><p>The button in the top-right generates the standardized Bonus Calc Form spreadsheet for finance sign-off. All the columns are already in the exact order finance expects.</p></div>
+        </div>
+    `,
+
+    rm: window.SC_IS_ADMIN ? `
+        <p class="sc-ref-intro">You are signed in as an <b>Admin</b>. This tab explains what a Regional Manager or a Property Manager sees when they use the app.</p>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Regional Manager view</div>
+          <div class="sc-crit-body">
+            <p>Sees only their own portfolio (via RM_EMAIL match against PROPERTY_0). Can enter RM Scores 0-5, save notes, and set overrides on any measure for any property they own. No admin surfaces are visible to them.</p>
+            <p>To see the app exactly as an RM sees it, use <b>View as...</b> in the header and pick their name. Use "&times; Exit" to return to Admin.</p>
+          </div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Property Manager view</div>
+          <div class="sc-crit-body">
+            <p>Sees only their assigned property (via Emp_Core PM identification). Everything is read-only &mdash; no dropdowns, no override checkboxes, no notes saving. The slideout still opens for browsing.</p>
+            <p>To see the app as a PM, use <b>View as...</b> and pick a Property Manager. Great for support conversations when a PM asks "why does mine show F on Curb?"</p>
+          </div>
+        </div>
+    ` : (window.SC_IS_PM ? `
+        <p class="sc-ref-intro">You are signed in as a <b>Property Manager</b>. Here's what you can and can't do.</p>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">What you see</div>
+          <div class="sc-crit-body"><p>The grid shows your assigned property, and only your assigned property. The header will say "My Property (Read-only)".</p></div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Read-only means read-only</div>
+          <div class="sc-crit-body"><p>You can click into the slideout, see how each measure was scored, read notes, use the drill-down pages to see underlying source records, and export the scorecard by email to yourself. But dropdowns, override checkboxes, and the notes save button are all hidden.</p></div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Something looks wrong?</div>
+          <div class="sc-crit-body"><p>Talk to your Regional Manager. RMs and Admins can adjust values, add notes explaining a fail, and override measures where they have reason to.</p></div>
+        </div>
+    ` : `
+        <p class="sc-ref-intro">You are signed in as a <b>Regional Manager</b>. Here's what your day-to-day looks like in the app.</p>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Which properties do you see?</div>
+          <div class="sc-crit-body"><p>Just yours &mdash; the properties where you're the assigned RM in PROPERTY_0. If a property that should be yours isn't showing up, that's a PROPERTY_0 assignment issue &mdash; ping the People Ops team.</p></div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Your Quarterly To-Do</div>
+          <div class="sc-crit-body">
+            <ol>
+              <li><b>Review each property's Overall Score.</b> Green usually means good; red gives you a starting point for coaching conversations.</li>
+              <li><b>Enter your RM Score (0-5) for each PM you manage.</b> This is a subjective read on their leadership this quarter. It goes into the Overall Score.</li>
+              <li><b>Confirm Surveys and NOI (Yes/No) for each property.</b> These are the two other subjective inputs on the scorecard.</li>
+              <li><b>Note down anything that needs context.</b> Free-text field per property; supports the bonus conversation.</li>
+              <li><b>Override anything that isn't right</b>, and add a short reason so anyone reading later understands why.</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Overrides &mdash; when do you use them?</div>
+          <div class="sc-crit-body"><p>The most common cases: (a) an automated data feed missed a legitimate credit of 1 (e.g., "credit from the Director of Operations Support") or (b) the source data is known to be incomplete for that quarter. Add a reason so it's clear later.</p></div>
+        </div>
+    `),
+
+    admin: `
+        <p class="sc-ref-intro">Admin-only features. These live behind the buttons in the top-right of the app.</p>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">View as...</div>
+          <div class="sc-crit-body"><p>Pick any Regional Manager or Property Manager from the dropdown to see the app exactly as they see it. Great for helping users troubleshoot. Click "&times; Exit" in the purple banner to return to your Admin view.</p></div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Notebook Runs</div>
+          <div class="sc-crit-body"><p>Every execution of the update notebook (the process that refreshes the scorecard from source systems) is logged here with per-step status, duration, and any errors. Use the &#9658; Run now button to trigger an update immediately if you need fresh data before the next automatic run.</p></div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Table Manager</div>
+          <div class="sc-crit-body"><p>Browse every table that feeds or is produced by the scorecard. You can edit control tables (measure rules, pipeline step definitions) in place; edits get logged into an audit trail. This is where you'd tweak a pass threshold or add a new measure long-term.</p></div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Data Flow &amp; Diagram</div>
+          <div class="sc-crit-body"><p>Two interactive diagrams &mdash; one shows how data flows from source systems into SCORECARD_CORE; the other visualizes the Table Manager's inventory. Useful for onboarding new team members or explaining the architecture.</p></div>
+        </div>
+    `,
+
+    faq: `
+        <p class="sc-ref-intro">Answers to the most common questions.</p>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Why does this property show a fail when I know it passed?</div>
+          <div class="sc-crit-body"><p>Click the measure name in the header to drill into the source rows. You'll see the exact underlying data (timecard approvals, work orders, etc.) that produced the fail. If the source data is genuinely wrong, use the override to correct it and add a reason. If the source is right and the measure is still marked wrong, that's a bug &mdash; tell Craig.</p></div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">I saved my RM Score but the Overall didn't change.</div>
+          <div class="sc-crit-body"><p>It should update instantly (right there in the slideout and behind it in the grid). If it didn't, refresh the page. If that still doesn't work, please screenshot and send it to Craig.</p></div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Why is the quarter I'm seeing not the current one?</div>
+          <div class="sc-crit-body"><p>The scorecard always shows the <b>last completed quarter</b>, not the one in progress. Today is Q3 2026, so the scorecard shows Q2 2026. The pipeline switches automatically the day after quarter-end.</p></div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">A measure shows "--" instead of P/F. What does that mean?</div>
+          <div class="sc-crit-body"><p>No source data has arrived for that measure for that property this quarter. Most measures default to PASS when data is missing (so we don't penalize you for a data feed problem), but a few genuinely fail. The slideout's "How was this scored?" text will tell you which behavior applies.</p></div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Can I bulk edit RM Scores?</div>
+          <div class="sc-crit-body"><p>Not yet. You have to open each property's slideout and enter the score. If bulk edit becomes a real need, tell Craig and it'll get added.</p></div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">The app is loading really slowly.</div>
+          <div class="sc-crit-body"><p>First load pulls quite a bit of data. After that, it should be snappy. If it's still slow, refresh; if still slow, screenshot and send it to Craig.</p></div>
+        </div>
+    `,
+
+    contact: `
+        <p class="sc-ref-intro">Something not working right? Have a question? Idea for an improvement? Please reach out.</p>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">App questions, bug reports, feature requests</div>
+          <div class="sc-crit-body">
+            <p>Contact <b>Craig Pell</b> &mdash; <a href="mailto:cpell@peakmade.com">cpell@peakmade.com</a></p>
+            <p>Include a screenshot when you can; makes a huge difference in getting it fixed fast.</p>
+          </div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Questions about a specific pass/fail score</div>
+          <div class="sc-crit-body">
+            <p>First, click the measure name in the header of the Scorecard grid to drill into the source records. That'll tell you exactly what data drove the result.</p>
+            <p>If the source data itself is wrong, that's a conversation with the team that owns that source (Payroll for timecards, Compliance for LEO/Risk Assessment, etc.). Ask Craig if you're not sure who owns a source.</p>
+          </div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">Access issues</div>
+          <div class="sc-crit-body">
+            <p>Can't log in? Login succeeds but you see the wrong properties (or no properties)? Contact <b>Craig Pell</b>.</p>
+          </div>
+        </div>
+
+        <div class="sc-crit-item">
+          <div class="sc-crit-name">The About This App section</div>
+          <div class="sc-crit-body">
+            <p>App version: AppHub 4.0</p>
+            <p>Module: Leadership Scorecard (App_ID 36)</p>
+            <p>Beta program: yes &mdash; expect friction, please tell us about it.</p>
+          </div>
+        </div>
+    `,
+};
 </script>
 <script>
 const ID_COLS = [
