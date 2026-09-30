@@ -387,6 +387,11 @@
             <i class="fa-solid fa-eye"></i> Viewing as PM: <b>{{ view_as_pm_label or view_as_pm_property_key }}</b>
             <button type="button" class="sc-view-as-clear" onclick="scViewAsClear()" title="Return to admin view">&times; Exit</button>
         </span>
+        {% elif view_as_rvp_email %}
+        <span class="sc-view-as-banner" title="Simulating this RVP's regional view of the Scorecard">
+            <i class="fa-solid fa-eye"></i> Viewing as RVP: <b>{{ view_as_rvp_email }}</b>
+            <button type="button" class="sc-view-as-clear" onclick="scViewAsClear()" title="Return to admin view">&times; Exit</button>
+        </span>
         {% else %}
         <span class="sc-view-as-picker">
             <select id="scViewAsSelect" onchange="scViewAsPick(this.value)">
@@ -2360,16 +2365,28 @@ function showScTab(tab) {
     if (tab === 'fallforecast') renderFallForecast();
 }
 
-// Populate the "View as..." dropdown on load with two optgroups (RMs and PMs).
+// Populate the "View as..." dropdown on load with optgroups (RVPs, RMs, PMs).
 // Real-admin only (endpoints 403 otherwise). Values are prefixed to route to
-// the right POST endpoint: "rm:<email>" or "pm:<property_key>".
+// the right POST endpoint: "rvp:<email>", "rm:<email>", or "pm:<property_key>".
 (function _wireScViewAs() {
     const sel = document.getElementById('scViewAsSelect');
     if (!sel) return;
     Promise.all([
+        fetch('/scorecard/api/admin/rvps').then(r => r.json()).catch(() => ({})),
         fetch('/scorecard/api/admin/rms').then(r => r.json()).catch(() => ({})),
         fetch('/scorecard/api/admin/pms').then(r => r.json()).catch(() => ({})),
-    ]).then(([rmRes, pmRes]) => {
+    ]).then(([rvpRes, rmRes, pmRes]) => {
+        if (rvpRes && Array.isArray(rvpRes.rvps) && rvpRes.rvps.length) {
+            const g = document.createElement('optgroup');
+            g.label = 'Regional Vice Presidents';
+            for (const rvp of rvpRes.rvps) {
+                const opt = document.createElement('option');
+                opt.value = `rvp:${rvp.email}`;
+                opt.textContent = `${rvp.name}${rvp.sees_all ? '  (sees all)' : ''}  (${rvp.email})`;
+                g.appendChild(opt);
+            }
+            sel.appendChild(g);
+        }
         if (rmRes && Array.isArray(rmRes.rms) && rmRes.rms.length) {
             const g = document.createElement('optgroup');
             g.label = 'Regional Managers';
@@ -2397,7 +2414,16 @@ function showScTab(tab) {
 
 function scViewAsPick(val) {
     if (!val) return;
-    if (val.startsWith('rm:')) {
+    if (val.startsWith('rvp:')) {
+        const email = val.slice(4);
+        fetch('/scorecard/api/admin/view-as-rvp', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        }).then(r => r.json()).then(j => {
+            if (j.error) { alert(j.error); return; }
+            location.reload();
+        });
+    } else if (val.startsWith('rm:')) {
         const email = val.slice(3);
         fetch('/scorecard/api/admin/view-as-rm', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },

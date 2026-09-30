@@ -140,11 +140,13 @@ def _is_admin():
     (cultivate.py/fasttrack.py/etc.) -- admins see every property; everyone
     else is scoped to their own RM_EMAIL via SCORECARD_CORE.
 
-    IF the admin has activated "View as <RM>" or "View as <PM>" simulation
-    (session keys sc_view_as_email or sc_view_as_pm_property_key), returns
-    False so all scoping/gating treats them as that role. Use _is_real_admin()
-    when you need the underlying flag (e.g. to toggle out of the simulation)."""
-    if session.get("sc_view_as_email") or session.get("sc_view_as_pm_property_key"):
+    IF the admin has activated any "View as..." simulation (RM/PM/RVP)
+    returns False so all scoping/gating treats them as that role. Use
+    _is_real_admin() when you need the underlying flag (e.g. to toggle out
+    of the simulation)."""
+    if (session.get("sc_view_as_email")
+            or session.get("sc_view_as_pm_property_key")
+            or session.get("sc_view_as_rvp_email")):
         return False
     return _is_real_admin()
 
@@ -199,6 +201,98 @@ def _is_pm():
     return _pm_property_key() is not None
 
 
+# ─── RVP scoping ───────────────────────────────────────────────────────
+# Regional Vice Presidents see every property whose PROPERTY_0.RVP_EMAIL
+# matches theirs -- effectively the union of their RMs' portfolios. They
+# have the same write posture as RMs (override, patch, notes) within that
+# region. Detected via Emp_Core.TITLE_GROUP = 'REGIONAL VICE PRESIDENT'.
+#
+# _RVP_ALL_PROPERTIES_EMAILS: RVP-titled leaders who legitimately see the
+# entire portfolio (e.g. Sr VP Ops). They still run in RVP mode -- no admin
+# badges/tools -- but the scope filter degrades to "all reportable
+# properties" instead of the RVP_EMAIL equality check.
+_RVP_ALL_PROPERTIES_EMAILS = {"melmore@peakmade.com"}
+
+
+def _is_rvp():
+    """True if the current user is a Regional Vice President.
+    Real admins simulating "View as RVP" also count. Cached per session."""
+    if _is_real_admin():
+        return bool(session.get("sc_view_as_rvp_email"))
+    if "sc_is_rvp" in session:
+        return bool(session["sc_is_rvp"])
+    user = session.get("user", {})
+    email = (user.get("email") or "").lower()
+    if not email:
+        session["sc_is_rvp"] = False
+        return False
+    try:
+        profile = get_rm_profile(email)
+    except Exception:
+        profile = None
+    is_rvp = bool(profile and (profile.get("title_group") or "").upper() == "REGIONAL VICE PRESIDENT")
+    session["sc_is_rvp"] = is_rvp
+    return is_rvp
+
+
+def _effective_rvp_email():
+    """Email used for RVP-scoping in every read/write endpoint. Honors admin
+    'View as RVP' simulation."""
+    if _is_real_admin() and session.get("sc_view_as_rvp_email"):
+        return session["sc_view_as_rvp_email"].lower()
+    return (session.get("user", {}).get("email") or "").lower()
+
+
+def _rvp_sees_all():
+    """True if the current RVP has an all-properties override (Sr VP Ops etc.).
+    They still operate in RVP mode -- no admin surfaces -- but scope is
+    unfiltered so they see every reportable property."""
+    return _is_rvp() and _effective_rvp_email() in _RVP_ALL_PROPERTIES_EMAILS
+
+
+def _scope_clause(alias="sc"):
+    """Return (where_sql, params) that scopes a SELECT to the current user's
+    role. The RM and RVP branches assume the caller has already joined
+    dbo.PROPERTY_0 p ON p.PROPERTY_KEY = <alias>.PROPERTY_KEY -- adds an
+    empty '1=1' filter otherwise, so admin/pm-only queries stay JOIN-free.
+      admin, pm, rvp-all -> no filter
+      pm                 -> <alias>.PROPERTY_KEY = ?
+      rvp                -> LOWER(p.RVP_EMAIL) = ?
+      rm (default)       -> LOWER(COALESCE(p.RM_EMAIL, <alias>.RM_EMAIL)) = ?
+    """
+    if _is_admin():
+        return "1=1", []
+    pm_key = _pm_property_key()
+    if pm_key:
+        return f"{alias}.PROPERTY_KEY = ?", [pm_key]
+    if _is_rvp():
+        if _rvp_sees_all():
+            return "1=1", []
+        return "LOWER(p.RVP_EMAIL) = ?", [_effective_rvp_email()]
+    return f"LOWER(COALESCE(p.RM_EMAIL, {alias}.RM_EMAIL)) = ?", [_effective_rm_email()]
+
+
+def _scope_update_where():
+    """Return (where_sql, params) for an UPDATE against dbo.SCORECARD_CORE
+    that has no PROPERTY_0 join. RVP mode uses a subquery on PROPERTY_0 to
+    verify the property belongs to the RVP's region. Callers should have
+    already verified ownership via _scoped_property_row -- this is
+    defense-in-depth."""
+    if _is_admin():
+        return "", []
+    pm_key = _pm_property_key()
+    if pm_key:
+        return " AND PROPERTY_KEY = ?", [pm_key]
+    if _is_rvp():
+        if _rvp_sees_all():
+            return "", []
+        return (" AND EXISTS (SELECT 1 FROM dbo.PROPERTY_0 p "
+                "WHERE p.PROPERTY_KEY = dbo.SCORECARD_CORE.PROPERTY_KEY "
+                "AND LOWER(p.RVP_EMAIL) = ?)"), [_effective_rvp_email()]
+    return " AND LOWER(RM_EMAIL) = ?", [_effective_rm_email()]
+
+
+
 def get_rm_profile(email):
     """Resolve the signed-in user's RM identity + portfolio via Emp_Core.
 
@@ -249,6 +343,7 @@ def _ctx(**kwargs):
             rm_profile = None
     view_as_email = session.get("sc_view_as_email") if _is_real_admin() else None
     view_as_pm_key = session.get("sc_view_as_pm_property_key") if _is_real_admin() else None
+    view_as_rvp_email = session.get("sc_view_as_rvp_email") if _is_real_admin() else None
     view_as_pm_label = None
     if view_as_pm_key:
         try:
@@ -265,6 +360,7 @@ def _ctx(**kwargs):
         except Exception:
             view_as_pm_label = f"Property {view_as_pm_key}"
     pm_prop_key = _pm_property_key()
+    is_rvp = _is_rvp()
     ctx = dict(
         modules=build_nav_modules(),
         active_module="leadership_scorecard",
@@ -277,8 +373,12 @@ def _ctx(**kwargs):
         view_as_email=view_as_email,
         view_as_pm_property_key=view_as_pm_key,
         view_as_pm_label=view_as_pm_label,
+        view_as_rvp_email=view_as_rvp_email,
         is_pm=pm_prop_key is not None,
         pm_property_key=pm_prop_key,
+        is_rvp=is_rvp,
+        rvp_email=_effective_rvp_email() if is_rvp else None,
+        rvp_sees_all=_rvp_sees_all(),
         measure_defs=_MEASURE_DEFS,
     )
     ctx.update(kwargs)
@@ -1489,6 +1589,7 @@ def api_admin_view_as_rm():
     if not email:
         return jsonify({"error": "email required"}), 400
     session.pop("sc_view_as_pm_property_key", None)  # RM and PM simulation are mutually exclusive
+    session.pop("sc_view_as_rvp_email", None)
     session["sc_view_as_email"] = email
     return jsonify({"ok": True, "view_as_email": email})
 
@@ -1544,21 +1645,81 @@ def api_admin_view_as_pm():
     except (TypeError, ValueError):
         return jsonify({"error": "property_key required (int)"}), 400
     session.pop("sc_view_as_email", None)  # PM and RM simulation are mutually exclusive
+    session.pop("sc_view_as_rvp_email", None)
     session["sc_view_as_pm_property_key"] = prop_key
     return jsonify({"ok": True, "view_as_pm_property_key": prop_key})
+
+
+@scorecard_bp.route("/api/admin/rvps")
+@login_required
+def api_admin_rvps():
+    """List distinct RVP_EMAIL / RVP_NAME pairs from dbo.PROPERTY_0 for the
+    'View as RVP' picker. Also includes any RVP-titled leader in the all-
+    properties override set (Sr VP Ops etc.) so admins can simulate them
+    even though they have no direct RVP_EMAIL assignments. Real-admin only."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_real_admin():
+        return jsonify({"error": "admin only"}), 403
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        rows = conn.fetchall("""
+            SELECT DISTINCT RVP_EMAIL, RVP_NAME
+            FROM dbo.PROPERTY_0
+            WHERE FLAG_REPORTABLE = 1 AND RVP_EMAIL IS NOT NULL AND RVP_EMAIL <> '' AND RVP_EMAIL <> '--'
+            ORDER BY RVP_NAME
+        """)
+        rvps = [{"email": r[0], "name": r[1] or r[0], "sees_all": False} for r in rows]
+        known = {r["email"].lower() for r in rvps}
+        for extra_email in _RVP_ALL_PROPERTIES_EMAILS:
+            if extra_email not in known:
+                extra = conn.fetchall(
+                    "SELECT TOP 1 NAME_FULL FROM dbo.Emp_Core WHERE LOWER(EMAIL) = ? AND FLAG_CURRENT = 1",
+                    (extra_email,))
+                name = extra[0][0] if extra else extra_email
+                rvps.append({"email": extra_email, "name": name, "sees_all": True})
+        for r in rvps:
+            if r["email"].lower() in _RVP_ALL_PROPERTIES_EMAILS:
+                r["sees_all"] = True
+        return jsonify({"rvps": sorted(rvps, key=lambda x: x["name"] or "")})
+    finally:
+        conn.close()
+
+
+@scorecard_bp.route("/api/admin/view-as-rvp", methods=["POST"])
+@login_required
+def api_admin_view_as_rvp():
+    """Activate the 'view as RVP' simulation. Real-admin only.
+    Payload: {'email': '<rvp_email>'}."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_real_admin():
+        return jsonify({"error": "admin only"}), 403
+    payload = request.get_json(silent=True) or {}
+    email = (payload.get("email") or "").strip().lower()
+    if not email:
+        return jsonify({"error": "email required"}), 400
+    session.pop("sc_view_as_email", None)
+    session.pop("sc_view_as_pm_property_key", None)
+    session["sc_view_as_rvp_email"] = email
+    return jsonify({"ok": True, "view_as_rvp_email": email})
 
 
 @scorecard_bp.route("/api/admin/view-as-clear", methods=["POST"])
 @login_required
 def api_admin_view_as_clear():
-    """Exit any active 'view as' simulation (RM or PM). Available to real
-    admins (so they can toggle back) AND to anyone whose session has the
-    key set (so a stale key from a demoted user can always be cleared)."""
+    """Exit any active 'view as' simulation (RM / PM / RVP). Available to
+    real admins (so they can toggle back) AND to anyone whose session has
+    the key set (so a stale key from a demoted user can always be cleared)."""
     check = _require_access()
     if check:
         return check
     session.pop("sc_view_as_email", None)
     session.pop("sc_view_as_pm_property_key", None)
+    session.pop("sc_view_as_rvp_email", None)
     return jsonify({"ok": True})
 
 
@@ -1581,8 +1742,6 @@ def api_data():
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
         admin = _is_admin()
-        email = _effective_rm_email()
-        pm_key = _pm_property_key()
 
         latest = conn.fetchall("""
             SELECT TOP 1 AY, QUARTER FROM dbo.SCORECARD_CORE
@@ -1605,24 +1764,12 @@ def api_data():
             for c in all_cols
         )
         base_from = "FROM dbo.SCORECARD_CORE sc LEFT JOIN dbo.PROPERTY_0 p ON p.PROPERTY_KEY = sc.PROPERTY_KEY"
-        if admin:
-            rows = conn.fetchall(f"""
-                SELECT {cols_sql} {base_from}
-                WHERE sc.FLAG_CURRENT = 1 AND sc.AY = ? AND sc.QUARTER = ?
-                ORDER BY sc.PROPERTY_NAME
-            """, (ay, quarter))
-        elif pm_key:
-            rows = conn.fetchall(f"""
-                SELECT {cols_sql} {base_from}
-                WHERE sc.FLAG_CURRENT = 1 AND sc.AY = ? AND sc.QUARTER = ? AND sc.PROPERTY_KEY = ?
-                ORDER BY sc.PROPERTY_NAME
-            """, (ay, quarter, pm_key))
-        else:
-            rows = conn.fetchall(f"""
-                SELECT {cols_sql} {base_from}
-                WHERE sc.FLAG_CURRENT = 1 AND sc.AY = ? AND sc.QUARTER = ? AND LOWER(COALESCE(p.RM_EMAIL, sc.RM_EMAIL)) = ?
-                ORDER BY sc.PROPERTY_NAME
-            """, (ay, quarter, email))
+        where_sql, where_params = _scope_clause("sc")
+        rows = conn.fetchall(f"""
+            SELECT {cols_sql} {base_from}
+            WHERE sc.FLAG_CURRENT = 1 AND sc.AY = ? AND sc.QUARTER = ? AND {where_sql}
+            ORDER BY sc.PROPERTY_NAME
+        """, tuple([ay, quarter] + where_params))
         data = [dict(zip(all_cols, r)) for r in rows]
         for r in data:
             r["OVERALL"] = (r["LDRTOTAL"] or 0) + (r["MSTOTAL"] or 0)
@@ -1632,23 +1779,11 @@ def api_data():
             q_num = int(quarter[1])
             prev_ay, prev_q = (ay - 1, "Q4") if q_num == 1 else (ay, f"Q{q_num - 1}")
             prior_cols = ["PROPERTY_KEY", "PRERM", "LDRTOTAL", "MSTOTAL"]
-            prior_cols_sql = ", ".join(prior_cols)
-            if admin:
-                prior_rows = conn.fetchall(f"""
-                    SELECT {prior_cols_sql} FROM dbo.SCORECARD_CORE
-                    WHERE FLAG_CURRENT = 1 AND AY = ? AND QUARTER = ?
-                """, (prev_ay, prev_q))
-            elif pm_key:
-                prior_rows = conn.fetchall(f"""
-                    SELECT {prior_cols_sql} FROM dbo.SCORECARD_CORE
-                    WHERE FLAG_CURRENT = 1 AND AY = ? AND QUARTER = ? AND PROPERTY_KEY = ?
-                """, (prev_ay, prev_q, pm_key))
-            else:
-                prior_rows = conn.fetchall(f"""
-                    SELECT sc.PROPERTY_KEY, sc.PRERM, sc.LDRTOTAL, sc.MSTOTAL
-                    FROM dbo.SCORECARD_CORE sc LEFT JOIN dbo.PROPERTY_0 p ON p.PROPERTY_KEY = sc.PROPERTY_KEY
-                    WHERE sc.FLAG_CURRENT = 1 AND sc.AY = ? AND sc.QUARTER = ? AND LOWER(COALESCE(p.RM_EMAIL, sc.RM_EMAIL)) = ?
-                """, (prev_ay, prev_q, email))
+            prior_rows = conn.fetchall(f"""
+                SELECT sc.PROPERTY_KEY, sc.PRERM, sc.LDRTOTAL, sc.MSTOTAL
+                FROM dbo.SCORECARD_CORE sc LEFT JOIN dbo.PROPERTY_0 p ON p.PROPERTY_KEY = sc.PROPERTY_KEY
+                WHERE sc.FLAG_CURRENT = 1 AND sc.AY = ? AND sc.QUARTER = ? AND {where_sql}
+            """, tuple([prev_ay, prev_q] + where_params))
             prior_payload = {
                 "ay": prev_ay, "quarter": prev_q, "quarter_label": f"{prev_q} {prev_ay}",
                 "rows": [dict(zip(prior_cols, r)) for r in prior_rows],
@@ -1676,11 +1811,12 @@ def _latest_period(conn):
 
 
 def _scoped_property_row(conn, property_key, ay, quarter, admin, email, cols):
-    # PROPERTY_0 is the source of truth for RM assignment + PROPERTY_TYPE;
-    # every other requested column lives on SCORECARD_CORE. Rewrite the SELECT
-    # so RM_EMAIL/RM_NAME come from PROPERTY_0 (fallback to sc), and use
-    # PROPERTY_0.RM_EMAIL for the RM-scoping WHERE clause so a fresh
-    # reassignment is honored immediately without waiting for the pipeline.
+    """Return the requested SCORECARD_CORE columns for one property IF the
+    current user's role scope grants access, else None.
+    `admin` and `email` are accepted for backward compatibility but the
+    scope is now derived from the session via _scope_clause() -- covers
+    admin / pm / rvp / rm uniformly. PROPERTY_TYPE + RM_EMAIL/RM_NAME come
+    from PROPERTY_0 so fresh reassignments are honored immediately."""
     p0_overrides = {"RM_EMAIL", "RM_NAME"}
     def _col_sql(c):
         if c == "PROPERTY_TYPE":
@@ -1690,22 +1826,10 @@ def _scoped_property_row(conn, property_key, ay, quarter, admin, email, cols):
         return f"sc.{c}"
     cols_sql = ", ".join(_col_sql(c) for c in cols)
     base = "FROM dbo.SCORECARD_CORE sc LEFT JOIN dbo.PROPERTY_0 p ON p.PROPERTY_KEY = sc.PROPERTY_KEY"
-    if admin:
-        rows = conn.fetchall(
-            f"SELECT {cols_sql} {base} WHERE sc.PROPERTY_KEY = ? AND sc.AY = ? AND sc.QUARTER = ? AND sc.FLAG_CURRENT = 1",
-            (property_key, ay, quarter))
-    else:
-        pm_key = _pm_property_key()
-        if pm_key:
-            if int(pm_key) != int(property_key):
-                return None
-            rows = conn.fetchall(
-                f"SELECT {cols_sql} {base} WHERE sc.PROPERTY_KEY = ? AND sc.AY = ? AND sc.QUARTER = ? AND sc.FLAG_CURRENT = 1",
-                (property_key, ay, quarter))
-        else:
-            rows = conn.fetchall(
-                f"SELECT {cols_sql} {base} WHERE sc.PROPERTY_KEY = ? AND sc.AY = ? AND sc.QUARTER = ? AND sc.FLAG_CURRENT = 1 AND LOWER(COALESCE(p.RM_EMAIL, sc.RM_EMAIL)) = ?",
-                (property_key, ay, quarter, email))
+    where_sql, where_params = _scope_clause("sc")
+    rows = conn.fetchall(
+        f"SELECT {cols_sql} {base} WHERE sc.PROPERTY_KEY = ? AND sc.AY = ? AND sc.QUARTER = ? AND sc.FLAG_CURRENT = 1 AND {where_sql}",
+        tuple([property_key, ay, quarter] + where_params))
     return rows[0] if rows else None
 
 
@@ -2131,15 +2255,15 @@ def _audit_scorecard_change(source_table_key, row_key_dict, field_name, old_valu
 
 
 def _update_own_property(conn, property_key, ay, quarter, admin, email, set_clause, params):
-    """UPDATE scoped to admin-or-owning-RM -- same RM_EMAIL-match rule every
-    read endpoint already enforces, applied here as defense-in-depth (the
-    caller should have already confirmed ownership via _scoped_property_row
-    before calling this)."""
+    """UPDATE scoped to the current user's role via _scope_update_where() --
+    defense-in-depth (the caller should have already confirmed ownership via
+    _scoped_property_row before calling this). `admin` and `email` are kept
+    for backward compat but no longer read -- scope now derives from session."""
     sql = f"UPDATE dbo.SCORECARD_CORE SET {set_clause} WHERE PROPERTY_KEY = ? AND AY = ? AND QUARTER = ?"
     where_params = [property_key, ay, quarter]
-    if not admin:
-        sql += " AND LOWER(RM_EMAIL) = ?"
-        where_params.append(email)
+    extra_sql, extra_params = _scope_update_where()
+    sql += extra_sql
+    where_params += extra_params
     return conn.execute(sql, params + where_params)
 
 
@@ -2402,16 +2526,14 @@ def _norm_entity(x):
 
 
 def _drilldown_portfolio(conn_app, admin, email, ay, quarter):
-    """{PROPERTY_KEY: {'name':.., 'entity':..}} -- same RM-or-admin scoping as the main grid."""
-    cols_sql = "PROPERTY_KEY, PROPERTY_NAME, ENTITY_NUMBER"
-    if admin:
-        rows = conn_app.fetchall(
-            f"SELECT {cols_sql} FROM dbo.SCORECARD_CORE WHERE FLAG_CURRENT = 1 AND AY = ? AND QUARTER = ?",
-            (ay, quarter))
-    else:
-        rows = conn_app.fetchall(
-            f"SELECT {cols_sql} FROM dbo.SCORECARD_CORE WHERE FLAG_CURRENT = 1 AND AY = ? AND QUARTER = ? AND LOWER(RM_EMAIL) = ?",
-            (ay, quarter, email))
+    """{PROPERTY_KEY: {'name':.., 'entity':..}} -- scoped to the current user's
+    role via _scope_clause(). `admin`/`email` retained for signature compat."""
+    where_sql, where_params = _scope_clause("sc")
+    rows = conn_app.fetchall(
+        f"""SELECT sc.PROPERTY_KEY, sc.PROPERTY_NAME, sc.ENTITY_NUMBER
+            FROM dbo.SCORECARD_CORE sc LEFT JOIN dbo.PROPERTY_0 p ON p.PROPERTY_KEY = sc.PROPERTY_KEY
+            WHERE sc.FLAG_CURRENT = 1 AND sc.AY = ? AND sc.QUARTER = ? AND {where_sql}""",
+        tuple([ay, quarter] + where_params))
     return {r[0]: {"name": r[1], "entity": r[2]} for r in rows}
 
 
