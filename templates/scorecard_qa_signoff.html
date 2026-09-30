@@ -8,10 +8,20 @@
         <span class="page-subtitle">Shared collaborative checklist (admin only)</span>
     </div>
     <div class="header-right">
+        <a href="?popout=1" target="_blank" rel="noopener" class="sc-reference-btn" title="Open this checklist in a new browser tab so you can test the Scorecard side-by-side"><i class="fa-solid fa-up-right-from-square"></i> Open in new tab</a>
         <a href="/scorecard/" class="sc-reference-btn" title="Back to Scorecard"><i class="fa-solid fa-arrow-left"></i> Back to Scorecard</a>
         <a href="/scorecard/admin/runs" class="sc-reference-btn" title="Notebook Runs viewer">&#9654; Notebook Runs</a>
     </div>
 </div>
+
+<style>
+/* Popout mode: strip the AppHub shell chrome so the checklist fills the window.
+   Activated by /scorecard/admin/qa?popout=1 (see inline script at bottom). */
+body.qas-popout .apphub-nav { display: none !important; }
+body.qas-popout .apphub-container { grid-template-columns: 1fr !important; }
+body.qas-popout .content-header { padding-left: 24px !important; padding-right: 24px !important; }
+body.qas-popout .qas-body { padding: 16px 24px !important; }
+</style>
 
 <style>
 .qas-body { padding: 20px 40px; color: var(--text-primary); font-size: 13.5px; line-height: 1.55; }
@@ -403,5 +413,15 @@ renderChecklist();
 loadState();
 // Poll every 45s so multiple concurrent testers see each other's updates
 setInterval(loadState, 45000);
+
+// Popout mode: hide the AppHub shell nav when the URL includes ?popout=1
+// so testers can size this tab tightly alongside the Scorecard tab.
+if (new URLSearchParams(location.search).get('popout') === '1') {
+    document.body.classList.add('qas-popout');
+    document.title = 'QA Sign-Off  |  Leadership Scorecard';
+    // Hide the "Open in new tab" link when already popped out.
+    const el = document.querySelector('.header-right a[href="?popout=1"]');
+    if (el) el.style.display = 'none';
+}
 </script>
 {% endblock %}
