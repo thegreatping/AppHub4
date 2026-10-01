@@ -868,7 +868,23 @@ def api_admin_table(table_key):
         cfg_out["sql_order_by_resolved"] = order_clause.replace(" ORDER BY ", "")
     cfg_out["limit"] = limit
 
-    conn = SafeConnection(env, cfg["db"], None, direct=cfg.get("direct", False))
+    conn = None
+    try:
+        conn = SafeConnection(env, cfg["db"], None, direct=cfg.get("direct", False))
+    except ValueError as e:
+        # Hosted beta on Azure App Service doesn't yet carry Fabric
+        # WH_PROD2 credentials (interactive-browser token path only works on
+        # the dev workstation). Return a friendly 503 so the UI can show
+        # 'not available yet' instead of a raw error string.
+        if "No endpoint found" in str(e) or "FABRIC_" in str(e):
+            return jsonify({
+                "error": (f"Live browse of '{cfg['db']}' source tables is not yet "
+                          "available in the hosted beta environment. This table "
+                          "is accessible from the dev workstation only until we "
+                          "wire up a server-side Fabric token path. "
+                          "DB_APP_SUPPORT and DB_BI_SUPPORT tables work fine.")
+            }), 503
+        raise
     try:
         sql = f"SELECT TOP {limit} * FROM {cfg['schema']}.[{cfg['table']}]{where_clause}{order_clause}"
         cur = conn.execute(sql, where_params if where_params else None)
