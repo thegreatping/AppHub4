@@ -2416,14 +2416,29 @@ let _cmpQuarters = null;      // list of {ay, quarter, label}
 let _cmpData = null;          // last payload from /api/compare
 
 async function initCompareTab() {
+    const selA = document.getElementById('scCmpA');
+    const selB = document.getElementById('scCmpB');
     if (_cmpQuarters === null) {
+        selA.innerHTML = '<option value="">Loading...</option>';
+        selB.innerHTML = '<option value="">Loading...</option>';
         try {
             const r = await fetch('/scorecard/api/quarters');
+            if (!r.ok) throw new Error('HTTP ' + r.status);
             const j = await r.json();
             _cmpQuarters = j.quarters || [];
-        } catch (e) { _cmpQuarters = []; }
-        const selA = document.getElementById('scCmpA');
-        const selB = document.getElementById('scCmpB');
+        } catch (e) {
+            _cmpQuarters = [];
+            console.error('Failed to load quarters:', e);
+        }
+        if (!_cmpQuarters.length) {
+            selA.innerHTML = '<option value="">(no quarters available)</option>';
+            selB.innerHTML = '<option value="">(no quarters available)</option>';
+            document.getElementById('scCmpEmpty').style.display = '';
+            document.getElementById('scCmpEmpty').textContent = 'Could not load quarter list from /scorecard/api/quarters. Try a hard refresh (Ctrl+F5).';
+            return;
+        }
+        selA.innerHTML = '';
+        selB.innerHTML = '';
         _cmpQuarters.forEach(q => {
             selA.insertAdjacentHTML('beforeend', `<option value="${q.ay}:${q.quarter}">${q.label}</option>`);
             selB.insertAdjacentHTML('beforeend', `<option value="${q.ay}:${q.quarter}">${q.label}</option>`);
