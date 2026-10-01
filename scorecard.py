@@ -2027,7 +2027,7 @@ def api_quarters():
         rows = conn.fetchall("""
             SELECT DISTINCT AY, QUARTER FROM dbo.SCORECARD_CORE
             WHERE FLAG_CURRENT = 1
-            ORDER BY AY DESC, CAST(SUBSTRING(QUARTER, 2, 1) AS INT) DESC
+            ORDER BY AY DESC, QUARTER DESC
         """)
         return jsonify({
             "quarters": [{"ay": r[0], "quarter": r[1], "label": f"{r[1]} {r[0]}"} for r in rows]
