@@ -321,7 +321,7 @@ function renderChecklist() {
   document.getElementById('numTotal').textContent = total;
 }
 
-function applyState(state, meta) {
+function applyState(state, meta, suggestedRole) {
   Object.entries(state).forEach(([key, row]) => {
     const chk = document.getElementById('chk_' + key);
     const sta = document.getElementById('sta_' + key);
@@ -338,10 +338,16 @@ function applyState(state, meta) {
     const el = document.getElementById('meta_' + k);
     if (el && meta[k] != null) el.value = meta[k];
   });
+  // If no stored role, preselect the role that matches the effective user's
+  // access level (view-as > impersonated real role > admin fallback) and
+  // persist it so the dashboard and future loads reflect it.
+  const roleEl = document.getElementById('meta_role_tested');
+  if (roleEl && suggestedRole && !meta.role_tested) {
+    roleEl.value = suggestedRole;
+    saveMeta();
+  }
   updateProgress();
-}
-
-function updateProgress() {
+}function updateProgress() {
   let checked = 0, pass = 0, fail = 0, block = 0;
   document.querySelectorAll('tr[data-row-key]').forEach(tr => {
     const key = tr.dataset.rowKey;
@@ -403,7 +409,7 @@ function loadState() {
   _flashSaved('Loading...');
   fetch('/scorecard/api/admin/qa/state').then(r => r.json()).then(d => {
     if (d.error) { _flashSaved('Load failed: ' + d.error); return; }
-    applyState(d.state || {}, d.meta || {});
+    applyState(d.state || {}, d.meta || {}, d.suggested_role || '');
     _flashSaved('Loaded.');
   }).catch(e => _flashSaved('Load failed: ' + e.message));
 }

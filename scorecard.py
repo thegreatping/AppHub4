@@ -523,6 +523,32 @@ def _qa_scenario_count():
         return 75
 
 
+def _qa_suggested_role():
+    """Pick the Test Role dropdown option that best matches the effective
+    session identity. View-As takes precedence over the user's real role
+    (because an admin exercising View-As is explicitly testing that path);
+    otherwise we fall through to the impersonated/real identity's actual
+    access level. Must return a string present in the template's <option>
+    list verbatim so the UI can preselect it."""
+    if _is_real_admin():
+        if session.get("sc_view_as_pm_property_key"):
+            return "Property Manager (View As)"
+        if session.get("sc_view_as_rvp_email"):
+            return "Regional Vice President (View As)"
+        if session.get("sc_view_as_email"):
+            return "Regional Manager (View As)"
+    if _pm_property_key():
+        return "Real PM (production account)"
+    if _is_rvp():
+        return "Real RVP (production account)"
+    try:
+        if get_rm_profile((session.get("user") or {}).get("email", "")):
+            return "Real RM (production account)"
+    except Exception:
+        pass
+    return "Admin"
+
+
 @scorecard_bp.route("/admin/qa")
 @login_required
 def admin_qa_page():
@@ -587,21 +613,24 @@ def api_admin_qa_state():
             }
         else:
             # Auto-create an empty meta row the first time this tester visits,
-            # pre-populating TESTER with their display name so the UI shows
-            # something meaningful without them having to type it in.
+            # pre-populating TESTER with their display name AND ROLE_TESTED
+            # with the Test Role that matches their effective access level
+            # (view-as beats real role, impersonated identity respected).
             display = _qa_tester_display()
+            suggested = _qa_suggested_role()
             conn.execute("""
                 INSERT INTO dbo.SCORECARD_QA_META
-                    (TESTER_EMAIL, TESTER, LAST_UPDATED_BY, LAST_UPDATED_AT)
-                VALUES (?, ?, ?, SYSUTCDATETIME())
-            """, (tester, display, tester))
+                    (TESTER_EMAIL, TESTER, ROLE_TESTED, LAST_UPDATED_BY, LAST_UPDATED_AT)
+                VALUES (?, ?, ?, ?, SYSUTCDATETIME())
+            """, (tester, display, suggested, tester))
             conn.commit()
             meta = {"tester": display, "test_date": None, "env": None,
-                    "browser": None, "role_tested": None,
+                    "browser": None, "role_tested": suggested,
                     "signoff_tester": None, "signoff_approver": None,
                     "decision": None, "blockers": None,
                     "last_updated_by": tester, "last_updated_at": None}
-        return jsonify({"state": state, "meta": meta, "tester_email": tester})
+        return jsonify({"state": state, "meta": meta, "tester_email": tester,
+                        "suggested_role": _qa_suggested_role()})
     finally:
         conn.close()
 
