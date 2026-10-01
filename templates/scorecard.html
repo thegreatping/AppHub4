@@ -374,6 +374,10 @@
         <i class="fa-solid fa-award" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
         <span class="page-title">Leadership Scorecard</span>
         <span class="page-subtitle" id="scQuarterLabel">Loading...</span>
+        <select id="scQuarterPicker" onchange="scPickQuarter(this.value)" title="Switch to a different quarter (default is the latest)"
+                style="margin-left:10px;background:var(--input-bg);color:var(--text-primary);border:1px solid var(--accent-cyan);padding:4px 8px;border-radius:4px;font-size:0.78rem;cursor:pointer;display:none;">
+            <option value="">Latest</option>
+        </select>
     </div>
     <div class="header-right">
         {% if is_real_admin %}
@@ -1338,8 +1342,13 @@ function displayVal(col, row) {
     return String(v);
 }
 
+let _scSelectedPeriod = ""; // "AY:Q" when the user picked a specific quarter; empty = latest
+
 async function loadData() {
-    const resp = await fetch('/scorecard/api/data?prior=1');
+    const periodQs = _scSelectedPeriod
+        ? `&ay=${_scSelectedPeriod.split(':')[0]}&quarter=${_scSelectedPeriod.split(':')[1]}`
+        : '';
+    const resp = await fetch(`/scorecard/api/data?prior=1${periodQs}`);
     const data = await resp.json();
     allRows = data.rows || [];
     priorByPropertyKey = {};
@@ -1352,6 +1361,35 @@ async function loadData() {
         : 'No data available yet';
     document.getElementById('scFullExportBtn').style.display = window.SC_IS_ADMIN ? '' : 'none';
     render();
+    _scPopulateQuarterPicker(data.ay, data.quarter);
+}
+
+// Fill the quarter picker on first load (reuses /api/quarters -- same list the
+// Compare Quarters tab uses). Hidden until there are >= 2 quarters, since
+// otherwise there's nothing to pick.
+async function _scPopulateQuarterPicker(currentAy, currentQ) {
+    const sel = document.getElementById('scQuarterPicker');
+    if (!sel || sel.dataset.loaded) {
+        if (sel) sel.value = _scSelectedPeriod;
+        return;
+    }
+    try {
+        const r = await fetch('/scorecard/api/quarters');
+        const j = await r.json();
+        const quarters = j.quarters || [];
+        if (quarters.length < 2) return;
+        for (const q of quarters) {
+            sel.insertAdjacentHTML('beforeend', `<option value="${q.ay}:${q.quarter}">${esc(q.label)}</option>`);
+        }
+        sel.dataset.loaded = '1';
+        sel.style.display = '';
+        sel.value = _scSelectedPeriod;
+    } catch (e) { /* non-critical */ }
+}
+
+function scPickQuarter(val) {
+    _scSelectedPeriod = val || '';
+    loadData();
 }
 
 function passesFilters(row) {

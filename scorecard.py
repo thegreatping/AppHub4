@@ -1770,14 +1770,26 @@ def api_data():
     try:
         admin = _is_admin()
 
-        latest = conn.fetchall("""
-            SELECT TOP 1 AY, QUARTER FROM dbo.SCORECARD_CORE
-            WHERE FLAG_CURRENT = 1
-            ORDER BY AY DESC, CAST(SUBSTRING(QUARTER, 2, 1) AS INT) DESC
-        """)
-        if not latest:
-            return jsonify({"ay": None, "quarter": None, "quarter_label": None, "is_admin": admin, "rows": [], "prior_quarter": None})
-        ay, quarter = latest[0][0], latest[0][1]
+        # Explicit ay/quarter overrides the default "latest present" behavior.
+        # Used by the main-tab quarter picker during beta so admins can view
+        # historical quarters while the current-quarter sources are still
+        # catching up.
+        q_override = request.args.get("quarter")
+        try:
+            ay_override = int(request.args.get("ay")) if request.args.get("ay") else None
+        except ValueError:
+            ay_override = None
+        if ay_override and q_override in ("Q1", "Q2", "Q3", "Q4"):
+            ay, quarter = ay_override, q_override
+        else:
+            latest = conn.fetchall("""
+                SELECT TOP 1 AY, QUARTER FROM dbo.SCORECARD_CORE
+                WHERE FLAG_CURRENT = 1
+                ORDER BY AY DESC, CAST(SUBSTRING(QUARTER, 2, 1) AS INT) DESC
+            """)
+            if not latest:
+                return jsonify({"ay": None, "quarter": None, "quarter_label": None, "is_admin": admin, "rows": [], "prior_quarter": None})
+            ay, quarter = latest[0][0], latest[0][1]
 
         all_cols = _GRID_COLUMNS + _LOCK_COLUMNS + _LOCK_BY_COLUMNS + _REASON_COLUMNS
         # PROPERTY_0 is the authoritative source for RM assignment + property type;
