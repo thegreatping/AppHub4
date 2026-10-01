@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Leadership Scorecard -- Data Flow Diagram</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; }
+  #header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
+    padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 2px 12px rgba(0,0,0,.4); height: 56px;
+  }
+  #header h1 { font-size: 17px; font-weight: 600; letter-spacing: .3px; }
+  #header h1 span { color: #53c0f0; }
+  #controls { display: flex; gap: 8px; align-items: center; }
+  #controls button {
+    background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+    color: #fff; padding: 6px 14px; border-radius: 6px; cursor: pointer;
+    font-size: 13px; transition: background .15s;
+  }
+  #controls button:hover { background: rgba(255,255,255,.22); }
+  #zoom-level { font-size: 12px; color: #aaa; min-width: 46px; text-align: center; }
+
+  #legend {
+    position: fixed; bottom: 16px; left: 16px; z-index: 100;
+    background: rgba(22,33,62,.94); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 10px; padding: 12px 16px; font-size: 11.5px; line-height: 1.75;
+    backdrop-filter: blur(8px); max-width: 300px;
+  }
+  #legend h3 { font-size: 12.5px; margin-bottom: 6px; color: #53c0f0; }
+  .leg-item { display: flex; align-items: center; gap: 8px; }
+  .leg-dot { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; }
+
+  #canvas-wrap {
+    width: 100vw; height: 100vh; padding-top: 56px;
+    overflow: hidden; cursor: grab; position: relative;
+  }
+  #canvas-wrap.dragging { cursor: grabbing; }
+  #mermaid-container {
+    transform-origin: 0 0; position: absolute; top: 56px; left: 0;
+    min-width: 100vw; min-height: calc(100vh - 56px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 40px;
+  }
+  .mermaid svg { max-width: none !important; }
+  .node rect, .node polygon { rx: 8; ry: 8; }
+  .clickable { cursor: pointer !important; }
+
+  /* --- DETAIL PANEL (drill-down) --- */
+  #detailPanel {
+    position: fixed; top: 56px; right: 0; bottom: 0; width: 380px;
+    background: #16213e; border-left: 1px solid rgba(255,255,255,.15);
+    box-shadow: -8px 0 24px rgba(0,0,0,.35);
+    transform: translateX(100%); transition: transform .25s ease;
+    z-index: 90; overflow-y: auto; padding: 22px 22px 30px;
+  }
+  #detailPanel.open { transform: translateX(0); }
+  #detailPanel .dp-close {
+    position: absolute; top: 14px; right: 16px; background: none; border: none;
+    color: #8ab4d4; font-size: 20px; cursor: pointer; line-height: 1;
+  }
+  #detailPanel .dp-close:hover { color: #fff; }
+  #detailPanel .dp-eyebrow { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: #53c0f0; font-weight: 700; margin-bottom: 6px; }
+  #detailPanel h2 { font-size: 18px; font-weight: 700; margin-bottom: 10px; line-height: 1.3; padding-right: 24px; }
+  #detailPanel .dp-badge { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 3px 10px; border-radius: 10px; margin-bottom: 14px; }
+  #detailPanel .dp-section { margin-bottom: 16px; }
+  #detailPanel .dp-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: #6ba3d6; font-weight: 700; margin-bottom: 4px; }
+  #detailPanel .dp-value { font-size: 13px; color: #cfd8dc; line-height: 1.6; }
+  #detailPanel code { background: rgba(255,255,255,.08); padding: 1px 6px; border-radius: 3px; font-family: Consolas, monospace; font-size: 12px; color: #7fdcf0; }
+  #detailPanel .dp-empty { color: #8ab4d4; font-size: 13px; padding-top: 60px; text-align: center; }
+
+  #help-toast {
+    position: fixed; bottom: 16px; right: 16px; z-index: 100;
+    background: rgba(22,33,62,.92); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 10px; padding: 12px 16px; font-size: 12px; color: #aaa;
+    backdrop-filter: blur(8px); transition: opacity .4s;
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1><span>Leadership Scorecard</span> &nbsp;&middot;&nbsp; Data Flow Diagram &nbsp;&middot;&nbsp; Sources &rarr; Storage &rarr; App &rarr; Reporting</h1>
+  <div id="controls">
+    <button onclick="goToTableManager()" title="Open the Table Manager diagram" style="background:rgba(83,192,240,.18);border-color:#53c0f0;">&#128279; Table Manager Diagram</button>
+    <button onclick="zoomIn()" title="Zoom In">&#65291;</button>
+    <span id="zoom-level">100%</span>
+    <button onclick="zoomOut()" title="Zoom Out">&#8722;</button>
+    <button onclick="resetView()" title="Reset">&#8634; Reset</button>
+    <button onclick="fitToScreen()" title="Fit">&#8862; Fit</button>
+  </div>
+</div>
+
+<div id="canvas-wrap">
+  <div id="mermaid-container">
+    <pre class="mermaid">
+graph LR
+    %% ===================================================================
+    %% LEADERSHIP SCORECARD -- FULL DATA FLOW
+    %% LEFT = Sources | MIDDLE-LEFT = Human Hand-off | MIDDLE = Storage | MIDDLE-RIGHT = App | RIGHT = Reporting
+    %% ===================================================================
+
+    subgraph HUMAN_SRC["HUMAN-CURATED SOURCES (manual export today)"]
+        direction TB
+        PAYCOM["Paycom<br/>Timecard Approval"]
+        GRACEHILL["Grace Hill<br/>Training Completion<br/><i>replacement onboarding, ETA 9/30/26</i>"]
+        TRUIST["Truist Bank<br/>PPV / P-Card"]
+        LEO["Leonardo 24/7<br/>Risk Assessment, IIPP,<br/>Lease File Audit, LEO Compliance"]
+        RMWALK["RM Site Visit<br/>Curb, Public Areas,<br/>Maintenance, Safety Logs"]
+    end
+
+    subgraph HUMAN_HOP["MANUAL HAND-OFF (today)"]
+        direction TB
+        MOLLY["Molly / Sara / Sophia /<br/>Sam Soller export &amp; email"]
+        ROHIT["Rohit combines &amp;<br/>drops in SharePoint"]
+    end
+
+    subgraph SYS_SRC["SYSTEM-FED SOURCES (automated)"]
+        direction TB
+        ENTRATA_WO["Entrata<br/>Work Order Requests"]
+        ENTRATA_GL["Entrata<br/>Income Statement (GL)"]
+        REP["Reputation.com<br/>(current source)"]
+    end
+
+    subgraph ONBOARDING["ONBOARDING NOW -- ETA 9/30/2026"]
+        direction TB
+        BIRDEYE["BirdEye<br/>replaces Reputation.com"]
+        GHREPLACE["Peak Academy (Learn365)<br/>replaces Grace Hill -- API key stored"]
+    end
+
+    subgraph STAGING["NB_SCORECARD_PIPELINE (new, single notebook)"]
+        direction TB
+        PIPELINE["IMPORT + PROCESSING steps<br/>10 IMPORT + 5 PROCESSING functions<br/>control-table driven, mirrors NB_EMP_PIPELINE<br/>&#128279; see NB_SCORECARD_PIPELINE.py"]
+    end
+
+    subgraph CORE["CENTRAL TABLE (new, sole source of truth)"]
+        direction TB
+        SCORECARD_CORE["SCORECARD_CORE<br/>DB_APP_SUPPORT<br/>one row per PROPERTY_KEY + AY/QUARTER<br/>*_LOCKED bit per admin-editable field"]
+    end
+
+    subgraph LEGACY["LEGACY COMPATIBILITY (EXPORT steps)"]
+        direction TB
+        LEGACY_TABLES["Original LS_* / fact tables<br/>(12 tables, unchanged)<br/>refreshed FROM SCORECARD_CORE<br/>so existing Power BI needs no changes"]
+    end
+
+    subgraph NEWTABLES["NEW -- SCORECARD-OWNED (Phase 3/6)"]
+        direction TB
+        RMENTRIES["SCORECARD_RM_ENTRIES<br/>RM Score, Surveys,<br/>NOI confirm, Notes"]
+        PPVMOD["Prepaid Visa Compliance<br/>module intake (App_ID 3)"]
+        RMIMOD["RM Inspections<br/>module intake (App_ID 2)"]
+    end
+
+    subgraph APPLAYER["LEADERSHIP SCORECARD -- AppHub Module (App_ID 36)"]
+        direction TB
+        SCTABLE["Scorecard Table<br/>read layer"]
+        SCENTRY["Subjective Entry<br/>write layer"]
+        TABMGRLINK["Table Manager (Admin)<br/>&#128279; see separate diagram<br/>scorecard_table_manager_diagram.html"]
+    end
+
+    subgraph REPORTING["REPORTING / CONSUMERS"]
+        direction TB
+        RMVIEW["RM View<br/>scorecard, drill-downs, guides"]
+        PEOPSVIEW["People Ops View<br/>admin, exports"]
+        PBI["Existing Power BI<br/>'Leadership Scorecard' report"]
+        EXPORTS["Exports<br/>xlsx, .ics, email"]
+    end
+
+    %% --- FLOWS: human sources through manual hop ---
+    PAYCOM --> MOLLY
+    GRACEHILL --> MOLLY
+    TRUIST --> MOLLY
+    LEO --> MOLLY
+    RMWALK --> MOLLY
+    MOLLY --> ROHIT
+    ROHIT -->|"unverified mechanism"| PIPELINE
+
+    %% --- FLOWS: system sources ---
+    ENTRATA_WO --> PIPELINE
+    ENTRATA_GL --> PIPELINE
+    REP --> PIPELINE
+
+    %% --- FLOWS: onboarding replacements (dashed, future) ---
+    BIRDEYE -.->|"ETA 9/30/26"| PIPELINE
+    GHREPLACE -.->|"ETA 9/30/26"| PIPELINE
+
+    %% --- Scorecard-owned inputs feed the pipeline too ---
+    RMENTRIES -->|"IMPORT_RM_ENTRIES"| PIPELINE
+    RMIMOD -.->|"Phase 6, replaces RMWALK/MOLLY path"| PIPELINE
+    PPVMOD -.->|"Phase 6, replaces TRUIST/MOLLY path"| PIPELINE
+
+    %% --- pipeline assembles + merges into the central table ---
+    PIPELINE -->|"PROCESSING_MERGE_CORE<br/>(lock-aware)"| SCORECARD_CORE
+
+    %% --- central table feeds both the new app AND legacy compatibility ---
+    SCORECARD_CORE --> SCTABLE
+    SCENTRY --> SCORECARD_CORE
+    SCORECARD_CORE -->|"EXPORT_LEGACY_LS_TABLES"| LEGACY_TABLES
+    LEGACY_TABLES --> PBI
+
+    %% --- app layer to reporting ---
+    SCTABLE --> RMVIEW
+    SCTABLE --> PEOPSVIEW
+    SCENTRY --> RMVIEW
+    PEOPSVIEW --> EXPORTS
+    RMVIEW --> EXPORTS
+    PEOPSVIEW -.->|"opens"| TABMGRLINK
+    TABMGRLINK -.->|"admin edits (locked-aware)"| SCORECARD_CORE
+
+    %% --- STYLING ---
+    classDef human fill:#c0392b,stroke:#7b241c,color:#fff,font-size:11px
+    classDef handoff fill:#e67e22,stroke:#a85c13,color:#fff,font-size:11px
+    classDef system fill:#3a7bd5,stroke:#1e4d8a,color:#fff,font-size:11px
+    classDef onboarding fill:#f39c12,stroke:#b8760f,color:#000,font-size:11px
+    classDef newtbl fill:#d35400,stroke:#8a3700,color:#fff,font-size:11px
+    classDef applayer fill:#16a085,stroke:#0e6655,color:#fff,font-size:11px
+    classDef reporting fill:#2c3e50,stroke:#17202a,color:#fff,font-size:11px
+    classDef pagelink fill:#0a5566,stroke:#53c0f0,color:#fff,font-size:11px,stroke-width:2px,stroke-dasharray: 4 3
+    classDef pipeline fill:#6c3483,stroke:#3e1f4d,color:#fff,font-size:11px,stroke-width:3px
+    classDef core fill:#f9e2af,stroke:#b8860b,color:#000,font-size:11px,stroke-width:4px
+    classDef legacy fill:#27ae60,stroke:#1a7a42,color:#fff,font-size:11px,stroke-dasharray: 3 2
+
+    class PAYCOM,GRACEHILL,TRUIST,LEO,RMWALK human
+    class MOLLY,ROHIT handoff
+    class ENTRATA_WO,ENTRATA_GL,REP system
+    class BIRDEYE,GHREPLACE onboarding
+    class PIPELINE pipeline
+    class SCORECARD_CORE core
+    class LEGACY_TABLES legacy
+    class RMENTRIES,PPVMOD,RMIMOD newtbl
+    class SCTABLE,SCENTRY applayer
+    class TABMGRLINK pagelink
+    class RMVIEW,PEOPSVIEW,PBI,EXPORTS reporting
+
+    click PAYCOM call showDetail("PAYCOM")
+    click GRACEHILL call showDetail("GRACEHILL")
+    click TRUIST call showDetail("TRUIST")
+    click LEO call showDetail("LEO")
+    click RMWALK call showDetail("RMWALK")
+    click MOLLY call showDetail("MOLLY")
+    click ROHIT call showDetail("ROHIT")
+    click ENTRATA_WO call showDetail("ENTRATA_WO")
+    click ENTRATA_GL call showDetail("ENTRATA_GL")
+    click REP call showDetail("REP")
+    click BIRDEYE call showDetail("BIRDEYE")
+    click GHREPLACE call showDetail("GHREPLACE")
+    click PIPELINE call showDetail("PIPELINE")
+    click SCORECARD_CORE call showDetail("SCORECARD_CORE")
+    click LEGACY_TABLES call showDetail("LEGACY_TABLES")
+    click RMENTRIES call showDetail("RMENTRIES")
+    click PPVMOD call showDetail("PPVMOD")
+    click RMIMOD call showDetail("RMIMOD")
+    click SCTABLE call showDetail("SCTABLE")
+    click SCENTRY call showDetail("SCENTRY")
+    click TABMGRLINK call goToTableManager()
+    click RMVIEW call showDetail("RMVIEW")
+    click PEOPSVIEW call showDetail("PEOPSVIEW")
+    click PBI call showDetail("PBI")
+    click EXPORTS call showDetail("EXPORTS")
+    </pre>
+  </div>
+</div>
+
+<div id="legend">
+  <h3>Legend -- click any box for detail</h3>
+  <div class="leg-item"><div class="leg-dot" style="background:#0a5566;border:1px dashed #53c0f0;"></div> Table Manager -- see separate diagram page</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#c0392b"></div> Human-curated source (manual export today)</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#e67e22"></div> Manual hand-off (email / SharePoint)</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#3a7bd5"></div> System-fed source (automated)</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#f39c12"></div> Onboarding now -- ETA 9/30/2026</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#6c3483"></div> NB_SCORECARD_PIPELINE (new, single notebook)</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#f9e2af;border:2px solid #b8860b;"></div> SCORECARD_CORE -- central table, sole source of truth</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#27ae60"></div> Legacy LS_* tables (Power BI compatibility export)</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#d35400"></div> New Scorecard-owned intake (Phase 3/6)</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#16a085"></div> Scorecard AppHub module (App_ID 36)</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#2c3e50"></div> Reporting / consumers</div>
+  <div style="margin-top:8px;border-top:1px solid rgba(255,255,255,.15);padding-top:8px;color:#888;">
+    Dashed lines = planned/future or parallel/unverified flow
+  </div>
+</div>
+
+<div id="detailPanel">
+  <button class="dp-close" onclick="closeDetail()">&times;</button>
+  <div id="detailContent"><div class="dp-empty">Click any box in the diagram to see its detail here.</div></div>
+</div>
+
+<div id="help-toast">
+  Scroll to zoom &middot; Click &amp; drag to pan &middot; Click a box to drill in &middot; Double-click to reset
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    primaryColor: '#3a7bd5',
+    primaryTextColor: '#fff',
+    primaryBorderColor: '#1e4d8a',
+    lineColor: '#6ba3d6',
+    secondaryColor: '#27ae60',
+    tertiaryColor: '#1a1a2e',
+    fontFamily: 'Segoe UI, system-ui, sans-serif',
+    fontSize: '12px',
+    edgeLabelBackground: 'rgba(26,26,46,.85)',
+  },
+  flowchart: {
+    useMaxWidth: false,
+    htmlLabels: true,
+    curve: 'basis',
+    rankSpacing: 90,
+    nodeSpacing: 16,
+    padding: 10,
+  },
+  securityLevel: 'loose',
+});
+
+// ─── Node detail content (the "drillable" layer) ────────────────────────────
+const NODE_DETAILS = {
+  PAYCOM: { badge: 'Human source', color: '#c0392b', title: 'Paycom -- Timecard Approval', body: 'Molly pulls the timecard approval report from Paycom each quarter and emails it to Rohit. No system integration exists today. See Upstream Intake Modernization Plan (scorecard_project_plan.html) -- Option A (API) vs Option B (in-app upload) still to be decided.' },
+  GRACEHILL: { badge: 'Human source -- replacing', color: '#f39c12', title: 'Grace Hill -- Training Completion', body: 'Sara currently exports from Grace Hill and emails Rohit. A replacement system is onboarding now with a DW data ETA of 9/30/2026 -- likely the source of the earlier "transitioning to new source in Q4" note. Do not build the query layer to depend on the current schema without a swap plan.' },
+  TRUIST: { badge: 'Human source', color: '#c0392b', title: 'Truist Bank -- PPV / P-Card', body: 'Sophia pulls the export from Truist; Rohit manually combines it into one sheet before it is loaded. No banking API integration exists or is expected to be feasible without a Finance/IT-sponsored project. Recommendation: Option B -- upload screen in the Prepaid Visa Compliance module (App_ID 3).' },
+  LEO: { badge: 'Human source', color: '#c0392b', title: 'Leonardo 24/7 -- Risk Assessment / IIPP / Lease File Audit / LEO Compliance', body: 'Sam Soller compiles this from Leonardo\'s LEO Summary sheet and audit findings, emails Rohit. An exploratory SFTP find (a "/reports" folder with a schema-matching file) exists but is UNVERIFIED -- unknown provenance, stale timestamp. Needs confirmation with Leonardo before treating as a real integration path.' },
+  RMWALK: { badge: 'Human source', color: '#c0392b', title: 'RM Site Visit -- Curb Appeal / Public Areas / Maintenance / Safety Logs', body: 'Inherently a human observation -- the RM physically inspects the property. Molly currently gets an Excel checklist from Sam Soller and emails Rohit. Planned fix: the RM Inspections module (App_ID 2) gives RMs a mobile-friendly digital checklist at the time of the site visit (Phase 6).' },
+  MOLLY: { badge: 'Manual hand-off', color: '#e67e22', title: 'Export & Email (Molly / Sara / Sophia / Sam Soller)', body: 'Each data owner exports their piece from its source system and emails it to Rohit as an individual file.' },
+  ROHIT: { badge: 'Manual hand-off', color: '#e67e22', title: 'Rohit -- Combine & Drop', body: 'Rohit combines the individually emailed files (notably for PPV) and drops the result in a SharePoint folder. What executes after that point to load the "_0" staging tables has not been verified in this codebase -- do not assume any specific tool without confirming.' },
+  ENTRATA_WO: { badge: 'System-fed', color: '#3a7bd5', title: 'Entrata -- Work Order Requests', body: 'Genuinely automated. Traced via SP definition to WH_ODS.dbo.E_MAINTENANCE_REQUEST_LOGS / E_MAINTENANCE_STATUSES -- Entrata\'s operational maintenance system, no human export step.' },
+  ENTRATA_GL: { badge: 'System-fed', color: '#3a7bd5', title: 'Entrata -- Income Statement (GL)', body: 'Feeds INCOME_STATEMENT_BY_GL with GL-level Actuals, Account Rollup, and Account Type -- everything needed to compute Controllable NOI. Full upstream sourcing chain not 100% traced but appears automated via WH_ODS.' },
+  REP: { badge: 'System-fed -- being replaced', color: '#3a7bd5', title: 'Reputation.com (current)', body: 'Currently genuinely system-fed -- traced to WH_ODS, documented as ETL ported from a historical SAP Data Services dataflow. Being replaced by BirdEye (see that node) with a DW data ETA of 9/30/2026.' },
+  BIRDEYE: { badge: 'Onboarding -- ETA 9/30/26', color: '#f39c12', title: 'BirdEye (new Reputation source)', body: 'New system replacing Reputation.com for Reputation Score. Currently being onboarded. Data expected in the warehouse by 9/30/2026. The Scorecard\'s Reputation column needs to be pointed at whatever new fact table this produces once it lands -- do not hard-code REPUTATION_COM_SUMMARY_FACT as permanent.' },
+  GHREPLACE: { badge: 'Onboarding -- ETA 9/30/26', color: '#f39c12', title: 'Peak Academy (Learn365)', body: 'Confirmed Grace Hill replacement (vendor Learn365). API key for Power BI/warehouse access provided 2026-09-21, stored in Key Vault as peak-academy-api-key -- never hardcoded. Onboarding now, DW data ETA 9/30/2026. Vendor has canned Learn365 report templates available, but final reporting should be branded like Peak Insights. Table name/schema not yet known -- track and update IMPORT_TRAINING once available.' },
+  PIPELINE: { badge: 'New -- single notebook', color: '#6c3483', title: 'NB_SCORECARD_PIPELINE', body: 'Single Fabric notebook (Python kernel, not Spark), control-table driven via DB_BI_SUPPORT.control.SCORECARD_PIPELINE_CONTROL -- one row per step (STEP_NAME/STEP_GROUP/STEP_ORDER/ENABLED/ABORT_ON_FAILURE), one Python function per step, mirroring NB_EMP_PIPELINE.py exactly. 10 IMPORT steps read from the existing WH_PROD2 landing tables (LS_TIMESHEET, LS_TRAINING, LS_PREPAID_VISA, LS_COMPLIANCE_IMPORT, LEO_COMPLIANCE_EXPORT_FACT, LS_RM_QUARTERLY_INSPECTION_SCORES_FACT, WORK_ORDER_REQUESTS, REPUTATION_COM_SUMMARY_FACT, INCOME_STATEMENT_BY_GL, SCORECARD_RM_ENTRIES) -- reading these does not itself change how automated/manual each source is, it only stops the app from re-joining them on every page load. 5 PROCESSING steps assemble one row per property, compute PRERM/LDRTOTAL/MSTOTAL, and MERGE (lock-aware) into SCORECARD_CORE. Scaffolded as de_remediation/NB_SCORECARD_PIPELINE.py -- NOT yet deployed.' },
+  SCORECARD_CORE: { badge: 'NEW -- central table', color: '#f9e2af', title: 'SCORECARD_CORE (DB_APP_SUPPORT)', body: 'The sole source of truth for the Leadership Scorecard, mirroring Emp_Core\'s role for the Unified Employee System. One row per PROPERTY_KEY + AY/QUARTER. Every admin-editable field (TC, TR, PCARD, RA, IIPP, LFA, PMLEO, REP, WO, RMSCORE, MSLEO, CURB, PUBLICAREAS, MAINT, LOGS, MSWO, SURVEYS, NOI) has a companion *_LOCKED bit -- Table Manager sets these directly rather than via a generic override table, again mirroring Emp_Core. Populated by NB_SCORECARD_PIPELINE\'s PROCESSING_MERGE_CORE step, which respects every lock bit on every run. Scaffolded as de_remediation/_create_scorecard_core_schema.py -- NOT yet deployed.' },
+  LEGACY_TABLES: { badge: 'Compatibility export', color: '#27ae60', title: 'Legacy LS_* / Fact Tables (12 tables)', body: 'The original LS_TIMESHEET, LS_TRAINING, LS_PREPAID_VISA, LS_COMPLIANCE_IMPORT, LS_RISK_ASSESSMENT, LS_IIPP, LS_LEASE_FILE_AUDIT, LEO_COMPLIANCE_EXPORT_FACT, LS_RM_QUARTERLY_INSPECTION_SCORES_FACT, REPUTATION_COM_SUMMARY_FACT, WORK_ORDER_REQUESTS, and INCOME_STATEMENT_BY_GL tables are kept and refreshed FROM SCORECARD_CORE by the (stubbed, not-yet-built) EXPORT_LEGACY_LS_TABLES step, so the existing production Power BI "Leadership Scorecard" report requires zero changes. This is the same compatibility-export role NB_EMP_PIPELINE\'s EXPORT_WH_PROD2 step plays for Emp_Core.' },
+  RMENTRIES: { badge: 'New table', color: '#d35400', title: 'SCORECARD_RM_ENTRIES', body: 'New table owned entirely by the Scorecard module. Stores RM Score (0-5), Surveys (0/1), NOI confirmation (0/1), and free-text Notes. Read by NB_SCORECARD_PIPELINE\'s IMPORT_RM_ENTRIES step for reporting-model convenience, but the pipeline never overwrites these fields on SCORECARD_CORE -- they are written directly by the AppHub Subjective Entry screen (SCENTRY), which is the actual source of truth for this data. Replaces the old standalone HTML app\'s localStorage approach. Not yet created (Phase 3).' },
+  PPVMOD: { badge: 'New module (planned)', color: '#d35400', title: 'Prepaid Visa Compliance -- Module Intake (App_ID 3)', body: 'Already reserved as App_ID 3 (currently an inactive Power Apps stub). Phase 6 plan: give Sophia a direct upload screen for her Truist export, feeding NB_SCORECARD_PIPELINE directly and replacing the email/manual-combine hand-off with Rohit.' },
+  RMIMOD: { badge: 'New module (planned)', color: '#d35400', title: 'RM Inspections -- Module Intake (App_ID 2)', body: 'Already reserved as App_ID 2 (currently an inactive Power Apps stub). Phase 6 plan: mobile-friendly digital checklist for RMs to enter Curb/Public/Maintenance/Logs scores at the time of the site visit, feeding NB_SCORECARD_PIPELINE directly.' },
+  SCTABLE: { badge: 'App layer', color: '#16a085', title: 'Scorecard Table -- Read Layer', body: 'The main sticky-header grouped table (Leadership / Maintenance columns). Reads directly from SCORECARD_CORE only -- no longer joins 11+ separate WH_PROD2 tables at page-load time. Phase 2.' },
+  SCENTRY: { badge: 'App layer', color: '#16a085', title: 'Subjective Entry -- Write Layer', body: 'RM Score, Surveys, NOI confirmation, and Notes entry UI. Writes directly to SCORECARD_CORE\'s RMSCORE/SURVEYS/NOI/NOTES columns (also mirrored to SCORECARD_RM_ENTRIES for the pipeline\'s own reporting-model convenience). Phase 3.' },
+  TABMGRLINK: { badge: 'Separate page', color: '#0a5566', title: 'Table Manager (Admin)', body: 'Detailed separately to keep this main flow readable -- see scorecard_table_manager_diagram.html. Now edits SCORECARD_CORE directly (Emp_Core-style *_LOCKED bit per field) rather than a generic override table.' },
+  RMVIEW: { badge: 'Reporting', color: '#2c3e50', title: 'RM View', body: 'What a signed-in Regional Manager sees: their own portfolio\'s scorecard, drill-downs, Criteria page, Bonus Calc/Paycom guides, and their own exports.' },
+  PEOPSVIEW: { badge: 'Reporting', color: '#2c3e50', title: 'People Ops View', body: 'Admin view: all RMs\' portfolios, "View as" impersonation, Inputs Log audit trail, full summary export, and access to Table Manager.' },
+  PBI: { badge: 'Parallel consumer', color: '#2c3e50', title: 'Existing Power BI "Leadership Scorecard" Report', body: 'The pre-existing production Fabric semantic model report (workspace d2a4eb3c..., dataset 3dea9446...) continues reading the ORIGINAL legacy LS_* tables -- now refreshed FROM SCORECARD_CORE via NB_SCORECARD_PIPELINE\'s EXPORT_LEGACY_LS_TABLES step, instead of by each table\'s own independent passthrough SP. No changes needed in Power BI itself.' },
+  EXPORTS: { badge: 'Reporting', color: '#2c3e50', title: 'Exports', body: 'Subjective Scores .xlsx + email, Full Summary .xlsx (admin), Bonus Calculation Form .xlsx, and Outlook .ics calendar reminders. Phase 5.' },
+};
+
+function goToTableManager() {
+  window.location.href = 'scorecard_table_manager_diagram.html';
+}
+
+function showDetail(id) {
+  const d = NODE_DETAILS[id];
+  const panel = document.getElementById('detailPanel');
+  const content = document.getElementById('detailContent');
+  if (!d) {
+    content.innerHTML = '<div class="dp-empty">No detail available for this node.</div>';
+  } else {
+    content.innerHTML = `
+      <div class="dp-eyebrow">Data Flow Node</div>
+      <h2>${d.title}</h2>
+      <span class="dp-badge" style="background:${d.color};color:${d.color === '#f39c12' ? '#000' : '#fff'}">${d.badge}</span>
+      <div class="dp-section">
+        <div class="dp-label">Description</div>
+        <div class="dp-value">${d.body}</div>
+      </div>`;
+  }
+  panel.classList.add('open');
+}
+function closeDetail() {
+  document.getElementById('detailPanel').classList.remove('open');
+}
+
+// ─── Pan & Zoom (same harness as leo_export_topology.html) ──────────────────
+let scale = 1, panX = 0, panY = 0;
+let isDragging = false, startX, startY, startPanX, startPanY;
+const container = document.getElementById('mermaid-container');
+const wrap = document.getElementById('canvas-wrap');
+const zoomLabel = document.getElementById('zoom-level');
+
+function applyTransform() {
+  container.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+  zoomLabel.textContent = Math.round(scale * 100) + '%';
+}
+
+wrap.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 0.92 : 1.08;
+  const rect = wrap.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const newScale = Math.min(Math.max(scale * delta, 0.08), 5);
+  const ratio = newScale / scale;
+  panX = mx - ratio * (mx - panX);
+  panY = my - ratio * (my - panY);
+  scale = newScale;
+  applyTransform();
+}, { passive: false });
+
+let dragMoved = false;
+wrap.addEventListener('mousedown', (e) => {
+  isDragging = true; dragMoved = false;
+  startX = e.clientX; startY = e.clientY;
+  startPanX = panX; startPanY = panY;
+  wrap.classList.add('dragging');
+});
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  if (Math.abs(e.clientX - startX) > 3 || Math.abs(e.clientY - startY) > 3) dragMoved = true;
+  panX = startPanX + (e.clientX - startX);
+  panY = startPanY + (e.clientY - startY);
+  applyTransform();
+});
+window.addEventListener('mouseup', () => {
+  isDragging = false;
+  wrap.classList.remove('dragging');
+});
+
+wrap.addEventListener('dblclick', () => resetView());
+
+function zoomIn() { scale = Math.min(scale * 1.25, 5); applyTransform(); }
+function zoomOut() { scale = Math.max(scale * 0.8, 0.08); applyTransform(); }
+function resetView() { scale = 1; panX = 0; panY = 0; applyTransform(); }
+function fitToScreen() {
+  const svg = container.querySelector('svg');
+  if (!svg) return;
+  const sw = svg.getBoundingClientRect().width / scale;
+  const sh = svg.getBoundingClientRect().height / scale;
+  const ww = wrap.clientWidth;
+  const wh = wrap.clientHeight - 56;
+  scale = Math.min(ww / sw, wh / sh) * 0.9;
+  panX = (ww - sw * scale) / 2;
+  panY = (wh - sh * scale) / 2;
+  applyTransform();
+}
+
+setTimeout(() => {
+  const toast = document.getElementById('help-toast');
+  if (toast) toast.style.opacity = '0';
+}, 9000);
+
+// Give nodes a pointer cursor once mermaid renders
+setTimeout(() => {
+  document.querySelectorAll('#mermaid-container .node').forEach(n => n.classList.add('clickable'));
+  fitToScreen();
+}, 600);
+</script>
+</body>
+</html>

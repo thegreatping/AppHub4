@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Leadership Scorecard -- Table Manager Diagram</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; }
+  #header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
+    padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 2px 12px rgba(0,0,0,.4); height: 56px;
+  }
+  #header h1 { font-size: 17px; font-weight: 600; letter-spacing: .3px; }
+  #header h1 span { color: #53c0f0; }
+  #controls { display: flex; gap: 8px; align-items: center; }
+  #controls button {
+    background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+    color: #fff; padding: 6px 14px; border-radius: 6px; cursor: pointer;
+    font-size: 13px; transition: background .15s;
+  }
+  #controls button:hover { background: rgba(255,255,255,.22); }
+  #zoom-level { font-size: 12px; color: #aaa; min-width: 46px; text-align: center; }
+
+  #legend {
+    position: fixed; bottom: 16px; left: 16px; z-index: 100;
+    background: rgba(22,33,62,.94); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 10px; padding: 12px 16px; font-size: 11.5px; line-height: 1.75;
+    backdrop-filter: blur(8px); max-width: 300px;
+  }
+  #legend h3 { font-size: 12.5px; margin-bottom: 6px; color: #53c0f0; }
+  .leg-item { display: flex; align-items: center; gap: 8px; }
+  .leg-dot { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; }
+
+  #canvas-wrap {
+    width: 100vw; height: 100vh; padding-top: 56px;
+    overflow: hidden; cursor: grab; position: relative;
+  }
+  #canvas-wrap.dragging { cursor: grabbing; }
+  #mermaid-container {
+    transform-origin: 0 0; position: absolute; top: 56px; left: 0;
+    min-width: 100vw; min-height: calc(100vh - 56px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 40px;
+  }
+  .mermaid svg { max-width: none !important; }
+  .node rect, .node polygon { rx: 8; ry: 8; }
+  .clickable { cursor: pointer !important; }
+
+  #detailPanel {
+    position: fixed; top: 56px; right: 0; bottom: 0; width: 380px;
+    background: #16213e; border-left: 1px solid rgba(255,255,255,.15);
+    box-shadow: -8px 0 24px rgba(0,0,0,.35);
+    transform: translateX(100%); transition: transform .25s ease;
+    z-index: 90; overflow-y: auto; padding: 22px 22px 30px;
+  }
+  #detailPanel.open { transform: translateX(0); }
+  #detailPanel .dp-close {
+    position: absolute; top: 14px; right: 16px; background: none; border: none;
+    color: #8ab4d4; font-size: 20px; cursor: pointer; line-height: 1;
+  }
+  #detailPanel .dp-close:hover { color: #fff; }
+  #detailPanel .dp-eyebrow { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: #53c0f0; font-weight: 700; margin-bottom: 6px; }
+  #detailPanel h2 { font-size: 18px; font-weight: 700; margin-bottom: 10px; line-height: 1.3; padding-right: 24px; }
+  #detailPanel .dp-badge { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 3px 10px; border-radius: 10px; margin-bottom: 14px; }
+  #detailPanel .dp-section { margin-bottom: 16px; }
+  #detailPanel .dp-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: #6ba3d6; font-weight: 700; margin-bottom: 4px; }
+  #detailPanel .dp-value { font-size: 13px; color: #cfd8dc; line-height: 1.6; }
+  #detailPanel code { background: rgba(255,255,255,.08); padding: 1px 6px; border-radius: 3px; font-family: Consolas, monospace; font-size: 12px; color: #7fdcf0; }
+  #detailPanel .dp-empty { color: #8ab4d4; font-size: 13px; padding-top: 60px; text-align: center; }
+
+  #help-toast {
+    position: fixed; bottom: 16px; right: 16px; z-index: 100;
+    background: rgba(22,33,62,.92); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 10px; padding: 12px 16px; font-size: 12px; color: #aaa;
+    backdrop-filter: blur(8px); transition: opacity .4s;
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1><span>Leadership Scorecard</span> &nbsp;&middot;&nbsp; Table Manager (Admin) &nbsp;&middot;&nbsp; Registry &rarr; Browse/Edit &rarr; Audit</h1>
+  <div id="controls">
+    <button onclick="goToMainDiagram()" title="Back to main data flow diagram" style="background:rgba(83,192,240,.18);border-color:#53c0f0;">&#8592; Main Data Flow Diagram</button>
+    <button onclick="zoomIn()" title="Zoom In">&#65291;</button>
+    <span id="zoom-level">100%</span>
+    <button onclick="zoomOut()" title="Zoom Out">&#8722;</button>
+    <button onclick="resetView()" title="Reset">&#8634; Reset</button>
+    <button onclick="fitToScreen()" title="Fit">&#8862; Fit</button>
+  </div>
+</div>
+
+<div id="canvas-wrap">
+  <div id="mermaid-container">
+    <pre class="mermaid">
+graph LR
+    %% ===================================================================
+    %% TABLE MANAGER (ADMIN) -- DEDICATED DETAIL DIAGRAM
+    %% ===================================================================
+
+    subgraph ACCESS["ACCESS"]
+        direction TB
+        ADMIN["People Ops / Admin<br/>signed in via Entra ID SSO"]
+        GATE["MODULE_AUDIENCE gate<br/>admin-only, App_ID 36"]
+    end
+
+    subgraph UI["TABLE MANAGER UI"]
+        direction TB
+        NAV["Grouped Left Nav<br/>tables listed by source group<br/>(mirrors EDM pattern)"]
+        GRID["Generic Grid<br/>sortable, searchable,<br/>paged, export button"]
+        EDITSLIDE["Right-Side Slideout Panel<br/>NEW -- not in EDM's version<br/>per-field edit + Lock checkbox<br/>(mirrors PDM's Markets/Groups overlay)"]
+    end
+
+    subgraph REGISTRY["TABLE REGISTRY (grouped)"]
+        direction TB
+
+        subgraph GRP_LEAD["Leadership Measures"]
+            direction TB
+            R_TS["LS_TIMESHEET"]
+            R_TR["LS_TRAINING /<br/>Peak Academy (Learn365)"]
+            R_PV["LS_PREPAID_VISA"]
+            R_CI["LS_COMPLIANCE_IMPORT"]
+            R_RA["LS_RISK_ASSESSMENT"]
+            R_IIPP["LS_IIPP"]
+            R_LFA["LS_LEASE_FILE_AUDIT"]
+            R_LEO["LEO_COMPLIANCE_EXPORT_FACT"]
+        end
+
+        subgraph GRP_MAINT["Maintenance Measures"]
+            direction TB
+            R_INSP["LS_RM_QUARTERLY_<br/>INSPECTION_SCORES_FACT"]
+            R_WO["WORK_ORDER_REQUESTS"]
+        end
+
+        subgraph GRP_FIN["Reputation &amp; Financial"]
+            direction TB
+            R_REP["REPUTATION_COM_SUMMARY_FACT /<br/>BirdEye replacement"]
+            R_GL["INCOME_STATEMENT_BY_GL"]
+        end
+
+        subgraph GRP_NEW["Scorecard-Owned"]
+            direction TB
+            R_ENTRIES["SCORECARD_RM_ENTRIES"]
+            R_OVERRIDES["SCORECARD_FIELD_OVERRIDES<br/>(new -- Lock capability)"]
+        end
+    end
+
+    subgraph AUDIT["AUDIT TRAIL"]
+        direction TB
+        AUDITLOG["TABLE_MANAGER_AUDIT_LOG<br/>(new)<br/>who, when, table,<br/>row key, old value, new value"]
+    end
+
+    %% --- FLOWS ---
+    ADMIN --> GATE
+    GATE -->|"pass"| NAV
+    NAV --> GRID
+    GRID -->|"browse (read)"| R_TS
+    GRID -->|"browse (read)"| R_TR
+    GRID -->|"browse (read)"| R_PV
+    GRID -->|"browse (read)"| R_CI
+    GRID -->|"browse (read)"| R_RA
+    GRID -->|"browse (read)"| R_IIPP
+    GRID -->|"browse (read)"| R_LFA
+    GRID -->|"browse (read)"| R_LEO
+    GRID -->|"browse (read)"| R_INSP
+    GRID -->|"browse (read)"| R_WO
+    GRID -->|"browse (read)"| R_REP
+    GRID -->|"browse (read)"| R_GL
+    GRID -->|"browse (read)"| R_ENTRIES
+    GRID -->|"browse (read)"| R_OVERRIDES
+
+    GRID -->|"click row"| EDITSLIDE
+    EDITSLIDE -->|"UPDATE row<br/>(never the source file)"| R_TS
+    EDITSLIDE -->|"UPDATE row"| R_PV
+    EDITSLIDE -->|"UPDATE row"| R_CI
+    EDITSLIDE -->|"UPDATE row"| R_RA
+    EDITSLIDE -->|"UPDATE row"| R_IIPP
+    EDITSLIDE -->|"UPDATE row"| R_LFA
+    EDITSLIDE -->|"UPDATE row"| R_INSP
+    EDITSLIDE -->|"UPDATE row"| R_ENTRIES
+    EDITSLIDE -->|"check Lock &rarr; write override + LOCKED=1"| R_OVERRIDES
+    EDITSLIDE -->|"every edit logged"| AUDITLOG
+    R_OVERRIDES -.->|"future: reload SPs must skip<br/>LOCKED=1 fields (not yet built)"| R_TS
+
+    %% --- STYLING ---
+    classDef access fill:#c0392b,stroke:#7b241c,color:#fff,font-size:11px
+    classDef ui fill:#16a085,stroke:#0e6655,color:#fff,font-size:11px
+    classDef newui fill:#8e44ad,stroke:#5b2c6f,color:#fff,font-size:11px
+    classDef tbl fill:#27ae60,stroke:#1a7a42,color:#fff,font-size:11px
+    classDef newtbl fill:#8e44ad,stroke:#5b2c6f,color:#fff,font-size:11px
+    classDef audit fill:#e67e22,stroke:#a85c13,color:#fff,font-size:11px
+
+    class ADMIN,GATE access
+    class NAV,GRID ui
+    class EDITSLIDE newui
+    class R_TS,R_TR,R_PV,R_CI,R_RA,R_IIPP,R_LFA,R_LEO,R_INSP,R_WO,R_REP,R_GL tbl
+    class R_ENTRIES,R_OVERRIDES newtbl
+    class AUDITLOG audit
+
+    click ADMIN call showDetail("ADMIN")
+    click GATE call showDetail("GATE")
+    click NAV call showDetail("NAV")
+    click GRID call showDetail("GRID")
+    click EDITSLIDE call showDetail("EDITSLIDE")
+    click R_TS call showDetail("R_TS")
+    click R_TR call showDetail("R_TR")
+    click R_PV call showDetail("R_PV")
+    click R_CI call showDetail("R_CI")
+    click R_RA call showDetail("R_RA")
+    click R_IIPP call showDetail("R_IIPP")
+    click R_LFA call showDetail("R_LFA")
+    click R_LEO call showDetail("R_LEO")
+    click R_INSP call showDetail("R_INSP")
+    click R_WO call showDetail("R_WO")
+    click R_REP call showDetail("R_REP")
+    click R_GL call showDetail("R_GL")
+    click R_ENTRIES call showDetail("R_ENTRIES")
+    click R_OVERRIDES call showDetail("R_OVERRIDES")
+    click AUDITLOG call showDetail("AUDITLOG")
+    </pre>
+  </div>
+</div>
+
+<div id="legend">
+  <h3>Legend -- click any box for detail</h3>
+  <div class="leg-item"><div class="leg-dot" style="background:#c0392b"></div> Access / security gate</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#16a085"></div> Table Manager UI (existing pattern, ported from EDM)</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#8e44ad"></div> New capability / new table (not in EDM's version)</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#27ae60"></div> WH_PROD2 table in the registry</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#e67e22"></div> Audit trail</div>
+  <div style="margin-top:8px;border-top:1px solid rgba(255,255,255,.15);padding-top:8px;color:#888;">
+    This page details the Table Manager screen only -- see the main data flow diagram for how these tables get populated in the first place.
+  </div>
+</div>
+
+<div id="detailPanel">
+  <button class="dp-close" onclick="closeDetail()">&times;</button>
+  <div id="detailContent"><div class="dp-empty">Click any box in the diagram to see its detail here.</div></div>
+</div>
+
+<div id="help-toast">
+  Scroll to zoom &middot; Click &amp; drag to pan &middot; Click a box to drill in &middot; Double-click to reset
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    primaryColor: '#3a7bd5',
+    primaryTextColor: '#fff',
+    primaryBorderColor: '#1e4d8a',
+    lineColor: '#6ba3d6',
+    secondaryColor: '#27ae60',
+    tertiaryColor: '#1a1a2e',
+    fontFamily: 'Segoe UI, system-ui, sans-serif',
+    fontSize: '12px',
+    edgeLabelBackground: 'rgba(26,26,46,.85)',
+  },
+  flowchart: {
+    useMaxWidth: false,
+    htmlLabels: true,
+    curve: 'basis',
+    rankSpacing: 90,
+    nodeSpacing: 16,
+    padding: 10,
+  },
+  securityLevel: 'loose',
+});
+
+const NODE_DETAILS = {
+  ADMIN: { badge: 'Access', color: '#c0392b', title: 'People Ops / Admin', body: 'Signed in via AppHub\'s existing Entra ID SSO -- no separate login for Table Manager.' },
+  GATE: { badge: 'Access', color: '#c0392b', title: 'MODULE_AUDIENCE Gate', body: 'Table Manager is gated admin-only via the same MODULE_AUDIENCE grant model used by every other AppHub module and by the rest of the Scorecard module. Regular RMs never see this screen.' },
+  NAV: { badge: 'UI -- ported from EDM', color: '#16a085', title: 'Grouped Left Nav', body: 'Lists every inbound table grouped by source (Leadership Measures, Maintenance Measures, Reputation & Financial, Scorecard-Owned) -- directly modeled on EDM\'s EXTRA_EMP_TABLES grouped-nav pattern in templates/edm.html.' },
+  GRID: { badge: 'UI -- ported from EDM', color: '#16a085', title: 'Generic Grid', body: 'Sortable, searchable, paged table view with an export button -- reuses the same generic grid component and API shape as EDM\'s get_emp_pipeline_table (TOP 3000 SELECT * pattern).' },
+  EDITSLIDE: { badge: 'NEW capability', color: '#8e44ad', title: 'Right-Side Slideout Panel', body: 'Not present in EDM\'s current version, which is read-only. Opens on row click, matching PDM\'s existing 620px right-side Markets/Property Groups detail-overlay pattern (proven UX, reused rather than inventing a new one). Shows every editable field for that row via a per-table column whitelist. Each field has an inline <b>Lock</b> checkbox -- checking it writes a row+field override into SCORECARD_FIELD_OVERRIDES with LOCKED=1, protecting that value from being overwritten by the next data import. Every save (locked or not) is written to TABLE_MANAGER_AUDIT_LOG.' },
+  R_OVERRIDES: { badge: 'New table -- Lock capability', color: '#8e44ad', title: 'SCORECARD_FIELD_OVERRIDES', body: 'Generic override/lock table: SOURCE_TABLE + ROW_KEY + FIELD_NAME -&gt; OVERRIDE_VALUE, LOCKED bit, CREATED_BY/DATE. Modeled on PDM\'s existing PDM_FIELD_OVERRIDES table and Emp_Core\'s *_LOCKED companion-column convention, adapted to a single generic table since Table Manager spans many different source tables rather than one property table. Itself browsable/editable in Table Manager like any other registry entry. Any future automated reload of a locked field\'s source table must be updated to skip overwriting it -- not yet built.' },
+  R_TS: { badge: 'Registry table', color: '#27ae60', title: 'LS_TIMESHEET', body: 'Timecard Approval measure. See the main data flow diagram for how this table is populated.' },
+  R_TR: { badge: 'Registry table', color: '#27ae60', title: 'LS_TRAINING / Peak Academy (Learn365)', body: 'Training Completion measure. Table pointed here will change once Peak Academy (the confirmed Grace Hill replacement, vendor Learn365) lands in the DW (ETA 9/30/2026). API key already provided and stored in Key Vault (peak-academy-api-key).' },
+  R_PV: { badge: 'Registry table', color: '#27ae60', title: 'LS_PREPAID_VISA', body: 'PPV / P-Card measure.' },
+  R_CI: { badge: 'Registry table', color: '#27ae60', title: 'LS_COMPLIANCE_IMPORT', body: 'Raw combined compliance import -- drives Risk Assessment, IIPP, Lease File Audit, and (via DAX) LEO Compliance.' },
+  R_RA: { badge: 'Registry table', color: '#27ae60', title: 'LS_RISK_ASSESSMENT', body: 'Risk Assessment measure.' },
+  R_IIPP: { badge: 'Registry table', color: '#27ae60', title: 'LS_IIPP', body: 'IIPP measure.' },
+  R_LFA: { badge: 'Registry table', color: '#27ae60', title: 'LS_LEASE_FILE_AUDIT', body: 'Lease File Audit measure.' },
+  R_LEO: { badge: 'Registry table', color: '#27ae60', title: 'LEO_COMPLIANCE_EXPORT_FACT', body: 'PM/MS LEO Compliance measure, computed via DAX from LS_COMPLIANCE_IMPORT.' },
+  R_INSP: { badge: 'Registry table', color: '#27ae60', title: 'LS_RM_QUARTERLY_INSPECTION_SCORES_FACT', body: 'Curb Appeal, Public Areas, Maintenance, Safety Logs measures.' },
+  R_WO: { badge: 'Registry table', color: '#27ae60', title: 'WORK_ORDER_REQUESTS', body: 'Work Order Completion measure. Genuinely system-fed from Entrata.' },
+  R_REP: { badge: 'Registry table', color: '#27ae60', title: 'REPUTATION_COM_SUMMARY_FACT / BirdEye replacement', body: 'Reputation Score measure. Source changing to BirdEye, ETA 9/30/2026.' },
+  R_GL: { badge: 'Registry table', color: '#27ae60', title: 'INCOME_STATEMENT_BY_GL', body: 'Controllable NOI measure.' },
+  R_ENTRIES: { badge: 'New table', color: '#8e44ad', title: 'SCORECARD_RM_ENTRIES', body: 'RM Score, Surveys, NOI confirmation, Notes -- the only table Table Manager both reads and writes on behalf of an RM\'s own subjective inputs, in addition to admin corrections.' },
+  AUDITLOG: { badge: 'Audit trail', color: '#e67e22', title: 'TABLE_MANAGER_AUDIT_LOG (new)', body: 'Every edit made through the Table Manager is recorded: who, when, which table, which row, the old value, and the new value. Required before any edit capability ships -- an unaudited direct-edit screen on production DW tables is not acceptable.' },
+};
+
+function goToMainDiagram() {
+  window.location.href = 'scorecard_dataflow_diagram.html';
+}
+
+function showDetail(id) {
+  const d = NODE_DETAILS[id];
+  const panel = document.getElementById('detailPanel');
+  const content = document.getElementById('detailContent');
+  if (!d) {
+    content.innerHTML = '<div class="dp-empty">No detail available for this node.</div>';
+  } else {
+    content.innerHTML = `
+      <div class="dp-eyebrow">Table Manager Node</div>
+      <h2>${d.title}</h2>
+      <span class="dp-badge" style="background:${d.color};color:#fff">${d.badge}</span>
+      <div class="dp-section">
+        <div class="dp-label">Description</div>
+        <div class="dp-value">${d.body}</div>
+      </div>`;
+  }
+  panel.classList.add('open');
+}
+function closeDetail() {
+  document.getElementById('detailPanel').classList.remove('open');
+}
+
+let scale = 1, panX = 0, panY = 0;
+let isDragging = false, startX, startY, startPanX, startPanY;
+const container = document.getElementById('mermaid-container');
+const wrap = document.getElementById('canvas-wrap');
+const zoomLabel = document.getElementById('zoom-level');
+
+function applyTransform() {
+  container.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+  zoomLabel.textContent = Math.round(scale * 100) + '%';
+}
+
+wrap.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 0.92 : 1.08;
+  const rect = wrap.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const newScale = Math.min(Math.max(scale * delta, 0.08), 5);
+  const ratio = newScale / scale;
+  panX = mx - ratio * (mx - panX);
+  panY = my - ratio * (my - panY);
+  scale = newScale;
+  applyTransform();
+}, { passive: false });
+
+wrap.addEventListener('mousedown', (e) => {
+  isDragging = true;
+  startX = e.clientX; startY = e.clientY;
+  startPanX = panX; startPanY = panY;
+  wrap.classList.add('dragging');
+});
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  panX = startPanX + (e.clientX - startX);
+  panY = startPanY + (e.clientY - startY);
+  applyTransform();
+});
+window.addEventListener('mouseup', () => {
+  isDragging = false;
+  wrap.classList.remove('dragging');
+});
+
+wrap.addEventListener('dblclick', () => resetView());
+
+function zoomIn() { scale = Math.min(scale * 1.25, 5); applyTransform(); }
+function zoomOut() { scale = Math.max(scale * 0.8, 0.08); applyTransform(); }
+function resetView() { scale = 1; panX = 0; panY = 0; applyTransform(); }
+function fitToScreen() {
+  const svg = container.querySelector('svg');
+  if (!svg) return;
+  const sw = svg.getBoundingClientRect().width / scale;
+  const sh = svg.getBoundingClientRect().height / scale;
+  const ww = wrap.clientWidth;
+  const wh = wrap.clientHeight - 56;
+  scale = Math.min(ww / sw, wh / sh) * 0.9;
+  panX = (ww - sw * scale) / 2;
+  panY = (wh - sh * scale) / 2;
+  applyTransform();
+}
+
+setTimeout(() => {
+  const toast = document.getElementById('help-toast');
+  if (toast) toast.style.opacity = '0';
+}, 9000);
+
+setTimeout(() => {
+  document.querySelectorAll('#mermaid-container .node').forEach(n => n.classList.add('clickable'));
+  fitToScreen();
+}, 600);
+</script>
+</body>
+</html>

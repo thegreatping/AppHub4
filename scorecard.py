@@ -408,7 +408,7 @@ def index():
 
 # LeadershipScorecard/ is the sibling folder to APPHUB_4/ (see file layout in
 # apphub4.md memory) -- the diagrams live there, not under APPHUB_4/static/.
-_DIAGRAM_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "LeadershipScorecard"))
+_DIAGRAM_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "static", "diagrams"))
 _DIAGRAM_FILES = {
     "dataflow": "scorecard_dataflow_diagram.html",
     "table_manager": "scorecard_table_manager_diagram.html",
