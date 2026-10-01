@@ -5,10 +5,13 @@
     <div class="header-left">
         <i class="fa-solid fa-clipboard-check" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
         <span class="page-title">Leadership Scorecard - QA Sign-Off</span>
-        <span class="page-subtitle">Shared collaborative checklist -- all testers welcome</span>
+        <span class="page-subtitle">Your private tester checklist</span>
     </div>
     <div class="header-right">
         <a href="?popout=1" target="_blank" rel="noopener" class="sc-reference-btn" title="Open this checklist in a new browser tab so you can test the Scorecard side-by-side"><i class="fa-solid fa-up-right-from-square"></i> Open in new tab</a>
+        {% if is_admin %}
+        <a href="/scorecard/admin/qa/dashboard" class="sc-reference-btn" title="See every tester's progress"><i class="fa-solid fa-users"></i> All Testers</a>
+        {% endif %}
         <a href="/scorecard/" class="sc-reference-btn" title="Back to Scorecard"><i class="fa-solid fa-arrow-left"></i> Back to Scorecard</a>
         <a href="/scorecard/admin/runs" class="sc-reference-btn" title="Notebook Runs viewer">&#9654; Notebook Runs</a>
     </div>
@@ -70,7 +73,7 @@ body.qas-popout .qas-body { padding: 16px 24px !important; }
 
 <div class="qas-body">
 <div class="qas-hero">
-  <p>Every scenario below has been verified by developer smoke test. This is the collaborative pre-beta sign-off &mdash; changes save to the database instantly and are visible to every admin. Test in Chrome first, then repeat critical rows in Edge. Note any failures with as much detail as possible.</p>
+  <p><strong>This is your private QA checklist.</strong> Every tester (including anyone you're impersonating via Dev Mode) gets their own record -- your checks, results, notes, and sign-off are kept separate from everyone else's. Changes save instantly. Admins can see every tester's progress from the <em>All Testers</em> link above.</p>
 </div>
 
 <div class="qas-meta">
@@ -106,9 +109,9 @@ body.qas-popout .qas-body { padding: 16px 24px !important; }
 </div>
 
 <div class="qas-controls">
-  <button class="secondary" onclick="loadState()"><i class="fa-solid fa-rotate"></i> Refresh (see other testers' updates)</button>
+  <button class="secondary" onclick="if (confirm('Reset every checkbox and result in YOUR checklist? (Your meta fields and sign-off are kept.)')) resetAll();">Reset My Rows</button>
   {% if is_admin %}
-  <button class="secondary" onclick="if (confirm('Wipe every checkbox and result across all testers? Meta fields (tester name, sign-off, etc.) are kept.')) resetAll();">Reset All Rows</button>
+  <a href="/scorecard/admin/qa/dashboard" class="secondary" style="text-decoration:none;background:var(--surface);color:var(--text-primary);border:1px solid var(--border-input);padding:8px 16px;border-radius:5px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;"><i class="fa-solid fa-users"></i> All Testers Dashboard</a>
   {% endif %}
   <span class="qas-saved" id="qas_saved_msg">Ready.</span>
 </div>
@@ -415,8 +418,6 @@ function resetAll() {
 
 renderChecklist();
 loadState();
-// Poll every 45s so multiple concurrent testers see each other's updates
-setInterval(loadState, 45000);
 
 // Popout mode: hide the AppHub shell nav when the URL includes ?popout=1
 // so testers can size this tab tightly alongside the Scorecard tab.

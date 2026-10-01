@@ -1,0 +1,190 @@
+{% extends "shell.html" %}
+{% block title %}Leadership Scorecard - All Testers{% endblock %}
+{% block content %}
+<div class="content-header">
+    <div class="header-left">
+        <i class="fa-solid fa-users" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
+        <span class="page-title">Leadership Scorecard - All Testers</span>
+        <span class="page-subtitle">Admin aggregate view of every tester's QA progress</span>
+    </div>
+    <div class="header-right">
+        <a href="/scorecard/admin/qa" class="sc-reference-btn" title="Back to my QA checklist"><i class="fa-solid fa-arrow-left"></i> My Checklist</a>
+        <a href="/scorecard/" class="sc-reference-btn" title="Back to Scorecard"><i class="fa-solid fa-arrow-left"></i> Scorecard</a>
+    </div>
+</div>
+
+<style>
+.qad-body { padding: 20px 40px; color: var(--text-primary); font-size: 13.5px; }
+.qad-controls { margin-bottom: 18px; display: flex; gap: 12px; align-items: center; }
+.qad-controls button { background: var(--surface); color: var(--text-primary); border: 1px solid var(--border-input); padding: 7px 14px; border-radius: 5px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.qad-controls button:hover { background: var(--surface-raised); }
+.qad-controls button.danger { background: #7a1818; color: #fff; border-color: #a52a2a; }
+.qad-table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 8px; overflow: hidden; border: 1px solid var(--border-medium); }
+.qad-table th { background: var(--surface-raised); color: var(--text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.7px; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border-medium); white-space: nowrap; }
+.qad-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-subtle); font-size: 13px; vertical-align: middle; }
+.qad-table tr:last-child td { border-bottom: none; }
+.qad-table tr:hover td { background: rgba(255,255,255,0.03); }
+.qad-tester { font-weight: 600; color: var(--text-primary); }
+.qad-email { font-size: 11.5px; color: var(--text-secondary); }
+.qad-prog-wrap { display: flex; align-items: center; gap: 10px; min-width: 180px; }
+.qad-prog-bar { flex: 1; background: var(--input-bg); border-radius: 4px; height: 10px; overflow: hidden; }
+.qad-prog-fill { background: linear-gradient(90deg, #4ade80, var(--accent-cyan)); height: 100%; }
+.qad-prog-num { font-size: 11.5px; color: var(--text-secondary); min-width: 48px; text-align: right; }
+.qad-pill { display: inline-block; padding: 2px 8px; border-radius: 9px; font-size: 10.5px; font-weight: 700; margin-right: 4px; }
+.qad-pill-pass { background: rgba(74,222,128,0.15); color: #4ade80; }
+.qad-pill-fail { background: rgba(248,113,113,0.17); color: #f87171; }
+.qad-pill-block { background: rgba(251,191,36,0.15); color: #fbbf24; }
+.qad-pill-pending { background: rgba(148,163,184,0.15); color: #94a3b8; }
+.qad-decision { font-size: 11.5px; }
+.qad-dec-go { color: #4ade80; font-weight: 700; }
+.qad-dec-nogo { color: #f87171; font-weight: 700; }
+.qad-dec-cond { color: #fbbf24; font-weight: 700; }
+.qad-dec-pending { color: var(--text-secondary); }
+.qad-time { font-size: 11px; color: var(--text-secondary); }
+.qad-blockers { font-size: 11.5px; color: #f87171; max-width: 260px; white-space: normal; }
+.qad-reset-btn { background: transparent; color: #f87171; border: 1px solid rgba(248,113,113,0.4); padding: 3px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+.qad-reset-btn:hover { background: rgba(248,113,113,0.1); }
+.qad-empty { background: var(--surface); border: 1px dashed var(--border-medium); border-radius: 8px; padding: 40px; text-align: center; color: var(--text-secondary); }
+.qad-fails-detail { background: var(--surface-raised); border-left: 3px solid #f87171; padding: 10px 14px; margin-top: 8px; border-radius: 4px; display: none; }
+.qad-fails-detail.open { display: block; }
+.qad-fails-detail .f-row { font-size: 11.5px; color: var(--text-secondary); padding: 4px 0; border-bottom: 1px dashed var(--border-subtle); }
+.qad-fails-detail .f-row:last-child { border-bottom: none; }
+.qad-fails-detail .f-key { color: #f87171; font-family: monospace; margin-right: 8px; }
+.qad-summary { background: var(--surface); border-radius: 6px; padding: 14px 18px; margin-bottom: 20px; border: 1px solid var(--border-medium); display: flex; gap: 24px; flex-wrap: wrap; }
+.qad-summary .block { display: flex; flex-direction: column; }
+.qad-summary .block .num { font-size: 22px; font-weight: 700; color: var(--accent-cyan); }
+.qad-summary .block .lbl { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+</style>
+
+<div class="qad-body">
+
+<div class="qad-controls">
+  <button onclick="loadDashboard()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+  <button class="danger" onclick="if (confirm('WIPE every tester\'s row data? Meta fields are kept. This cannot be undone.')) resetAllTesters();">Wipe ALL Testers</button>
+  <span id="dash_msg" style="color:var(--text-secondary);font-size:12px;margin-left:auto;">Loading...</span>
+</div>
+
+<div class="qad-summary" id="qad_summary"></div>
+
+<div id="qad_table_wrap"></div>
+
+</div>
+
+<script>
+function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+function timeAgo(iso) {
+  if (!iso) return '-';
+  const diff = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (diff < 60) return diff + 's ago';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return Math.floor(diff/86400) + 'd ago';
+}
+function decisionClass(d) {
+  if (!d) return 'qad-dec-pending';
+  if (d.startsWith('GO')) return 'qad-dec-go';
+  if (d.startsWith('NO-GO')) return 'qad-dec-nogo';
+  if (d.startsWith('CONDITIONAL')) return 'qad-dec-cond';
+  return 'qad-dec-pending';
+}
+
+function renderDashboard(testers) {
+  const totalRows = window._QAD_TOTAL || 75;
+  const wrap = document.getElementById('qad_table_wrap');
+  if (!testers.length) {
+    wrap.innerHTML = '<div class="qad-empty">No testers have logged QA activity yet. Any user who opens <a href="/scorecard/admin/qa" style="color:var(--accent-cyan);">/scorecard/admin/qa</a> is auto-provisioned here.</div>';
+    document.getElementById('qad_summary').innerHTML = '';
+    return;
+  }
+  // Summary
+  const tot = testers.length;
+  const done = testers.filter(t => t.checked >= totalRows).length;
+  const anyFail = testers.filter(t => t.fail > 0).length;
+  const goCount = testers.filter(t => (t.decision||'').startsWith('GO')).length;
+  document.getElementById('qad_summary').innerHTML = `
+    <div class="block"><span class="num">${tot}</span><span class="lbl">testers</span></div>
+    <div class="block"><span class="num">${done}</span><span class="lbl">finished (${totalRows}/${totalRows})</span></div>
+    <div class="block"><span class="num" style="color:#f87171;">${anyFail}</span><span class="lbl">with any fail</span></div>
+    <div class="block"><span class="num" style="color:#4ade80;">${goCount}</span><span class="lbl">GO sign-off</span></div>
+  `;
+
+  let html = `<table class="qad-table">
+    <thead><tr>
+      <th>Tester</th>
+      <th>Progress</th>
+      <th>Results</th>
+      <th>Env / Browser / Role</th>
+      <th>Decision</th>
+      <th>Blockers</th>
+      <th>Last activity</th>
+      <th></th>
+    </tr></thead><tbody>`;
+  testers.forEach((t, i) => {
+    const pct = Math.round(100 * t.checked / totalRows);
+    const envLine = [t.env, t.browser, t.role_tested].filter(Boolean).map(esc).join(' / ') || '<span style="color:var(--text-secondary);">(not set)</span>';
+    html += `<tr>
+      <td>
+        <div class="qad-tester">${esc(t.tester || t.tester_email)}</div>
+        <div class="qad-email">${esc(t.tester_email)}</div>
+      </td>
+      <td>
+        <div class="qad-prog-wrap">
+          <div class="qad-prog-bar"><div class="qad-prog-fill" style="width:${pct}%;"></div></div>
+          <div class="qad-prog-num">${t.checked}/${totalRows}</div>
+        </div>
+      </td>
+      <td>
+        <span class="qad-pill qad-pill-pass">PASS ${t.pass}</span>
+        <span class="qad-pill qad-pill-fail">FAIL ${t.fail}</span>
+        <span class="qad-pill qad-pill-block">BLOCK ${t.block}</span>
+        <span class="qad-pill qad-pill-pending">PEND ${t.pending}</span>
+        ${t.fail > 0 ? `<div><a href="#" onclick="toggleFails(${i});return false;" style="font-size:11px;color:#f87171;">Show ${t.fail} failing row(s)</a></div>
+          <div class="qad-fails-detail" id="fails_${i}">${t.fail_rows.map(f => `<div class="f-row"><span class="f-key">${esc(f.key)}</span>${esc(f.notes || '(no notes)')}</div>`).join('')}</div>` : ''}
+      </td>
+      <td style="font-size:11.5px;">${envLine}</td>
+      <td class="qad-decision ${decisionClass(t.decision)}">${esc(t.decision || '-- pending --')}</td>
+      <td class="qad-blockers">${esc(t.blockers || '')}</td>
+      <td class="qad-time">${esc(timeAgo(t.last_activity || t.meta_updated_at))}</td>
+      <td><button class="qad-reset-btn" onclick="resetTester('${esc(t.tester_email)}')">Reset</button></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+function toggleFails(i) {
+  const el = document.getElementById('fails_' + i);
+  if (el) el.classList.toggle('open');
+}
+
+function loadDashboard() {
+  const msg = document.getElementById('dash_msg');
+  msg.textContent = 'Loading...';
+  fetch('/scorecard/api/admin/qa/all').then(r => r.json()).then(j => {
+    if (j.error) { msg.textContent = 'Error: ' + j.error; return; }
+    window._QAD_TOTAL = j.scenario_count || 75;
+    renderDashboard(j.testers || []);
+    msg.textContent = 'Loaded ' + (j.testers || []).length + ' tester(s).';
+  }).catch(e => { msg.textContent = 'Load failed: ' + e.message; });
+}
+
+function resetTester(email) {
+  if (!confirm('Reset all row data for ' + email + '? (Meta is kept.)')) return;
+  fetch('/scorecard/api/admin/qa/reset?tester=' + encodeURIComponent(email), {method: 'POST'})
+    .then(r => r.json()).then(j => {
+      if (j.error) { alert(j.error); return; }
+      loadDashboard();
+    });
+}
+
+function resetAllTesters() {
+  fetch('/scorecard/api/admin/qa/reset?tester=ALL', {method: 'POST'})
+    .then(r => r.json()).then(j => {
+      if (j.error) { alert(j.error); return; }
+      loadDashboard();
+    });
+}
+
+loadDashboard();
+</script>
+{% endblock %}

@@ -492,21 +492,60 @@ def admin_runs_page():
     return render_template("scorecard_pipeline_runs.html", **_ctx())
 
 
-# ── QA Sign-Off admin page + shared-state API ────────────────────────────
-# In-app version of the standalone LEADERSHIP_SCORECARD_QA_SIGNOFF.html.
-# All state lives in dbo.SCORECARD_QA_STATE / SCORECARD_QA_META so multiple
-# testers see and update the same checklist. Any admin can edit; per-row
-# LAST_UPDATED_BY + LAST_UPDATED_AT provide an audit trail.
+# ── QA Sign-Off admin page + per-user state API ─────────────────────────
+# Each tester has their own private checklist and meta row, keyed by the
+# session user's email (impersonated identity is honored, so admins can QA
+# as another user). An admin aggregate view at /admin/qa/dashboard shows
+# every tester's progress for triage.
+
+def _qa_tester_email():
+    """Return the lower-cased email of the current effective session user.
+    When Dev Mode impersonation is active this is the impersonated user,
+    which is exactly what we want for per-tester QA state."""
+    u = session.get("user") or {}
+    email = (u.get("email") or u.get("name") or "unknown@local").strip().lower()
+    return email[:200]
+
+
+def _qa_tester_display():
+    u = session.get("user") or {}
+    return u.get("name") or u.get("email") or "Unknown"
+
+
+def _qa_scenario_count():
+    """Scrape the number of QA scenarios out of the template so the admin
+    dashboard's progress-bar denominator stays in sync automatically."""
+    tpl_path = os.path.join(os.path.dirname(__file__), "templates", "scorecard_qa_signoff.html")
+    try:
+        with open(tpl_path, encoding="utf-8") as f:
+            return sum(1 for line in f if "{ role: '" in line)
+    except OSError:
+        return 75
+
 
 @scorecard_bp.route("/admin/qa")
 @login_required
 def admin_qa_page():
-    """Shared QA Sign-Off page -- any Scorecard user can participate as a tester.
-    Reset-all remains admin-only (see api_admin_qa_reset)."""
+    """Per-tester QA Sign-Off page. Every logged-in (or impersonated) user
+    gets their own private checklist. Admins can also open the dashboard
+    at /admin/qa/dashboard to see every tester's progress side-by-side."""
     check = _require_access()
     if check:
         return check
     return render_template("scorecard_qa_signoff.html", **_ctx())
+
+
+@scorecard_bp.route("/admin/qa/dashboard")
+@login_required
+def admin_qa_dashboard_page():
+    """Admin-only aggregate view of every tester's QA state."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    return render_template("scorecard_qa_dashboard.html", **_ctx())
+
 
 
 @scorecard_bp.route("/api/admin/qa/state")
@@ -519,11 +558,13 @@ def api_admin_qa_state():
     env = _get_env()
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
+        tester = _qa_tester_email()
         rows = conn.fetchall("""
             SELECT SCENARIO_KEY, CHECKED, STATUS, NOTES,
                    LAST_UPDATED_BY, LAST_UPDATED_AT
             FROM dbo.SCORECARD_QA_STATE
-        """)
+            WHERE TESTER_EMAIL = ?
+        """, (tester,))
         state = {r[0]: {"checked": bool(r[1]), "status": r[2], "notes": r[3],
                         "last_updated_by": r[4],
                         "last_updated_at": r[5].isoformat() if r[5] else None}
@@ -532,18 +573,35 @@ def api_admin_qa_state():
             SELECT TESTER, TEST_DATE, ENV, BROWSER, ROLE_TESTED,
                    SIGNOFF_TESTER, SIGNOFF_APPROVER, DECISION, BLOCKERS,
                    LAST_UPDATED_BY, LAST_UPDATED_AT
-            FROM dbo.SCORECARD_QA_META WHERE META_ID = 1
-        """)
-        m = meta_row[0] if meta_row else (None,) * 11
-        meta = {
-            "tester": m[0], "test_date": m[1].isoformat() if m[1] else None,
-            "env": m[2], "browser": m[3], "role_tested": m[4],
-            "signoff_tester": m[5], "signoff_approver": m[6],
-            "decision": m[7], "blockers": m[8],
-            "last_updated_by": m[9],
-            "last_updated_at": m[10].isoformat() if m[10] else None,
-        }
-        return jsonify({"state": state, "meta": meta})
+            FROM dbo.SCORECARD_QA_META WHERE TESTER_EMAIL = ?
+        """, (tester,))
+        if meta_row:
+            m = meta_row[0]
+            meta = {
+                "tester": m[0], "test_date": m[1].isoformat() if m[1] else None,
+                "env": m[2], "browser": m[3], "role_tested": m[4],
+                "signoff_tester": m[5], "signoff_approver": m[6],
+                "decision": m[7], "blockers": m[8],
+                "last_updated_by": m[9],
+                "last_updated_at": m[10].isoformat() if m[10] else None,
+            }
+        else:
+            # Auto-create an empty meta row the first time this tester visits,
+            # pre-populating TESTER with their display name so the UI shows
+            # something meaningful without them having to type it in.
+            display = _qa_tester_display()
+            conn.execute("""
+                INSERT INTO dbo.SCORECARD_QA_META
+                    (TESTER_EMAIL, TESTER, LAST_UPDATED_BY, LAST_UPDATED_AT)
+                VALUES (?, ?, ?, SYSUTCDATETIME())
+            """, (tester, display, tester))
+            conn.commit()
+            meta = {"tester": display, "test_date": None, "env": None,
+                    "browser": None, "role_tested": None,
+                    "signoff_tester": None, "signoff_approver": None,
+                    "decision": None, "blockers": None,
+                    "last_updated_by": tester, "last_updated_at": None}
+        return jsonify({"state": state, "meta": meta, "tester_email": tester})
     finally:
         conn.close()
 
@@ -551,7 +609,7 @@ def api_admin_qa_state():
 @scorecard_bp.route("/api/admin/qa/row/<scenario_key>", methods=["PUT"])
 @login_required
 def api_admin_qa_row(scenario_key):
-    """Upsert one scenario's checked / status / notes. Body: {checked, status, notes}."""
+    """Upsert one scenario row for the current tester. Body: {checked, status, notes}."""
     check = _require_access()
     if check:
         return check
@@ -563,24 +621,25 @@ def api_admin_qa_row(scenario_key):
     if status not in (None, "pass", "fail", "block"):
         return jsonify({"error": "invalid status"}), 400
     notes = (payload.get("notes") or "")[:2000] or None
-    user = session.get("user", {})
-    by = user.get("email") or user.get("name") or "unknown"
+    tester = _qa_tester_email()
     env = _get_env()
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
         conn.execute("""
             MERGE dbo.SCORECARD_QA_STATE AS tgt
-            USING (SELECT ? AS SCENARIO_KEY, ? AS CHECKED, ? AS STATUS, ? AS NOTES, ? AS BY_) AS src
-              ON tgt.SCENARIO_KEY = src.SCENARIO_KEY
+            USING (SELECT ? AS TESTER_EMAIL, ? AS SCENARIO_KEY, ? AS CHECKED,
+                          ? AS STATUS, ? AS NOTES) AS src
+              ON tgt.TESTER_EMAIL = src.TESTER_EMAIL AND tgt.SCENARIO_KEY = src.SCENARIO_KEY
             WHEN MATCHED THEN UPDATE SET
                 CHECKED = src.CHECKED, STATUS = src.STATUS, NOTES = src.NOTES,
-                LAST_UPDATED_BY = src.BY_, LAST_UPDATED_AT = SYSUTCDATETIME()
+                LAST_UPDATED_BY = src.TESTER_EMAIL, LAST_UPDATED_AT = SYSUTCDATETIME()
             WHEN NOT MATCHED THEN INSERT
-                (SCENARIO_KEY, CHECKED, STATUS, NOTES, LAST_UPDATED_BY, LAST_UPDATED_AT)
-                VALUES (src.SCENARIO_KEY, src.CHECKED, src.STATUS, src.NOTES, src.BY_, SYSUTCDATETIME());
-        """, (scenario_key, checked, status, notes, by))
+                (TESTER_EMAIL, SCENARIO_KEY, CHECKED, STATUS, NOTES, LAST_UPDATED_BY, LAST_UPDATED_AT)
+                VALUES (src.TESTER_EMAIL, src.SCENARIO_KEY, src.CHECKED, src.STATUS, src.NOTES,
+                        src.TESTER_EMAIL, SYSUTCDATETIME());
+        """, (tester, scenario_key, checked, status, notes))
         conn.commit()
-        return jsonify({"ok": True, "last_updated_by": by})
+        return jsonify({"ok": True, "last_updated_by": tester})
     finally:
         conn.close()
 
@@ -588,8 +647,7 @@ def api_admin_qa_row(scenario_key):
 @scorecard_bp.route("/api/admin/qa/meta", methods=["PUT"])
 @login_required
 def api_admin_qa_meta():
-    """Update the singleton meta row. Any Scorecard user can edit any field
-    (testers collaborate on tester/date/env/browser/decision/blockers)."""
+    """Upsert the current tester's meta row. Each tester's record is private."""
     check = _require_access()
     if check:
         return check
@@ -599,18 +657,25 @@ def api_admin_qa_meta():
     updates = {k.upper(): payload.get(k.lower()) for k in allowed if k.lower() in payload}
     if not updates:
         return jsonify({"error": "no valid fields provided"}), 400
-    user = session.get("user", {})
-    by = user.get("email") or user.get("name") or "unknown"
-    set_clause = ", ".join(f"{k} = ?" for k in updates.keys())
-    params = list(updates.values()) + [by]
+    tester = _qa_tester_email()
     env = _get_env()
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
+        set_clause = ", ".join(f"{k} = ?" for k in updates.keys())
+        params = list(updates.values()) + [tester, tester]
+        # Insert row first (idempotent) so the UPDATE always has a target.
+        conn.execute("""
+            IF NOT EXISTS (SELECT 1 FROM dbo.SCORECARD_QA_META WHERE TESTER_EMAIL = ?)
+                INSERT INTO dbo.SCORECARD_QA_META (TESTER_EMAIL, LAST_UPDATED_BY, LAST_UPDATED_AT)
+                VALUES (?, ?, SYSUTCDATETIME());
+        """, (tester, tester, tester))
         conn.execute(
-            f"UPDATE dbo.SCORECARD_QA_META SET {set_clause}, LAST_UPDATED_BY = ?, LAST_UPDATED_AT = SYSUTCDATETIME() WHERE META_ID = 1",
+            f"UPDATE dbo.SCORECARD_QA_META SET {set_clause}, "
+            "LAST_UPDATED_BY = ?, LAST_UPDATED_AT = SYSUTCDATETIME() "
+            "WHERE TESTER_EMAIL = ?",
             params)
         conn.commit()
-        return jsonify({"ok": True, "last_updated_by": by})
+        return jsonify({"ok": True, "last_updated_by": tester})
     finally:
         conn.close()
 
@@ -618,8 +683,36 @@ def api_admin_qa_meta():
 @scorecard_bp.route("/api/admin/qa/reset", methods=["POST"])
 @login_required
 def api_admin_qa_reset():
-    """Wipe all row state (does NOT touch meta). Requires admin. Meant for
-    starting a fresh QA pass after a big code change."""
+    """Wipe the CURRENT tester's row state (does NOT touch meta). Any logged-in
+    tester can reset their own checklist. Admins can also wipe another tester
+    by passing ?tester=<email>, or wipe everyone with ?tester=ALL."""
+    check = _require_access()
+    if check:
+        return check
+    target = (request.args.get("tester") or "").strip().lower()
+    if target:
+        if not _is_admin():
+            return jsonify({"error": "admin only"}), 403
+    else:
+        target = _qa_tester_email()
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        if target == "all":
+            conn.execute("DELETE FROM dbo.SCORECARD_QA_STATE")
+        else:
+            conn.execute("DELETE FROM dbo.SCORECARD_QA_STATE WHERE TESTER_EMAIL = ?", (target,))
+        conn.commit()
+        return jsonify({"ok": True, "reset_target": target})
+    finally:
+        conn.close()
+
+
+@scorecard_bp.route("/api/admin/qa/all")
+@login_required
+def api_admin_qa_all():
+    """Admin-only. Aggregated snapshot of every tester's QA state for the
+    dashboard: one entry per tester, with per-status counts and meta fields."""
     check = _require_access()
     if check:
         return check
@@ -628,9 +721,60 @@ def api_admin_qa_reset():
     env = _get_env()
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
-        conn.execute("DELETE FROM dbo.SCORECARD_QA_STATE")
-        conn.commit()
-        return jsonify({"ok": True})
+        state_rows = conn.fetchall("""
+            SELECT TESTER_EMAIL, SCENARIO_KEY, CHECKED, STATUS, NOTES,
+                   LAST_UPDATED_AT
+            FROM dbo.SCORECARD_QA_STATE
+        """)
+        meta_rows = conn.fetchall("""
+            SELECT TESTER_EMAIL, TESTER, TEST_DATE, ENV, BROWSER, ROLE_TESTED,
+                   SIGNOFF_TESTER, SIGNOFF_APPROVER, DECISION, BLOCKERS,
+                   LAST_UPDATED_AT
+            FROM dbo.SCORECARD_QA_META
+        """)
+        testers = {}
+        for r in meta_rows:
+            testers[r[0]] = {
+                "tester_email": r[0],
+                "tester": r[1],
+                "test_date": r[2].isoformat() if r[2] else None,
+                "env": r[3], "browser": r[4], "role_tested": r[5],
+                "signoff_tester": r[6], "signoff_approver": r[7],
+                "decision": r[8], "blockers": r[9],
+                "meta_updated_at": r[10].isoformat() if r[10] else None,
+                "checked": 0, "pass": 0, "fail": 0, "block": 0, "pending": 0,
+                "fail_rows": [],
+                "last_activity": r[10].isoformat() if r[10] else None,
+            }
+        for r in state_rows:
+            email, scenario, checked, status, notes, updated = r
+            if email not in testers:
+                testers[email] = {
+                    "tester_email": email, "tester": email,
+                    "test_date": None, "env": None, "browser": None,
+                    "role_tested": None, "signoff_tester": None,
+                    "signoff_approver": None, "decision": None, "blockers": None,
+                    "meta_updated_at": None,
+                    "checked": 0, "pass": 0, "fail": 0, "block": 0, "pending": 0,
+                    "fail_rows": [], "last_activity": None,
+                }
+            t = testers[email]
+            if checked:
+                t["checked"] += 1
+            if status == "pass":
+                t["pass"] += 1
+            elif status == "fail":
+                t["fail"] += 1
+                t["fail_rows"].append({"key": scenario, "notes": notes})
+            elif status == "block":
+                t["block"] += 1
+            else:
+                t["pending"] += 1
+            iso = updated.isoformat() if updated else None
+            if iso and (not t["last_activity"] or iso > t["last_activity"]):
+                t["last_activity"] = iso
+        return jsonify({"testers": sorted(testers.values(), key=lambda x: x["tester_email"]),
+                        "scenario_count": _qa_scenario_count()})
     finally:
         conn.close()
 
