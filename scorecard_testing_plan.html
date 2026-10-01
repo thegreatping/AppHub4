@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Leadership Scorecard - Beta Testing Plan</title></head>
+<body style="font-family:Segoe UI,Arial,sans-serif;color:#1f2937;background:#ffffff;max-width:900px;margin:0 auto;padding:16px;">
+
+<h1 style="color:#0b7285;border-bottom:3px solid #0b7285;padding-bottom:8px;margin:0 0 12px 0;font-size:24px;">
+  Leadership Scorecard - Beta Testing Plan
+</h1>
+<p style="color:#6b7280;margin:0 0 20px 0;font-size:14px;">
+  AppHub 4.0 - Leadership Scorecard module. Please run through the scenarios below for the role(s) you have been assigned. Track your results in the shared QA Sign-Off page inside the app (link at bottom of this email).
+</p>
+
+<div style="background:#ecfeff;border-left:4px solid #0891b2;padding:12px 16px;margin:0 0 24px 0;border-radius:4px;">
+  <b style="color:#0b4751;">How to log in:</b> Browse to <b>https://apphub40-g2ceaha4h4bcgjhc.centralus-01.azurewebsites.net/</b> and sign in with your Peak email. If you cannot see the Leadership Scorecard tile, let Craig Pell know - your access was not granted yet.
+</div>
+
+<!-- =========================== ADMIN ROLE =========================== -->
+<h2 style="color:#7c3aed;background:#f5f3ff;padding:10px 14px;border-radius:4px;margin:0 0 10px 0;font-size:18px;">
+  ADMIN role (Molly Blazier, Mike Costello, Craig Pell)
+</h2>
+<p style="margin:0 0 10px 0;font-size:13px;color:#6b7280;">
+  Admins see every property, can edit any measure, and have access to every admin tool. Granted via AppHub Maintenance -> Audience Manager with ACCESS_LEVEL = Admin.
+</p>
+
+<table style="width:100%;border-collapse:collapse;margin:0 0 20px 0;font-size:13px;">
+  <thead>
+    <tr style="background:#f5f3ff;">
+      <th style="border:1px solid #ddd6fe;padding:7px 10px;text-align:left;width:40%;">Feature / Action</th>
+      <th style="border:1px solid #ddd6fe;padding:7px 10px;text-align:left;">Expected Behavior</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>See full property grid</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">All ~110 reportable properties visible; filter + sort work.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Open slideout</b> (click any row)</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Right-side panel shows all measures with current value, source, and lock state.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Edit a measure value</b> in slideout</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Save button writes to SCORECARD_CORE; grid refreshes with new PRERM/LDRTOTAL/MSTOTAL totals.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Toggle override lock</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Lock bit flips in DB; locked values survive the next pipeline run. Reason field saves to <code>&lt;measure&gt;_REASON</code>.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Edit property NOTES</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">NOTES field saves with your name + timestamp; visible to all roles.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>RM Score dropdown</b> (0/2/4/7/10)</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Saves immediately. Always stamped RMSCORE_LOCKED = 1 + your name.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>"View As..." dropdown</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Shows 3 optgroups: RVPs, RMs, PMs. Picking one simulates that role; violet banner appears.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>QA Sign-Off button</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Opens shared checklist page (65 scenarios, 14 sections). Everyone's updates sync every 45s.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Open in New Tab</b> (from QA Sign-Off)</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">New tab loads with popout mode (hides shell nav) so you can test the Scorecard side-by-side.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Table Manager</b> button</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Browse every table in the Scorecard pipeline, read-only with TOP 3000 safety cap.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Notebook Runs</b> button</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Last 50 pipeline runs with per-step pass/fail. Shows the 18-step chain.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Data Flow / Diagram</b> buttons</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Open the interactive architecture diagrams in a new tab.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Help (big cyan ?)</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Modal opens with tabs tailored to your role: Welcome, Reading the Grid, The Slideout, Fall Forecast, Admin Features, FAQ, Get Help.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Fall Forecast tab</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Projection view with your portfolio or all properties; totals + per-measure trajectory.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Reset All QA Rows</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Admin-only wipe of the shared checklist state. Confirmation required.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Criteria &amp; Guides</b> button</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Measure criteria reference with scoring thresholds.</td></tr>
+  </tbody>
+</table>
+
+<!-- =========================== RM ROLE =========================== -->
+<h2 style="color:#059669;background:#ecfdf5;padding:10px 14px;border-radius:4px;margin:0 0 10px 0;font-size:18px;">
+  RM role (Regional Manager, Regional Vice President, Regional Sales Manager)
+</h2>
+<p style="margin:0 0 10px 0;font-size:13px;color:#6b7280;">
+  RMs/RVPs see only their own portfolio and can edit measures for those properties. Granted via Audience Manager with GRANT_TYPE=title_group + the specific title (REGIONAL MANAGER, REGIONAL VICE PRESIDENT, etc.) and ACCESS_LEVEL=User.
+</p>
+
+<table style="width:100%;border-collapse:collapse;margin:0 0 20px 0;font-size:13px;">
+  <thead>
+    <tr style="background:#ecfdf5;">
+      <th style="border:1px solid #a7f3d0;padding:7px 10px;text-align:left;width:40%;">Feature / Action</th>
+      <th style="border:1px solid #a7f3d0;padding:7px 10px;text-align:left;">Expected Behavior</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Portfolio scoping</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">RMs see every property where PROPERTY_0.RM_EMAIL matches their email. RVPs see every property where PROPERTY_0.RVP_EMAIL matches their email (17-33 properties typical).</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Open slideout</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Same panel as admin; shows all measures + lock state.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Edit measure value</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Save works for your own properties only. Attempts on another RM's property return 404.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Toggle override lock + reason</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Works. Stamps your email as LOCKED_BY.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>RM Score dropdown</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Saves. Always locked = 1 + your name.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>NOTES field</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Works. Stamps your name as NOTE_BY.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Fall Forecast tab</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Shows your portfolio only. Totals reflect your scoped properties.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Help modal</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Shows RM-specific tabs (Your Role tab is relevant).</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>QA Sign-Off</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Visible and usable - all testers can participate.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;background:#fef2f2;color:#7f1d1d;"><b>Must NOT see</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;background:#fef2f2;color:#7f1d1d;">Table Manager, Notebook Runs, Data Flow, Diagram buttons. "View As" dropdown. Reset All button. Direct URL to <code>/scorecard/admin/*</code> endpoints should return 403.</td></tr>
+  </tbody>
+</table>
+
+<!-- =========================== PM ROLE =========================== -->
+<h2 style="color:#b45309;background:#fef3c7;padding:10px 14px;border-radius:4px;margin:0 0 10px 0;font-size:18px;">
+  PM role (Property Manager)
+</h2>
+<p style="margin:0 0 10px 0;font-size:13px;color:#6b7280;">
+  PMs see their single property and are READ-ONLY. Granted via Audience Manager with GRANT_TYPE=title_group=PROPERTY MANAGER, ACCESS_LEVEL=User. Scoping is automatic via Emp_Core.PROPERTY_KEY.
+</p>
+
+<table style="width:100%;border-collapse:collapse;margin:0 0 20px 0;font-size:13px;">
+  <thead>
+    <tr style="background:#fef3c7;">
+      <th style="border:1px solid #fcd34d;padding:7px 10px;text-align:left;width:40%;">Feature / Action</th>
+      <th style="border:1px solid #fcd34d;padding:7px 10px;text-align:left;">Expected Behavior</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Property scoping</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Grid shows exactly 1 row - the property on Emp_Core.PROPERTY_KEY for your account.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Open slideout</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Panel opens with all measures visible but no edit affordances.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;background:#fef2f2;color:#7f1d1d;"><b>Try to edit a measure</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;background:#fef2f2;color:#7f1d1d;">Input is disabled. Save button either absent or returns "read-only for Property Managers".</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;background:#fef2f2;color:#7f1d1d;"><b>Try to edit NOTES</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;background:#fef2f2;color:#7f1d1d;">Same. Read-only.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Filter + sort grid</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Works. (With only one row this is minor but should not error.)</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Fall Forecast tab</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Visible, shows your property only.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Help modal</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">PM-specific tabs show.</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;background:#fef2f2;color:#7f1d1d;"><b>Must NOT see</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;background:#fef2f2;color:#7f1d1d;">All admin buttons; "View As"; QA Sign-Off (admin-only). Direct URL to override endpoints should return 403.</td></tr>
+  </tbody>
+</table>
+
+<!-- =========================== HOW TO REPORT =========================== -->
+<div style="background:#fef9c3;border-left:4px solid #ca8a04;padding:12px 16px;margin:0 0 20px 0;border-radius:4px;">
+  <b style="color:#713f12;">How to report results:</b>
+  <p style="margin:6px 0 0 0;">
+    Open <b>Leadership Scorecard &gt; QA Sign-Off</b> (header button). Tick each scenario as you test it, mark Pass / Fail / Blocker, and add notes. Everyone's updates auto-sync every 45 seconds so you can work in parallel. For bugs or questions, email Craig Pell (cpell@peakmade.com).
+  </p>
+</div>
+
+<!-- =========================== QUARTER TRANSITIONS =========================== -->
+<h2 style="color:#0b7285;background:#ecfeff;padding:10px 14px;border-radius:4px;margin:0 0 10px 0;font-size:18px;">
+  How quarter transitions work (and the GA quarter-close plan)
+</h2>
+
+<table style="width:100%;border-collapse:collapse;margin:0 0 12px 0;font-size:13px;">
+  <thead>
+    <tr style="background:#e0f2fe;">
+      <th style="border:1px solid #bae6fd;padding:7px 10px;text-align:left;width:30%;">Topic</th>
+      <th style="border:1px solid #bae6fd;padding:7px 10px;text-align:left;">Behavior</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Quarter switch (Q2 -&gt; Q3)</b></td>
+      <td style="border:1px solid #e5e7eb;padding:7px 10px;">The grid automatically switches to the newest AY/QUARTER present in SCORECARD_CORE the moment the pipeline writes Q3 rows. No code deploy or admin action required.</td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Carry-over of overrides / RM Score / notes</b></td>
+      <td style="border:1px solid #e5e7eb;padding:7px 10px;">Each quarter has its own SCORECARD_CORE row (keyed on PROPERTY_KEY + AY + QUARTER). Overrides, locks, RMSCORE, and NOTES do <b>not</b> carry forward from Q2 into Q3 - Q3 starts fresh. Q2's edits are preserved on the Q2 row.</td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Compare Quarters tab</b></td>
+      <td style="border:1px solid #e5e7eb;padding:7px 10px;">New tab (next to Scorecard / Fall Forecast). Pick any two quarters A and B present in SCORECARD_CORE and see per-property deltas on every measure plus PRERM / Leadership Total / Maintenance Total / Overall. Green = improvement, red = regression. Read-only; respects your role scoping.</td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Historical quarters stay editable (during beta)</b></td>
+      <td style="border:1px solid #e5e7eb;padding:7px 10px;">For the beta window, Q2 2026 (which is already paid out) is <b>intentionally left editable</b> so you can experiment with the override / lock / NOTE flows without changing current quarter data. Please do not treat test edits as actual corrections.</td>
+    </tr>
+    <tr style="background:#fef3c7;">
+      <td style="border:1px solid #fcd34d;padding:7px 10px;"><b>Quarter close (planned for GA)</b></td>
+      <td style="border:1px solid #fcd34d;padding:7px 10px;">
+        At GA we will add an admin-only "Close Quarter" button. Closing a quarter:
+        <ul style="margin:6px 0 0 18px;">
+          <li>Sets <code>SCORECARD_CORE.FLAG_FINAL = 1</code> on every row for that AY/QUARTER (new schema column).</li>
+          <li>All write endpoints (override toggle, measure patch, RM Score, NOTES) return <b>403 "This quarter is closed - contact admin to re-open"</b>.</li>
+          <li>Grid continues to display the closed quarter as read-only; the Compare Quarters tab is unaffected.</li>
+          <li>Admins get a "Re-open Quarter" button (confirmation gated) for emergency corrections.</li>
+          <li>Every close / re-open is logged in <code>control.SCORECARD_TABLE_MANAGER_AUDIT</code> so there is a paper trail for finance.</li>
+        </ul>
+        <b>Not in beta scope.</b> No action required from testers now.
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<p style="color:#6b7280;font-size:12px;margin:20px 0 0 0;border-top:1px solid #e5e7eb;padding-top:10px;">
+  Beta environment: Azure App Service. All data writes against production SCORECARD_CORE - please test with care.
+</p>
+
+</body>
+</html>

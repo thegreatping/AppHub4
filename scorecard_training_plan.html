@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Leadership Scorecard - Training Plan</title></head>
+<body style="font-family:Segoe UI,Arial,sans-serif;color:#1f2937;background:#ffffff;max-width:900px;margin:0 auto;padding:16px;">
+
+<h1 style="color:#0b7285;border-bottom:3px solid #0b7285;padding-bottom:8px;margin:0 0 12px 0;font-size:24px;">
+  Leadership Scorecard - Training Plan
+</h1>
+<p style="color:#6b7280;margin:0 0 20px 0;font-size:14px;">
+  AppHub 4.0 - Leadership Scorecard. Scope: how the data flows, when it refreshes, who owns each source, and where we are automating next.
+</p>
+
+<!-- ===== 1. OVERVIEW ===== -->
+<h2 style="color:#0b7285;background:#ecfeff;padding:10px 14px;border-radius:4px;margin:0 0 10px 0;font-size:18px;">1. What the Scorecard does</h2>
+<p style="font-size:14px;margin:0 0 10px 0;">
+  Produces a quarterly leadership + maintenance score for every reportable property. Scores drive bonus eligibility for Regional Managers and Property-side teams. The grid shows 10 measures per property, rolled up to PRERM, LDRTOTAL, MSTOTAL, and an OVERALL score.
+</p>
+<ul style="margin:0 0 16px 20px;font-size:14px;line-height:1.6;">
+  <li><b>Admins</b> see all properties and can edit anything.</li>
+  <li><b>Regional Managers / RVPs</b> see their own portfolio and can edit the measures that are within their control (overrides, RM Score, notes).</li>
+  <li><b>Property Managers</b> see their single property and are read-only.</li>
+</ul>
+
+<!-- ===== 2. DATA MODEL ===== -->
+<h2 style="color:#0b7285;background:#ecfeff;padding:10px 14px;border-radius:4px;margin:0 0 10px 0;font-size:18px;">2. Data model (what you are looking at)</h2>
+<table style="width:100%;border-collapse:collapse;margin:0 0 16px 0;font-size:13px;">
+  <thead>
+    <tr style="background:#e0f2fe;">
+      <th style="border:1px solid #bae6fd;padding:7px 10px;text-align:left;">Table</th>
+      <th style="border:1px solid #bae6fd;padding:7px 10px;text-align:left;">Role</th>
+      <th style="border:1px solid #bae6fd;padding:7px 10px;text-align:left;">Grain</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>SCORECARD_CORE</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Main grid source. One row per property per AY/QUARTER.</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">PROPERTY_KEY + AY + QUARTER</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>PROPERTY_0</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Authoritative property reference. Holds RM_EMAIL, RVP_EMAIL, flags, status.</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">PROPERTY_KEY</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>Emp_Core</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Employee reference used for role detection (TITLE_GROUP, PROPERTY_KEY for PMs).</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">EMAIL</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>SCORECARD_QA_STATE / META</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Shared QA checklist state (all testers see each others' updates).</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">SCENARIO_KEY</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;"><b>SCORECARD_MEASURE_LONG</b></td><td style="border:1px solid #e5e7eb;padding:7px 10px;">View for BI reporting: 3300 rows (110 properties x 30 measure columns).</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">PROPERTY_KEY x MEASURE</td></tr>
+  </tbody>
+</table>
+
+<!-- ===== 3. MEASURES ===== -->
+<h2 style="color:#0b7285;background:#ecfeff;padding:10px 14px;border-radius:4px;margin:0 0 10px 0;font-size:18px;">3. The 10 measures</h2>
+<table style="width:100%;border-collapse:collapse;margin:0 0 16px 0;font-size:13px;">
+  <thead>
+    <tr style="background:#e0f2fe;">
+      <th style="border:1px solid #bae6fd;padding:7px 10px;text-align:left;">Code</th>
+      <th style="border:1px solid #bae6fd;padding:7px 10px;text-align:left;">Name</th>
+      <th style="border:1px solid #bae6fd;padding:7px 10px;text-align:left;">Source table</th>
+      <th style="border:1px solid #bae6fd;padding:7px 10px;text-align:left;">Owner</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;">TC</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Timecard Approval</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">WH_PROD2.dbo.LS_TIMESHEET</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Paycom</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;">TR</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Training Compliance</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">GRACEHILL_LOCATION_COMPLIANCE_IMPORT_FACT</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Gracehill</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;">PCARD</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">PPV / P-Card</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">LS_PREPAID_VISA</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Accounting</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;">RA</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Risk Assessment</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">LS_COMPLIANCE_IMPORT</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Risk &amp; Compliance</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;">LEO (IIPP/LFA/PMLEO/MSLEO)</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">LEO Compliance</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">LEO_COMPLIANCE_EXPORT_FACT</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Risk &amp; Compliance</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;">REP</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Reputation Score</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">REPUTATION_COM_SUMMARY_FACT</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Reputation.com</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;">WO (PM/MS)</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Work Orders</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">WORK_ORDER_REQUESTS</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Entrata</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;">CURB / PUB / MAINT / LOGS</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">RM Quarterly Inspection (best-of across inspections per quarter)</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">LS_RM_QUARTERLY_INSPECTION_SCORES_FACT</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">RVPs (manual entry today)</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;">NOI</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Controllable NOI</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">INCOME_STATEMENT_BY_GL</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">Accounting</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:7px 10px;">RMSCORE</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">RM Score (manual entry, 0/2/4/7/10)</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">In-app, written to SCORECARD_CORE directly</td><td style="border:1px solid #e5e7eb;padding:7px 10px;">RVPs / Admins</td></tr>
+  </tbody>
+</table>
+
+<!-- ===== 4. PIPELINE SCHEDULE ===== -->
+<h2 style="color:#0b7285;background:#ecfeff;padding:10px 14px;border-radius:4px;margin:0 0 10px 0;font-size:18px;">4. Pipeline and refresh schedule</h2>
+<ul style="margin:0 0 16px 20px;font-size:14px;line-height:1.6;">
+  <li>Notebook: <b>NB_LEADERSHIP_SCORECARD_UPDATE</b> (18 steps, ~45s runtime)</li>
+  <li>Runs: <b>daily</b>, inside the <b>DAILY_UPDATE_PLUS_REFRESH</b> pipeline (EID 20190101 in EXECUTION_PLAN)</li>
+  <li>Rebuilds SCORECARD_CORE from the sources above; honors override locks and manual RMSCORE entries (never overwrites them)</li>
+  <li>Status visible from the Scorecard admin tool: <b>Notebook Runs</b> button</li>
+</ul>
+
+<!-- ===== 5. DATA DELIVERY CALENDAR ===== -->
+<h2 style="color:#0b7285;background:#ecfeff;padding:10px 14px;border-radius:4px;margin:0 0 10px 0;font-size:18px;">5. Data delivery calendar</h2>
+<p style="font-size:14px;margin:0 0 10px 0;color:#6b7280;">
+  How each source lands in WH_PROD2 today. Items marked <b style="color:#ca8a04;">[TBD CONFIRM]</b> have an unknown or manual delivery path that we need to document and later automate. Everything else is already automated or scheduled.
+</p>
+
+<table style="width:100%;border-collapse:collapse;margin:0 0 16px 0;font-size:12px;">
+  <thead>
+    <tr style="background:#e0f2fe;">
+      <th style="border:1px solid #bae6fd;padding:7px 8px;text-align:left;">Source</th>
+      <th style="border:1px solid #bae6fd;padding:7px 8px;text-align:left;">Frequency</th>
+      <th style="border:1px solid #bae6fd;padding:7px 8px;text-align:left;">Current delivery path</th>
+      <th style="border:1px solid #bae6fd;padding:7px 8px;text-align:left;">Owner</th>
+      <th style="border:1px solid #bae6fd;padding:7px 8px;text-align:left;">Automation target</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="border:1px solid #e5e7eb;padding:6px 8px;">Paycom Timecard (TC)</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">Daily</td><td style="border:1px solid #e5e7eb;padding:6px 8px;"><b style="color:#ca8a04;">[TBD CONFIRM]</b> - Paycom to WH_PROD2.dbo.LS_TIMESHEET</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">People Ops</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">H1 2027</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:6px 8px;">Gracehill (TR)</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">Weekly</td><td style="border:1px solid #e5e7eb;padding:6px 8px;"><b style="color:#ca8a04;">[TBD CONFIRM]</b> - Gracehill export to WH_PROD2</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">People Ops</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">H1 2027</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:6px 8px;">PCard (PCARD)</td><td style="border:1px solid #e5e7eb;padding:6px 8px;"><b style="color:#ca8a04;">[TBD CONFIRM]</b></td><td style="border:1px solid #e5e7eb;padding:6px 8px;"><b style="color:#ca8a04;">[TBD CONFIRM]</b></td><td style="border:1px solid #e5e7eb;padding:6px 8px;">Accounting</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">H2 2027</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:6px 8px;">Risk Assessment (RA)</td><td style="border:1px solid #e5e7eb;padding:6px 8px;"><b style="color:#ca8a04;">[TBD CONFIRM]</b></td><td style="border:1px solid #e5e7eb;padding:6px 8px;"><b style="color:#ca8a04;">[TBD CONFIRM]</b></td><td style="border:1px solid #e5e7eb;padding:6px 8px;">Risk &amp; Compliance</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">H2 2027</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:6px 8px;">LEO Compliance (IIPP/LFA/PMLEO/MSLEO)</td><td style="border:1px solid #e5e7eb;padding:6px 8px;"><b style="color:#ca8a04;">[TBD CONFIRM]</b></td><td style="border:1px solid #e5e7eb;padding:6px 8px;"><b style="color:#ca8a04;">[TBD CONFIRM]</b></td><td style="border:1px solid #e5e7eb;padding:6px 8px;">Risk &amp; Compliance</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">H2 2027</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:6px 8px;">Reputation (REP)</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">Weekly (Friday snapshot)</td><td style="border:1px solid #e5e7eb;padding:6px 8px;"><b style="color:#ca8a04;">[TBD CONFIRM]</b> - Reputation.com export</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">Marketing</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">H1 2027</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:6px 8px;">Work Orders (WO/MSWO)</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">Daily</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">Entrata API (already automated)</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">Entrata / BI</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">Done</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:6px 8px;background:#fef2f2;"><b>RM Inspection Scores</b> (CURB/PUB/MAINT/LOGS)</td><td style="border:1px solid #e5e7eb;padding:6px 8px;background:#fef2f2;">Quarterly</td><td style="border:1px solid #e5e7eb;padding:6px 8px;background:#fef2f2;"><b style="color:#991b1b;">Currently manual.</b> WH_STAGING landing table has not been refreshed since Q1 2026; Q2 data lands in WH_PROD2 by an unknown path.</td><td style="border:1px solid #e5e7eb;padding:6px 8px;background:#fef2f2;">RVPs</td><td style="border:1px solid #e5e7eb;padding:6px 8px;background:#fef2f2;"><b style="color:#991b1b;">H1 2027 priority</b></td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:6px 8px;">Controllable NOI</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">Monthly</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">INCOME_STATEMENT_BY_GL (already automated)</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">Accounting</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">Done</td></tr>
+    <tr><td style="border:1px solid #e5e7eb;padding:6px 8px;">RM Score (manual)</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">Entered in-app</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">Scorecard slideout -&gt; SCORECARD_CORE direct write</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">RVPs / Admins</td><td style="border:1px solid #e5e7eb;padding:6px 8px;">In-app (no file delivery)</td></tr>
+  </tbody>
+</table>
+
+<div style="background:#ecfdf5;border-left:4px solid #059669;padding:12px 16px;margin:0 0 20px 0;border-radius:4px;">
+  <b style="color:#065f46;">Automation plan.</b>
+  <p style="margin:6px 0 0 0;font-size:14px;">
+    Every <b style="color:#ca8a04;">[TBD CONFIRM]</b> row above is a known gap. We are prioritizing automation for the manual deliveries, starting with RM Inspection Scores (H1 2027) and the Paycom / Gracehill / Reputation feeds. Target: by GA, every source either has a documented recurring delivery OR an automated API/export path, with zero manual re-keying.
+  </p>
+</div>
+
+<!-- ===== 6. OPEN ITEMS ===== -->
+<h2 style="color:#0b7285;background:#ecfeff;padding:10px 14px;border-radius:4px;margin:0 0 10px 0;font-size:18px;">6. Open items we need help resolving</h2>
+<ol style="margin:0 0 16px 20px;font-size:14px;line-height:1.6;">
+  <li><b>RM Inspection source</b> - Someone is loading Q2 2026 scores directly into WH_PROD2 (90 rows). Need to identify who, what tool/file, and target that for automation first.</li>
+  <li><b>Delivery schedule confirmations</b> - Each row above marked [TBD CONFIRM] needs an owner confirmation.</li>
+  <li><b>Testing feedback</b> - Everything you flag during beta testing in the QA Sign-Off page will be reviewed before we open GA access.</li>
+</ol>
+
+<!-- ===== 7. GET HELP ===== -->
+<h2 style="color:#0b7285;background:#ecfeff;padding:10px 14px;border-radius:4px;margin:0 0 10px 0;font-size:18px;">7. In-app help</h2>
+<ul style="margin:0 0 16px 20px;font-size:14px;line-height:1.6;">
+  <li><b>Help button</b> (big cyan ? in header) - role-aware guide with tabs: Welcome, Reading the Grid, The Slideout, Fall Forecast, Your Role, Admin Features, FAQ, Get Help.</li>
+  <li><b>Criteria &amp; Guides</b> button - measure criteria reference with scoring thresholds.</li>
+  <li><b>QA Sign-Off</b> - live checklist for the beta.</li>
+  <li>Direct questions to Craig Pell (cpell@peakmade.com).</li>
+</ul>
+
+<p style="color:#6b7280;font-size:12px;margin:20px 0 0 0;border-top:1px solid #e5e7eb;padding-top:10px;">
+  Document prepared for beta training session. All [TBD CONFIRM] items will be filled in as owners confirm.
+</p>
+
+</body>
+</html>

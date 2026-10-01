@@ -556,6 +556,43 @@ body {
 .nav-collapsed .nav-item.beta-ghost .ghost-link { justify-content: center; gap: 0; padding: 8px 0; }
 .nav-collapsed .nav-item.beta-ghost .ghost-link > span:not(.nav-icon-dot) { display: none; }
 
+/* Dashboard "All Apps" grid: ghost card mirrors the nav ghost treatment.
+   The wrapper has no <a>, so nothing is clickable; padlock + BETA badge
+   telegraph "coming soon". Once the user has a grant, this becomes a
+   normal live card again. */
+.dash-card-wrapper.dash-ghost {
+    cursor: not-allowed;
+    opacity: 0.5;
+    filter: grayscale(0.55);
+}
+.dash-card-wrapper.dash-ghost:hover {
+    opacity: 0.65;
+}
+.dash-card-wrapper.dash-ghost .dash-card {
+    border: 1px dashed rgba(148,163,184,0.5);
+    pointer-events: none;
+    user-select: none;
+}
+.dash-card-wrapper.dash-ghost .dash-card-name .beta-badge,
+.nav-item.beta-ghost .beta-badge {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.7px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--accent-cyan, #22d3ee);
+    color: #0b1220;
+    text-transform: uppercase;
+    line-height: 1;
+    vertical-align: middle;
+}
+.dash-card-locked {
+    color: var(--text-secondary, #94a3b8) !important;
+    font-style: italic;
+}
+
 /* Nav Footer */
 .nav-footer {
     padding: 12px 16px;
