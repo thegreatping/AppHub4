@@ -457,7 +457,7 @@
             </label>
             {% if not is_pm %}
             <button type="button" class="sc-export-btn" onclick="showCalPrompt()">&#128197; Add to Outlook</button>
-            <button type="button" class="sc-export-btn" onclick="exportSubjectiveScores()">&#9993; Email My Scores</button>
+            <button type="button" class="sc-export-btn" onclick="exportSubjectiveScores()">&#128190; Download My Scores</button>
             {% endif %}
             <button type="button" class="sc-export-btn" id="scFullExportBtn" style="display:none;" onclick="exportFullSummary()">&#128190; Full Summary Export</button>
         </div>
@@ -2335,7 +2335,7 @@ function exportSubjectiveScores() {
         if (missingRM.length) msg += `RM Score (0-5) still missing for ${missingRM.length} propert${missingRM.length === 1 ? 'y' : 'ies'}:\n${listNames(missingRM)}\n\n`;
         if (missingSV.length) msg += `Surveys & Reviews (0/1) still missing for ${missingSV.length} propert${missingSV.length === 1 ? 'y' : 'ies'}:\n${listNames(missingSV)}\n\n`;
         if (missingNOI.length) msg += `Controllable NOI (0/1) still missing for ${missingNOI.length} propert${missingNOI.length === 1 ? 'y' : 'ies'}:\n${listNames(missingNOI)}\n\n`;
-        msg += 'Click OK to send anyway, or Cancel to finish entering scores (missing communities will be highlighted for you).';
+        msg += 'Click OK to download anyway, or Cancel to finish entering scores (missing communities will be highlighted for you).';
         if (!confirm(msg)) {
             quickFilters.needsInput = true;
             render();
@@ -2377,17 +2377,6 @@ function exportSubjectiveScores() {
     h += '</table></body></html>';
     const fname = `${scQuarterLabel} - Scorecard - ${rmName} - ${scExportTimestamp()}.xls`;
     scDownloadBlob(h, 'application/vnd.ms-excel', fname);
-
-    const subject = `${rmName} - ${scQuarterLabel} Scorecard`;
-    // mailto: links can't attach files -- browser security. Spell out exactly
-    // what the user needs to do so they aren't confused by the empty paperclip.
-    const body =
-        `Hi Molly,\n\n` +
-        `My ${scQuarterLabel} scorecard is ready. The file "${fname}" was just downloaded to this device.\n\n` +
-        `Please attach it to this email before sending (drag it in from the Downloads folder, or use Insert > Attach File).\n\n` +
-        `Thanks,\n${rmName}\n\n` +
-        `-- Submitted via the Leadership Scorecard on ${new Date().toLocaleString('en-US')}`;
-    window.location.href = `mailto:mblazier@peakmade.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 function exportFullSummary() {
