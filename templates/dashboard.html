@@ -52,6 +52,7 @@
         {% else %}
         <div class="dash-card-wrapper"
              data-app-id="{{ mod.id }}"
+             data-app-numeric-id="{{ mod.app_id }}"
              data-app-name="{{ mod.name }}"
              data-app-url="{{ url_for('main.module', module_id=mod.id) }}"
              data-app-icon="{{ mod.icon }}"
@@ -91,102 +92,89 @@
 </div>
 
 <script>
-// ── Favorites system (localStorage-backed) ──
-var AH_FAV_KEY = 'apphub_favorites';
-
-// Purge any corrupt data from previous attempts
-(function cleanupOldFavs() {
-    try {
-        var raw = JSON.parse(localStorage.getItem(AH_FAV_KEY) || '[]');
-        var clean = [];
-        for (var i = 0; i < raw.length; i++) {
-            if (raw[i] && raw[i].id && raw[i].name && raw[i].name !== 'undefined') {
-                clean.push(raw[i]);
-            }
-        }
-        if (clean.length !== raw.length) {
-            localStorage.setItem(AH_FAV_KEY, JSON.stringify(clean));
-        }
-    } catch(e) {
-        localStorage.removeItem(AH_FAV_KEY);
-    }
-})();
-
-function getFavs() {
-    try { return JSON.parse(localStorage.getItem(AH_FAV_KEY) || '[]'); }
-    catch(e) { return []; }
-}
-
-function saveFavs(favs) {
-    localStorage.setItem(AH_FAV_KEY, JSON.stringify(favs));
-}
-
-function toggleFav(btn) {
-    var wrap = btn.closest('.dash-card-wrapper');
-    var id = wrap.dataset.appId;
-    var favs = getFavs();
-    var idx = -1;
-    for (var i = 0; i < favs.length; i++) {
-        if (favs[i].id === id) { idx = i; break; }
-    }
-    if (idx >= 0) {
-        favs.splice(idx, 1);
-        btn.classList.remove('active');
-    } else {
-        favs.push({
-            id: id,
-            name: wrap.dataset.appName,
-            url: wrap.dataset.appUrl,
-            icon: wrap.dataset.appIcon,
-            color: wrap.dataset.appColor,
-            type: wrap.dataset.appType
-        });
-        btn.classList.add('active');
-    }
-    saveFavs(favs);
-    renderDashFavs();
-}
-
-function renderDashFavs() {
-    var section = document.getElementById('dashFavoritesSection');
-    var grid = document.getElementById('dashFavoritesGrid');
-    if (!section || !grid) return;
-    // Filter favorites to only modules the user is actually allowed to see
-    // (server-rendered `modules` list, populated by nav.build_nav_modules).
-    // Blocks the beta back-door where a favorited but no-longer-visible app
-    // could still be launched from the dashboard.
-    var allowedIds = new Set(({{ modules | tojson }}).map(function(m){ return m.id; }));
-    var favs = getFavs().filter(function(f){ return allowedIds.has(f.id); });
-    if (favs.length === 0) { section.style.display = 'none'; return; }
-    section.style.display = 'block';
-    var html = '';
-    for (var i = 0; i < favs.length; i++) {
-        var f = favs[i];
-        html += '<a class="dash-card" href="' + f.url + '">' +
-            '<div class="dash-card-banner" style="background:' + f.color + '"></div>' +
-            '<div class="dash-card-body"><div class="dash-card-top">' +
-            '<div class="dash-card-icon" style="background:' + f.color + '"><i class="' + f.icon + '"></i></div>' +
-            '<div class="dash-card-text"><div class="dash-card-name">' + f.name + '</div></div>' +
-            '</div><div class="dash-card-footer">' +
-            '<span class="dash-card-open">Open <i class="fa-solid fa-arrow-right"></i></span>' +
-            '</div></div></a>';
-    }
-    grid.innerHTML = html;
-}
-
-// Mark hearts on page load
+// Favorites: shared with the left nav via the DB-backed /maintenance/api/favorites.
+// Both surfaces read/write the same USER_MODULE_FAVORITES table so adding a
+// favorite from either place updates the other immediately.
 (function() {
-    var favs = getFavs();
-    var ids = [];
-    for (var i = 0; i < favs.length; i++) { ids.push(favs[i].id); }
-    var wraps = document.querySelectorAll('.dash-card-wrapper');
-    for (var j = 0; j < wraps.length; j++) {
-        if (ids.indexOf(wraps[j].dataset.appId) >= 0) {
-            var btn = wraps[j].querySelector('.dash-fav-btn');
-            if (btn) btn.classList.add('active');
-        }
+    const MODULES_INDEX = {};
+    document.querySelectorAll('.dash-card-wrapper[data-app-numeric-id]').forEach(w => {
+        const n = parseInt(w.dataset.appNumericId);
+        if (!isNaN(n)) MODULES_INDEX[n] = w;
+    });
+    let favIds = [];
+
+    function renderDashFavs() {
+        const section = document.getElementById('dashFavoritesSection');
+        const grid = document.getElementById('dashFavoritesGrid');
+        if (!section || !grid) return;
+        const visibleFavs = favIds.filter(id => MODULES_INDEX[id]);
+        if (visibleFavs.length === 0) { section.style.display = 'none'; grid.innerHTML = ''; return; }
+        section.style.display = 'block';
+        let html = '';
+        visibleFavs.forEach(id => {
+            const w = MODULES_INDEX[id];
+            html += '<a class="dash-card" href="' + w.dataset.appUrl + '">' +
+                '<div class="dash-card-banner" style="background:' + w.dataset.appColor + '"></div>' +
+                '<div class="dash-card-body"><div class="dash-card-top">' +
+                '<div class="dash-card-icon" style="background:' + w.dataset.appColor + '"><i class="' + w.dataset.appIcon + '"></i></div>' +
+                '<div class="dash-card-text"><div class="dash-card-name">' + w.dataset.appName + '</div></div>' +
+                '</div><div class="dash-card-footer">' +
+                '<span class="dash-card-open">Open <i class="fa-solid fa-arrow-right"></i></span>' +
+                '</div></div></a>';
+        });
+        grid.innerHTML = html;
     }
-    renderDashFavs();
+
+    function updateHearts() {
+        document.querySelectorAll('.dash-card-wrapper[data-app-numeric-id]').forEach(w => {
+            const id = parseInt(w.dataset.appNumericId);
+            const btn = w.querySelector('.dash-fav-btn');
+            if (!btn) return;
+            if (favIds.includes(id)) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+    }
+
+    window.toggleFav = async function(btn) {
+        const w = btn.closest('.dash-card-wrapper');
+        const id = parseInt(w.dataset.appNumericId);
+        if (isNaN(id)) return;
+        try {
+            const resp = await fetch('/maintenance/api/favorites/toggle', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({module_id: id})
+            });
+            const data = await resp.json();
+            if (data.error) return;
+            favIds = data.favorited ? [...favIds, id] : favIds.filter(x => x !== id);
+            renderDashFavs();
+            updateHearts();
+            // Push the fresh list straight into the shell nav so its heart /
+            // Favorites section stay in sync without a page reload.
+            if (typeof window._setNavFavIds === 'function') window._setNavFavIds(favIds);
+        } catch(e) {}
+    };
+
+    async function loadDashFavs() {
+        try {
+            const resp = await fetch('/maintenance/api/favorites');
+            const ids = await resp.json();
+            favIds = Array.isArray(ids) ? ids.map(x => parseInt(x)).filter(x => !isNaN(x)) : [];
+        } catch(e) { favIds = []; }
+        renderDashFavs();
+        updateHearts();
+    }
+
+    // Called by the shell nav after a toggle there, so the dashboard reflects
+    // the change without reloading.
+    window._setDashFavIds = function(ids) {
+        favIds = (ids || []).map(x => parseInt(x)).filter(x => !isNaN(x));
+        renderDashFavs();
+        updateHearts();
+    };
+
+    loadDashFavs();
 })();
 </script>
 {% endblock %}

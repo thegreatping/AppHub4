@@ -404,6 +404,9 @@
                     favIds = data.favorited ? [...favIds, moduleId] : favIds.filter(id => id !== moduleId);
                     renderFavSection();
                     updateHearts();
+                    // Push the fresh list into the dashboard if its favorites
+                    // section is on the current page so both surfaces stay in sync.
+                    if (typeof window._setDashFavIds === 'function') window._setDashFavIds(favIds);
                 } catch(e) {}
             };
 
