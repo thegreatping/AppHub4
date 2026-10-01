@@ -3,6 +3,7 @@
 
 /* === DARK THEME (default) === */
 :root, [data-theme="dark"] {
+    color-scheme: dark;
     --nav-bg: #0f1729;
     --nav-bg-dark: #0a0f1e;
     --nav-text: #e2e8f0;
@@ -85,8 +86,30 @@
     --code-bg: rgba(0,0,0,0.05);
 }
 
+/* Native <select> dropdowns: always match the current theme. color-scheme
+   on :root tells Chrome/Edge to render native widget chrome dark; the
+   explicit rule below forces the <option> background too since some OS
+   combos (Windows + ClearType) still paint them white otherwise. */
+select {
+    background: var(--input-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--border-input);
+    color-scheme: inherit;
+}
+select option,
+select optgroup {
+    background: var(--nav-bg);
+    color: var(--text-primary);
+}
+select option:checked,
+select option:hover {
+    background: var(--accent-cyan);
+    color: #04222c;
+}
+
 /* === LIGHT THEME (light-gray nav + white content) === */
 [data-theme="light"] {
+    color-scheme: light;
     --nav-bg: #e2e8f0;
     --nav-bg-dark: #cbd5e1;
     --nav-text: #1e293b;
