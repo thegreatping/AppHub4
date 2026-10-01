@@ -1531,7 +1531,10 @@ function renderBody(rows) {
 
 function cellHtml(c, row) {
     const v = row[c.key];
-    const isLocked = !!row[`${c.key}_LOCKED`];
+    // RMSCORE has no pipeline-computed baseline, so its _LOCKED bit is a
+    // save-protection flag (set on every save to stop the pipeline from
+    // NULLing the value), NOT an override marker. Don't paint it orange.
+    const isLocked = !!row[`${c.key}_LOCKED`] && c.key !== 'RMSCORE';
     const lockedCls = isLocked ? ' sc-overridden' : '';
     const lockedBy = row[`${c.key}_LOCKED_BY`];
     const reasonTxt = row[`${c.key}_REASON`];
