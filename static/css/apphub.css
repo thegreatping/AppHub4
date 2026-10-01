@@ -1539,13 +1539,13 @@ body,
 
 .dash-favorites-grid {
     display: flex;
+    flex-wrap: wrap;
     gap: 16px;
-    overflow-x: auto;
     padding-bottom: 4px;
 }
 
 .dash-favorites-grid .dash-card {
+    flex: 1 1 280px;
     min-width: 280px;
     max-width: 360px;
-    flex-shrink: 0;
 }
