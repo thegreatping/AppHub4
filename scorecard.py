@@ -1828,6 +1828,111 @@ def api_data():
         conn.close()
 
 
+@scorecard_bp.route("/api/quarters")
+@login_required
+def api_quarters():
+    """List every (AY, QUARTER) present in SCORECARD_CORE, newest first.
+    Used by the Compare Quarters tab to populate its two pickers."""
+    check = _require_access()
+    if check:
+        return check
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        rows = conn.fetchall("""
+            SELECT DISTINCT AY, QUARTER FROM dbo.SCORECARD_CORE
+            WHERE FLAG_CURRENT = 1
+            ORDER BY AY DESC, CAST(SUBSTRING(QUARTER, 2, 1) AS INT) DESC
+        """)
+        return jsonify({
+            "quarters": [{"ay": r[0], "quarter": r[1], "label": f"{r[1]} {r[0]}"} for r in rows]
+        })
+    finally:
+        conn.close()
+
+
+@scorecard_bp.route("/api/compare")
+@login_required
+def api_compare():
+    """Read-only side-by-side comparison of two quarters, scoped to the current
+    user's role. Returns one row per property with every measure + rollups for
+    both periods plus deltas (b - a)."""
+    check = _require_access()
+    if check:
+        return check
+    try:
+        ay_a = int(request.args.get("ay_a"))
+        q_a = request.args.get("quarter_a") or ""
+        ay_b = int(request.args.get("ay_b"))
+        q_b = request.args.get("quarter_b") or ""
+    except (TypeError, ValueError):
+        return jsonify({"error": "ay_a, quarter_a, ay_b, quarter_b required"}), 400
+    if q_a not in ("Q1", "Q2", "Q3", "Q4") or q_b not in ("Q1", "Q2", "Q3", "Q4"):
+        return jsonify({"error": "quarter must be Q1/Q2/Q3/Q4"}), 400
+
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        measure_cols = _MEASURE_KEYS + ["PRERM", "LDRTOTAL", "MSTOTAL"]
+        select_cols = ["sc.PROPERTY_KEY", "sc.PROPERTY_NAME", "sc.ENTITY_NUMBER",
+                       "COALESCE(p.RM_NAME, sc.RM_NAME) AS RM_NAME",
+                       "COALESCE(p.RM_EMAIL, sc.RM_EMAIL) AS RM_EMAIL"] \
+                      + [f"sc.{c}" for c in measure_cols]
+        cols_sql = ", ".join(select_cols)
+        base_from = ("FROM dbo.SCORECARD_CORE sc "
+                     "LEFT JOIN dbo.PROPERTY_0 p ON p.PROPERTY_KEY = sc.PROPERTY_KEY")
+        where_sql, where_params = _scope_clause("sc")
+
+        def _fetch(ay, quarter):
+            rows = conn.fetchall(
+                f"SELECT {cols_sql} {base_from} "
+                f"WHERE sc.FLAG_CURRENT = 1 AND sc.AY = ? AND sc.QUARTER = ? AND {where_sql}",
+                tuple([ay, quarter] + where_params))
+            out = {}
+            fields = ["PROPERTY_KEY", "PROPERTY_NAME", "ENTITY_NUMBER", "RM_NAME", "RM_EMAIL"] + measure_cols
+            for r in rows:
+                row = dict(zip(fields, r))
+                row["OVERALL"] = (row.get("LDRTOTAL") or 0) + (row.get("MSTOTAL") or 0)
+                out[row["PROPERTY_KEY"]] = row
+            return out
+
+        a = _fetch(ay_a, q_a)
+        b = _fetch(ay_b, q_b)
+
+        # Union of property keys so a property that exists in only one period
+        # still appears (as "n/a" on the other side).
+        all_keys = sorted(set(a.keys()) | set(b.keys()),
+                          key=lambda k: (a.get(k) or b.get(k) or {}).get("PROPERTY_NAME") or "")
+        delta_cols = measure_cols + ["OVERALL"]
+        rows = []
+        for pk in all_keys:
+            ra, rb = a.get(pk), b.get(pk)
+            ref = ra or rb
+            entry = {
+                "PROPERTY_KEY": pk,
+                "PROPERTY_NAME": ref.get("PROPERTY_NAME"),
+                "ENTITY_NUMBER": ref.get("ENTITY_NUMBER"),
+                "RM_NAME": ref.get("RM_NAME"),
+                "a": {c: (ra.get(c) if ra else None) for c in delta_cols},
+                "b": {c: (rb.get(c) if rb else None) for c in delta_cols},
+            }
+            entry["delta"] = {
+                c: ((rb.get(c) if rb else None) or 0) - ((ra.get(c) if ra else None) or 0)
+                   if (ra and rb) else None
+                for c in delta_cols
+            }
+            rows.append(entry)
+
+        return jsonify({
+            "a": {"ay": ay_a, "quarter": q_a, "label": f"{q_a} {ay_a}", "count": len(a)},
+            "b": {"ay": ay_b, "quarter": q_b, "label": f"{q_b} {ay_b}", "count": len(b)},
+            "measure_cols": delta_cols,
+            "rows": rows,
+        })
+    finally:
+        conn.close()
+
+
 def _latest_period(conn):
     latest = conn.fetchall("""
         SELECT TOP 1 AY, QUARTER FROM dbo.SCORECARD_CORE

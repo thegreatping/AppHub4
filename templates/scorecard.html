@@ -419,6 +419,7 @@
     <div class="sc-tabbar">
         <button type="button" class="sc-tab active" id="scTabBtn_scorecard" onclick="showScTab('scorecard')">Scorecard</button>
         <button type="button" class="sc-tab" id="scTabBtn_fallforecast" onclick="showScTab('fallforecast')">Fall Forecast</button>
+        <button type="button" class="sc-tab" id="scTabBtn_compare" onclick="showScTab('compare')">Compare Quarters</button>
     </div>
 
     <div id="scView_scorecard">
@@ -506,6 +507,47 @@
         </table>
     </div>
     <div class="sc-empty" id="scFFEmpty" style="display:none;">No properties have Fall Forecast leasing data yet.</div>
+    </div>
+
+    <!-- ============================= COMPARE QUARTERS ============================= -->
+    <div id="scView_compare" style="display:none;">
+    <details class="sc-tab-blurb" id="scBlurbCompare">
+        <summary><i class="fa-solid fa-info-circle"></i> About the Compare Quarters tab &mdash; click to expand</summary>
+        <div class="sc-tab-blurb-body">
+            <p><strong>Purpose.</strong> Pick two quarters and see per-property deltas on every measure plus the rollups (PRERM, Leadership Total, Maintenance Total, Overall). Great for RVPs reviewing trajectory and for prepping bonus-committee discussions.</p>
+            <p><strong>How to use it.</strong></p>
+            <ul>
+                <li><strong>Quarter A</strong> defaults to the quarter immediately before the current one; <strong>Quarter B</strong> defaults to the current quarter. Switch either to any historical quarter present in SCORECARD_CORE.</li>
+                <li>Green cells = improvement (B higher than A). Red cells = regression. Grey = no change or missing data.</li>
+                <li>Scoping follows your role: PMs see one property, RMs/RVPs see their portfolio, admins see all.</li>
+                <li>Read-only -- edits are made in the main Scorecard tab.</li>
+            </ul>
+        </div>
+    </details>
+    <div class="sc-ribbon">
+        <div class="sc-stat">
+            <span class="k">Quarter A</span>
+            <select id="scCmpA" onchange="renderCompare()" style="background:var(--input-bg);color:var(--text-primary);border:1px solid var(--border-input);padding:4px 8px;border-radius:4px;font-size:0.8rem;"></select>
+        </div>
+        <div class="sc-stat">
+            <span class="k">Quarter B</span>
+            <select id="scCmpB" onchange="renderCompare()" style="background:var(--input-bg);color:var(--text-primary);border:1px solid var(--border-input);padding:4px 8px;border-radius:4px;font-size:0.8rem;"></select>
+        </div>
+        <div class="sc-stat">
+            <span class="k">Properties</span>
+            <span class="v" id="scCmpCount">--</span>
+        </div>
+        <div class="sc-toolbar">
+            <input type="text" class="sc-search" id="scCmpSearch" placeholder="Search property, entity, or RM..." oninput="renderCompareRows()">
+        </div>
+    </div>
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="scCmpTable">
+            <thead id="scCmpThead"></thead>
+            <tbody id="scCmpTbody"></tbody>
+        </table>
+    </div>
+    <div class="sc-empty" id="scCmpEmpty" style="display:none;">No comparison data available yet. Pick two quarters to see deltas.</div>
     </div>
 
 </div>
@@ -2360,12 +2402,125 @@ const FF_COLS = [
 let scFFSort = { col: null, dir: 1 };
 
 function showScTab(tab) {
-    ['scorecard', 'fallforecast'].forEach(t => {
+    ['scorecard', 'fallforecast', 'compare'].forEach(t => {
         document.getElementById(`scTabBtn_${t}`).classList.toggle('active', t === tab);
         document.getElementById(`scView_${t}`).style.display = t === tab ? '' : 'none';
     });
     if (tab === 'fallforecast') renderFallForecast();
+    if (tab === 'compare') initCompareTab();
 }
+
+// =============== COMPARE QUARTERS tab ===============
+// Fetch /api/quarters once to populate the two pickers, then render.
+let _cmpQuarters = null;      // list of {ay, quarter, label}
+let _cmpData = null;          // last payload from /api/compare
+
+async function initCompareTab() {
+    if (_cmpQuarters === null) {
+        try {
+            const r = await fetch('/scorecard/api/quarters');
+            const j = await r.json();
+            _cmpQuarters = j.quarters || [];
+        } catch (e) { _cmpQuarters = []; }
+        const selA = document.getElementById('scCmpA');
+        const selB = document.getElementById('scCmpB');
+        _cmpQuarters.forEach(q => {
+            selA.insertAdjacentHTML('beforeend', `<option value="${q.ay}:${q.quarter}">${q.label}</option>`);
+            selB.insertAdjacentHTML('beforeend', `<option value="${q.ay}:${q.quarter}">${q.label}</option>`);
+        });
+        if (_cmpQuarters.length >= 2) { selA.selectedIndex = 1; selB.selectedIndex = 0; }
+        else if (_cmpQuarters.length === 1) { selA.selectedIndex = 0; selB.selectedIndex = 0; }
+    }
+    renderCompare();
+}
+
+async function renderCompare() {
+    const selA = document.getElementById('scCmpA');
+    const selB = document.getElementById('scCmpB');
+    if (!selA.value || !selB.value) return;
+    const [ayA, qA] = selA.value.split(':');
+    const [ayB, qB] = selB.value.split(':');
+    const url = `/scorecard/api/compare?ay_a=${ayA}&quarter_a=${qA}&ay_b=${ayB}&quarter_b=${qB}`;
+    try {
+        const r = await fetch(url);
+        _cmpData = await r.json();
+    } catch (e) { _cmpData = null; }
+    renderCompareRows();
+}
+
+function renderCompareRows() {
+    const thead = document.getElementById('scCmpThead');
+    const tbody = document.getElementById('scCmpTbody');
+    const empty = document.getElementById('scCmpEmpty');
+    const count = document.getElementById('scCmpCount');
+    if (!_cmpData || !_cmpData.rows) {
+        thead.innerHTML = tbody.innerHTML = '';
+        empty.style.display = ''; count.textContent = '--';
+        return;
+    }
+    const q = document.getElementById('scCmpSearch').value.toLowerCase().trim();
+    let rows = _cmpData.rows;
+    if (q) {
+        rows = rows.filter(r =>
+            (r.PROPERTY_NAME || '').toLowerCase().includes(q)
+            || String(r.ENTITY_NUMBER || '').toLowerCase().includes(q)
+            || (r.RM_NAME || '').toLowerCase().includes(q)
+        );
+    }
+    count.textContent = rows.length;
+    if (!rows.length) { thead.innerHTML = tbody.innerHTML = ''; empty.style.display = ''; return; }
+    empty.style.display = 'none';
+
+    // Column layout: fixed identity cols + repeating [A, B, Delta] for each measure.
+    const measureCols = _cmpData.measure_cols || [];
+    const idCols = [
+        { k: 'PROPERTY_NAME', label: 'Property' },
+        { k: 'ENTITY_NUMBER', label: 'Entity' },
+        { k: 'RM_NAME', label: 'RM' },
+    ];
+    let th = '<tr>';
+    idCols.forEach(c => { th += `<th rowspan="2" style="position:sticky;left:0;background:var(--table-head-bg);">${c.label}</th>`; });
+    measureCols.forEach(m => { th += `<th colspan="3" style="text-align:center;border-left:1px solid var(--border-input);">${m}</th>`; });
+    th += '</tr><tr>';
+    const aLbl = (_cmpData.a && _cmpData.a.label) || 'A';
+    const bLbl = (_cmpData.b && _cmpData.b.label) || 'B';
+    measureCols.forEach(_ => {
+        th += `<th style="font-weight:500;color:var(--text-secondary);font-size:0.72rem;border-left:1px solid var(--border-input);">${aLbl}</th>`;
+        th += `<th style="font-weight:500;color:var(--text-secondary);font-size:0.72rem;">${bLbl}</th>`;
+        th += `<th style="font-weight:500;color:var(--text-secondary);font-size:0.72rem;">&Delta;</th>`;
+    });
+    th += '</tr>';
+    thead.innerHTML = th;
+
+    const fmt = v => (v === null || v === undefined ? '--' : v);
+    const fmtDelta = d => {
+        if (d === null || d === undefined) return '--';
+        if (d > 0) return `+${d}`;
+        return String(d);
+    };
+    const colorForDelta = d => {
+        if (d === null || d === undefined || d === 0) return 'color:var(--text-secondary);';
+        if (d > 0) return 'color:#22c55e;font-weight:600;';
+        return 'color:#ef4444;font-weight:600;';
+    };
+
+    let body = '';
+    for (const r of rows) {
+        body += '<tr>';
+        body += `<td style="position:sticky;left:0;background:var(--row-bg);"><b>${r.PROPERTY_NAME || ''}</b></td>`;
+        body += `<td>${r.ENTITY_NUMBER || ''}</td>`;
+        body += `<td>${r.RM_NAME || ''}</td>`;
+        for (const m of measureCols) {
+            const va = r.a[m], vb = r.b[m], d = r.delta[m];
+            body += `<td style="border-left:1px solid var(--border-input);text-align:right;">${fmt(va)}</td>`;
+            body += `<td style="text-align:right;">${fmt(vb)}</td>`;
+            body += `<td style="text-align:right;${colorForDelta(d)}">${fmtDelta(d)}</td>`;
+        }
+        body += '</tr>';
+    }
+    tbody.innerHTML = body;
+}
+// =============== end COMPARE QUARTERS ===============
 
 // Populate the "View as..." dropdown on load with optgroups (RVPs, RMs, PMs).
 // Real-admin only (endpoints 403 otherwise). Values are prefixed to route to
