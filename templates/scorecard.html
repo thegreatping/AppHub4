@@ -1530,7 +1530,7 @@ function renderChipBar() {
     const bar = document.getElementById('scChipBar');
     const chips = [];
     if (searchQuery) chips.push(`<span class="sc-chip">Search: "${esc(searchQuery)}" <button onclick="clearSearch()">&times;</button></span>`);
-    if (quickFilters.needsInput) chips.push(`<span class="sc-chip">Needs RM Input <button onclick="toggleQuickFilter('needsInput')">&times;</button></span>`);
+    if (quickFilters.needsInput) chips.push(`<span class="sc-chip" title="Showing only properties with a missing RM Score, Surveys & Reviews value, or NOI value. Click the x to show every property again.">Filter: Missing RM Score / Surveys / NOI <button onclick="toggleQuickFilter('needsInput')">&times;</button></span>`);
     if (quickFilters.hasNotes) chips.push(`<span class="sc-chip">Has Notes <button onclick="toggleQuickFilter('hasNotes')">&times;</button></span>`);
     for (const [key, sel] of Object.entries(colFilters)) {
         if (!sel) continue;
