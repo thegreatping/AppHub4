@@ -2330,15 +2330,16 @@ function exportSubjectiveScores() {
     const missingNOI = allRows.filter(r => r.NOI === null || r.NOI === undefined);
     if (missingRM.length || missingSV.length || missingNOI.length) {
         const listNames = rows => rows.slice(0, 12).map(r => `  - ${r.PROPERTY_NAME}`).join('\n') + (rows.length > 12 ? `\n  ...and ${rows.length - 12} more` : '');
-        let msg = "Your scores can't be emailed yet -- a score must be present for every community. A dash (--) is not an accepted value.\n\n";
+        let msg = "Heads up: not every community has a score yet. A dash (--) will appear as blank / No in the Excel export.\n\n";
         if (missingRM.length) msg += `RM Score (0-5) still missing for ${missingRM.length} propert${missingRM.length === 1 ? 'y' : 'ies'}:\n${listNames(missingRM)}\n\n`;
         if (missingSV.length) msg += `Surveys & Reviews (0/1) still missing for ${missingSV.length} propert${missingSV.length === 1 ? 'y' : 'ies'}:\n${listNames(missingSV)}\n\n`;
         if (missingNOI.length) msg += `Controllable NOI (0/1) still missing for ${missingNOI.length} propert${missingNOI.length === 1 ? 'y' : 'ies'}:\n${listNames(missingNOI)}\n\n`;
-        msg += 'These communities are now highlighted for you.';
-        alert(msg);
-        quickFilters.needsInput = true;
-        render();
-        return;
+        msg += 'Click OK to send anyway, or Cancel to finish entering scores (missing communities will be highlighted for you).';
+        if (!confirm(msg)) {
+            quickFilters.needsInput = true;
+            render();
+            return;
+        }
     }
     const rmName = window.SC_IS_ADMIN ? 'Admin Export' : (allRows[0].RM_NAME || 'RM');
     const th = 'style="background:#00a9c8;color:#fff;font-weight:bold;border:1px solid #999;padding:4px 8px;text-align:left;"';
