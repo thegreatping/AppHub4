@@ -3004,7 +3004,19 @@ def api_drilldown(measure_code):
         portfolio = {k: v for k, v in portfolio.items() if v["name"] == property_filter}
 
     q_start, q_end = _quarter_bounds(ay, quarter)
-    conn_wh = SafeConnection(env, "WH_PROD2", None)
+    try:
+        conn_wh = SafeConnection(env, "WH_PROD2", None)
+    except ValueError as e:
+        if "No endpoint found" in str(e) or "FABRIC_" in str(e):
+            return jsonify({
+                "error": ("Drill-down evidence is not yet available in the hosted beta "
+                          "environment -- the underlying source table ("
+                          f"{_DRILLDOWN_LINEAGE.get(group, 'WH_PROD2')}) requires a "
+                          "Fabric credential path we have not wired up server-side yet. "
+                          "This feature works from the dev workstation. Expected to be "
+                          "re-enabled before GA.")
+            }), 503
+        raise
     try:
         columns, rows = _DRILLDOWN_QUERY_FUNCS[group](conn_wh, portfolio, q_start, q_end, measure_code.upper(), ref)
     finally:

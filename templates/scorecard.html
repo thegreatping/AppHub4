@@ -1701,13 +1701,14 @@ function fetchDrilldownData() {
     document.getElementById('scDdCount').textContent = '';
     const qs = scDdSelectedProperty ? `?property=${encodeURIComponent(scDdSelectedProperty)}` : '';
     fetch(`/scorecard/api/drilldown/${scDdMeasureCode}${qs}`)
-        .then(r => r.json())
-        .then(data => {
-            if (data.error) {
-                document.getElementById('scDdTitle').textContent = 'Unable to load';
-                document.getElementById('scDdSubtitle').textContent = data.error;
+        .then(r => r.json().then(j => ({ ok: r.ok, status: r.status, body: j })).catch(() => ({ ok: r.ok, status: r.status, body: { error: `HTTP ${r.status}` } })))
+        .then(({ ok, status, body }) => {
+            if (!ok || body.error) {
+                document.getElementById('scDdTitle').textContent = status === 503 ? 'Not available in beta' : 'Unable to load';
+                document.getElementById('scDdSubtitle').textContent = body.error || `HTTP ${status}`;
                 return;
             }
+            const data = body;
             scDrilldownData = data;
             document.getElementById('scDdTitle').textContent = data.label.replace(/&amp;/g, '&');
             document.getElementById('scDdSubtitle').textContent = data.quarter_label +
