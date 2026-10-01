@@ -1407,7 +1407,7 @@ function renderHeader() {
     const thead = document.getElementById('scThead');
     const groupRow = `<tr>
         <th class="id-col" colspan="${ID_COLS.length + 1}"></th>
-        <th class="grp-leadership" colspan="${LEADERSHIP_COLS.length}">Leadership</th>
+        <th class="grp-leadership" colspan="${LEADERSHIP_COLS.length + (showPrior ? 1 : 0)}">Leadership</th>
         <th class="grp-maintenance" colspan="${MAINT_COLS.length + (showPrior ? 1 : 0)}">Maintenance</th>
         <th></th>
     </tr>`;
