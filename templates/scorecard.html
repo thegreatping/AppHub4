@@ -559,7 +559,7 @@
         <div class="popout-subtitle" id="scDetailSubtitle"></div>
         <div class="popout-subtitle">Overall Score: <span class="sc-detail-overall" id="scDetailOverall">--</span></div>
         <div class="sc-detail-subtotals">
-            <span class="sc-detail-subtotal">Leadership: <b id="scDetailLdrTotal">--</b></span>
+            <span class="sc-detail-subtotal" title="Pre-RM Leadership: sum of the objective leadership measures (TC, TR, PCARD, RA, IIPP, LFA, PMLEO, REP, WO) BEFORE RM Score is added">Leadership (Pre-RM): <b id="scDetailLdrTotal">--</b></span>
             <span class="sc-detail-subtotal">Maintenance: <b id="scDetailMsTotal">--</b></span>
             <span class="sc-detail-subtotal">RM Score: <b id="scDetailRmScore">--</b></span>
             <span class="sc-detail-subtotal-eq">= <b id="scDetailReconOverall">--</b></span>
@@ -1022,7 +1022,7 @@ const SC_HELP_CONTENT = {
 
         <div class="sc-crit-item">
           <div class="sc-crit-name">The Overall Score column (far left)</div>
-          <div class="sc-crit-body"><p>This is Leadership Total + Maintenance Total + your RM Score. It's the number bonus decisions ultimately land on.</p></div>
+          <div class="sc-crit-body"><p>This is Pre-RM Leadership + Maintenance Total + RM Score. It's the number bonus decisions ultimately land on. (The slideout's "Leadership (Pre-RM)" chip is the pre-RM half so the three chips cleanly add to Overall; the main grid's "Leadership Total" column shows pre-RM + RM Score already combined, as finance expects.)</p></div>
         </div>
 
         <div class="sc-crit-item">
@@ -1062,7 +1062,7 @@ const SC_HELP_CONTENT = {
 
         <div class="sc-crit-item">
           <div class="sc-crit-name">The header block</div>
-          <div class="sc-crit-body"><p>Property name, entity number, quarter label at the top. Below that: Overall Score plus the sub-totals (Leadership, Maintenance, RM Score, =Sum). If the sum doesn't match the Overall (rare, but happens after edits), you'll see a red tint on the =Sum chip. That's a heads-up that something is inconsistent &mdash; usually resolves itself on the next update run.</p></div>
+          <div class="sc-crit-body"><p>Property name, entity number, quarter label at the top. Below that: Overall Score plus the sub-totals (Leadership Pre-RM, Maintenance, RM Score, =Sum). The three chips are designed to add exactly to Overall. If the =Sum tint goes red, something has gone inconsistent (rare -- usually self-corrects on the next pipeline run).</p></div>
         </div>
 
         <div class="sc-crit-item">
@@ -1891,17 +1891,18 @@ function renderScDetail() {
     document.getElementById('scDetailContent').classList.toggle('explains-on', scoreExplainVisible);
 }
 
-// Header math: Leadership + Maintenance + RM Score should equal Overall Score.
-// Uses the same LDRTOTAL / MSTOTAL / RMSCORE fields the backend already returns
-// so this is a display-only reconciliation (nothing gets re-computed here).
+// Header math: Leadership (Pre-RM) + Maintenance + RM Score == Overall Score.
+// Showing PRERM (not LDRTOTAL) in the Leadership chip avoids double-counting
+// RM Score (which lives inside LDRTOTAL already). The sum chip stays as a
+// cheap sanity check and should match Overall; the red mismatch state is now
+// a true "something's inconsistent" flag.
 function _scUpdateSubtotals(d) {
-    const ldr = d.LDRTOTAL, ms = d.MSTOTAL, rm = d.RMSCORE, overall = d.OVERALL;
+    const prerm = d.PRERM, ms = d.MSTOTAL, rm = d.RMSCORE, overall = d.OVERALL;
     const fmt = v => (v === null || v === undefined) ? '--' : v;
-    document.getElementById('scDetailLdrTotal').textContent = fmt(ldr);
+    document.getElementById('scDetailLdrTotal').textContent = fmt(prerm);
     document.getElementById('scDetailMsTotal').textContent = fmt(ms);
     document.getElementById('scDetailRmScore').textContent = fmt(rm);
-    // Reconciliation: compute sum locally and flag if it doesn't match Overall.
-    const nums = [ldr, ms, rm].map(x => (typeof x === 'number' ? x : parseFloat(x))).filter(x => !isNaN(x));
+    const nums = [prerm, ms, rm].map(x => (typeof x === 'number' ? x : parseFloat(x))).filter(x => !isNaN(x));
     const sum = nums.length ? nums.reduce((a, b) => a + b, 0) : null;
     const reconEl = document.getElementById('scDetailReconOverall');
     reconEl.textContent = fmt(sum);
