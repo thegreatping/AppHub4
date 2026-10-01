@@ -2343,28 +2343,46 @@ function exportSubjectiveScores() {
     }
     const rmName = window.SC_IS_ADMIN ? 'Admin Export' : (allRows[0].RM_NAME || 'RM');
     const th = 'style="background:#00a9c8;color:#fff;font-weight:bold;border:1px solid #999;padding:4px 8px;text-align:left;"';
+    const thDark = 'style="background:#334155;color:#fff;font-weight:bold;border:1px solid #999;padding:4px 8px;text-align:left;"';
     const tdC = 'style="border:1px solid #ccc;padding:4px 8px;text-align:center;"';
     const tdL = 'style="border:1px solid #ccc;padding:4px 8px;"';
+    const tdN = 'style="border:1px solid #ccc;padding:4px 8px;text-align:center;font-weight:bold;background:#f0fdfa;"';
+    // Export the full grid: every leadership + maintenance measure, every rollup, plus notes.
+    const BOOL = v => (v === 1 || v === true || v === '1') ? 'Y' : (v === 0 || v === false || v === '0') ? 'N' : '';
+    const NUM = v => (v === null || v === undefined || v === '') ? '' : v;
+    const measureCols = LEADERSHIP_COLS.concat(MAINT_COLS);  // includes RMSCORE + rollups
+    const header =
+        `<tr><th ${th}>Entity</th><th ${th}>Community</th>` +
+        `<th ${thDark}>Overall</th>` +
+        measureCols.map(c => `<th ${th}>${esc(c.label)}</th>`).join('') +
+        `<th ${th}>RM Notes</th></tr>`;
+    const totalCols = 3 + measureCols.length + 1;
     let h = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body>';
-    h += '<table style="border-collapse:collapse;font-family:Calibri,Arial;font-size:11pt;">';
-    h += `<tr><td colspan="6" style="background:#16232a;color:#fff;font-weight:bold;padding:6px 8px;">${esc(rmName)} -- ${esc(scQuarterLabel)} Subjective Scores &amp; Notes</td></tr>`;
-    h += `<tr><td colspan="6" style="color:#555;padding:4px 8px;font-size:9pt;">Submitted by: <b>${esc(rmName)}</b> | ${new Date().toLocaleString('en-US')}</td></tr>`;
-    h += `<tr><th ${th}>Entity</th><th ${th}>Community</th><th ${th}>RM Score (0-5)</th><th ${th}>Surveys &amp; Reviews (0/1)</th><th ${th}>NOI % to Budget (0/1)</th><th ${th}>RM Notes</th></tr>`;
+    h += '<table style="border-collapse:collapse;font-family:Calibri,Arial;font-size:10pt;">';
+    h += `<tr><td colspan="${totalCols}" style="background:#16232a;color:#fff;font-weight:bold;padding:6px 8px;font-size:11pt;">${esc(rmName)} -- ${esc(scQuarterLabel)} Scorecard &amp; RM Notes</td></tr>`;
+    h += `<tr><td colspan="${totalCols}" style="color:#555;padding:4px 8px;font-size:9pt;">Submitted by: <b>${esc(rmName)}</b> | ${new Date().toLocaleString('en-US')}</td></tr>`;
+    h += header;
     allRows.slice().sort((a, b) => (a.PROPERTY_NAME || '').localeCompare(b.PROPERTY_NAME || '')).forEach(r => {
-        h += `<tr><td ${tdC}>${esc(r.ENTITY_NUMBER)}</td><td ${tdL}>${esc(r.PROPERTY_NAME)}</td>` +
-             `<td ${tdC}>${esc(r.RMSCORE)}</td><td ${tdC}>${r.SURVEYS ? 'Yes' : 'No'}</td><td ${tdC}>${r.NOI ? 'Yes' : 'No'}</td>` +
-             `<td ${tdL}>${esc(r.NOTES || '')}</td></tr>`;
+        let row = `<tr><td ${tdC}>${esc(r.ENTITY_NUMBER)}</td><td ${tdL}>${esc(r.PROPERTY_NAME)}</td>`;
+        row += `<td ${tdN}>${NUM(r.OVERALL)}</td>`;
+        for (const c of measureCols) {
+            const v = r[c.key];
+            if (c.type === 'num' || c.type === 'total') row += `<td ${tdN}>${NUM(v)}</td>`;
+            else row += `<td ${tdC}>${BOOL(v)}</td>`;
+        }
+        row += `<td ${tdL}>${esc(r.NOTES || '')}</td></tr>`;
+        h += row;
     });
     h += '</table></body></html>';
-    const fname = `${scQuarterLabel} - Subjective Scores - ${rmName} - ${scExportTimestamp()}.xls`;
+    const fname = `${scQuarterLabel} - Scorecard - ${rmName} - ${scExportTimestamp()}.xls`;
     scDownloadBlob(h, 'application/vnd.ms-excel', fname);
 
-    const subject = `${rmName} - ${scQuarterLabel} Subjective Scores`;
+    const subject = `${rmName} - ${scQuarterLabel} Scorecard`;
     // mailto: links can't attach files -- browser security. Spell out exactly
     // what the user needs to do so they aren't confused by the empty paperclip.
     const body =
         `Hi Molly,\n\n` +
-        `My ${scQuarterLabel} subjective scores are ready. The file "${fname}" was just downloaded to this device.\n\n` +
+        `My ${scQuarterLabel} scorecard is ready. The file "${fname}" was just downloaded to this device.\n\n` +
         `Please attach it to this email before sending (drag it in from the Downloads folder, or use Insert > Attach File).\n\n` +
         `Thanks,\n${rmName}\n\n` +
         `-- Submitted via the Leadership Scorecard on ${new Date().toLocaleString('en-US')}`;
