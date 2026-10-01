@@ -114,11 +114,20 @@ def _require_access():
 
 
 def _is_real_admin():
-    """Same admin check as _is_admin, but ignores any active "view as RM" simulation
-    so we always know whether the underlying user CAN toggle view-as (needed by
-    the view-as management endpoints themselves)."""
+    """Admin check for Leadership Scorecard. Three ways in:
+      1. is_developer flag (set at login from MODULE_AUDIENCE GRANT_TYPE='developer')
+      2. user_modules entry for this app with access=='admin'  <-- Audience Manager
+         (MODULE_AUDIENCE ACCESS_LEVEL='admin', via any grant type)
+      3. legacy dbo.APP_ADMINS row for this APP_ID + email
+
+    Ignores any active "View as ..." simulation so we always know whether
+    the underlying user CAN toggle view-as (needed by the view-as management
+    endpoints themselves)."""
     if session.get("is_developer"):
         return True
+    for m in session.get("user_modules", []):
+        if m.get("id") == APP_ID and (m.get("access") or "").lower() == "admin":
+            return True
     user = session.get("user", {})
     email = user.get("email", "").lower()
     if not email:
