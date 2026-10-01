@@ -406,8 +406,9 @@
         {% endif %}
         <button type="button" class="sc-help-btn" onclick="openScHelp()" title="Help &amp; user guide"><i class="fa-solid fa-circle-question"></i></button>
         <button type="button" class="sc-reference-btn" onclick="openScReference()"><i class="fa-solid fa-book"></i> Criteria &amp; Guides</button>
-        <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/qa'" title="Shared pre-beta QA sign-off checklist -- all testers welcome"><i class="fa-solid fa-clipboard-check"></i> QA Sign-Off</button>
+        <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/qa'" title="Your private pre-beta QA sign-off checklist"><i class="fa-solid fa-clipboard-check"></i> QA Sign-Off</button>
         {% if is_admin %}
+        <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/qa/dashboard'" title="Admin aggregate view of every tester's QA progress"><i class="fa-solid fa-users"></i> All Testers</button>
         <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/tables'" title="Browse every table feeding or produced by the Scorecard pipeline"><i class="fa-solid fa-database"></i> Table Manager</button>
         <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/runs'" title="Recent notebook executions with per-step outcomes"><i class="fa-solid fa-play-circle"></i> Notebook Runs</button>
         <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/admin/diagram/dataflow','_blank','noopener')" title="Interactive data-flow diagram"><i class="fa-solid fa-diagram-project"></i> Data Flow</button>
