@@ -404,10 +404,12 @@
         <button type="button" class="sc-reference-btn" onclick="openScReference()"><i class="fa-solid fa-book"></i> Criteria &amp; Guides</button>
         <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/qa'" title="Shared pre-beta QA sign-off checklist -- all testers welcome"><i class="fa-solid fa-clipboard-check"></i> QA Sign-Off</button>
         {% if is_admin %}
-        <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/tables'" title="Browse every table feeding or produced by the Scorecard pipeline (admin only)"><i class="fa-solid fa-database"></i> Table Manager</button>
-        <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/runs'" title="Recent notebook executions with per-step outcomes (admin only)"><i class="fa-solid fa-play-circle"></i> Notebook Runs</button>
-        <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/admin/diagram/dataflow','_blank','noopener')" title="Interactive data-flow diagram (admin only)"><i class="fa-solid fa-diagram-project"></i> Data Flow</button>
-        <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/admin/diagram/table_manager','_blank','noopener')" title="Interactive table-manager diagram (admin only)"><i class="fa-solid fa-sitemap"></i> Diagram</button>
+        {% if is_developer %}
+        <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/tables'" title="Browse every table feeding or produced by the Scorecard pipeline (dev only -- WH_PROD2 browse not yet wired for Azure)"><i class="fa-solid fa-database"></i> Table Manager</button>
+        <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/runs'" title="Recent notebook executions with per-step outcomes (dev only)"><i class="fa-solid fa-play-circle"></i> Notebook Runs</button>
+        <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/admin/diagram/dataflow','_blank','noopener')" title="Interactive data-flow diagram (dev only -- diagram files not yet deployed to Azure)"><i class="fa-solid fa-diagram-project"></i> Data Flow</button>
+        <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/admin/diagram/table_manager','_blank','noopener')" title="Interactive table-manager diagram (dev only)"><i class="fa-solid fa-sitemap"></i> Diagram</button>
+        {% endif %}
         {% endif %}
     </div>
 </div>
