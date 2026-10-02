@@ -1048,6 +1048,11 @@
         'FLAG_SUBPROPERTY','FLAG_CONVENTIONAL_ONLY','FLAG_DATA_FREEZE','FLAG_FANNIE_FREDDIE_MORTGAGE',
         'FLAG_MIXED_USE','FLAG_RETAIL','FLAG_STUDENT_ONLY','FLAG_USE_TEMP_ADDRESS']);
 
+    // Display-only label overrides for flag checkboxes. Field names stay untouched.
+    const FLAG_LABEL_OVERRIDES = {
+        FLAG_STABILIZED: { full: 'FLAG_STABILIZED (NEW DEV)', short: 'STABILIZED (NEW DEV)' },
+    };
+
     // Current detail state
     let detailPropertyKey = null;
     let detailOverrides = new Set();
@@ -1100,7 +1105,10 @@
     // ─── PDM Settings: category order + visibility ────────────────────────────
     // Stored in sessionStorage as { order: [...names], hidden: [...names] }
     // Return friendly label for a field name used in settings list
-    function fieldLabel(f) { return f.replace(/_/g,' '); }
+    function fieldLabel(f) {
+        if (FLAG_LABEL_OVERRIDES[f]) return FLAG_LABEL_OVERRIDES[f].full.replace(/_/g, ' ');
+        return f.replace(/_/g,' ');
+    }
 
     // Get all fields for a section (for settings display)
     function sectionFields(name, settings) {
@@ -1401,10 +1409,11 @@
                     const editable = EDITABLE_FLAGS.has(f);
                     const labelClass = checked ? 'checked' : 'unchecked';
                     const disabledAttr = editable ? '' : 'disabled';
+                    const displayLabel = FLAG_LABEL_OVERRIDES[f]?.full || f;
                     html += `<div class="flag-check" data-field="${f}">
                         <input type="checkbox" id="flag_${f}" ${checked ? 'checked' : ''} ${disabledAttr}
                             onchange="saveFlag('${f}', this.checked)">
-                        <label for="flag_${f}" class="${labelClass}">${f}</label>
+                        <label for="flag_${f}" class="${labelClass}">${displayLabel}</label>
                     </div>`;
                 } else {
                     html += renderDetailField(f, row);
@@ -1446,7 +1455,8 @@
                         const v = row[f];
                         const checked = v == 1;
                         const editable = EDITABLE_FLAGS.has(f);
-                        const label = f.replace(/^FLAG_/, '').replace(/_/g, ' ');
+                        const label = FLAG_LABEL_OVERRIDES[f]?.short
+                                      || f.replace(/^FLAG_/, '').replace(/_/g, ' ');
                         const labelClass = checked ? 'checked' : 'unchecked';
                         const disabledAttr = editable ? '' : 'disabled';
                         html += `<div class="flag-check" data-field="${f}">
