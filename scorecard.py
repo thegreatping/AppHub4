@@ -149,13 +149,14 @@ def _is_admin():
     (cultivate.py/fasttrack.py/etc.) -- admins see every property; everyone
     else is scoped to their own RM_EMAIL via SCORECARD_CORE.
 
-    IF the admin has activated any "View as..." simulation (RM/PM/RVP)
+    IF the admin has activated any "View as..." simulation (RM/PM/RVP/ED)
     returns False so all scoping/gating treats them as that role. Use
     _is_real_admin() when you need the underlying flag (e.g. to toggle out
     of the simulation)."""
     if (session.get("sc_view_as_email")
             or session.get("sc_view_as_pm_property_key")
-            or session.get("sc_view_as_rvp_email")):
+            or session.get("sc_view_as_rvp_email")
+            or session.get("sc_view_as_ed_email")):
         return False
     return _is_real_admin()
 
@@ -169,6 +170,46 @@ def _effective_rm_email():
     return (session.get("user", {}).get("email") or "").lower()
 
 
+# ─── Executive Director scoping ─────────────────────────────────────────
+# Executive Directors oversee 1-3 properties each and are read-only (same
+# write posture as PMs). Detected by looking up the user's email in
+# PROPERTY_0.EXEC_DIR_EMAIL rather than Emp_Core.TITLE_GROUP, because in
+# Emp_Core they share the 'PROPERTY MANAGER' title group with real PMs --
+# PROPERTY_0 is the authoritative assignment source.
+def _is_ed():
+    """True if the current user is an Executive Director.
+    Real admins simulating 'View as ED' also count. Cached per session."""
+    if _is_real_admin():
+        return bool(session.get("sc_view_as_ed_email"))
+    if "sc_is_ed" in session:
+        return bool(session["sc_is_ed"])
+    user = session.get("user", {})
+    email = (user.get("email") or "").lower()
+    if not email:
+        session["sc_is_ed"] = False
+        return False
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        rows = conn.fetchall(
+            "SELECT TOP 1 1 FROM dbo.PROPERTY_0 "
+            "WHERE FLAG_REPORTABLE = 1 AND LOWER(EXEC_DIR_EMAIL) = ?",
+            (email,))
+    finally:
+        conn.close()
+    is_ed = bool(rows)
+    session["sc_is_ed"] = is_ed
+    return is_ed
+
+
+def _effective_ed_email():
+    """Email used for ED-scoping in every read endpoint. Honors admin
+    'View as ED' simulation."""
+    if _is_real_admin() and session.get("sc_view_as_ed_email"):
+        return session["sc_view_as_ed_email"].lower()
+    return (session.get("user", {}).get("email") or "").lower()
+
+
 def _pm_property_key():
     """Return the PROPERTY_KEY a Property Manager is scoped to, or None if
     the current user is not a PM. Cached in the session after first lookup.
@@ -176,10 +217,17 @@ def _pm_property_key():
     Precedence:
     1. Real admin currently simulating a PM (sc_view_as_pm_property_key) -- returns that key.
     2. Real admin not simulating -- returns None (admins are not PMs).
-    3. Non-admin -- looks up Emp_Core.TITLE_GROUP for 'Property Manager' + PROPERTY_KEY."""
+    3. Executive Directors (TITLE_GROUP='PROPERTY MANAGER' in Emp_Core but
+       listed in PROPERTY_0.EXEC_DIR_EMAIL for 1-3 properties) -- returns
+       None so they get the multi-property ED scope instead.
+    4. Non-admin -- looks up Emp_Core.TITLE_GROUP for 'Property Manager' + PROPERTY_KEY."""
     if _is_real_admin():
         pm_sim = session.get("sc_view_as_pm_property_key")
         return int(pm_sim) if pm_sim else None
+    # ED takes precedence over PM so a single-property ED is still read-only
+    # but gets the correct scope filter (EXEC_DIR_EMAIL, not PROPERTY_KEY).
+    if _is_ed():
+        return None
     if "sc_pm_property_key" in session:
         val = session["sc_pm_property_key"]
         return val if val else None
@@ -261,11 +309,12 @@ def _rvp_sees_all():
 
 def _scope_clause(alias="sc"):
     """Return (where_sql, params) that scopes a SELECT to the current user's
-    role. The RM and RVP branches assume the caller has already joined
+    role. The RM/RVP/ED branches assume the caller has already joined
     dbo.PROPERTY_0 p ON p.PROPERTY_KEY = <alias>.PROPERTY_KEY -- adds an
     empty '1=1' filter otherwise, so admin/pm-only queries stay JOIN-free.
-      admin, pm, rvp-all -> no filter
+      admin, rvp-all     -> no filter
       pm                 -> <alias>.PROPERTY_KEY = ?
+      ed                 -> LOWER(p.EXEC_DIR_EMAIL) = ?
       rvp                -> LOWER(p.RVP_EMAIL) = ?
       rm (default)       -> LOWER(COALESCE(p.RM_EMAIL, <alias>.RM_EMAIL)) = ?
     """
@@ -274,6 +323,8 @@ def _scope_clause(alias="sc"):
     pm_key = _pm_property_key()
     if pm_key:
         return f"{alias}.PROPERTY_KEY = ?", [pm_key]
+    if _is_ed():
+        return "LOWER(p.EXEC_DIR_EMAIL) = ?", [_effective_ed_email()]
     if _is_rvp():
         if _rvp_sees_all():
             return "1=1", []
@@ -283,15 +334,20 @@ def _scope_clause(alias="sc"):
 
 def _scope_update_where():
     """Return (where_sql, params) for an UPDATE against dbo.SCORECARD_CORE
-    that has no PROPERTY_0 join. RVP mode uses a subquery on PROPERTY_0 to
-    verify the property belongs to the RVP's region. Callers should have
-    already verified ownership via _scoped_property_row -- this is
-    defense-in-depth."""
+    that has no PROPERTY_0 join. RVP/ED modes use a subquery on PROPERTY_0 to
+    verify the property belongs to the user's scope. ED is read-only (write
+    endpoints 403 before reaching an UPDATE), but we keep the branch as
+    defense-in-depth. Callers should have already verified ownership via
+    _scoped_property_row."""
     if _is_admin():
         return "", []
     pm_key = _pm_property_key()
     if pm_key:
         return " AND PROPERTY_KEY = ?", [pm_key]
+    if _is_ed():
+        return (" AND EXISTS (SELECT 1 FROM dbo.PROPERTY_0 p "
+                "WHERE p.PROPERTY_KEY = dbo.SCORECARD_CORE.PROPERTY_KEY "
+                "AND LOWER(p.EXEC_DIR_EMAIL) = ?)"), [_effective_ed_email()]
     if _is_rvp():
         if _rvp_sees_all():
             return "", []
@@ -353,6 +409,7 @@ def _ctx(**kwargs):
     view_as_email = session.get("sc_view_as_email") if _is_real_admin() else None
     view_as_pm_key = session.get("sc_view_as_pm_property_key") if _is_real_admin() else None
     view_as_rvp_email = session.get("sc_view_as_rvp_email") if _is_real_admin() else None
+    view_as_ed_email = session.get("sc_view_as_ed_email") if _is_real_admin() else None
     view_as_pm_label = None
     if view_as_pm_key:
         try:
@@ -385,7 +442,9 @@ def _ctx(**kwargs):
         view_as_pm_property_key=view_as_pm_key,
         view_as_pm_label=view_as_pm_label,
         view_as_rvp_email=view_as_rvp_email,
+        view_as_ed_email=view_as_ed_email,
         is_pm=pm_prop_key is not None,
+        is_ed=_is_ed(),
         pm_property_key=pm_prop_key,
         is_rvp=is_rvp,
         rvp_email=_effective_rvp_email() if is_rvp else None,
@@ -533,10 +592,14 @@ def _qa_suggested_role():
     if _is_real_admin():
         if session.get("sc_view_as_pm_property_key"):
             return "Property Manager (View As)"
+        if session.get("sc_view_as_ed_email"):
+            return "Executive Director (View As)"
         if session.get("sc_view_as_rvp_email"):
             return "Regional Vice President (View As)"
         if session.get("sc_view_as_email"):
             return "Regional Manager (View As)"
+    if _is_ed():
+        return "Real ED (production account)"
     if _pm_property_key():
         return "Real PM (production account)"
     if _is_rvp():
@@ -1790,6 +1853,7 @@ def api_admin_view_as_rm():
         return jsonify({"error": "email required"}), 400
     session.pop("sc_view_as_pm_property_key", None)  # RM and PM simulation are mutually exclusive
     session.pop("sc_view_as_rvp_email", None)
+    session.pop("sc_view_as_ed_email", None)
     session["sc_view_as_email"] = email
     return jsonify({"ok": True, "view_as_email": email})
 
@@ -1846,6 +1910,7 @@ def api_admin_view_as_pm():
         return jsonify({"error": "property_key required (int)"}), 400
     session.pop("sc_view_as_email", None)  # PM and RM simulation are mutually exclusive
     session.pop("sc_view_as_rvp_email", None)
+    session.pop("sc_view_as_ed_email", None)
     session["sc_view_as_pm_property_key"] = prop_key
     return jsonify({"ok": True, "view_as_pm_property_key": prop_key})
 
@@ -1904,14 +1969,65 @@ def api_admin_view_as_rvp():
         return jsonify({"error": "email required"}), 400
     session.pop("sc_view_as_email", None)
     session.pop("sc_view_as_pm_property_key", None)
+    session.pop("sc_view_as_ed_email", None)
     session["sc_view_as_rvp_email"] = email
     return jsonify({"ok": True, "view_as_rvp_email": email})
+
+
+@scorecard_bp.route("/api/admin/eds")
+@login_required
+def api_admin_eds():
+    """List distinct EXEC_DIR_EMAIL / EXEC_DIR_NAME pairs from PROPERTY_0
+    for the 'View as Executive Director' picker. Real-admin only."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_real_admin():
+        return jsonify({"error": "admin only"}), 403
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        rows = conn.fetchall("""
+            SELECT EXEC_DIR_EMAIL, EXEC_DIR_NAME, COUNT(*) AS N
+            FROM dbo.PROPERTY_0
+            WHERE FLAG_REPORTABLE = 1
+              AND EXEC_DIR_EMAIL IS NOT NULL AND EXEC_DIR_EMAIL <> '' AND EXEC_DIR_EMAIL <> '--'
+            GROUP BY EXEC_DIR_EMAIL, EXEC_DIR_NAME
+            ORDER BY EXEC_DIR_NAME
+        """)
+        return jsonify({"eds": [
+            {"email": r[0], "name": r[1] or r[0], "property_count": r[2]}
+            for r in rows
+        ]})
+    finally:
+        conn.close()
+
+
+@scorecard_bp.route("/api/admin/view-as-ed", methods=["POST"])
+@login_required
+def api_admin_view_as_ed():
+    """Activate the 'view as Executive Director' simulation. Real-admin only.
+    Payload: {'email': '<ed_email>'}."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_real_admin():
+        return jsonify({"error": "admin only"}), 403
+    payload = request.get_json(silent=True) or {}
+    email = (payload.get("email") or "").strip().lower()
+    if not email:
+        return jsonify({"error": "email required"}), 400
+    session.pop("sc_view_as_email", None)
+    session.pop("sc_view_as_pm_property_key", None)
+    session.pop("sc_view_as_rvp_email", None)
+    session["sc_view_as_ed_email"] = email
+    return jsonify({"ok": True, "view_as_ed_email": email})
 
 
 @scorecard_bp.route("/api/admin/view-as-clear", methods=["POST"])
 @login_required
 def api_admin_view_as_clear():
-    """Exit any active 'view as' simulation (RM / PM / RVP). Available to
+    """Exit any active 'view as' simulation (RM / PM / RVP / ED). Available to
     real admins (so they can toggle back) AND to anyone whose session has
     the key set (so a stale key from a demoted user can always be cleared)."""
     check = _require_access()
@@ -1920,6 +2036,7 @@ def api_admin_view_as_clear():
     session.pop("sc_view_as_email", None)
     session.pop("sc_view_as_pm_property_key", None)
     session.pop("sc_view_as_rvp_email", None)
+    session.pop("sc_view_as_ed_email", None)
     return jsonify({"ok": True})
 
 
@@ -2604,8 +2721,8 @@ def api_toggle_override(property_key):
     check = _require_access()
     if check:
         return check
-    if _is_pm():
-        return jsonify({"error": "read-only for Property Managers"}), 403
+    if _is_pm() or _is_ed():
+        return jsonify({"error": "read-only for Property Managers and Executive Directors"}), 403
     user = session.get("user", {})
     payload = request.get_json(force=True) or {}
     field = payload.get("field")
@@ -2667,8 +2784,8 @@ def api_patch_property(property_key):
     check = _require_access()
     if check:
         return check
-    if _is_pm():
-        return jsonify({"error": "read-only for Property Managers"}), 403
+    if _is_pm() or _is_ed():
+        return jsonify({"error": "read-only for Property Managers and Executive Directors"}), 403
     user = session.get("user", {})
     payload = request.get_json(force=True) or {}
     field = next(iter(payload.keys()), None)
@@ -2737,8 +2854,8 @@ def api_save_notes(property_key):
     check = _require_access()
     if check:
         return check
-    if _is_pm():
-        return jsonify({"error": "read-only for Property Managers"}), 403
+    if _is_pm() or _is_ed():
+        return jsonify({"error": "read-only for Property Managers and Executive Directors"}), 403
     user = session.get("user", {})
     payload = request.get_json(force=True) or {}
     notes = (payload.get("notes") or "").strip() or None

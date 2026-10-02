@@ -396,6 +396,11 @@
             <i class="fa-solid fa-eye"></i> Viewing as RVP: <b>{{ view_as_rvp_email }}</b>
             <button type="button" class="sc-view-as-clear" onclick="scViewAsClear()" title="Return to admin view">&times; Exit</button>
         </span>
+        {% elif view_as_ed_email %}
+        <span class="sc-view-as-banner" title="Simulating this Executive Director's read-only portfolio view">
+            <i class="fa-solid fa-eye"></i> Viewing as ED: <b>{{ view_as_ed_email }}</b>
+            <button type="button" class="sc-view-as-clear" onclick="scViewAsClear()" title="Return to admin view">&times; Exit</button>
+        </span>
         {% else %}
         <span class="sc-view-as-picker">
             <select id="scViewAsSelect" onchange="scViewAsPick(this.value)">
@@ -2603,8 +2608,9 @@ function renderCompareRows() {
     Promise.all([
         fetch('/scorecard/api/admin/rvps').then(r => r.json()).catch(() => ({})),
         fetch('/scorecard/api/admin/rms').then(r => r.json()).catch(() => ({})),
+        fetch('/scorecard/api/admin/eds').then(r => r.json()).catch(() => ({})),
         fetch('/scorecard/api/admin/pms').then(r => r.json()).catch(() => ({})),
-    ]).then(([rvpRes, rmRes, pmRes]) => {
+    ]).then(([rvpRes, rmRes, edRes, pmRes]) => {
         if (rvpRes && Array.isArray(rvpRes.rvps) && rvpRes.rvps.length) {
             const g = document.createElement('optgroup');
             g.label = 'Regional Vice Presidents';
@@ -2623,6 +2629,18 @@ function renderCompareRows() {
                 const opt = document.createElement('option');
                 opt.value = `rm:${rm.email}`;
                 opt.textContent = `${rm.name}  (${rm.email})`;
+                g.appendChild(opt);
+            }
+            sel.appendChild(g);
+        }
+        if (edRes && Array.isArray(edRes.eds) && edRes.eds.length) {
+            const g = document.createElement('optgroup');
+            g.label = 'Executive Directors (read-only)';
+            for (const ed of edRes.eds) {
+                const opt = document.createElement('option');
+                opt.value = `ed:${ed.email}`;
+                const nProps = ed.property_count || 0;
+                opt.textContent = `${ed.name}  (${nProps} ${nProps === 1 ? 'property' : 'properties'})`;
                 g.appendChild(opt);
             }
             sel.appendChild(g);
@@ -2666,6 +2684,15 @@ function scViewAsPick(val) {
         fetch('/scorecard/api/admin/view-as-pm', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ property_key }),
+        }).then(r => r.json()).then(j => {
+            if (j.error) { alert(j.error); return; }
+            location.reload();
+        });
+    } else if (val.startsWith('ed:')) {
+        const email = val.slice(3);
+        fetch('/scorecard/api/admin/view-as-ed', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
         }).then(r => r.json()).then(j => {
             if (j.error) { alert(j.error); return; }
             location.reload();

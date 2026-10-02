@@ -127,10 +127,11 @@ def impersonate():
         {"id": m["id"], "name": m["name"], "access": m["access"]}
         for m in access["modules"]
     ]
-    # Scorecard caches PM/RVP detection per session -- clear so re-detection
+    # Scorecard caches PM/RVP/ED detection per session -- clear so re-detection
     # runs against the new identity.
-    for k in ("sc_pm_property_key", "sc_is_rvp",
-              "sc_view_as_email", "sc_view_as_pm_property_key", "sc_view_as_rvp_email"):
+    for k in ("sc_pm_property_key", "sc_is_rvp", "sc_is_ed",
+              "sc_view_as_email", "sc_view_as_pm_property_key",
+              "sc_view_as_rvp_email", "sc_view_as_ed_email"):
         session.pop(k, None)
 
     return jsonify({
@@ -176,8 +177,9 @@ def _stop_impersonation():
         session["user_modules"] = session.get("real_modules")
         session["is_developer"] = session.get("real_is_developer", False)
     for k in ("real_user", "real_modules", "real_is_developer",
-              "sc_pm_property_key", "sc_is_rvp",
-              "sc_view_as_email", "sc_view_as_pm_property_key", "sc_view_as_rvp_email"):
+              "sc_pm_property_key", "sc_is_rvp", "sc_is_ed",
+              "sc_view_as_email", "sc_view_as_pm_property_key",
+              "sc_view_as_rvp_email", "sc_view_as_ed_email"):
         session.pop(k, None)
 
 
