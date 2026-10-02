@@ -46,6 +46,7 @@
                 if (tab.dataset.tab === 'comps' && !compsLoaded) { loadCompProperties(); compsLoaded = true; }
                 if (tab.dataset.tab === 'assign-comps') { loadAssignComps(); }
                 if (tab.dataset.tab === 'floorplans') { loadFloorplans(); }
+                if (tab.dataset.tab === 'ch-mapping' && !chMapLoaded) { loadChMapping(); chMapLoaded = true; }
             });
         });
     }
@@ -1648,4 +1649,331 @@
             openFpDetail(d.floorplan_assignment_key);
         }
     });
+
+    // ── CH Mapping ──────────────────────────────────────────────────────────
+    // Row shape is always the same 5 logical fields (CH_PROPERTY_NAME/
+    // CH_MARKET_CITY_STATE/COMP_PROPERTY_NAME/COMP_MARKET_CITY_STATE/MATCH_SOURCE)
+    // regardless of view. "Swap view" just flips WHICH side is the editable
+    // combo + which side the Clear button sits next to -- CH columns always
+    // render first, Comp columns always render last.
+    let chMapLoaded = false;
+    let chMapData = [];       // one row per CH property (source of truth -- matches DB)
+    let chMapComps = [];      // active comp list (for the normal-mode combo + swap-mode base list)
+    let chMapPeakMarkets = new Set();
+    let chMapSwapped = false;
+    let chMapSort = { col: 'CH_MARKET_CITY_STATE', dir: 1 };
+    let chMapComboActiveKey = null; // the focused row's OWN key (CH key normally, Comp key when swapped)
+
+    const chMapSearchEl = document.getElementById('chMapSearch');
+    const chMapMarketFilterEl = document.getElementById('chMapMarketFilter');
+    const chMapPeakOnlyEl = document.getElementById('chMapPeakOnly');
+    const chMapPeakOnlyWrapEl = document.getElementById('chMapPeakOnlyWrap');
+    const chMapSwapToggleEl = document.getElementById('chMapSwapToggle');
+    const chMappingGridEl = document.getElementById('chMappingGrid');
+    const chMapCountEl = document.getElementById('chMapCount');
+    const chMapCompDropdownEl = document.getElementById('chMapCompDropdown');
+
+    chMapSearchEl.addEventListener('input', debounce(renderChMapping, 200));
+    chMapMarketFilterEl.addEventListener('change', renderChMapping);
+    chMapPeakOnlyEl.addEventListener('change', renderChMapping);
+    chMapSwapToggleEl.addEventListener('change', () => {
+        chMapSwapped = chMapSwapToggleEl.checked;
+        chMapPeakOnlyWrapEl.style.display = chMapSwapped ? 'none' : '';
+        chMapSort = { col: chMapSwapped ? 'COMP_MARKET_CITY_STATE' : 'CH_MARKET_CITY_STATE', dir: 1 };
+        chMapMarketFilterEl.value = '';
+        chMapRebuildMarketFilter();
+        renderChMapping();
+    });
+
+    // Closing without clicking an actual option (click elsewhere, Tab away) must
+    // NEVER assign/change anything -- just restore the input's real current value.
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.ch-map-combo-input') && !e.target.closest('#chMapCompDropdown')) {
+            closeChMapCombo(true);
+        }
+    });
+
+    function closeChMapCombo(restore) {
+        if (restore && chMapComboActiveKey != null) {
+            const input = chMappingGridEl.querySelector(`.ch-map-combo-input[data-base-key="${chMapComboActiveKey}"]`);
+            if (input) input.value = input.dataset.current || '';
+        }
+        chMapComboActiveKey = null;
+        chMapCompDropdownEl.style.display = 'none';
+    }
+
+    function chMapRebuildMarketFilter() {
+        const src = chMapSwapped
+            ? chMapComps.map(c => c.MARKET_CITY_STATE)
+            : chMapData.map(r => r.CH_MARKET_CITY_STATE);
+        const markets = [...new Set(src.filter(Boolean))].sort();
+        chMapMarketFilterEl.innerHTML = '<option value="">All Markets</option>' +
+            markets.map(m => `<option value="${m.replace(/"/g, '&quot;')}">${m}</option>`).join('');
+    }
+
+    async function loadChMapping() {
+        chMappingGridEl.innerHTML = '<p class="placeholder" style="padding:12px;">Loading...</p>';
+        const [mapResp, compResp, peakResp] = await Promise.all([
+            fetch('/mrb/api/ch-mapping'),
+            fetch('/mrb/api/ch-mapping/comp-options'),
+            fetch('/mrb/api/ch-mapping/peak-markets'),
+        ]);
+        chMapData = await mapResp.json();
+        chMapComps = await compResp.json();
+        chMapPeakMarkets = new Set(await peakResp.json());
+
+        chMapRebuildMarketFilter();
+        renderChMapping();
+    }
+
+    // Builds the current combo's candidate list -- Comps when in normal view
+    // (assigning a Comp to a CH property), CH properties when swapped
+    // (assigning a CH property to a Comp).
+    function renderChMapComboDropdown(q) {
+        const term = (q || '').toLowerCase().trim();
+        const list = !chMapSwapped
+            ? chMapComps.filter(c => !term || c.PROPERTY_NAME.toLowerCase().includes(term)).slice(0, 60)
+                .map(c => ({ key: c.PROPERTY_KEY, name: c.PROPERTY_NAME, market: c.MARKET_CITY_STATE }))
+            : chMapData.filter(r => !term || (r.CH_PROPERTY_NAME || '').toLowerCase().includes(term)).slice(0, 60)
+                .map(r => ({ key: r.CH_PROPERTY_KEY, name: r.CH_PROPERTY_NAME, market: r.CH_MARKET_CITY_STATE }));
+
+        const unassignedOpt = `<div class="fp-comp-opt" data-key="">-- Unassigned --</div>`;
+        chMapCompDropdownEl.innerHTML = unassignedOpt + list.map(c =>
+            `<div class="fp-comp-opt" data-key="${c.key}">${(c.name || '').replace(/</g, '&lt;')}<span class="fp-comp-opt-market">${c.market || ''}</span></div>`
+        ).join('');
+        chMapCompDropdownEl.style.display = 'block';
+
+        chMapCompDropdownEl.querySelectorAll('[data-key]').forEach(el => {
+            // mousedown + preventDefault (not click) -- stops the input from
+            // blurring before the selection registers, same pattern as fpCompDropdown.
+            el.addEventListener('mousedown', async (e) => {
+                e.preventDefault();
+                const baseKey = chMapComboActiveKey;
+                const selectedKey = el.dataset.key ? parseInt(el.dataset.key) : null;
+                const tr = chMappingGridEl.querySelector(`tr[data-base-key="${baseKey}"]`);
+                chMapCompDropdownEl.style.display = 'none';
+                chMapComboActiveKey = null;
+                const input = tr ? tr.querySelector('.ch-map-combo-input') : null;
+                if (input) input.disabled = true;
+                if (tr) await chMapOnComboSelect(tr, baseKey, selectedKey);
+                if (input) input.disabled = false;
+            });
+        });
+    }
+
+    const CH_MAP_COLS = [
+        { key: 'CH_PROPERTY_NAME', label: 'CH Property' },
+        { key: 'CH_MARKET_CITY_STATE', label: 'CH Market City/State' },
+        { key: 'COMP_PROPERTY_NAME', label: 'Comp Property' },
+        { key: 'COMP_MARKET_CITY_STATE', label: 'Comp Market City/State' },
+        { key: 'MATCH_SOURCE', label: 'Source' },
+    ];
+
+    async function chMapAssign(chKey, compKey) {
+        const resp = await fetch('/mrb/api/ch-mapping/assign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ch_property_key: chKey, comp_property_key: compKey }),
+        });
+        if (!resp.ok) { alert('Failed to save assignment.'); return null; }
+        return resp.json();
+    }
+
+    // Normal view: baseKey = CH_PROPERTY_KEY (this row), selectedKey = Comp key or null.
+    function chMapApplyResult(tr, chKey, compKey, d) {
+        const row = chMapData.find(r => r.CH_PROPERTY_KEY === chKey);
+        if (row) {
+            row.COMP_PROPERTY_KEY = d.comp_property_key;
+            row.COMP_PROPERTY_NAME = d.comp_property_name;
+            row.COMP_MARKET_CITY_STATE = d.comp_market_city_state;
+            row.MATCH_SOURCE = compKey ? 'MANUAL' : null;
+        }
+        const input = tr.querySelector('.ch-map-combo-input');
+        if (input) { input.value = d.comp_property_name || ''; input.dataset.current = d.comp_property_name || ''; }
+        const marketTd = tr.querySelector('.ch-map-comp-market');
+        if (marketTd) marketTd.textContent = d.comp_market_city_state || '';
+        const badgeTd = tr.querySelector('.ch-map-badge-cell');
+        if (badgeTd) badgeTd.innerHTML = compKey ? '<span class="ch-map-badge manual">Manual</span>' : '<span class="ch-map-badge none">&ndash;</span>';
+        const clearBtn = tr.querySelector('.ch-map-clear-btn');
+        if (clearBtn) clearBtn.disabled = !compKey;
+    }
+
+    // Swap view: baseKey = COMP_PROPERTY_KEY (this row), selectedKey = CH key or null.
+    // A Comp should only ever match ONE CH property, so if it was already pointed
+    // to by a DIFFERENT CH row, that old match is cleared first.
+    async function chMapOnComboSelect(tr, baseKey, selectedKey) {
+        if (!chMapSwapped) {
+            const d = await chMapAssign(baseKey, selectedKey);
+            if (!d) return;
+            chMapApplyResult(tr, baseKey, selectedKey, d);
+            return;
+        }
+        const existing = chMapData.find(r => r.COMP_PROPERTY_KEY === baseKey && r.CH_PROPERTY_KEY !== selectedKey);
+        if (existing) {
+            const d2 = await chMapAssign(existing.CH_PROPERTY_KEY, null);
+            if (d2) {
+                existing.COMP_PROPERTY_KEY = null;
+                existing.COMP_PROPERTY_NAME = null;
+                existing.COMP_MARKET_CITY_STATE = null;
+                existing.MATCH_SOURCE = null;
+            }
+        }
+        let chName = '', chMarket = '';
+        if (selectedKey != null) {
+            const d = await chMapAssign(selectedKey, baseKey);
+            if (!d) return;
+            const chRow = chMapData.find(r => r.CH_PROPERTY_KEY === selectedKey);
+            if (chRow) {
+                chRow.COMP_PROPERTY_KEY = baseKey;
+                chRow.COMP_PROPERTY_NAME = d.comp_property_name;
+                chRow.COMP_MARKET_CITY_STATE = d.comp_market_city_state;
+                chRow.MATCH_SOURCE = 'MANUAL';
+                chName = chRow.CH_PROPERTY_NAME || '';
+                chMarket = chRow.CH_MARKET_CITY_STATE || '';
+            }
+        }
+        const input = tr.querySelector('.ch-map-combo-input');
+        if (input) { input.value = chName; input.dataset.current = chName; }
+        const marketTd = tr.querySelector('.ch-map-ch-market');
+        if (marketTd) marketTd.textContent = chMarket;
+        const badgeTd = tr.querySelector('.ch-map-badge-cell');
+        if (badgeTd) badgeTd.innerHTML = selectedKey ? '<span class="ch-map-badge manual">Manual</span>' : '<span class="ch-map-badge none">&ndash;</span>';
+        const clearBtn = tr.querySelector('.ch-map-clear-btn');
+        if (clearBtn) clearBtn.disabled = !selectedKey;
+    }
+
+    // Builds the row list for swap view: one row per active Comp, joined
+    // against whichever CH property (if any) currently points to it.
+    function chMapSwappedRows() {
+        const compToCh = new Map();
+        for (const r of chMapData) if (r.COMP_PROPERTY_KEY) compToCh.set(r.COMP_PROPERTY_KEY, r);
+        return chMapComps.map(c => {
+            const m = compToCh.get(c.PROPERTY_KEY);
+            return {
+                COMP_PROPERTY_KEY: c.PROPERTY_KEY,
+                COMP_PROPERTY_NAME: c.PROPERTY_NAME,
+                COMP_MARKET_CITY_STATE: c.MARKET_CITY_STATE,
+                CH_PROPERTY_KEY: m ? m.CH_PROPERTY_KEY : null,
+                CH_PROPERTY_NAME: m ? m.CH_PROPERTY_NAME : '',
+                CH_MARKET_CITY_STATE: m ? m.CH_MARKET_CITY_STATE : '',
+                MATCH_SOURCE: m ? m.MATCH_SOURCE : null,
+            };
+        });
+    }
+
+    function renderChMapping() {
+        const q = chMapSearchEl.value.trim().toLowerCase();
+        const marketFilter = chMapMarketFilterEl.value;
+        const peakOnly = chMapPeakOnlyEl.checked;
+        const marketField = chMapSwapped ? 'COMP_MARKET_CITY_STATE' : 'CH_MARKET_CITY_STATE';
+
+        let rows = chMapSwapped ? chMapSwappedRows() : chMapData;
+        if (marketFilter) rows = rows.filter(r => r[marketField] === marketFilter);
+        if (!chMapSwapped && peakOnly) rows = rows.filter(r => r.CH_MARKET_CITY_STATE && chMapPeakMarkets.has(r.CH_MARKET_CITY_STATE));
+        if (q) {
+            rows = rows.filter(r =>
+                (r.CH_PROPERTY_NAME || '').toLowerCase().includes(q) ||
+                (r.COMP_PROPERTY_NAME || '').toLowerCase().includes(q)
+            );
+        }
+
+        rows = [...rows].sort((a, b) => {
+            const av = a[chMapSort.col] ?? '';
+            const bv = b[chMapSort.col] ?? '';
+            return String(av).localeCompare(String(bv), undefined, { numeric: true }) * chMapSort.dir;
+        });
+
+        const totalCount = chMapSwapped ? chMapComps.length : chMapData.length;
+        const unit = chMapSwapped ? 'Comp properties' : 'CH properties';
+        chMapCountEl.textContent = `${rows.length.toLocaleString()} of ${totalCount.toLocaleString()} ${unit}`;
+
+        // Clear-button column always sits immediately left of whichever side
+        // is currently editable: CH Property column when swapped, Comp
+        // Property column otherwise. Column order itself never changes.
+        const clearBeforeKey = chMapSwapped ? 'CH_PROPERTY_NAME' : 'COMP_PROPERTY_NAME';
+        const ths = CH_MAP_COLS.map(c => {
+            const isSorted = chMapSort.col === c.key;
+            const arrow = isSorted ? (chMapSort.dir === 1 ? '&#9650;' : '&#9660;') : '<span class="sort-idle">&#8597;</span>';
+            const th = `<th class="sortable${isSorted ? ' sorted' : ''}" data-sort-key="${c.key}">${c.label} ${arrow}</th>`;
+            return c.key === clearBeforeKey ? `<th class="ch-map-clear-col"></th>${th}` : th;
+        }).join('');
+
+        const bodyRows = rows.map(r => {
+            const badge = r.MATCH_SOURCE === 'MANUAL' ? '<span class="ch-map-badge manual">Manual</span>'
+                : r.MATCH_SOURCE === 'AUTO' ? '<span class="ch-map-badge auto">Auto</span>'
+                : '<span class="ch-map-badge none">&ndash;</span>';
+            const baseKey = chMapSwapped ? r.COMP_PROPERTY_KEY : r.CH_PROPERTY_KEY;
+            const comboValue = chMapSwapped ? r.CH_PROPERTY_NAME : r.COMP_PROPERTY_NAME;
+            const comboValueEsc = (comboValue || '').replace(/"/g, '&quot;');
+            const clearBtn = `<td class="ch-map-clear-col"><button class="ch-map-clear-btn" data-base-key="${baseKey}" title="Clear assigned ${chMapSwapped ? 'CH property' : 'Comp'}"${comboValue ? '' : ' disabled'}>&times;</button></td>`;
+            const comboCell = `<td><input type="text" class="ch-map-combo-input" data-base-key="${baseKey}" data-current="${comboValueEsc}" value="${comboValueEsc}" placeholder="-- Unassigned --" autocomplete="off"></td>`;
+
+            if (!chMapSwapped) {
+                return `<tr data-base-key="${baseKey}">
+                    <td>${(r.CH_PROPERTY_NAME || '').replace(/</g, '&lt;')}</td>
+                    <td>${r.CH_MARKET_CITY_STATE || ''}</td>
+                    ${clearBtn}
+                    ${comboCell}
+                    <td class="ch-map-comp-market">${r.COMP_MARKET_CITY_STATE || ''}</td>
+                    <td class="ch-map-badge-cell">${badge}</td>
+                </tr>`;
+            }
+            return `<tr data-base-key="${baseKey}">
+                ${clearBtn}
+                ${comboCell}
+                <td class="ch-map-ch-market">${r.CH_MARKET_CITY_STATE || ''}</td>
+                <td>${(r.COMP_PROPERTY_NAME || '').replace(/</g, '&lt;')}</td>
+                <td>${r.COMP_MARKET_CITY_STATE || ''}</td>
+                <td class="ch-map-badge-cell">${badge}</td>
+            </tr>`;
+        }).join('');
+
+        chMappingGridEl.innerHTML = rows.length
+            ? `<table><thead><tr>${ths}</tr></thead><tbody>${bodyRows}</tbody></table>`
+            : '<p class="placeholder" style="padding:12px;">No matching properties.</p>';
+
+        chMappingGridEl.querySelectorAll('th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const key = th.dataset.sortKey;
+                if (chMapSort.col === key) { chMapSort.dir *= -1; } else { chMapSort.col = key; chMapSort.dir = 1; }
+                renderChMapping();
+            });
+        });
+
+        chMappingGridEl.querySelectorAll('.ch-map-combo-input').forEach(input => {
+            input.addEventListener('focus', () => {
+                chMapComboActiveKey = parseInt(input.dataset.baseKey);
+                input.value = '';
+                const rect = input.getBoundingClientRect();
+                chMapCompDropdownEl.style.left = rect.left + 'px';
+                chMapCompDropdownEl.style.top = (rect.bottom + 2) + 'px';
+                chMapCompDropdownEl.style.width = Math.max(260, rect.width) + 'px';
+                renderChMapComboDropdown('');
+            });
+            input.addEventListener('input', () => renderChMapComboDropdown(input.value));
+            input.addEventListener('keydown', (e) => { if (e.key === 'Escape') input.blur(); });
+            // Backstop for keyboard-driven focus changes (e.g. Tab) that the
+            // document click-outside listener above wouldn't catch.
+            input.addEventListener('blur', () => {
+                setTimeout(() => {
+                    if (chMapComboActiveKey === parseInt(input.dataset.baseKey)) closeChMapCombo(true);
+                }, 150);
+            });
+        });
+
+        chMappingGridEl.querySelectorAll('.ch-map-clear-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const baseKey = parseInt(btn.dataset.baseKey);
+                const tr = btn.closest('tr');
+                btn.disabled = true;
+                if (!chMapSwapped) {
+                    const d = await chMapAssign(baseKey, null);
+                    if (!d) { btn.disabled = false; return; }
+                    chMapApplyResult(tr, baseKey, null, d);
+                } else {
+                    await chMapOnComboSelect(tr, baseKey, null);
+                }
+            });
+        });
+    }
 })();

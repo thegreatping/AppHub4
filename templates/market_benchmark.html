@@ -1,6 +1,6 @@
 {% extends "shell.html" %}
 {% block head %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/market_benchmark.css') }}?v=16">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/market_benchmark.css') }}?v=21">
 {% endblock %}
 {% block content %}
 <div class="mrb-wrapper">
@@ -20,6 +20,7 @@
         <button class="mrb-tab" data-tab="comps">Comps</button>
         <button class="mrb-tab" data-tab="assign-comps">Assign Comps</button>
         <button class="mrb-tab" data-tab="floorplans">Floor Plans</button>
+        <button class="mrb-tab" data-tab="ch-mapping">CH Mapping</button>
     </nav>
 
     <!-- Main Content -->
@@ -285,11 +286,43 @@
                 </div>
                 <div class="fp-detail-body" id="fpDetailBody"></div>
             </div>
+
+            <!-- CH Mapping Tab -->
+            <div class="mrb-tab-panel" id="panel-ch-mapping">
+                <div class="info-blurb" id="blurb-ch-mapping">
+                    <div class="blurb-header" onclick="toggleBlurb('ch-mapping')">
+                        <span class="blurb-title">CH Mapping</span>
+                        <span class="blurb-toggle" id="blurbToggle-ch-mapping">&#9660;</span>
+                    </div>
+                    <div class="blurb-body" id="blurbBody-ch-mapping">
+                        Map College House (CH) properties to our Comp properties. Every CH property we have access to is listed; assign a matching Comp via the dropdown so CH data can eventually replace manual data collection for that Comp. This is a mapping exercise only &mdash; no data is imported or flagged yet.
+                        <br><br>
+                        <strong>How to use:</strong>
+                        <ul style="margin:4px 0 0 16px;padding:0">
+                            <li><strong>Search</strong> &mdash; Filter by CH or Comp property name.</li>
+                            <li><strong>Market City/State filter</strong> &mdash; Narrow to one market at a time.</li>
+                            <li><strong>Peak's Markets only</strong> &mdash; Show only CH properties in a market where Peak actively manages a property.</li>
+                            <li><strong>Swap view</strong> &mdash; Flips the list to show every active Comp first, with a dropdown to assign a CH property to it instead.</li>
+                            <li><strong>Comp/CH Property dropdown</strong> &mdash; Assign/change the match. Pre-filled rows marked <em>Auto</em> are suggestions &mdash; please review them; rows you change are marked <em>Manual</em>. Use the &times; button to clear a match.</li>
+                            <li>Click a column header to sort by that column.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="schools-toolbar">
+                    <input type="text" id="chMapSearch" placeholder="Search CH or Comp property..." class="school-search-input">
+                    <select id="chMapMarketFilter"><option value="">All Markets</option></select>
+                    <label class="school-toggle" id="chMapPeakOnlyWrap"><input type="checkbox" id="chMapPeakOnly"> Peak's Markets only</label>
+                    <label class="school-toggle"><input type="checkbox" id="chMapSwapToggle"> Swap view (Comps &harr; CH)</label>
+                    <span id="chMapCount" class="ch-map-count"></span>
+                </div>
+                <div id="chMappingGrid" class="schools-grid ch-map-grid"></div>
+                <div id="chMapCompDropdown" class="ch-map-combo-dropdown" style="display:none;"></div>
+            </div>
         </section>
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/market_benchmark.js') }}?v=15"></script>
+<script src="{{ url_for('static', filename='js/market_benchmark.js') }}?v=20"></script>
 <script>
 function toggleBlurb(id) {
     const body = document.getElementById('blurbBody-' + id);

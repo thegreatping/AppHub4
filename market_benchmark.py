@@ -824,3 +824,109 @@ def api_assign_comps_reorder():
         )
     conn.commit()
     return jsonify({"ok": True})
+
+
+# ── API: CH Mapping (College House -> Comp property mapping) ───────────────────
+# Reads/writes ONLY the standalone dbo.CH_COMP_MAPPING table -- never touches
+# COMP_PROPERTY/COMP_FACT/CH_PROPERTIES. Table is seeded by a one-time script
+# (CollegeHouse/_create_ch_comp_mapping_table.py); this blueprint only edits
+# the COMP_PROPERTY_KEY assignment per CH property from here on.
+
+@mrb_bp.route("/api/ch-mapping")
+@login_required
+def api_ch_mapping():
+    check = _require_access()
+    if check:
+        return check
+    conn = get_db()
+    cur = conn.execute("""
+        SELECT CH_PROPERTY_KEY, CH_PROPERTY_NAME, CH_MARKET_CITY_STATE,
+               COMP_PROPERTY_KEY, COMP_PROPERTY_NAME, COMP_MARKET_CITY_STATE,
+               MATCH_SCORE, MATCH_SOURCE
+        FROM dbo.CH_COMP_MAPPING
+        ORDER BY CH_MARKET_CITY_STATE, CH_PROPERTY_NAME
+    """)
+    cols = [d[0] for d in cur.description]
+    rows = cur.fetchall()
+    return jsonify([dict(zip(cols, r)) for r in rows])
+
+
+@mrb_bp.route("/api/ch-mapping/comp-options")
+@login_required
+def api_ch_mapping_comp_options():
+    check = _require_access()
+    if check:
+        return check
+    conn = get_db()
+    cur = conn.execute("""
+        SELECT PROPERTY_KEY, PROPERTY_NAME, MARKET_CITY_STATE
+        FROM dbo.COMP_PROPERTY
+        WHERE FLAG_ACTIVE = 1 AND FLAG_COMP = 1
+        ORDER BY PROPERTY_NAME
+    """)
+    cols = [d[0] for d in cur.description]
+    rows = cur.fetchall()
+    return jsonify([dict(zip(cols, r)) for r in rows])
+
+
+@mrb_bp.route("/api/ch-mapping/peak-markets")
+@login_required
+def api_ch_mapping_peak_markets():
+    """Distinct active Peak markets (City, ST), formatted to match CH_MARKET_CITY_STATE,
+    so the UI can filter the CH list down to only markets Peak actually operates in."""
+    check = _require_access()
+    if check:
+        return check
+    conn = get_db()
+    cur = conn.execute("""
+        SELECT DISTINCT UPPER(LTRIM(RTRIM(MARKET_CITY))) + ', ' + UPPER(LTRIM(RTRIM(MARKET_STATE)))
+        FROM dbo.PROPERTY_0
+        WHERE FLAG_MANAGED = 1 AND (FLAG_DISPOSITIONED = 0 OR FLAG_DISPOSITIONED IS NULL)
+          AND MARKET_CITY IS NOT NULL AND MARKET_STATE IS NOT NULL
+    """)
+    rows = [r[0] for r in cur.fetchall()]
+    return jsonify(rows)
+
+
+
+@mrb_bp.route("/api/ch-mapping/assign", methods=["POST"])
+@login_required
+def api_ch_mapping_assign():
+    check = _require_access()
+    if check:
+        return check
+    data = request.get_json()
+    ch_key = data.get("ch_property_key")
+    comp_key = data.get("comp_property_key")
+    if ch_key is None:
+        return jsonify({"error": "ch_property_key required"}), 400
+
+    conn = get_db()
+    comp_name = None
+    comp_market = None
+    if comp_key is not None:
+        cur = conn.execute(
+            "SELECT PROPERTY_NAME, MARKET_CITY_STATE FROM dbo.COMP_PROPERTY WHERE PROPERTY_KEY = ?",
+            [comp_key]
+        )
+        row = cur.fetchone()
+        if not row:
+            return jsonify({"error": "comp property not found"}), 404
+        comp_name, comp_market = row[0], row[1]
+    match_source = 'MANUAL' if comp_key is not None else None
+
+    conn.execute("""
+        UPDATE dbo.CH_COMP_MAPPING
+        SET COMP_PROPERTY_KEY = ?, COMP_PROPERTY_NAME = ?, COMP_MARKET_CITY_STATE = ?,
+            MATCH_SOURCE = ?, MATCH_SCORE = NULL,
+            UPDATED_BY = ?, UPDATED_DATE = GETDATE()
+        WHERE CH_PROPERTY_KEY = ?
+    """, [comp_key, comp_name, comp_market, match_source, _get_modified_by(), ch_key])
+    conn.commit()
+    return jsonify({
+        "ok": True,
+        "comp_property_key": comp_key,
+        "comp_property_name": comp_name,
+        "comp_market_city_state": comp_market,
+    })
+
