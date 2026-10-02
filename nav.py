@@ -5,12 +5,13 @@ from helpers import load_env, SafeConnection
 
 _env = None
 
-# BETA GATE (2026-09-30): during the AppHub 4.0 limited beta, non-developer
-# users only ever see the modules listed here. Developers see everything.
-# When more modules open beta, add them here. When we go fully GA, set
-# _BETA_MODE=False (or delete the gate).
+# BETA GATE (2026-09-30, tightened 2026-10-02): during the AppHub 4.0
+# limited beta, non-developer users only see modules that are BOTH in the
+# whitelist below AND granted to them via MODULE_AUDIENCE. Developers see
+# everything. When more modules open beta, add their string IDs here.
+# When we go fully GA, set _BETA_MODE=False (or delete the gate).
 _BETA_MODE = True
-_BETA_ALLOWED_MODULES = {"leadership_scorecard"}
+_BETA_ALLOWED_MODULES = {"leadership_scorecard", "market_benchmark"}
 
 # Hardcoded developer emails so the gate can never accidentally lock cpell
 # out even if session flags / MODULE_AUDIENCE are wrong.
@@ -76,8 +77,12 @@ def build_nav_modules():
             continue
         if m["id"] in _HIDE_WITHOUT_GRANT and m["id"] not in granted_ids and not treat_as_developer:
             continue
-        # BETA GATE: non-devs only see whitelisted modules.
-        if _BETA_MODE and not treat_as_developer and m["id"] not in _BETA_ALLOWED_MODULES:
-            continue
+        # BETA GATE: non-devs only see modules that are both beta-whitelisted
+        # AND granted to them via MODULE_AUDIENCE (user_modules).
+        if _BETA_MODE and not treat_as_developer:
+            if m["id"] not in _BETA_ALLOWED_MODULES:
+                continue
+            if m["id"] not in granted_ids:
+                continue
         visible.append(_decorate(m))
     return visible
