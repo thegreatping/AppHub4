@@ -126,7 +126,7 @@ function renderDashboard(testers) {
     const envLine = [t.env, t.browser, t.role_tested].filter(Boolean).map(esc).join(' / ') || '<span style="color:var(--text-secondary);">(not set)</span>';
     html += `<tr>
       <td>
-        <div class="qad-tester"><a href="/scorecard/admin/qa/dashboard/tester/${encodeURIComponent(t.tester_email)}" title="Open this tester's full QA entries">${esc(t.tester || t.tester_email)}</a></div>
+        <div class="qad-tester"><a href="/scorecard/admin/qa/dashboard/tester?email=${encodeURIComponent(t.tester_email)}" title="Open this tester's full QA entries">${esc(t.tester || t.tester_email)}</a></div>
         <div class="qad-email">${esc(t.tester_email)}</div>
       </td>
       <td>

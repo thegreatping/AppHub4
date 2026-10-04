@@ -636,16 +636,16 @@ def admin_qa_dashboard_page():
     return render_template("scorecard_qa_dashboard.html", **_ctx())
 
 
-@scorecard_bp.route("/admin/qa/dashboard/tester/<tester_email>")
+@scorecard_bp.route("/admin/qa/dashboard/tester")
 @login_required
-def admin_qa_tester_page(tester_email):
+def admin_qa_tester_page():
     """Full-page, read-only review of one tester's saved QA entries."""
     check = _require_access()
     if check:
         return check
     if not _is_real_admin():
         return jsonify({"error": "admin only"}), 403
-    tester_email = (tester_email or "").strip().lower()
+    tester_email = (request.args.get("email") or "").strip().lower()
     if len(tester_email) > 200 or "@" not in tester_email or "/" in tester_email:
         return jsonify({"error": "invalid tester email"}), 400
     return render_template("scorecard_qa_signoff.html",
