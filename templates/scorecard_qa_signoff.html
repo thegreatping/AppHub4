@@ -4,16 +4,20 @@
 <div class="content-header">
     <div class="header-left">
         <i class="fa-solid fa-clipboard-check" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
-        <span class="page-title">Leadership Scorecard - QA Sign-Off</span>
-        <span class="page-subtitle">Your private tester checklist</span>
+        <span class="page-title" id="qas_page_title">{% if qa_tester_view %}Tester QA Review{% else %}Leadership Scorecard - QA Sign-Off{% endif %}</span>
+        <span class="page-subtitle">{% if qa_tester_view %}Read-only review of this tester's entries and notes{% else %}Your private tester checklist{% endif %}</span>
     </div>
     <div class="header-right">
+      {% if qa_tester_view %}
+      <a href="/scorecard/admin/qa/dashboard" class="sc-reference-btn" title="Close tester detail and return to All Testers"><i class="fa-solid fa-arrow-left"></i> Close Tester Detail</a>
+      {% else %}
         <a href="?popout=1" target="_blank" rel="noopener" class="sc-reference-btn" title="Open this checklist in a new browser tab so you can test the Scorecard side-by-side"><i class="fa-solid fa-up-right-from-square"></i> Open in new tab</a>
         {% if is_admin %}
         <a href="/scorecard/admin/qa/dashboard" class="sc-reference-btn" title="See every tester's progress"><i class="fa-solid fa-users"></i> All Testers</a>
         {% endif %}
         <a href="/scorecard/" class="sc-reference-btn" title="Back to Scorecard"><i class="fa-solid fa-arrow-left"></i> Back to Scorecard</a>
         <a href="/scorecard/admin/runs" class="sc-reference-btn" title="Notebook Runs viewer">&#9654; Notebook Runs</a>
+        {% endif %}
     </div>
 </div>
 
@@ -57,12 +61,35 @@ body.qas-popout .qas-body { padding: 16px 24px !important; }
 .qas-table td.col-scenario { width: 40%; }
 .qas-table td.col-role { width: 8%; text-align: center; }
 .qas-table td.col-touched { width: 14%; font-size: 11px; color: var(--text-secondary); }
+.qas-table td.col-resolution { width: 28%; min-width: 240px; }
 .qas-table td.col-check input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; }
 .qas-status-sel { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 4px 6px; border-radius: 3px; font-size: 12px; width: 100%; font-family: inherit; }
 .qas-status-sel:focus { outline: none; border-color: var(--accent-cyan); }
 .qas-status-sel option { background: var(--nav-bg); color: var(--text-primary); }
 .qas-notes-area { width: 100%; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 5px 7px; border-radius: 3px; font-size: 12px; font-family: inherit; min-height: 36px; resize: vertical; }
 .qas-notes-area:focus { outline: none; border-color: var(--accent-cyan); }
+.qas-resolution-area { width: 100%; min-height: 54px; resize: vertical; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 6px 8px; border-radius: 3px; font-family: inherit; font-size: 12px; line-height: 1.45; }
+.qas-resolution-area:focus { outline: none; border-color: var(--accent-cyan); }
+.qas-resolution-area[readonly] { opacity: .9; }
+.qas-resolution-meta { color: var(--text-secondary); font-size: 10.5px; margin-top: 4px; }
+.qas-resolution-save { margin-top: 5px; background: var(--surface); color: var(--text-primary); border: 1px solid var(--border-input); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+.qas-resolution-save:hover { border-color: var(--accent-cyan); }
+.qas-resolution-history { margin-top: 5px; color: var(--text-secondary); font-size: 11px; white-space: pre-wrap; }
+.qas-body.qas-review-mode { padding: 12px 8px; }
+.qas-review-mode .qas-table-wrap { max-width: 100%; overflow-x: auto; margin-bottom: 18px; }
+.qas-review-mode .qas-table { table-layout: fixed; min-width: 1240px; margin-bottom: 0; }
+.qas-review-mode .qas-table th.col-check, .qas-review-mode .qas-table td.col-check { width: 48px; }
+.qas-review-mode .qas-table th.col-role, .qas-review-mode .qas-table td.col-role { width: 64px; }
+.qas-review-mode .qas-table th.col-scenario, .qas-review-mode .qas-table td.col-scenario { width: 240px; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
+.qas-review-mode .qas-table th.col-status, .qas-review-mode .qas-table td.col-status { width: 145px; }
+.qas-review-mode .qas-table th.col-notes, .qas-review-mode .qas-table td.col-notes { width: 300px; }
+.qas-review-mode .qas-table th.col-resolution, .qas-review-mode .qas-table td.col-resolution { width: 340px; min-width: 0; }
+.qas-review-mode .qas-table th.col-touched, .qas-review-mode .qas-table td.col-touched { width: 100px; }
+.qas-review-mode .qas-status-sel { min-width: 126px; white-space: nowrap; }
+.qas-review-mode .qas-notes-area, .qas-review-mode .qas-resolution-area { min-height: 54px; height: 54px; overflow: hidden; resize: none; white-space: pre-wrap; overflow-wrap: anywhere; }
+.qas-review-mode .qas-table tr.qas-row-nonpass > td { background: rgba(248,113,113,0.18); }
+.qas-review-mode .qas-table tr.qas-row-feature > td { background: rgba(251,191,36,0.18); }
+.qas-review-mode .qas-table tr.qas-row-resolved > td { background: rgba(74,222,128,0.18); }
 .qas-badge { display: inline-block; padding: 2px 9px; border-radius: 9px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
 .qas-b-admin { background: rgba(0,212,255,0.15); color: var(--accent-cyan); }
 .qas-b-rm { background: rgba(74,222,128,0.15); color: #4ade80; }
@@ -71,9 +98,13 @@ body.qas-popout .qas-body { padding: 16px 24px !important; }
 .qas-signoff { background: var(--surface-raised); border-radius: 8px; padding: 16px 20px; margin: 22px 0; border-left: 4px solid #fbbf24; }
 </style>
 
-<div class="qas-body">
+<div class="qas-body{% if qa_tester_view %} qas-review-mode{% endif %}">
 <div class="qas-hero">
-  <p><strong>This is your private QA checklist.</strong> Every tester (including anyone you're impersonating via Dev Mode) gets their own record -- your checks, results, notes, and sign-off are kept separate from everyone else's. Changes save instantly. Admins can see every tester's progress from the <em>All Testers</em> link above.</p>
+  {% if qa_tester_view %}
+  <p><strong>Reviewing {{ qa_tester_view }}.</strong> This tester's checks, results, and notes are read-only here. Shared <em>What We Did</em> outcomes remain admin-editable and include their change history.</p>
+  {% else %}
+  <p><strong>Your test results and notes are private to your tester identity.</strong> The <em>What We Did</em> column is shared across testers and maintained by admins as issues are resolved; each update records who changed it and when.</p>
+  {% endif %}
 </div>
 
 <div class="qas-meta">
@@ -111,9 +142,11 @@ body.qas-popout .qas-body { padding: 16px 24px !important; }
 </div>
 
 <div class="qas-controls">
+  {% if not qa_tester_view %}
   <button class="secondary" onclick="if (confirm('Reset every checkbox and result in YOUR checklist? (Your meta fields and sign-off are kept.)')) resetAll();">Reset My Rows</button>
   {% if is_admin %}
   <a href="/scorecard/admin/qa/dashboard" class="secondary" style="text-decoration:none;background:var(--surface);color:var(--text-primary);border:1px solid var(--border-input);padding:8px 16px;border-radius:5px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;"><i class="fa-solid fa-users"></i> All Testers Dashboard</a>
+  {% endif %}
   {% endif %}
   <span class="qas-saved" id="qas_saved_msg">Ready.</span>
 </div>
@@ -277,6 +310,9 @@ const SCENARIOS = [
 
 const roleClass = { ADMIN: 'qas-b-admin', RM: 'qas-b-rm', PM: 'qas-b-pm', ALL: 'qas-b-all' };
 const roleLabel = { ADMIN: 'Admin', RM: 'RM', PM: 'PM', ALL: 'All' };
+window.QA_CAN_EDIT_RESOLUTION = {{ 'true' if is_real_admin else 'false' }};
+window.QA_READONLY_TESTER_VIEW = {{ 'true' if qa_tester_view else 'false' }};
+window.QA_TESTER_EMAIL = {{ qa_tester_view | tojson }};
 
 let TOTAL_ROWS = 0;
 
@@ -293,34 +329,108 @@ function timeAgo(iso) {
   return Math.floor(diff/86400) + 'd ago';
 }
 
+function growQaReviewField(field) {
+  if (!window.QA_READONLY_TESTER_VIEW || !field) return;
+  field.style.height = 'auto';
+  field.style.height = Math.max(54, field.scrollHeight) + 'px';
+}
+
+function setQaReviewRowClass(key, status, notes, whatWeDid) {
+  if (!window.QA_READONLY_TESTER_VIEW) return;
+  const tr = document.querySelector(`tr[data-row-key="${key}"]`);
+  if (!tr) return;
+  tr.classList.remove('qas-row-nonpass', 'qas-row-feature', 'qas-row-resolved');
+  if ((whatWeDid || '').trim()) {
+    tr.classList.add('qas-row-resolved');
+  } else if (/\b(can we|could we|please|add|allow|would love|would like|let'?s|request|revisit|consider)\b/i.test(notes || '')) {
+    tr.classList.add('qas-row-feature');
+  } else if (status === 'fail' || status === 'block') {
+    tr.classList.add('qas-row-nonpass');
+  }
+}
+
 function renderChecklist() {
   const wrap = document.getElementById('checklistContent');
   let total = 0;
   let html = '';
   SCENARIOS.forEach((section, sIdx) => {
-    html += `<h2>${esc(section.section)}</h2><table class="qas-table"><tr><th class="col-check">Done</th><th class="col-role">Role</th><th class="col-scenario">Scenario</th><th class="col-status">Result</th><th class="col-notes">Notes</th><th class="col-touched">Last touched</th></tr>`;
+    const tableWrapClass = window.QA_READONLY_TESTER_VIEW ? ' class="qas-table-wrap"' : '';
+    html += `<h2>${esc(section.section)}</h2><div${tableWrapClass}><table class="qas-table"><tr><th class="col-check">Done</th><th class="col-role">Role</th><th class="col-scenario">Scenario</th><th class="col-status">Result</th><th class="col-notes">Tester Notes</th><th class="col-resolution">What We Did</th><th class="col-touched">Last touched</th></tr>`;
     section.rows.forEach((row, rIdx) => {
       const key = `s${sIdx}_r${rIdx}`;
       html += `<tr data-row-key="${key}">
-        <td class="col-check"><input type="checkbox" id="chk_${key}" onchange="saveRow('${key}')"></td>
+        <td class="col-check"><input type="checkbox" id="chk_${key}" {{ 'disabled' if qa_tester_view else '' }} onchange="saveRow('${key}')"></td>
         <td class="col-role"><span class="qas-badge ${roleClass[row.role]}">${roleLabel[row.role]}</span></td>
         <td class="col-scenario">${esc(row.text)}</td>
-        <td class="col-status"><select class="qas-status-sel" id="sta_${key}" onchange="saveRow('${key}')">
+        <td class="col-status"><select class="qas-status-sel" id="sta_${key}" {{ 'disabled' if qa_tester_view else '' }} onchange="saveRow('${key}')">
           <option value="">-- pending --</option>
           <option value="pass">Pass</option>
           <option value="fail">Fail</option>
           <option value="block">Blocked / Skip</option>
         </select></td>
-        <td class="col-notes"><textarea class="qas-notes-area" id="not_${key}" onchange="saveRow('${key}')"></textarea></td>
+        <td class="col-notes"><textarea class="qas-notes-area" id="not_${key}" {{ 'readonly' if qa_tester_view else '' }} onchange="saveRow('${key}')" oninput="growQaReviewField(this)"></textarea></td>
+        <td class="col-resolution"><textarea class="qas-resolution-area" id="res_${key}" ${window.QA_CAN_EDIT_RESOLUTION ? '' : 'readonly'} placeholder="" oninput="growQaReviewField(this)"></textarea>
+          ${window.QA_CAN_EDIT_RESOLUTION ? `<button class="qas-resolution-save" onclick="saveResolution('${key}')">Save outcome</button>` : ''}
+          ${window.QA_CAN_EDIT_RESOLUTION ? `<button class="qas-resolution-save" onclick="loadResolutionHistory('${key}')">History</button>` : ''}
+          <div class="qas-resolution-history" id="reshistory_${key}"></div>
+          <div class="qas-resolution-meta" id="resmeta_${key}"></div></td>
         <td class="col-touched" id="tch_${key}"></td>
       </tr>`;
       total++;
     });
-    html += '</table>';
+    html += '</table></div>';
   });
   wrap.innerHTML = html;
   TOTAL_ROWS = total;
   document.getElementById('numTotal').textContent = total;
+}
+
+function applyResolutions(resolutions) {
+  document.querySelectorAll('tr[data-row-key]').forEach(tr => {
+    const key = tr.dataset.rowKey;
+    const resolution = resolutions[key] || {};
+    const field = document.getElementById('res_' + key);
+    const meta = document.getElementById('resmeta_' + key);
+    if (field) field.value = resolution.what_we_did || '';
+    setQaReviewRowClass(key, tr && tr.dataset.qaStatus, tr && tr.dataset.qaNotes, resolution.what_we_did);
+    growQaReviewField(field);
+    if (meta && resolution.updated_by) {
+      meta.textContent = `Updated by ${resolution.updated_by.split('@')[0]} ${timeAgo(resolution.updated_at)}`;
+    }
+  });
+}
+
+function saveResolution(key) {
+  const field = document.getElementById('res_' + key);
+  const button = field && field.parentElement.querySelector('.qas-resolution-save');
+  if (!field || !button) return;
+  button.disabled = true;
+  fetch(`/scorecard/api/admin/qa/resolution/${key}`, {
+    method: 'PUT', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({what_we_did: field.value})
+  }).then(r => r.json()).then(j => {
+    if (j.error) { _flashSaved('Outcome save failed: ' + j.error); return; }
+    const meta = document.getElementById('resmeta_' + key);
+    if (meta && j.updated_by) meta.textContent = `Updated by ${j.updated_by.split('@')[0]} just now`;
+    const tr = document.querySelector(`tr[data-row-key="${key}"]`);
+    setQaReviewRowClass(key, tr && tr.dataset.qaStatus, tr && tr.dataset.qaNotes, field.value);
+    growQaReviewField(field);
+    _flashSaved(j.changed ? 'Outcome saved.' : 'No outcome change.');
+  }).catch(e => _flashSaved('Outcome save failed: ' + e.message))
+    .finally(() => { button.disabled = false; });
+}
+
+function loadResolutionHistory(key) {
+  const box = document.getElementById('reshistory_' + key);
+  if (!box) return;
+  box.textContent = 'Loading history...';
+  fetch(`/scorecard/api/admin/qa/resolution/${key}/history`).then(r => r.json()).then(j => {
+    if (j.error) { box.textContent = 'History unavailable: ' + j.error; return; }
+    const rows = j.history || [];
+    box.innerHTML = rows.length
+      ? rows.map(r => `<div><b>${esc(r.changed_by || 'unknown')} - ${esc(timeAgo(r.changed_at))}</b><br>${esc(r.old || '(blank)')} &rarr; ${esc(r.new || '(blank)')}</div>`).join('<hr>')
+      : 'No resolution changes recorded.';
+  }).catch(e => { box.textContent = 'History unavailable: ' + e.message; });
 }
 
 function applyState(state, meta, suggestedRole) {
@@ -329,9 +439,16 @@ function applyState(state, meta, suggestedRole) {
     const sta = document.getElementById('sta_' + key);
     const not = document.getElementById('not_' + key);
     const tch = document.getElementById('tch_' + key);
+    const tr = document.querySelector(`tr[data-row-key="${key}"]`);
     if (chk) chk.checked = !!row.checked;
     if (sta) sta.value = row.status || '';
     if (not) not.value = row.notes || '';
+    if (tr) {
+      tr.dataset.qaStatus = row.status || '';
+      tr.dataset.qaNotes = row.notes || '';
+    }
+    setQaReviewRowClass(key, row.status, row.notes, document.getElementById('res_' + key)?.value);
+    growQaReviewField(not);
     if (tch && row.last_updated_by) {
       tch.innerHTML = `<div>${esc(row.last_updated_by.split('@')[0])}</div><div>${esc(timeAgo(row.last_updated_at))}</div>`;
     }
@@ -344,7 +461,7 @@ function applyState(state, meta, suggestedRole) {
   // access level (view-as > impersonated real role > admin fallback) and
   // persist it so the dashboard and future loads reflect it.
   const roleEl = document.getElementById('meta_role_tested');
-  if (roleEl && suggestedRole && !meta.role_tested) {
+  if (!window.QA_READONLY_TESTER_VIEW && roleEl && suggestedRole && !meta.role_tested) {
     roleEl.value = suggestedRole;
     saveMeta();
   }
@@ -409,9 +526,19 @@ function saveMeta() {
 
 function loadState() {
   _flashSaved('Loading...');
-  fetch('/scorecard/api/admin/qa/state').then(r => r.json()).then(d => {
+  const stateUrl = window.QA_READONLY_TESTER_VIEW
+    ? '/scorecard/api/admin/qa/state?tester=' + encodeURIComponent(window.QA_TESTER_EMAIL)
+    : '/scorecard/api/admin/qa/state';
+  fetch(stateUrl).then(r => r.json()).then(d => {
     if (d.error) { _flashSaved('Load failed: ' + d.error); return; }
     applyState(d.state || {}, d.meta || {}, d.suggested_role || '');
+    applyResolutions(d.resolutions || {});
+    if (window.QA_READONLY_TESTER_VIEW) {
+      const title = document.getElementById('qas_page_title');
+      if (title) title.textContent = (d.meta && d.meta.tester ? d.meta.tester : d.tester_email) + ' - QA Review';
+      document.querySelectorAll('.qas-meta input, .qas-meta select, .qas-meta textarea').forEach(el => { el.disabled = true; });
+      document.querySelectorAll('.qas-table input[type="checkbox"], .qas-table select, .qas-table textarea.qas-notes-area').forEach(el => { el.disabled = true; });
+    }
     _flashSaved('Loaded.');
   }).catch(e => _flashSaved('Load failed: ' + e.message));
 }

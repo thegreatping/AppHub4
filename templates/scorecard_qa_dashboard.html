@@ -25,6 +25,8 @@
 .qad-table tr:last-child td { border-bottom: none; }
 .qad-table tr:hover td { background: rgba(255,255,255,0.03); }
 .qad-tester { font-weight: 600; color: var(--text-primary); }
+.qad-tester a { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--accent-cyan); }
+.qad-tester a:hover { color: var(--accent-cyan); }
 .qad-email { font-size: 11.5px; color: var(--text-secondary); }
 .qad-prog-wrap { display: flex; align-items: center; gap: 10px; min-width: 180px; }
 .qad-prog-bar { flex: 1; background: var(--input-bg); border-radius: 4px; height: 10px; overflow: hidden; }
@@ -124,7 +126,7 @@ function renderDashboard(testers) {
     const envLine = [t.env, t.browser, t.role_tested].filter(Boolean).map(esc).join(' / ') || '<span style="color:var(--text-secondary);">(not set)</span>';
     html += `<tr>
       <td>
-        <div class="qad-tester">${esc(t.tester || t.tester_email)}</div>
+        <div class="qad-tester"><a href="/scorecard/admin/qa/dashboard/tester/${encodeURIComponent(t.tester_email)}" title="Open this tester's full QA entries">${esc(t.tester || t.tester_email)}</a></div>
         <div class="qad-email">${esc(t.tester_email)}</div>
       </td>
       <td>

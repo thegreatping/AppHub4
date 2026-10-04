@@ -621,7 +621,7 @@ def admin_qa_page():
     check = _require_access()
     if check:
         return check
-    return render_template("scorecard_qa_signoff.html", **_ctx())
+    return render_template("scorecard_qa_signoff.html", **_ctx(qa_tester_view=None))
 
 
 @scorecard_bp.route("/admin/qa/dashboard")
@@ -636,6 +636,22 @@ def admin_qa_dashboard_page():
     return render_template("scorecard_qa_dashboard.html", **_ctx())
 
 
+@scorecard_bp.route("/admin/qa/dashboard/tester/<tester_email>")
+@login_required
+def admin_qa_tester_page(tester_email):
+    """Full-page, read-only review of one tester's saved QA entries."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_real_admin():
+        return jsonify({"error": "admin only"}), 403
+    tester_email = (tester_email or "").strip().lower()
+    if len(tester_email) > 200 or "@" not in tester_email or "/" in tester_email:
+        return jsonify({"error": "invalid tester email"}), 400
+    return render_template("scorecard_qa_signoff.html",
+                           **_ctx(qa_tester_view=tester_email))
+
+
 
 @scorecard_bp.route("/api/admin/qa/state")
 @login_required
@@ -647,7 +663,15 @@ def api_admin_qa_state():
     env = _get_env()
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
     try:
-        tester = _qa_tester_email()
+        requested_tester = (request.args.get("tester") or "").strip().lower()
+        if requested_tester:
+            if not _is_real_admin():
+                return jsonify({"error": "admin only"}), 403
+            if len(requested_tester) > 200 or "@" not in requested_tester or "/" in requested_tester:
+                return jsonify({"error": "invalid tester email"}), 400
+            tester = requested_tester
+        else:
+            tester = _qa_tester_email()
         rows = conn.fetchall("""
             SELECT SCENARIO_KEY, CHECKED, STATUS, NOTES,
                    LAST_UPDATED_BY, LAST_UPDATED_AT
@@ -658,6 +682,17 @@ def api_admin_qa_state():
                         "last_updated_by": r[4],
                         "last_updated_at": r[5].isoformat() if r[5] else None}
                  for r in rows}
+        resolution_table = conn.fetchall(
+            "SELECT OBJECT_ID('dbo.SCORECARD_QA_RESOLUTION', 'U')")
+        resolution_rows = conn.fetchall("""
+            SELECT SCENARIO_KEY, WHAT_WE_DID, UPDATED_BY, UPDATED_AT
+            FROM dbo.SCORECARD_QA_RESOLUTION
+        """) if resolution_table and resolution_table[0][0] else []
+        resolutions = {
+            r[0]: {"what_we_did": r[1], "updated_by": r[2],
+                   "updated_at": r[3].isoformat() if r[3] else None}
+            for r in resolution_rows
+        }
         meta_row = conn.fetchall("""
             SELECT TESTER, TEST_DATE, ENV, BROWSER, ROLE_TESTED,
                    SIGNOFF_TESTER, SIGNOFF_APPROVER, DECISION, BLOCKERS,
@@ -674,6 +709,12 @@ def api_admin_qa_state():
                 "last_updated_by": m[9],
                 "last_updated_at": m[10].isoformat() if m[10] else None,
             }
+        elif requested_tester:
+            meta = {"tester": tester, "test_date": None, "env": None,
+                "browser": None, "role_tested": None,
+                "signoff_tester": None, "signoff_approver": None,
+                "decision": None, "blockers": None,
+                "last_updated_by": None, "last_updated_at": None}
         else:
             # Auto-create an empty meta row the first time this tester visits,
             # pre-populating TESTER with their display name AND ROLE_TESTED
@@ -692,8 +733,101 @@ def api_admin_qa_state():
                     "signoff_tester": None, "signoff_approver": None,
                     "decision": None, "blockers": None,
                     "last_updated_by": tester, "last_updated_at": None}
-        return jsonify({"state": state, "meta": meta, "tester_email": tester,
+        return jsonify({"state": state, "resolutions": resolutions,
+                "meta": meta, "tester_email": tester,
+                "readonly_tester_view": bool(requested_tester),
                         "suggested_role": _qa_suggested_role()})
+    finally:
+        conn.close()
+
+
+@scorecard_bp.route("/api/admin/qa/resolution/<scenario_key>", methods=["PUT"])
+@login_required
+def api_admin_qa_resolution(scenario_key):
+    """Set the shared "What we did" resolution for a QA scenario.
+    Only real admins can write; every change is appended to resolution audit."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_real_admin():
+        return jsonify({"error": "admin only"}), 403
+    if len(scenario_key) > 50 or not scenario_key.replace("_", "").isalnum():
+        return jsonify({"error": "invalid scenario_key"}), 400
+    payload = request.get_json(silent=True) or {}
+    what_we_did = (payload.get("what_we_did") or "").strip()
+    if len(what_we_did) > 4000:
+        return jsonify({"error": "what_we_did must be 4000 characters or fewer"}), 400
+    user = session.get("user") or {}
+    changed_by = (user.get("email") or user.get("name") or "unknown")[:200]
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        resolution_table = conn.fetchall(
+            "SELECT OBJECT_ID('dbo.SCORECARD_QA_RESOLUTION', 'U')")
+        audit_table = conn.fetchall(
+            "SELECT OBJECT_ID('dbo.SCORECARD_QA_RESOLUTION_AUDIT', 'U')")
+        if not (resolution_table and resolution_table[0][0]
+                and audit_table and audit_table[0][0]):
+            return jsonify({"error": "QA resolution schema is not installed"}), 503
+        current_rows = conn.fetchall("""
+            SELECT WHAT_WE_DID FROM dbo.SCORECARD_QA_RESOLUTION
+            WHERE SCENARIO_KEY = ?
+        """, (scenario_key,))
+        old_value = current_rows[0][0] if current_rows else None
+        if old_value == (what_we_did or None):
+            return jsonify({"ok": True, "changed": False})
+
+        conn.execute("""
+            MERGE dbo.SCORECARD_QA_RESOLUTION AS tgt
+            USING (SELECT ? AS SCENARIO_KEY, ? AS WHAT_WE_DID, ? AS UPDATED_BY) AS src
+              ON tgt.SCENARIO_KEY = src.SCENARIO_KEY
+            WHEN MATCHED THEN UPDATE SET
+                WHAT_WE_DID = src.WHAT_WE_DID,
+                UPDATED_BY = src.UPDATED_BY,
+                UPDATED_AT = SYSUTCDATETIME()
+            WHEN NOT MATCHED THEN INSERT
+                (SCENARIO_KEY, WHAT_WE_DID, UPDATED_BY, UPDATED_AT)
+                VALUES (src.SCENARIO_KEY, src.WHAT_WE_DID, src.UPDATED_BY, SYSUTCDATETIME());
+        """, (scenario_key, what_we_did or None, changed_by))
+        conn.execute("""
+            INSERT INTO dbo.SCORECARD_QA_RESOLUTION_AUDIT
+                (SCENARIO_KEY, OLD_WHAT_WE_DID, NEW_WHAT_WE_DID, CHANGED_BY, CHANGED_AT)
+            VALUES (?, ?, ?, ?, SYSUTCDATETIME())
+        """, (scenario_key, old_value, what_we_did or None, changed_by))
+        conn.commit()
+        return jsonify({"ok": True, "changed": True, "updated_by": changed_by})
+    finally:
+        conn.close()
+
+
+@scorecard_bp.route("/api/admin/qa/resolution/<scenario_key>/history")
+@login_required
+def api_admin_qa_resolution_history(scenario_key):
+    """Return the append-only history of a shared scenario resolution."""
+    check = _require_access()
+    if check:
+        return check
+    if not _is_real_admin():
+        return jsonify({"error": "admin only"}), 403
+    if len(scenario_key) > 50 or not scenario_key.replace("_", "").isalnum():
+        return jsonify({"error": "invalid scenario_key"}), 400
+    conn = SafeConnection(_get_env(), "DB_APP_SUPPORT", None, direct=True)
+    try:
+        audit_table = conn.fetchall(
+            "SELECT OBJECT_ID('dbo.SCORECARD_QA_RESOLUTION_AUDIT', 'U')")
+        if not audit_table or not audit_table[0][0]:
+            return jsonify({"error": "QA resolution schema is not installed"}), 503
+        rows = conn.fetchall("""
+            SELECT TOP 100 OLD_WHAT_WE_DID, NEW_WHAT_WE_DID, CHANGED_BY, CHANGED_AT
+            FROM dbo.SCORECARD_QA_RESOLUTION_AUDIT
+            WHERE SCENARIO_KEY = ?
+            ORDER BY AUDIT_ID DESC
+        """, (scenario_key,))
+        return jsonify({"history": [
+            {"old": r[0], "new": r[1], "changed_by": r[2],
+             "changed_at": r[3].isoformat() if r[3] else None}
+            for r in rows
+        ]})
     finally:
         conn.close()
 
