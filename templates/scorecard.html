@@ -330,9 +330,6 @@
 
     .sc-reference-btn { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 7px 14px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; }
     .sc-reference-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
-    .sc-help-btn { background: var(--accent-cyan); border: 2px solid var(--accent-cyan); color: #04222c; padding: 4px 10px; border-radius: 999px; font-size: 1.35rem; line-height: 1; cursor: pointer; font-weight: 700; box-shadow: 0 0 12px rgba(103,232,224,0.35); transition: transform .1s, box-shadow .1s; }
-    .sc-help-btn:hover { transform: scale(1.08); box-shadow: 0 0 18px rgba(103,232,224,0.6); }
-    .sc-help-btn i { font-size: 1.35rem; }
     .sc-ref-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 1100; align-items: center; justify-content: center; }
     .sc-ref-overlay.open { display: flex; }
     .sc-ref-modal { background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 8px; width: 96vw; max-width: 1400px; height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -340,10 +337,12 @@
     .sc-ref-title { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
     .sc-ref-close { background: none; border: none; color: var(--text-secondary); font-size: 1.7rem; line-height: 1; cursor: pointer; }
     .sc-ref-close:hover { color: var(--text-primary); }
-    .sc-ref-tabs { display: flex; gap: 4px; padding: 8px 16px 0; border-bottom: 1px solid var(--border-input); flex-shrink: 0; }
+    .sc-ref-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 16px 0; border-bottom: 1px solid var(--border-input); flex-shrink: 0; }
     .sc-ref-tab { background: none; border: none; color: var(--text-secondary); padding: 8px 14px; font-size: 1.2rem; cursor: pointer; border-bottom: 2px solid transparent; }
     .sc-ref-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); font-weight: 600; }
     .sc-ref-body { flex: 1; overflow-y: auto; padding: 18px 24px; }
+    .sc-feedback-textarea { width: 100%; min-height: 180px; resize: vertical; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--border-input); border-radius: 4px; color: var(--text-primary); padding: 10px; font: inherit; }
+    .sc-feedback-textarea:focus { outline: none; border-color: var(--accent-cyan); }
     .sc-ref-intro { color: var(--text-secondary); font-size: 1.23rem; margin: 0 0 16px; }
     .sc-crit-item { border: 1px solid var(--border-input); border-radius: 6px; padding: 12px 14px; margin-bottom: 10px; }
     .sc-crit-name { font-weight: 700; color: var(--text-primary); font-size: 1.32rem; margin-bottom: 4px; }
@@ -409,8 +408,7 @@
         </span>
         {% endif %}
         {% endif %}
-        <button type="button" class="sc-help-btn" onclick="openScHelp()" title="Help &amp; user guide"><i class="fa-solid fa-circle-question"></i></button>
-        <button type="button" class="sc-reference-btn" onclick="openScReference()"><i class="fa-solid fa-book"></i> Criteria &amp; Guides</button>
+        <button type="button" class="sc-reference-btn" onclick="openScReference()">Help &amp; Criteria</button>
         <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/qa'" title="Your private pre-beta QA sign-off checklist"><i class="fa-solid fa-clipboard-check"></i> QA Sign-Off</button>
         {% if is_admin %}
         <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/qa/dashboard'" title="Admin aggregate view of every tester's QA progress"><i class="fa-solid fa-users"></i> All Testers</button>
@@ -661,26 +659,17 @@
 <div class="sc-ref-overlay" id="scReferenceOverlay">
     <div class="sc-ref-modal">
         <div class="sc-ref-header">
-            <div class="sc-ref-title">Criteria &amp; Guides</div>
+            <div class="sc-ref-title">Help &amp; Criteria</div>
             <button type="button" class="sc-ref-close" onclick="closeScReference()">&times;</button>
         </div>
-        <div class="sc-ref-tabs">
+        <div class="sc-ref-tabs" id="scReferenceTabs">
+            <button type="button" class="sc-ref-tab" id="scRefTab_help" onclick="showScReferenceTab('help')">Help &amp; How-To</button>
             <button type="button" class="sc-ref-tab" id="scRefTab_criteria" onclick="showScReferenceTab('criteria')">Criteria Breakdown</button>
             <button type="button" class="sc-ref-tab" id="scRefTab_bonus" onclick="showScReferenceTab('bonus')">Bonus Calc Form Guide</button>
             <button type="button" class="sc-ref-tab" id="scRefTab_paycom" onclick="showScReferenceTab('paycom')">Paycom Guide</button>
+            <button type="button" class="sc-ref-tab" id="scRefTab_feedback" onclick="showScReferenceTab('feedback')">Feedback</button>
         </div>
-        <div class="sc-ref-body" id="scRefBody"></div>
-    </div>
-</div>
-
-<!-- Help / user guide -->
-<div class="sc-ref-overlay" id="scHelpOverlay">
-    <div class="sc-ref-modal">
-        <div class="sc-ref-header">
-            <div class="sc-ref-title"><i class="fa-solid fa-circle-question" style="color: var(--accent-cyan); margin-right: 8px;"></i> Leadership Scorecard &mdash; Help &amp; User Guide</div>
-            <button type="button" class="sc-ref-close" onclick="closeScHelp()">&times;</button>
-        </div>
-        <div class="sc-ref-tabs">
+        <div class="sc-ref-tabs" id="scHelpTabs" style="display:none;">
             <button type="button" class="sc-ref-tab" id="scHelpTab_welcome" onclick="showScHelpTab('welcome')">Welcome</button>
             <button type="button" class="sc-ref-tab" id="scHelpTab_grid" onclick="showScHelpTab('grid')">Reading the Grid</button>
             <button type="button" class="sc-ref-tab" id="scHelpTab_slideout" onclick="showScHelpTab('slideout')">The Slideout</button>
@@ -692,7 +681,7 @@
             <button type="button" class="sc-ref-tab" id="scHelpTab_faq" onclick="showScHelpTab('faq')">FAQ</button>
             <button type="button" class="sc-ref-tab" id="scHelpTab_contact" onclick="showScHelpTab('contact')">Get Help</button>
         </div>
-        <div class="sc-ref-body" id="scHelpBody"></div>
+        <div class="sc-ref-body" id="scRefBody"></div>
     </div>
 </div>
 
@@ -936,7 +925,8 @@ function scCritHtml(text) {
     return h;
 }
 
-let scRefTab = 'criteria';
+let scRefTab = 'help';
+let scHelpTab = 'welcome';
 
 function openScReference() {
     document.getElementById('scReferenceOverlay').classList.add('open');
@@ -951,6 +941,23 @@ function showScReferenceTab(tab) {
         document.getElementById(`scRefTab_${t}`).classList.toggle('active', t === tab);
     });
     const body = document.getElementById('scRefBody');
+    const helpTabs = document.getElementById('scHelpTabs');
+    helpTabs.style.display = tab === 'help' ? 'flex' : 'none';
+    if (tab === 'help') {
+        showScHelpTab(scHelpTab);
+        return;
+    }
+    if (tab === 'feedback') {
+        body.innerHTML = `<p class="sc-ref-intro">Share feedback about the Leadership Scorecard.</p>
+            <div class="sc-crit-item">
+                <label class="sc-crit-name" for="scFeedbackText">Feedback</label>
+                <div class="sc-crit-body">
+                    <textarea class="sc-feedback-textarea" id="scFeedbackText"></textarea>
+                    <button type="button" class="sc-reference-btn" style="margin-top:10px;" onclick="composeScFeedback()">Compose feedback email</button>
+                </div>
+            </div>`;
+        return;
+    }
     if (tab === 'criteria') {
         let h = '<p class="sc-ref-intro">Each community earns a credit of 1 or 0 per measure. These are the definitions and data sources behind every column on the scorecard.</p>';
         SC_CRITERIA.forEach(c => {
@@ -974,15 +981,6 @@ function showScReferenceTab(tab) {
 // Non-technical content aimed at end users. Tabs and content adapt to the
 // current role (admin sees an Admin Features tab; RMs/PMs do not).
 // ============================================================================
-let scHelpTab = 'welcome';
-
-function openScHelp() {
-    document.getElementById('scHelpOverlay').classList.add('open');
-    showScHelpTab(scHelpTab);
-}
-function closeScHelp() {
-    document.getElementById('scHelpOverlay').classList.remove('open');
-}
 function showScHelpTab(tab) {
     scHelpTab = tab;
     const tabs = ['welcome', 'grid', 'slideout', 'forecast', 'rm', 'admin', 'faq', 'contact'];
@@ -990,7 +988,19 @@ function showScHelpTab(tab) {
         const el = document.getElementById(`scHelpTab_${t}`);
         if (el) el.classList.toggle('active', t === tab);
     });
-    document.getElementById('scHelpBody').innerHTML = SC_HELP_CONTENT[tab] || '<p>Content not found.</p>';
+    document.getElementById('scRefBody').innerHTML = SC_HELP_CONTENT[tab] || '<p>Content not found.</p>';
+}
+
+function composeScFeedback() {
+    const field = document.getElementById('scFeedbackText');
+    const message = (field?.value || '').trim();
+    if (!message) { field?.focus(); return; }
+    const body = `${message}\n\nPage: ${location.href}`;
+    const link = document.createElement('a');
+    link.href = `mailto:cpell@peakmade.com?subject=${encodeURIComponent('Leadership Scorecard feedback')}&body=${encodeURIComponent(body)}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
 }
 
 // Role-aware content bank. Uses window.SC_IS_ADMIN and window.SC_IS_PM to
@@ -999,7 +1009,7 @@ const _roleLabel = window.SC_IS_ADMIN ? 'Admin' : (window.SC_IS_PM ? 'Property M
 
 const SC_HELP_CONTENT = {
     welcome: `
-        <p class="sc-ref-intro">Welcome to the Leadership Scorecard. This is your quarterly view of how each property is performing across the measures that determine RM bonuses.</p>
+        <p class="sc-ref-intro">Welcome to the Leadership Scorecard. This is your quarterly view of how each property is performing across measures used in Property Manager and Maintenance Supervisor bonus decisions.</p>
 
         <div class="sc-crit-item">
           <div class="sc-crit-name">You're signed in as: <span style="color:var(--accent-cyan);">${_roleLabel}</span></div>
@@ -1079,7 +1089,7 @@ const SC_HELP_CONTENT = {
           <div class="sc-crit-name">The three buttons under the header</div>
           <div class="sc-crit-body">
             <p><b>Show "How was this scored?"</b> &mdash; turn on to see a plain-English explanation next to each measure ("PASSED. 354 Supervisor timecard approvals recorded for entity 175..." or "FAILED. Avg net open days = 1.06, needed &lt;= 1 day"). Turn off when you just want to see the values.</p>
-            <p><b>Export to Email</b> &mdash; sends this property's full scorecard as a nicely-formatted HTML email to your Outlook inbox, ready to forward or archive.</p>
+            <p><b>Download scorecard (.html)</b> &mdash; saves this property's standalone scorecard file to your browser's Downloads folder.</p>
           </div>
         </div>
 
