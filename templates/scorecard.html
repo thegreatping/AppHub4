@@ -2789,7 +2789,7 @@ function sortFFCol(key) {
 
 function ffRows() {
     const q = (document.getElementById('scFFSearch')?.value || '').toLowerCase();
-    let rows = allRows.filter(r => r.COMPLETE_CY !== null && r.COMPLETE_CY !== undefined);
+    let rows = allRows;
     if (q) {
         rows = rows.filter(r => `${r.PROPERTY_NAME || ''} ${r.ENTITY_NUMBER || ''} ${r.RM_NAME || ''}`.toLowerCase().includes(q));
     }
