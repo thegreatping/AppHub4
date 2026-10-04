@@ -2235,6 +2235,18 @@ function measureRowHtml(m) {
 function saveScMeasure(field, valueStr, selectEl) {
     if (!scDetailData || valueStr === '') return;
     const value = parseInt(valueStr, 10);
+    const originalValue = scDetailData[field];
+    const baselineVal = scDetailBaseline ? scDetailBaseline[field] : undefined;
+    const shouldBeLocked = baselineVal !== undefined && value !== baselineVal;
+    const wasLocked = !!scDetailData[`${field}_LOCKED`];
+    let overrideReason = null;
+    if (shouldBeLocked) {
+        overrideReason = promptScOverrideReason();
+        if (!overrideReason) {
+            if (selectEl) selectEl.value = originalValue == null ? '' : String(originalValue);
+            return;
+        }
+    }
     fetch(`/scorecard/api/properties/${scDetailData.PROPERTY_KEY}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [field]: value }),
@@ -2254,20 +2266,31 @@ function saveScMeasure(field, valueStr, selectEl) {
         // Auto-manage the Override checkbox: checked when the picked value
         // differs from what was showing when the slideout was opened
         // ("the incoming value"), unchecked when it's set back to match.
-        const baselineVal = scDetailBaseline ? scDetailBaseline[field] : undefined;
-        const isLocked = !!scDetailData[`${field}_LOCKED`];
-        const shouldBeLocked = baselineVal !== undefined && value !== baselineVal;
-        if (shouldBeLocked !== isLocked) {
-            setScOverride(field, shouldBeLocked, null);
-        }
+        if (shouldBeLocked) setScOverride(field, true, overrideReason);
+        else if (wasLocked) setScOverride(field, false, null);
     });
+}
+
+function promptScOverrideReason() {
+    const reason = prompt('Required: enter a reason for overriding this measure.');
+    if (reason === null) return null;
+    const trimmed = reason.trim();
+    if (!trimmed) {
+        alert('An override reason is required. The value was not changed.');
+        return null;
+    }
+    return trimmed;
 }
 
 function toggleScOverride(field, enabled) {
     if (!scDetailData) return;
     let reason = null;
     if (enabled) {
-        reason = prompt('Optional: reason for this override (e.g. "credit of 1 from Director of Operations Support")', '') || '';
+        reason = promptScOverrideReason();
+        if (!reason) {
+            renderScDetail();
+            return;
+        }
     }
     setScOverride(field, enabled, reason);
 }
@@ -2278,7 +2301,7 @@ function setScOverride(field, enabled, reason) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ field, enabled, reason }),
     }).then(r => r.json()).then(res => {
-        if (res.error) { alert(res.error); return; }
+        if (res.error) { alert(res.error); renderScDetail(); return; }
         scDetailData[`${field}_LOCKED`] = enabled;
         scDetailData[`${field}_LOCKED_BY`] = res.locked_by ?? null;
         scDetailData[`${field}_REASON`] = res.reason ?? null;

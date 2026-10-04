@@ -2855,6 +2855,8 @@ def api_toggle_override(property_key):
     reason = (payload.get("reason") or "").strip() or None
     if field not in _MEASURE_KEYS:
         return jsonify({"error": f"unknown field '{field}'"}), 400
+    if enabled and not reason:
+        return jsonify({"error": "an override reason is required"}), 400
 
     env = _get_env()
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
