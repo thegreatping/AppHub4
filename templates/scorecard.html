@@ -2830,7 +2830,8 @@ function renderFallForecast() {
     const rows = ffRows();
     document.getElementById('scFFThead').innerHTML = `<tr>${FF_COLS.map(c => {
         const arrow = scFFSort.col === c.key ? `<span class="sort-arrow">${scFFSort.dir === 1 ? '\u25B2' : '\u25BC'}</span>` : '';
-        return `<th onclick="sortFFCol('${c.key}')">${esc(c.label)}${arrow}</th>`;
+        const cls = c.key === 'PROPERTY_NAME' ? ' class="id-col"' : '';
+        return `<th${cls} onclick="sortFFCol('${c.key}')">${esc(c.label)}${arrow}</th>`;
     }).join('')}</tr>`;
     document.getElementById('scFFTbody').innerHTML = rows.map(r =>
         `<tr>${FF_COLS.map(c => {
