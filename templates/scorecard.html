@@ -576,7 +576,7 @@
         </div>
         <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
             <button type="button" class="sc-blurb-toggle" id="scExplainToggleBtn" onclick="toggleScoreExplain()">Show "How was this scored?"</button>
-            <button type="button" class="sc-blurb-toggle" onclick="exportScDetailEmail()">&#9993; Export to email (Outlook)</button>
+            <button type="button" class="sc-blurb-toggle" onclick="downloadScDetailHtml()">&#128190; Download scorecard (.html)</button>
         </div>
     </div>
     <div class="popout-scroll" id="scDetailContent"></div>
@@ -2031,10 +2031,8 @@ function scoreExplanationHtml(m, row) {
         <div class="sc-score-explain-rule">${esc(m.blurb || '')}</div></div>`;
 }
 
-// Build an HTML email body for the current slideout view and open it in Outlook
-// via the mailto: fallback (which the Outlook COM approach would prefer, but
-// mailto is browser-safe and works for both dev and deployed).
-function exportScDetailEmail() {
+// Download the current slideout scorecard as a standalone HTML file.
+function downloadScDetailHtml() {
     if (!scDetailData) return;
     const d = scDetailData;
     const measureRow = m => {
@@ -2069,19 +2067,22 @@ ${maintenance.map(measureRow).join('')}</table>
 ${d.NOTES ? `<h3 style="margin:14px 0 4px;">Notes</h3><p style="margin:0;">${esc(d.NOTES)}</p>` : ''}
 </body></html>`;
 
-    const subject = `Scorecard - ${d.PROPERTY_NAME || 'Property'} - ${d.QUARTER_YEAR || ''}`;
-    fetch(`/scorecard/api/property/${d.PROPERTY_KEY}/email-scorecard`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, html_body: html }),
-    }).then(r => r.json().then(res => ({ status: r.status, res })))
-      .then(({ status, res }) => {
-        if (status !== 200) { alert(res.error || 'Email failed'); return; }
-        alert(res.message || (res.mode === 'local_outlook_draft'
-            ? 'Draft opened in your Outlook.'
-            : 'Email sent.'));
-      })
-      .catch(err => alert('Email failed: ' + err.message));
+    const filePart = value => String(value || '').trim().toLowerCase()
+        .replace(/[^a-z0-9-]+/g, '_').replace(/^_+|_+$/g, '');
+    const filename = [
+        'scorecard',
+        filePart(d.PROPERTY_NAME) || String(d.PROPERTY_KEY),
+        filePart(d.QUARTER_YEAR) || 'quarter',
+        ddExportDateStampET(),
+    ].join('_') + '.html';
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    link.remove();
 }
 
 function rmScoreHeaderHtml(d) {
