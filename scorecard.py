@@ -2753,11 +2753,14 @@ def _send_via_graph(to_email, subject, html_body):
     import msal
     import requests as _requests
     env = _get_env()
-    tenant_id = env.get("AZURE_TENANT_ID") or env.get("PBI_TENANT_ID")
-    client_id = env.get("AZURE_CLIENT_ID") or env.get("GRAPH_CLIENT_ID")
-    client_secret = env.get("AZURE_CLIENT_SECRET") or env.get("GRAPH_CLIENT_SECRET")
+    tenant_id = env.get("GRAPH_TENANT_ID")
+    client_id = env.get("GRAPH_CLIENT_ID")
+    client_secret = env.get("GRAPH_CLIENT_SECRET")
     if not (tenant_id and client_id and client_secret):
-        raise RuntimeError("Graph API credentials missing on this environment")
+        raise RuntimeError(
+            "Graph API credentials missing; configure GRAPH_TENANT_ID, "
+            "GRAPH_CLIENT_ID, and GRAPH_CLIENT_SECRET for FabricPipelineApp"
+        )
     app = msal.ConfidentialClientApplication(
         client_id, authority=f"https://login.microsoftonline.com/{tenant_id}",
         client_credential=client_secret,
