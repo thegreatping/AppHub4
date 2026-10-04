@@ -2738,10 +2738,14 @@ function scViewAsClear() {
         const el = document.getElementById(id);
         if (!el) return;
         try {
-            if (localStorage.getItem(storageKey) === '1') el.setAttribute('open', '');
+            if (localStorage.getItem(storageKey) === '1') {
+                el.setAttribute('open', '');
+                requestAnimationFrame(_sizeScTableWraps);
+            }
         } catch { /* ignore */ }
         el.addEventListener('toggle', () => {
             try { localStorage.setItem(storageKey, el.open ? '1' : '0'); } catch { /* ignore */ }
+            requestAnimationFrame(_sizeScTableWraps);
         });
     };
     // Wait until the DOM has the blurb elements rendered.
