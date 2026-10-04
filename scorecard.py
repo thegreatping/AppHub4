@@ -627,30 +627,21 @@ def admin_qa_page():
 @scorecard_bp.route("/admin/qa/dashboard")
 @login_required
 def admin_qa_dashboard_page():
-    """Admin-only aggregate view of every tester's QA state."""
+    """Admin-only All Testers list or full-page tester review."""
     check = _require_access()
     if check:
         return check
+    requested_tester = (request.args.get("tester") or "").strip().lower()
+    if requested_tester:
+        if not _is_real_admin():
+            return jsonify({"error": "admin only"}), 403
+        if len(requested_tester) > 200 or "@" not in requested_tester or "/" in requested_tester:
+            return jsonify({"error": "invalid tester email"}), 400
+        return render_template("scorecard_qa_signoff.html",
+                               **_ctx(qa_tester_view=requested_tester))
     if not _is_admin():
         return jsonify({"error": "admin only"}), 403
     return render_template("scorecard_qa_dashboard.html", **_ctx())
-
-
-@scorecard_bp.route("/admin/qa/dashboard/tester")
-@login_required
-def admin_qa_tester_page():
-    """Full-page, read-only review of one tester's saved QA entries."""
-    check = _require_access()
-    if check:
-        return check
-    if not _is_real_admin():
-        return jsonify({"error": "admin only"}), 403
-    tester_email = (request.args.get("email") or "").strip().lower()
-    if len(tester_email) > 200 or "@" not in tester_email or "/" in tester_email:
-        return jsonify({"error": "invalid tester email"}), 400
-    return render_template("scorecard_qa_signoff.html",
-                           **_ctx(qa_tester_view=tester_email))
-
 
 
 @scorecard_bp.route("/api/admin/qa/state")
