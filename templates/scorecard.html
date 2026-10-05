@@ -123,10 +123,26 @@
        Full-width under the score row (flex-basis 100% forces .popout-row to
        wrap and puts the explanation on its own line beneath the label+value). */
     .sc-score-explain { display: none; flex-basis: 100%; width: 100%; margin-top: 6px; padding: 8px 12px; border-left: 3px solid var(--accent-cyan); background: rgba(0,169,200,0.06); border-radius: 3px; font-size: 1.14rem; line-height: 1.5; }
-    .popout-scroll.explains-on .sc-score-explain { display: block; }
-    .popout-scroll.explains-on .popout-row { flex-wrap: wrap; }
+    .explains-on .sc-score-explain { display: block; }
+    .explains-on .popout-row { flex-wrap: wrap; }
     .sc-score-explain-verdict { color: var(--text-primary); }
     .sc-score-explain-rule { color: var(--text-secondary); margin-top: 4px; font-size: 1.08rem; font-style: italic; }
+    .sc-blurb-toggle.active { background: var(--accent-cyan); border-color: var(--accent-cyan); color: #04222c; font-weight: 700; }
+
+    /* Wide two-panel slideout: left edge sits at the Property-name column's
+       right edge and the panel fills the rest of the width. Scores (left) and
+       Notes (right) each scroll on their own so neither needs page scrolling. */
+    #scDetailPanel.sc-detail-wide { left: var(--sc-detail-left, 340px); right: 0; width: auto; max-width: none; }
+    #scDetailPanel.sc-detail-wide .popout-resize-handle { display: none; }
+    #scDetailPanel.sc-detail-wide .popout-scroll { padding: 0; overflow: hidden; }
+    .sc-detail-cols { display: flex; height: 100%; align-items: stretch; }
+    .sc-detail-scores { flex: 1 1 58%; min-width: 0; overflow-y: auto; padding: 8px 18px 24px; border-right: 1px solid var(--border-medium); }
+    .sc-detail-notes { flex: 1 1 42%; min-width: 0; overflow-y: auto; padding: 8px 18px 24px; }
+    .sc-detail-notes .popout-section { margin-top: 0; }
+    @media (max-width: 900px) {
+        .sc-detail-cols { flex-direction: column; }
+        .sc-detail-scores { border-right: none; border-bottom: 1px solid var(--border-medium); }
+    }
 
     .sc-dd-icon { cursor: pointer; opacity: 0.7; font-size: 1.2rem; }
     .sc-dd-icon:hover { opacity: 1; }
@@ -626,7 +642,8 @@
             <span class="sc-detail-subtotal-eq">= <b id="scDetailReconOverall">--</b></span>
         </div>
         <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
-            <button type="button" class="sc-blurb-toggle" id="scExplainToggleBtn" onclick="toggleScoreExplain()">Show "How was this scored?"</button>
+            <button type="button" class="sc-blurb-toggle" id="scBizLogicBtn" onclick="toggleScBusinessLogic()" title="Show each measure's scoring rule / criteria">Business Logic</button>
+            <button type="button" class="sc-blurb-toggle" id="scScoringDetailsBtn" onclick="toggleScScoringDetails()" title="Show how this property specifically scored on each measure">Scoring Details</button>
             <button type="button" class="sc-blurb-toggle" onclick="downloadScDetailHtml()">&#128190; Download scorecard (.html)</button>
         </div>
     </div>
@@ -2106,11 +2123,36 @@ function openScDetail(propertyKey) {
             scNoteComposeMeasure = '';
             renderScDetail();
             scDetailPopout.open();
+            _positionScDetailPanel();
             loadScWhySummary(propertyKey);
             loadScNotes(propertyKey);
             markScMentionsRead(propertyKey);
         });
 }
+
+// Dock the slideout so its left edge meets the Property-name column's right
+// edge; the panel then fills the rest of the width. Recomputed on open and on
+// window resize so scores (left) and notes (right) stay side-by-side.
+function _positionScDetailPanel() {
+    const panel = document.getElementById('scDetailPanel');
+    if (!panel) return;
+    panel.classList.add('sc-detail-wide');
+    panel.style.width = '';
+    let left = 340;
+    const nameCell = document.querySelector('#scTbody tr td.name-col')
+        || document.querySelector('#scThead .id-col');
+    if (nameCell) {
+        const r = nameCell.getBoundingClientRect();
+        if (r.right > 40) left = Math.round(r.right);
+    }
+    left = Math.min(left, Math.round(window.innerWidth * 0.55));
+    panel.style.setProperty('--sc-detail-left', left + 'px');
+}
+
+window.addEventListener('resize', () => {
+    const panel = document.getElementById('scDetailPanel');
+    if (panel && panel.classList.contains('open')) _positionScDetailPanel();
+});
 
 function closeScDetail() {
     if (scDetailPopout) scDetailPopout.close();
@@ -2125,22 +2167,29 @@ function renderScDetail() {
 
     const leadership = window.SC_MEASURE_DEFS.filter(m => m.group === 'leadership' && m.key !== 'RMSCORE');
     const maintenance = window.SC_MEASURE_DEFS.filter(m => m.group === 'maintenance');
+    const explainsOn = (scShowBusinessLogic || scShowScoringDetails) ? 'explains-on' : '';
     document.getElementById('scDetailContent').innerHTML = `
-        ${rmScoreHeaderHtml(d)}
-        <div class="popout-section">
-            <div class="popout-section-header"><span class="popout-section-title">Leadership</span></div>
-            <div class="popout-section-body">${leadership.map(measureRowHtml).join('')}</div>
-        </div>
-        <div class="popout-section">
-            <div class="popout-section-header"><span class="popout-section-title">Maintenance</span></div>
-            <div class="popout-section-body">${maintenance.map(measureRowHtml).join('')}</div>
-        </div>
-        <div class="popout-section">
-            <div class="popout-section-header"><span class="popout-section-title">Notes</span></div>
-            <div class="popout-section-body">${notesSectionHtml(d)}</div>
+        <div class="sc-detail-cols">
+            <div class="sc-detail-scores ${explainsOn}" id="scDetailScores">
+                ${rmScoreHeaderHtml(d)}
+                <div class="popout-section">
+                    <div class="popout-section-header"><span class="popout-section-title">Leadership</span></div>
+                    <div class="popout-section-body">${leadership.map(measureRowHtml).join('')}</div>
+                </div>
+                <div class="popout-section">
+                    <div class="popout-section-header"><span class="popout-section-title">Maintenance</span></div>
+                    <div class="popout-section-body">${maintenance.map(measureRowHtml).join('')}</div>
+                </div>
+            </div>
+            <div class="sc-detail-notes" id="scDetailNotes">
+                <div class="popout-section">
+                    <div class="popout-section-header"><span class="popout-section-title">Notes</span></div>
+                    <div class="popout-section-body">${notesSectionHtml(d)}</div>
+                </div>
+            </div>
         </div>
     `;
-    document.getElementById('scDetailContent').classList.toggle('explains-on', scoreExplainVisible);
+    _syncExplainButtons();
 }
 
 // Header math: Leadership (Pre-RM) + Maintenance + RM Score == Overall Score.
@@ -2163,17 +2212,28 @@ function _scUpdateSubtotals(d) {
     reconEl.parentElement.classList.toggle('mismatch', mismatch);
 }
 
-let scoreExplainVisible = false;
+let scShowBusinessLogic = false;
+let scShowScoringDetails = false;
 // Per-property tailored explanations from /api/property/<key>/why-summary.
 // {measure_code: {status, text}} -- null while loading; populated on slideout open.
 let scWhySummaries = null;
 let scWhySummariesForPropertyKey = null;
 
-function toggleScoreExplain() {
-    scoreExplainVisible = !scoreExplainVisible;
-    document.getElementById('scExplainToggleBtn').textContent =
-        scoreExplainVisible ? 'Hide "How was this scored?"' : 'Show "How was this scored?"';
-    if (scDetailData) renderScDetail();
+function _syncExplainButtons() {
+    const bl = document.getElementById('scBizLogicBtn');
+    const sd = document.getElementById('scScoringDetailsBtn');
+    if (bl) bl.classList.toggle('active', scShowBusinessLogic);
+    if (sd) sd.classList.toggle('active', scShowScoringDetails);
+}
+
+function toggleScBusinessLogic() {
+    scShowBusinessLogic = !scShowBusinessLogic;
+    if (scDetailData) renderScDetail(); else _syncExplainButtons();
+}
+
+function toggleScScoringDetails() {
+    scShowScoringDetails = !scShowScoringDetails;
+    if (scDetailData) renderScDetail(); else _syncExplainButtons();
 }
 
 // Fetch tailored per-measure summaries for the currently open property. Cached
@@ -2185,7 +2245,7 @@ function loadScWhySummary(propertyKey) {
     fetch(`/scorecard/api/property/${propertyKey}/why-summary`).then(r => r.json()).then(j => {
         if (scWhySummariesForPropertyKey !== propertyKey) return; // stale
         scWhySummaries = (j && j.summaries) || {};
-        if (scoreExplainVisible && scDetailData) renderScDetail();
+        if (scShowScoringDetails && scDetailData) renderScDetail();
     }).catch(() => { scWhySummaries = {}; });
 }
 
@@ -2193,47 +2253,49 @@ function loadScWhySummary(propertyKey) {
 // scWhySummaries (tailored counts, thresholds, etc.); falls back to a
 // generic pass/fail sentence + the rule blurb from SC_MEASURE_DEFS.
 function scoreExplanationHtml(m, row) {
-    if (!scoreExplainVisible) return '';
-    // Preferred path: tailored per-property summary from the backend.
-    if (scWhySummaries && scWhySummaries[m.key]) {
-        const s = scWhySummaries[m.key];
-        const statusColor = {
-            pass: '#4ade80', fail: '#f38ba8', override: '#f59e0b',
-            nodata: 'var(--text-secondary)', info: 'var(--accent-cyan)',
-            pass_generic: '#4ade80', fail_generic: '#f38ba8', generic: 'var(--text-secondary)',
-        }[s.status] || 'var(--text-primary)';
-        return `<div class="sc-score-explain">
-            <div class="sc-score-explain-verdict" style="color:${statusColor};">${esc(s.text)}</div>
-            <div class="sc-score-explain-rule"><b>Rule:</b> ${esc(m.blurb || '')}</div>
-        </div>`;
+    if (!scShowBusinessLogic && !scShowScoringDetails) return '';
+    let verdictHtml = '';
+    if (scShowScoringDetails) {
+        if (scWhySummaries && scWhySummaries[m.key]) {
+            const s = scWhySummaries[m.key];
+            const statusColor = {
+                pass: '#4ade80', fail: '#f38ba8', override: '#f59e0b',
+                nodata: 'var(--text-secondary)', info: 'var(--accent-cyan)',
+                pass_generic: '#4ade80', fail_generic: '#f38ba8', generic: 'var(--text-secondary)',
+            }[s.status] || 'var(--text-primary)';
+            verdictHtml = `<div class="sc-score-explain-verdict" style="color:${statusColor};">${esc(s.text)}</div>`;
+        } else {
+            const v = row[m.key];
+            const locked = !!row[`${m.key}_LOCKED`];
+            const lockedBy = row[`${m.key}_LOCKED_BY`];
+            const reason = row[`${m.key}_REASON`];
+            let verdict;
+            if (locked) {
+                verdict = `<b>Manually overridden</b> to <b>${v === null || v === undefined ? '(no value)' : v}</b>` +
+                    (lockedBy ? ` by ${esc(lockedBy)}` : '') +
+                    (reason ? `. Reason: <em>${esc(reason)}</em>` : '.');
+            } else if (m.type === 'bool') {
+                if (v === null || v === undefined) verdict = 'No data available &mdash; defaulted to PASS per the rule.';
+                else if (v) verdict = '<b style="color:#4ade80;">Passed</b> the rule described below.';
+                else verdict = '<b style="color:#f38ba8;">Failed</b> the rule described below.';
+            } else if (m.type === 'bool01') {
+                if (v === null || v === undefined) verdict = 'Not entered yet (RM subjective, defaults to no answer).';
+                else if (v) verdict = '<b style="color:#4ade80;">Yes</b> &mdash; RM confirmed.';
+                else verdict = '<b style="color:#f38ba8;">No</b> &mdash; RM confirmed not completed.';
+            } else if (m.type === 'num5') {
+                verdict = v === null || v === undefined
+                    ? 'Not yet entered by the RM (0-5 subjective).'
+                    : `RM entered <b>${v} / 5</b>.`;
+            } else {
+                verdict = `Value: <b>${v === null || v === undefined ? '(none)' : v}</b>.`;
+            }
+            verdictHtml = `<div class="sc-score-explain-verdict">${verdict}</div>`;
+        }
     }
-    // Fallback (while loading or if the endpoint failed).
-    const v = row[m.key];
-    const locked = !!row[`${m.key}_LOCKED`];
-    const lockedBy = row[`${m.key}_LOCKED_BY`];
-    const reason = row[`${m.key}_REASON`];
-    let verdict;
-    if (locked) {
-        verdict = `<b>Manually overridden</b> to <b>${v === null || v === undefined ? '(no value)' : v}</b>` +
-            (lockedBy ? ` by ${esc(lockedBy)}` : '') +
-            (reason ? `. Reason: <em>${esc(reason)}</em>` : '.');
-    } else if (m.type === 'bool') {
-        if (v === null || v === undefined) verdict = 'No data available &mdash; defaulted to PASS per the rule.';
-        else if (v) verdict = '<b style="color:#4ade80;">Passed</b> the rule described below.';
-        else verdict = '<b style="color:#f38ba8;">Failed</b> the rule described below.';
-    } else if (m.type === 'bool01') {
-        if (v === null || v === undefined) verdict = 'Not entered yet (RM subjective, defaults to no answer).';
-        else if (v) verdict = '<b style="color:#4ade80;">Yes</b> &mdash; RM confirmed.';
-        else verdict = '<b style="color:#f38ba8;">No</b> &mdash; RM confirmed not completed.';
-    } else if (m.type === 'num5') {
-        verdict = v === null || v === undefined
-            ? 'Not yet entered by the RM (0-5 subjective).'
-            : `RM entered <b>${v} / 5</b>.`;
-    } else {
-        verdict = `Value: <b>${v === null || v === undefined ? '(none)' : v}</b>.`;
-    }
-    return `<div class="sc-score-explain"><div class="sc-score-explain-verdict">${verdict}</div>
-        <div class="sc-score-explain-rule">${esc(m.blurb || '')}</div></div>`;
+    const ruleHtml = scShowBusinessLogic
+        ? `<div class="sc-score-explain-rule"><b>Rule:</b> ${esc(m.blurb || '')}</div>`
+        : '';
+    return `<div class="sc-score-explain">${verdictHtml}${ruleHtml}</div>`;
 }
 
 // Download the current slideout scorecard as a standalone HTML file.
