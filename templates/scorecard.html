@@ -37,6 +37,8 @@
     .sc-stat .k { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
     .sc-stat .v { font-family: Consolas, monospace; font-weight: 700; font-size: 1.1rem; color: var(--text-primary); }
     .sc-stat.clickable { cursor: pointer; padding: 4px 10px; border-radius: 6px; }
+    button.sc-stat { background: none; border: none; color: inherit; font: inherit; text-align: left; }
+    button.sc-stat:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
     .sc-stat.clickable:hover { background: var(--hover-bg-strong); }
     .sc-stat.clickable.active .v { color: var(--accent-cyan); }
     .sc-toolbar { margin-left: auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
@@ -331,6 +333,11 @@
 
     .sc-reference-btn { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 7px 14px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; }
     .sc-reference-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .sc-ref-body.sc-reminder-body { font-size: 0.85rem; }
+    .sc-reminder-row { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-input); }
+    .sc-reminder-row > div { flex: 1 1 240px; min-width: 0; overflow-wrap: anywhere; }
+    .sc-reminder-row ul { margin: 6px 0 0; padding-left: 20px; }
+    .sc-reminder-email { color: var(--text-secondary); }
     .sc-ref-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 1100; align-items: center; justify-content: center; }
     .sc-ref-overlay.open { display: flex; }
     .sc-ref-modal { background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 8px; width: 96vw; max-width: 1400px; height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -439,7 +446,7 @@
                 <li>Rows are your properties. Each row totals to the Overall Score at the far left.</li>
                 <li>Cyan <span class="sc-chip-pass" style="min-width:24px;">P</span> = pass, magenta <span class="sc-chip-fail" style="min-width:24px;">F</span> = fail; the number in the RM Score column is the RM's subjective 0-5 rating. Cells with an orange border have been manually overridden &mdash; hover for who and why.</li>
                 <li>Click any row to open the property's slideout for detail, notes, and RM score entry.</li>
-                <li>The ribbon at the top shows how many communities you're seeing, how many RM Scores you've saved, and how many communities have comments.</li>
+                <li>The ribbon at the top shows how many communities you're seeing, how many have all three RM inputs saved, how many have incomplete RM inputs, and how many have comments.</li>
                 <li>Click any column header to sort. Use the filter row under the header names to narrow down. Use the search box for a quick free-text filter.</li>
             </ul>
         </div>
@@ -449,15 +456,22 @@
             <span class="k">Communities</span>
             <span class="v" id="statCommunities">--</span>
         </div>
-        <div class="sc-stat clickable" id="statInputsBtn" onclick="toggleQuickFilter('needsInput')">
+        <button type="button" class="sc-stat clickable" id="statInputsBtn" onclick="toggleQuickFilter('inputsSaved')" aria-pressed="false" title="Properties with RM Score, Surveys &amp; Reviews, and Controllable NOI all entered">
             <span class="k">RM Inputs Saved</span>
             <span class="v" id="statInputs">--</span>
-        </div>
+        </button>
+        <button type="button" class="sc-stat clickable" id="statInputsIncompleteBtn" onclick="toggleQuickFilter('needsInput')" aria-pressed="false" title="Properties missing RM Score, Surveys &amp; Reviews, or Controllable NOI">
+            <span class="k">RM Inputs Incomplete</span>
+            <span class="v" id="statInputsIncomplete">--</span>
+        </button>
         <div class="sc-stat clickable" id="statCommentsBtn" onclick="toggleQuickFilter('hasNotes')">
             <span class="k">Comments</span>
             <span class="v" id="statComments">--</span>
         </div>
         <div class="sc-toolbar">
+            {% if is_admin or is_rvp %}
+            <button type="button" class="sc-export-btn" id="scRemindInputsBtn" style="display:none;" onclick="openScInputReminders()" title="Prepare unsent reminder drafts for the visible incomplete properties"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Email reminders</button>
+            {% endif %}
             <label class="sc-q1-toggle">
                 <input type="checkbox" id="q1ToggleCb" onchange="toggleQ1History(this.checked)">
                 Show prior quarter totals
@@ -683,6 +697,16 @@
             <button type="button" class="sc-ref-tab" id="scHelpTab_contact" onclick="showScHelpTab('contact')">Get Help</button>
         </div>
         <div class="sc-ref-body" id="scRefBody"></div>
+    </div>
+</div>
+
+<div class="sc-ref-overlay" id="scInputRemindersOverlay" onclick="if(event.target===this) closeScInputReminders()" onkeydown="scInputRemindersKeydown(event)">
+    <div class="sc-ref-modal" role="dialog" aria-modal="true" aria-labelledby="scInputRemindersTitle">
+        <div class="sc-ref-header">
+            <div class="sc-ref-title" id="scInputRemindersTitle">RM Input Reminder Drafts</div>
+            <button type="button" class="sc-ref-close" onclick="closeScInputReminders()" title="Close reminder drafts" aria-label="Close reminder drafts"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </div>
+        <div class="sc-ref-body sc-reminder-body" id="scInputRemindersBody"></div>
     </div>
 </div>
 
@@ -1072,7 +1096,7 @@ const SC_HELP_CONTENT = {
         <div class="sc-crit-item">
           <div class="sc-crit-name">The ribbon above the grid</div>
           <div class="sc-crit-body">
-            <p><b>Communities</b> = how many properties are in your view. <b>RM Inputs Saved</b> = how many of your RM Scores you've saved this quarter. <b>Comments</b> = properties with notes. Click either of the last two to filter down to just those rows.</p>
+            <p><b>Communities</b> = how many properties are in your view. <b>RM Inputs Saved</b> = properties with RM Score, Surveys &amp; Reviews, and Controllable NOI all entered. <b>RM Inputs Incomplete</b> = properties missing at least one of those three inputs. A recorded zero or Fail still counts as entered. <b>Comments</b> = properties with notes. Click a stat to filter to its matching rows.</p>
             <p><b>Show prior quarter totals</b> adds a Q1 History column so you can see the previous quarter's PreRM, Ldr Total, and Ms Total right next to this quarter's.</p>
           </div>
         </div>
@@ -1343,7 +1367,7 @@ let allRows = [];
 let priorByPropertyKey = {};
 let colFilters = {};      // key -> Set of allowed display-values, or undefined/null = "All"
 let searchQuery = '';
-let quickFilters = { needsInput: false, hasNotes: false };
+let quickFilters = { inputsSaved: false, needsInput: false, hasNotes: false };
 let sort = { col: null, dir: 1 };
 let showPrior = false;
 let scQuarterLabel = '';
@@ -1409,6 +1433,12 @@ function scPickQuarter(val) {
     loadData();
 }
 
+const SC_RM_INPUT_LABELS = { RMSCORE: 'RM Score', SURVEYS: 'Surveys & Reviews', NOI: 'Controllable NOI' };
+
+function missingScRmInputs(row) {
+    return Object.keys(SC_RM_INPUT_LABELS).filter(key => row[key] === null || row[key] === undefined || row[key] === '');
+}
+
 function passesFilters(row) {
     for (const [key, sel] of Object.entries(colFilters)) {
         if (!sel) continue; // "All" selected
@@ -1419,9 +1449,8 @@ function passesFilters(row) {
         const hay = `${row.PROPERTY_NAME || ''} ${row.ENTITY_NUMBER || ''} ${row.RM_NAME || ''}`.toLowerCase();
         if (!hay.includes(searchQuery.toLowerCase())) return false;
     }
-    if (quickFilters.needsInput) {
-        if (row.RMSCORE !== null && row.SURVEYS !== null && row.NOI !== null) return false;
-    }
+    if (quickFilters.inputsSaved && missingScRmInputs(row).length) return false;
+    if (quickFilters.needsInput && !missingScRmInputs(row).length) return false;
     if (quickFilters.hasNotes) {
         if (!row.NOTES) return false;
     }
@@ -1576,17 +1605,28 @@ function cellHtml(c, row) {
 
 function updateRibbon(rows) {
     document.getElementById('statCommunities').textContent = `${rows.length} of ${allRows.length}`;
-    document.getElementById('statInputs').textContent = allRows.filter(r => r.RMSCORE !== null && r.SURVEYS !== null && r.NOI !== null).length;
+    const completedInputs = allRows.filter(row => !missingScRmInputs(row).length).length;
+    document.getElementById('statInputs').textContent = completedInputs;
+    document.getElementById('statInputsIncomplete').textContent = allRows.length - completedInputs;
     document.getElementById('statComments').textContent = allRows.filter(r => r.NOTES).length;
-    document.getElementById('statInputsBtn').classList.toggle('active', quickFilters.needsInput);
+    document.getElementById('statInputsBtn').classList.toggle('active', quickFilters.inputsSaved);
+    document.getElementById('statInputsBtn').setAttribute('aria-pressed', String(quickFilters.inputsSaved));
+    document.getElementById('statInputsIncompleteBtn').classList.toggle('active', quickFilters.needsInput);
+    document.getElementById('statInputsIncompleteBtn').setAttribute('aria-pressed', String(quickFilters.needsInput));
     document.getElementById('statCommentsBtn').classList.toggle('active', quickFilters.hasNotes);
+    const reminderButton = document.getElementById('scRemindInputsBtn');
+    if (reminderButton) {
+        reminderButton.style.display = quickFilters.needsInput ? '' : 'none';
+        reminderButton.disabled = rows.length === 0;
+    }
 }
 
 function renderChipBar() {
     const bar = document.getElementById('scChipBar');
     const chips = [];
     if (searchQuery) chips.push(`<span class="sc-chip">Search: "${esc(searchQuery)}" <button onclick="clearSearch()">&times;</button></span>`);
-    if (quickFilters.needsInput) chips.push(`<span class="sc-chip" title="Showing only properties with a missing RM Score, Surveys & Reviews value, or NOI value. Click the x to show every property again.">Filter: Missing RM Score / Surveys / NOI <button onclick="toggleQuickFilter('needsInput')">&times;</button></span>`);
+    if (quickFilters.inputsSaved) chips.push(`<span class="sc-chip" title="RM Score, Surveys & Reviews, and Controllable NOI are all entered.">RM Inputs Saved <button onclick="toggleQuickFilter('inputsSaved')">&times;</button></span>`);
+    if (quickFilters.needsInput) chips.push(`<span class="sc-chip" title="Showing properties missing RM Score, Surveys & Reviews, or Controllable NOI.">RM Inputs Incomplete <button onclick="toggleQuickFilter('needsInput')">&times;</button></span>`);
     if (quickFilters.hasNotes) chips.push(`<span class="sc-chip">Has Notes <button onclick="toggleQuickFilter('hasNotes')">&times;</button></span>`);
     for (const [key, sel] of Object.entries(colFilters)) {
         if (!sel) continue;
@@ -1634,12 +1674,100 @@ scColumnHoverTable.addEventListener('focusout', event => highlightScColumn(event
 
 function onSearchInput(val) { searchQuery = val; render(); }
 function clearSearch() { searchQuery = ''; const el = document.getElementById('scSearch'); if (el) el.value = ''; render(); }
-function toggleQuickFilter(name) { quickFilters[name] = !quickFilters[name]; render(); }
+function toggleQuickFilter(name) {
+    quickFilters[name] = !quickFilters[name];
+    if (quickFilters[name] && name === 'inputsSaved') quickFilters.needsInput = false;
+    if (quickFilters[name] && name === 'needsInput') quickFilters.inputsSaved = false;
+    render();
+}
+function showScIncompleteInputs() {
+    quickFilters.inputsSaved = false;
+    quickFilters.needsInput = true;
+    render();
+}
+let scInputReminderGroups = [];
+
+function collectScInputReminders(rows) {
+    const groups = new Map();
+    const unassigned = [];
+    rows.filter(row => missingScRmInputs(row).length).forEach(row => {
+        const email = typeof row.RM_EMAIL === 'string' ? row.RM_EMAIL.trim().toLowerCase() : '';
+        if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(email)) {
+            unassigned.push(row);
+            return;
+        }
+        if (!groups.has(email)) groups.set(email, { email, name: row.RM_NAME || '', rows: [] });
+        groups.get(email).rows.push(row);
+    });
+    return { groups: [...groups.values()].sort((first, second) => first.email.localeCompare(second.email)), unassigned };
+}
+
+function openScInputReminders() {
+    if (!document.getElementById('scRemindInputsBtn') || !quickFilters.needsInput) return;
+    const rows = getFilteredSorted();
+    const reminders = collectScInputReminders(rows);
+    scInputReminderGroups = reminders.groups;
+    const rowHtml = row => `<li>${esc(row.PROPERTY_NAME || row.ENTITY_NUMBER || row.PROPERTY_KEY)}: ${esc(missingScRmInputs(row).map(key => SC_RM_INPUT_LABELS[key]).join(', '))}</li>`;
+    let html = `<p class="sc-ref-intro">${rows.length} incomplete properties | ${reminders.groups.length} RM recipients | ${esc(scQuarterLabel)}</p>`;
+    if (reminders.unassigned.length) {
+        html += `<div class="sc-reminder-row" role="status"><div><b>Missing or invalid RM email (${reminders.unassigned.length})</b><ul>${reminders.unassigned.map(rowHtml).join('')}</ul></div></div>`;
+    }
+    html += reminders.groups.map((group, index) => `<section class="sc-reminder-row"><div><b>${esc(group.name || group.email)}</b><div class="sc-reminder-email">${esc(group.email)}</div><ul>${group.rows.map(rowHtml).join('')}</ul></div><button type="button" class="sc-reference-btn" onclick="composeScInputReminder(${index})" title="Open an unsent draft to ${esc(group.email)}"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Compose draft</button></section>`).join('');
+    document.getElementById('scInputRemindersBody').innerHTML = html;
+    document.getElementById('scInputRemindersOverlay').classList.add('open');
+    document.getElementById('scInputRemindersOverlay').querySelector('.sc-ref-close').focus();
+}
+
+function closeScInputReminders() {
+    document.getElementById('scInputRemindersOverlay').classList.remove('open');
+    document.getElementById('scRemindInputsBtn')?.focus();
+}
+
+function scInputRemindersKeydown(event) {
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        closeScInputReminders();
+        return;
+    }
+    if (event.key !== 'Tab') return;
+    const buttons = [...document.querySelectorAll('#scInputRemindersOverlay button:not(:disabled)')];
+    const first = buttons[0], last = buttons[buttons.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+    }
+}
+
+function scInputReminderUrl(group) {
+    let shown = Math.min(10, group.rows.length);
+    let url;
+    do {
+        const properties = group.rows.slice(0, shown).map(row => `- ${row.PROPERTY_NAME || row.ENTITY_NUMBER || row.PROPERTY_KEY}: ${missingScRmInputs(row).map(key => SC_RM_INPUT_LABELS[key]).join(', ')}`);
+        if (group.rows.length > shown) properties.push(`- ${group.rows.length - shown} additional properties in the Scorecard view`);
+        const body = [`Hello ${group.name || 'there'},`, '', `Please complete the missing RM inputs for ${scQuarterLabel}.`, '', ...properties, '', `Scorecard: ${new URL('/scorecard/', location.origin).href}`].join('\n');
+        url = `mailto:${encodeURIComponent(group.email)}?subject=${encodeURIComponent(`${scQuarterLabel} - RM inputs reminder`)}&body=${encodeURIComponent(body)}`;
+        shown--;
+    } while (url.length > 1800 && shown >= 0);
+    return url;
+}
+
+function composeScInputReminder(index) {
+    const group = scInputReminderGroups[index];
+    if (!group || !document.getElementById('scRemindInputsBtn')) return;
+    const link = document.createElement('a');
+    link.href = scInputReminderUrl(group);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+}
 function clearColFilter(key) { delete colFilters[key]; render(); }
 function clearSort() { sort = { col: null, dir: 1 }; render(); }
 function clearAllFilters() {
     searchQuery = ''; const el = document.getElementById('scSearch'); if (el) el.value = '';
-    quickFilters = { needsInput: false, hasNotes: false };
+    quickFilters = { inputsSaved: false, needsInput: false, hasNotes: false };
     colFilters = {}; sort = { col: null, dir: 1 };
     render();
 }
@@ -2400,8 +2528,7 @@ function closeScSignoutModal() {
 
 function scSoFinishScores() {
     closeScSignoutModal();
-    quickFilters.needsInput = true;
-    render();
+    showScIncompleteInputs();
 }
 
 function scSoConfirmSignOut() {
@@ -2443,8 +2570,7 @@ function exportSubjectiveScores() {
         if (missingNOI.length) msg += `Controllable NOI (0/1) still missing for ${missingNOI.length} propert${missingNOI.length === 1 ? 'y' : 'ies'}:\n${listNames(missingNOI)}\n\n`;
         msg += 'Click OK to download anyway, or Cancel to finish entering scores (missing communities will be highlighted for you).';
         if (!confirm(msg)) {
-            quickFilters.needsInput = true;
-            render();
+            showScIncompleteInputs();
             return;
         }
     }
