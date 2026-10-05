@@ -2890,22 +2890,161 @@ def api_patch_property(property_key):
         conn.close()
 
 
-@scorecard_bp.route("/api/notes/<int:property_key>", methods=["POST"])
+def _note_author_role():
+    """Short role label stamped on each note (Admin / RVP / PM / RM)."""
+    if _is_admin():
+        return "Admin"
+    if _is_pm():
+        return "PM"
+    if _is_rvp():
+        return "RVP"
+    return "RM"
+
+
+def _signed_in_email():
+    """The ACTUAL logged-in user's email -- used for mention inboxes and
+    author-owned delete checks, so an admin's 'View as...' simulation never
+    reassigns authorship or steals someone else's alerts."""
+    return (session.get("user", {}).get("email") or "").lower()
+
+
+def _mention_candidates(conn, property_key):
+    """Who can be @mentioned on a property's notes: its RM, RVP (from
+    PROPERTY_0) and PM (from Emp_Core). Best-effort names; de-duped by email."""
+    out = {}
+    try:
+        rows = conn.fetchall(
+            "SELECT RM_EMAIL, RM_NAME, RVP_EMAIL FROM dbo.PROPERTY_0 WHERE PROPERTY_KEY = ?",
+            [property_key])
+    except Exception:
+        rows = []
+    if rows:
+        rm_email, rm_name, rvp_email = rows[0]
+        if rm_email and rm_email.strip():
+            out[rm_email.strip().lower()] = {"email": rm_email.strip(), "name": (rm_name or rm_email).strip(), "role": "RM"}
+        if rvp_email and rvp_email.strip():
+            out.setdefault(rvp_email.strip().lower(), {"email": rvp_email.strip(), "name": rvp_email.strip(), "role": "RVP"})
+    try:
+        pm_rows = conn.fetchall(
+            "SELECT TOP 1 EMAIL, NAME_FULL FROM dbo.Emp_Core "
+            "WHERE PROPERTY_KEY = ? AND FLAG_ACTIVE = 1 AND UPPER(TITLE_GROUP) = 'PROPERTY MANAGER'",
+            [property_key])
+    except Exception:
+        pm_rows = []
+    if pm_rows and pm_rows[0][0]:
+        pm_email, pm_name = pm_rows[0]
+        out.setdefault(pm_email.strip().lower(), {"email": pm_email.strip(), "name": (pm_name or pm_email).strip(), "role": "PM"})
+    # Fill in RVP / unnamed emails from Emp_Core where we only had an address.
+    for key, cand in list(out.items()):
+        if cand["name"].lower() == cand["email"].lower():
+            try:
+                nm = conn.scalar(
+                    "SELECT TOP 1 NAME_FULL FROM dbo.Emp_Core WHERE LOWER(EMAIL) = ? AND FLAG_ACTIVE = 1",
+                    [key])
+                if nm:
+                    cand["name"] = nm.strip()
+            except Exception:
+                pass
+    return sorted(out.values(), key=lambda c: c["name"].lower())
+
+
+def _refresh_core_note_preview(conn, property_key, ay, quarter, admin, email, user):
+    """Keep SCORECARD_CORE.NOTES (the grid 'Notes' preview + 'Comments'
+    count) pointed at the most recent non-deleted property-level note. Only
+    called for authors with core write scope -- PM-authored notes live only
+    in the thread so PMs stay read-only on the scored row."""
+    latest = conn.fetchall(
+        "SELECT TOP 1 NOTE_TEXT, AUTHOR_NAME, AUTHOR_EMAIL FROM dbo.SCORECARD_NOTES "
+        "WHERE PROPERTY_KEY = ? AND AY = ? AND QUARTER = ? AND MEASURE_KEY IS NULL AND IS_DELETED = 0 "
+        "ORDER BY CREATED_AT DESC, NOTE_ID DESC",
+        [property_key, ay, quarter])
+    if latest:
+        text, by_name, by_email = latest[0]
+        note_by = by_name or by_email
+    else:
+        text, note_by = None, None
+    _update_own_property(
+        conn, property_key, ay, quarter, admin, email,
+        "NOTES = ?, NOTE_BY = ?, NOTE_AT = SYSUTCDATETIME(), DATE_UPDATED = SYSUTCDATETIME(), UPDATED_BY = ?",
+        [text, note_by, user.get("email", "")])
+
+
+@scorecard_bp.route("/api/notes/<int:property_key>", methods=["GET"])
 @login_required
-def api_save_notes(property_key):
-    """Set (or clear, via null/empty) the free-text NOTES field -- separate
-    from the measure override endpoints since NOTES has no <field>_LOCKED
-    bit and its own NOTE_BY/NOTE_AT audit pair (mirrors the original app's
-    editedBy/editedAt vs. noteBy/noteAt distinction). Same RM-or-admin
-    ownership scoping as every other write endpoint."""
+def api_list_notes(property_key):
+    """Return the append-only note thread for a property this quarter, plus
+    the @mention candidate list. Visible to anyone whose role scope includes
+    the property (RM/RVP/Admin by portfolio; PM for their own property)."""
     check = _require_access()
     if check:
         return check
-    if _is_pm() or _is_ed():
-        return jsonify({"error": "read-only for Property Managers and Executive Directors"}), 403
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        admin = _is_admin()
+        email = _effective_rm_email()
+        ay, quarter = _latest_period(conn)
+        if ay is None:
+            return jsonify({"error": "no data available"}), 404
+        if _scoped_property_row(conn, property_key, ay, quarter, admin, email, ["PROPERTY_KEY"]) is None:
+            return jsonify({"error": "not found or not authorized"}), 404
+        note_rows = conn.fetchall(
+            "SELECT NOTE_ID, MEASURE_KEY, NOTE_TEXT, AUTHOR_EMAIL, AUTHOR_NAME, AUTHOR_ROLE, CREATED_AT "
+            "FROM dbo.SCORECARD_NOTES "
+            "WHERE PROPERTY_KEY = ? AND AY = ? AND QUARTER = ? AND IS_DELETED = 0 "
+            "ORDER BY CREATED_AT ASC, NOTE_ID ASC",
+            [property_key, ay, quarter])
+        mentions_by_note = {}
+        if note_rows:
+            ids = [r[0] for r in note_rows]
+            placeholders = ",".join("?" for _ in ids)
+            for nid, m_email, m_name in conn.fetchall(
+                f"SELECT NOTE_ID, MENTION_EMAIL, MENTION_NAME FROM dbo.SCORECARD_NOTE_MENTIONS WHERE NOTE_ID IN ({placeholders})",
+                ids):
+                mentions_by_note.setdefault(nid, []).append({"email": m_email, "name": m_name or m_email})
+        me = _signed_in_email()
+        notes = [{
+            "note_id": r[0],
+            "measure_key": r[1],
+            "text": r[2],
+            "author_email": r[3],
+            "author_name": r[4] or r[3],
+            "author_role": r[5],
+            "created_at": r[6].isoformat() if r[6] else None,
+            "can_delete": (r[3] or "").lower() == me,
+            "mentions": mentions_by_note.get(r[0], []),
+        } for r in note_rows]
+        return jsonify({
+            "notes": notes,
+            "candidates": _mention_candidates(conn, property_key),
+            "current_email": me,
+            "can_add": True,
+        })
+    finally:
+        conn.close()
+
+
+@scorecard_bp.route("/api/notes/<int:property_key>", methods=["POST"])
+@login_required
+def api_add_note(property_key):
+    """Append a note (property-level or per-measure) with optional @mentions.
+    Every role whose scope includes the property can add -- including PMs,
+    who remain read-only on scores/overrides."""
+    check = _require_access()
+    if check:
+        return check
     user = session.get("user", {})
     payload = request.get_json(force=True) or {}
-    notes = (payload.get("notes") or "").strip() or None
+    text = (payload.get("text") or "").strip()
+    if not text:
+        return jsonify({"error": "note text is required"}), 400
+    text = text[:2000]
+    measure_key = (payload.get("measure_key") or "").strip() or None
+    if measure_key is not None and measure_key not in _MEASURE_KEYS:
+        return jsonify({"error": "invalid measure_key"}), 400
+    mentions_in = payload.get("mentions") or []
+    if not isinstance(mentions_in, list):
+        return jsonify({"error": "mentions must be a list"}), 400
 
     env = _get_env()
     conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
@@ -2915,28 +3054,171 @@ def api_save_notes(property_key):
         ay, quarter = _latest_period(conn)
         if ay is None:
             return jsonify({"error": "no data available"}), 404
-        owned = _scoped_property_row(conn, property_key, ay, quarter, admin, email, ["PROPERTY_KEY", "NOTES"])
-        if owned is None:
+        if _scoped_property_row(conn, property_key, ay, quarter, admin, email, ["PROPERTY_KEY"]) is None:
             return jsonify({"error": "not found or not authorized"}), 404
-        old_notes = owned[1]
 
-        note_by = (user.get("name") or user.get("email") or "") if notes else None
-        cur = _update_own_property(
-            conn, property_key, ay, quarter, admin, email,
-            "NOTES = ?, NOTE_BY = ?, NOTE_AT = SYSUTCDATETIME(), DATE_UPDATED = SYSUTCDATETIME(), UPDATED_BY = ?",
-            [notes, note_by, user.get("email", "")])
+        candidates = {c["email"].lower(): c for c in _mention_candidates(conn, property_key)}
+        author_name = user.get("name") or user.get("email") or ""
+        author_email = _signed_in_email()
+        author_role = _note_author_role()
+        new_id = conn.scalar(
+            "INSERT INTO dbo.SCORECARD_NOTES "
+            "(PROPERTY_KEY, AY, QUARTER, MEASURE_KEY, NOTE_TEXT, AUTHOR_EMAIL, AUTHOR_NAME, AUTHOR_ROLE) "
+            "OUTPUT INSERTED.NOTE_ID "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [property_key, ay, quarter, measure_key, text, author_email, author_name, author_role])
+
+        added_mentions = []
+        seen = set()
+        for raw in mentions_in:
+            key = str(raw or "").strip().lower()
+            if key in seen or key not in candidates or key == author_email:
+                continue
+            seen.add(key)
+            cand = candidates[key]
+            conn.execute(
+                "INSERT INTO dbo.SCORECARD_NOTE_MENTIONS (NOTE_ID, PROPERTY_KEY, MENTION_EMAIL, MENTION_NAME) "
+                "VALUES (?, ?, ?, ?)",
+                [new_id, property_key, cand["email"], cand["name"]])
+            added_mentions.append({"email": cand["email"], "name": cand["name"]})
+
+        if measure_key is None and not _is_pm():
+            _refresh_core_note_preview(conn, property_key, ay, quarter, admin, email, user)
         conn.commit()
         _audit_scorecard_change(
-            source_table_key="scorecard_core",
-            row_key_dict={"PROPERTY_KEY": property_key, "AY": ay, "QUARTER": quarter},
-            field_name="NOTES",
-            old_value=old_notes,
-            new_value=notes,
-            action="UPDATE",
-            changed_by=user.get("email", ""),
-            reason="RM note save",
+            source_table_key="scorecard_notes",
+            row_key_dict={"PROPERTY_KEY": property_key, "AY": ay, "QUARTER": quarter, "NOTE_ID": new_id},
+            field_name=f"NOTE:{measure_key or 'PROPERTY'}",
+            old_value=None,
+            new_value=text,
+            action="INSERT",
+            changed_by=author_email,
+            reason="note add",
         )
-        return jsonify({"ok": True, "rows_affected": cur.rowcount, "notes": notes, "note_by": note_by})
+        return jsonify({"ok": True, "note": {
+            "note_id": new_id,
+            "measure_key": measure_key,
+            "text": text,
+            "author_email": author_email,
+            "author_name": author_name,
+            "author_role": author_role,
+            "created_at": None,
+            "can_delete": True,
+            "mentions": added_mentions,
+        }})
+    finally:
+        conn.close()
+
+
+@scorecard_bp.route("/api/notes/note/<int:note_id>", methods=["DELETE"])
+@login_required
+def api_delete_note(note_id):
+    """Soft-delete a note. Only its original author may delete it -- nobody
+    can remove someone else's note."""
+    check = _require_access()
+    if check:
+        return check
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        rows = conn.fetchall(
+            "SELECT PROPERTY_KEY, AY, QUARTER, MEASURE_KEY, AUTHOR_EMAIL, NOTE_TEXT "
+            "FROM dbo.SCORECARD_NOTES WHERE NOTE_ID = ? AND IS_DELETED = 0",
+            [note_id])
+        if not rows:
+            return jsonify({"error": "note not found"}), 404
+        property_key, ay, quarter, measure_key, author_email, text = rows[0]
+        me = _signed_in_email()
+        if (author_email or "").lower() != me:
+            return jsonify({"error": "you can only delete your own notes"}), 403
+        conn.execute(
+            "UPDATE dbo.SCORECARD_NOTES SET IS_DELETED = 1, DELETED_AT = SYSUTCDATETIME(), DELETED_BY = ? "
+            "WHERE NOTE_ID = ?",
+            [me, note_id])
+        if measure_key is None and not _is_pm():
+            _refresh_core_note_preview(conn, property_key, ay, quarter, _is_admin(), _effective_rm_email(), session.get("user", {}))
+        conn.commit()
+        _audit_scorecard_change(
+            source_table_key="scorecard_notes",
+            row_key_dict={"PROPERTY_KEY": property_key, "AY": ay, "QUARTER": quarter, "NOTE_ID": note_id},
+            field_name=f"NOTE:{measure_key or 'PROPERTY'}",
+            old_value=text,
+            new_value=None,
+            action="DELETE",
+            changed_by=me,
+            reason="note delete",
+        )
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
+@scorecard_bp.route("/api/notes/mentions/unread", methods=["GET"])
+@login_required
+def api_mentions_unread():
+    """Unread @mentions for the signed-in user -- drives the header alert
+    badge. Uses the real login email, not any 'View as...' simulation."""
+    check = _require_access()
+    if check:
+        return check
+    me = _signed_in_email()
+    if not me:
+        return jsonify({"count": 0, "mentions": []})
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        rows = conn.fetchall(
+            "SELECT TOP 50 m.MENTION_ID, m.NOTE_ID, m.PROPERTY_KEY, n.NOTE_TEXT, n.MEASURE_KEY, "
+            "n.AUTHOR_NAME, n.CREATED_AT "
+            "FROM dbo.SCORECARD_NOTE_MENTIONS m "
+            "JOIN dbo.SCORECARD_NOTES n ON n.NOTE_ID = m.NOTE_ID "
+            "WHERE LOWER(m.MENTION_EMAIL) = ? AND m.IS_READ = 0 AND n.IS_DELETED = 0 "
+            "ORDER BY m.CREATED_AT DESC",
+            [me])
+        name_map = _get_property_name_map(env)
+        mentions = [{
+            "mention_id": r[0],
+            "note_id": r[1],
+            "property_key": r[2],
+            "property_name": name_map.get(r[2], f"Property {r[2]}"),
+            "text": r[3],
+            "measure_key": r[4],
+            "author_name": r[5],
+            "created_at": r[6].isoformat() if r[6] else None,
+        } for r in rows]
+        return jsonify({"count": len(mentions), "mentions": mentions})
+    finally:
+        conn.close()
+
+
+@scorecard_bp.route("/api/notes/mentions/read", methods=["POST"])
+@login_required
+def api_mentions_mark_read():
+    """Mark the signed-in user's mentions read -- all, or just those on one
+    property (when they open that slideout)."""
+    check = _require_access()
+    if check:
+        return check
+    me = _signed_in_email()
+    if not me:
+        return jsonify({"ok": True, "marked": 0})
+    payload = request.get_json(silent=True) or {}
+    property_key = payload.get("property_key")
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        if property_key is not None:
+            cur = conn.execute(
+                "UPDATE dbo.SCORECARD_NOTE_MENTIONS SET IS_READ = 1, READ_AT = SYSUTCDATETIME() "
+                "WHERE LOWER(MENTION_EMAIL) = ? AND IS_READ = 0 AND PROPERTY_KEY = ?",
+                [me, int(property_key)])
+        else:
+            cur = conn.execute(
+                "UPDATE dbo.SCORECARD_NOTE_MENTIONS SET IS_READ = 1, READ_AT = SYSUTCDATETIME() "
+                "WHERE LOWER(MENTION_EMAIL) = ? AND IS_READ = 0",
+                [me])
+        conn.commit()
+        return jsonify({"ok": True, "marked": cur.rowcount})
     finally:
         conn.close()
 

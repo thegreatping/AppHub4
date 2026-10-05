@@ -183,7 +183,41 @@
     .sc-dd-empty { text-align: center; color: var(--text-secondary); padding: 24px !important; white-space: normal !important; }
     .sc-notes-input { width: 100%; box-sizing: border-box; min-height: 70px; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 8px; border-radius: 4px; font-size: 0.8rem; font-family: inherit; resize: vertical; }
     .sc-notes-meta { font-size: 0.68rem; color: var(--text-secondary); margin-top: 6px; }
-    .sc-notes-actions { display: flex; gap: 8px; margin-top: 8px; }
+    .sc-notes-actions { display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap; }
+    /* Multi-note thread */
+    .sc-note-compose { background: var(--input-bg); border: 1px solid var(--border-input); border-radius: 6px; padding: 10px; margin-bottom: 10px; }
+    .sc-note-compose select { background: var(--surface-raised); border: 1px solid var(--border-input); color: var(--text-primary); border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; }
+    .sc-note-mentions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .sc-note-mention-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; color: var(--text-secondary); background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 999px; padding: 2px 9px; cursor: pointer; }
+    .sc-note-mention-chip input { accent-color: var(--accent-cyan); margin: 0; }
+    .sc-note-mention-chip.on { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .sc-note-thread { display: flex; flex-direction: column; gap: 8px; }
+    .sc-note-item { background: var(--input-bg); border: 1px solid var(--border-input); border-radius: 6px; padding: 8px 10px; }
+    .sc-note-item.for-measure { border-left: 3px solid var(--accent-cyan); }
+    .sc-note-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 0.7rem; color: var(--text-secondary); }
+    .sc-note-author { font-weight: 700; color: var(--text-primary); }
+    .sc-note-role { background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 3px; padding: 0 5px; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.4px; }
+    .sc-note-measure-tag { color: #04222c; background: var(--accent-cyan); border-radius: 3px; padding: 0 6px; font-size: 0.62rem; font-weight: 700; }
+    .sc-note-text { font-size: 0.8rem; color: var(--text-primary); margin-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .sc-note-mentioned { margin-top: 5px; font-size: 0.68rem; color: var(--text-secondary); }
+    .sc-note-delete { margin-left: auto; background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.72rem; }
+    .sc-note-delete:hover { color: #f38ba8; }
+    .sc-measure-note-btn { background: none; border: 1px solid var(--border-input); color: var(--text-secondary); border-radius: 4px; font-size: 0.66rem; padding: 1px 7px; cursor: pointer; margin-left: 6px; }
+    .sc-measure-note-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .sc-measure-note-btn .cnt { color: var(--accent-cyan); font-weight: 700; }
+    /* Header @mention alert bell */
+    .sc-alert-bell { position: relative; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 7px 11px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; }
+    .sc-alert-bell:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .sc-alert-count { position: absolute; top: -6px; right: -6px; background: #cc0066; color: #fff; border-radius: 999px; min-width: 17px; height: 17px; font-size: 0.62rem; font-weight: 700; display: none; align-items: center; justify-content: center; padding: 0 4px; }
+    .sc-alert-count.on { display: inline-flex; }
+    .sc-alert-menu { display: none; position: absolute; right: 0; top: calc(100% + 6px); width: 340px; max-height: 420px; overflow-y: auto; background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 1200; }
+    .sc-alert-menu.open { display: block; }
+    .sc-alert-empty { padding: 16px; font-size: 0.78rem; color: var(--text-secondary); text-align: center; }
+    .sc-alert-row { display: block; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid var(--border-input); color: var(--text-primary); padding: 10px 12px; cursor: pointer; }
+    .sc-alert-row:hover { background: var(--input-bg); }
+    .sc-alert-row .prop { font-weight: 700; font-size: 0.78rem; }
+    .sc-alert-row .by { font-size: 0.68rem; color: var(--text-secondary); margin-top: 2px; }
+    .sc-alert-row .snippet { font-size: 0.72rem; color: var(--text-secondary); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .sc-so-overlay {
         display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55);
@@ -416,6 +450,10 @@
         </span>
         {% endif %}
         {% endif %}
+        <span style="position:relative;">
+            <button type="button" class="sc-alert-bell" id="scAlertBell" onclick="toggleScAlertMenu(event)" title="Notes where you were mentioned"><i class="fa-solid fa-bell" aria-hidden="true"></i><span class="sc-alert-count" id="scAlertCount">0</span></button>
+            <div class="sc-alert-menu" id="scAlertMenu"></div>
+        </span>
         <button type="button" class="sc-reference-btn" onclick="openScReference()">Help &amp; Criteria</button>
         <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/qa'" title="Your private pre-beta QA sign-off checklist"><i class="fa-solid fa-clipboard-check"></i> QA Sign-Off</button>
         {% if is_admin %}
@@ -2065,9 +2103,12 @@ function openScDetail(propertyKey) {
             scDetailData = data;
             scDetailBaseline = {};
             window.SC_MEASURE_DEFS.forEach(m => { scDetailBaseline[m.key] = data[m.key]; });
+            scNoteComposeMeasure = '';
             renderScDetail();
             scDetailPopout.open();
             loadScWhySummary(propertyKey);
+            loadScNotes(propertyKey);
+            markScMentionsRead(propertyKey);
         });
 }
 
@@ -2304,44 +2345,196 @@ function saveScRmScore(valueStr) {
     });
 }
 
-function notesSectionHtml(d) {
-    const meta = d.NOTE_BY ? `Last noted by ${esc(d.NOTE_BY)}${d.NOTE_AT ? ' on ' + esc(new Date(d.NOTE_AT).toLocaleDateString()) : ''}` : '';
-    if (!d.can_edit) {
-        return `<div class="sc-notes-meta">${d.NOTES ? esc(d.NOTES) : 'No note on this property.'}</div>
-                <div class="sc-notes-meta">${meta}</div>`;
-    }
-    return `
-        <textarea id="scNotesInput" class="sc-notes-input" placeholder="Add a note for this property...">${esc(d.NOTES || '')}</textarea>
-        <div class="sc-notes-meta">${meta}</div>
-        <div class="sc-notes-actions">
-            <button type="button" class="sc-blurb-toggle" onclick="saveScNotes()">Save Note</button>
-            <button type="button" class="sc-blurb-toggle" onclick="clearScNotes()">Clear</button>
-        </div>
-    `;
+// Append-only note thread + @mentions. scNotesData holds the server payload
+// for the open property; scNoteComposeMeasure preselects a measure when the
+// compose box was opened from a per-measure "Note" button.
+let scNotesData = null;
+let scNotesPropertyKey = null;
+let scNoteComposeMeasure = '';
+
+function loadScNotes(propertyKey) {
+    scNotesPropertyKey = propertyKey;
+    scNotesData = null;
+    fetch(`/scorecard/api/notes/${propertyKey}`).then(r => r.json()).then(j => {
+        if (scNotesPropertyKey !== propertyKey) return; // stale
+        scNotesData = j.error ? { notes: [], candidates: [], can_add: false, current_email: '' } : j;
+        if (scDetailData && scDetailData.PROPERTY_KEY === propertyKey) renderScDetail();
+    }).catch(() => { scNotesData = { notes: [], candidates: [], can_add: false, current_email: '' }; });
 }
 
-function saveScNotes() {
+function scMeasureLabel(key) {
+    const m = window.SC_MEASURE_DEFS.find(x => x.key === key);
+    return m ? m.label : key;
+}
+
+function scNotesForMeasure(key) {
+    return scNotesData && scNotesData.notes ? scNotesData.notes.filter(n => n.measure_key === key) : [];
+}
+
+function scNoteItemHtml(n) {
+    const when = n.created_at ? new Date(n.created_at).toLocaleString() : 'just now';
+    const measureTag = n.measure_key ? `<span class="sc-note-measure-tag">${esc(scMeasureLabel(n.measure_key))}</span>` : '';
+    const mentions = (n.mentions && n.mentions.length)
+        ? `<div class="sc-note-mentioned">Tagged: ${n.mentions.map(m => esc(m.name)).join(', ')}</div>` : '';
+    const del = n.can_delete ? `<button type="button" class="sc-note-delete" onclick="deleteScNote(${n.note_id})" title="Delete your note">Delete</button>` : '';
+    return `<div class="sc-note-item ${n.measure_key ? 'for-measure' : ''}">
+        <div class="sc-note-head">
+            <span class="sc-note-author">${esc(n.author_name)}</span>
+            <span class="sc-note-role">${esc(n.author_role || '')}</span>
+            ${measureTag}
+            <span>${esc(when)}</span>
+            ${del}
+        </div>
+        <div class="sc-note-text">${esc(n.text)}</div>
+        ${mentions}
+    </div>`;
+}
+
+function notesSectionHtml(d) {
+    if (!scNotesData || scNotesPropertyKey !== d.PROPERTY_KEY) {
+        return `<div class="sc-notes-meta">Loading notes...</div>`;
+    }
+    const notes = scNotesData.notes || [];
+    const thread = notes.length
+        ? `<div class="sc-note-thread">${notes.map(scNoteItemHtml).join('')}</div>`
+        : `<div class="sc-notes-meta">No notes yet.</div>`;
+
+    if (!scNotesData.can_add) {
+        return thread;
+    }
+
+    const measures = window.SC_MEASURE_DEFS.filter(m => m.key !== 'RMSCORE');
+    const measureOpts = `<option value="">Property (general)</option>` +
+        measures.map(m => `<option value="${m.key}" ${scNoteComposeMeasure === m.key ? 'selected' : ''}>${esc(m.label)}</option>`).join('');
+    const candidates = scNotesData.candidates || [];
+    const mentionChips = candidates.length
+        ? `<div class="sc-note-mentions">${candidates.map(c =>
+            `<label class="sc-note-mention-chip"><input type="checkbox" class="sc-note-mention" value="${esc(c.email)}" onchange="this.closest('.sc-note-mention-chip').classList.toggle('on', this.checked)"> @${esc(c.name)} (${esc(c.role)})</label>`
+          ).join('')}</div>`
+        : '';
+    return `<div class="sc-note-compose">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span class="sc-notes-meta" style="margin:0;">Attach to:</span>
+            <select id="scNoteMeasure">${measureOpts}</select>
+        </div>
+        <textarea id="scNotesInput" class="sc-notes-input" placeholder="Add a note (explain a result, leave context, or tag someone)..."></textarea>
+        ${mentionChips}
+        <div class="sc-notes-actions">
+            <button type="button" class="sc-blurb-toggle" onclick="addScNote()">Add note</button>
+        </div>
+    </div>
+    ${thread}`;
+}
+
+function composeScNoteFor(measureKey) {
+    scNoteComposeMeasure = measureKey || '';
+    if (scDetailData) renderScDetail();
+    setTimeout(() => {
+        const input = document.getElementById('scNotesInput');
+        if (input) { input.focus(); input.scrollIntoView({ block: 'center' }); }
+    }, 0);
+}
+
+function addScNote() {
     if (!scDetailData) return;
-    const val = document.getElementById('scNotesInput').value;
-    fetch(`/scorecard/api/notes/${scDetailData.PROPERTY_KEY}`, {
+    const input = document.getElementById('scNotesInput');
+    const text = (input?.value || '').trim();
+    if (!text) { input?.focus(); return; }
+    const measureKey = document.getElementById('scNoteMeasure')?.value || '';
+    const mentions = [...document.querySelectorAll('.sc-note-mention:checked')].map(cb => cb.value);
+    const pk = scDetailData.PROPERTY_KEY;
+    fetch(`/scorecard/api/notes/${pk}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: val }),
+        body: JSON.stringify({ text, measure_key: measureKey || null, mentions }),
     }).then(r => r.json()).then(res => {
         if (res.error) { alert(res.error); return; }
-        scDetailData.NOTES = res.notes;
-        scDetailData.NOTE_BY = res.note_by;
-        scDetailData.NOTE_AT = res.note_by ? new Date().toISOString() : null;
+        const note = res.note;
+        if (!note.created_at) note.created_at = new Date().toISOString();
+        scNotesData.notes.push(note);
+        scNoteComposeMeasure = '';
         renderScDetail();
-        const row = allRows.find(r => r.PROPERTY_KEY === scDetailData.PROPERTY_KEY);
-        if (row) { row.NOTES = res.notes; render(); }
+        if (!measureKey) {
+            scDetailData.NOTES = note.text;
+            const row = allRows.find(r => r.PROPERTY_KEY === pk);
+            if (row && !scDetailData.is_pm_author) { row.NOTES = note.text; }
+            render();
+        }
     });
 }
 
-function clearScNotes() {
-    if (!scDetailData) return;
-    if (!confirm('Clear the note for this property?')) return;
-    document.getElementById('scNotesInput').value = '';
-    saveScNotes();
+function deleteScNote(noteId) {
+    if (!confirm('Delete your note? This cannot be undone.')) return;
+    fetch(`/scorecard/api/notes/note/${noteId}`, { method: 'DELETE' }).then(r => r.json()).then(res => {
+        if (res.error) { alert(res.error); return; }
+        scNotesData.notes = scNotesData.notes.filter(n => n.note_id !== noteId);
+        renderScDetail();
+        const remainingGeneral = scNotesData.notes.filter(n => !n.measure_key);
+        const latest = remainingGeneral.length ? remainingGeneral[remainingGeneral.length - 1].text : null;
+        if (scDetailData) {
+            scDetailData.NOTES = latest;
+            const row = allRows.find(r => r.PROPERTY_KEY === scDetailData.PROPERTY_KEY);
+            if (row) { row.NOTES = latest; render(); }
+        }
+    });
+}
+
+// ── Header @mention alert badge ───────────────────────────────────────────
+let scAlertMentions = [];
+
+function refreshScAlertBadge() {
+    fetch('/scorecard/api/notes/mentions/unread').then(r => r.json()).then(j => {
+        scAlertMentions = j.mentions || [];
+        const count = j.count || 0;
+        const badge = document.getElementById('scAlertCount');
+        if (badge) { badge.textContent = count; badge.classList.toggle('on', count > 0); }
+        renderScAlertMenu();
+    }).catch(() => {});
+}
+
+function renderScAlertMenu() {
+    const menu = document.getElementById('scAlertMenu');
+    if (!menu) return;
+    if (!scAlertMentions.length) {
+        menu.innerHTML = `<div class="sc-alert-empty">No unread mentions.</div>`;
+        return;
+    }
+    menu.innerHTML = scAlertMentions.map(m => {
+        const where = m.measure_key ? `${esc(scMeasureLabel(m.measure_key))} note` : 'note';
+        const when = m.created_at ? new Date(m.created_at).toLocaleString() : '';
+        return `<button type="button" class="sc-alert-row" onclick="openScMention(${m.property_key})">
+            <div class="prop">${esc(m.property_name)}</div>
+            <div class="by">${esc(m.author_name || 'Someone')} tagged you on a ${where} &middot; ${esc(when)}</div>
+            <div class="snippet">${esc(m.text)}</div>
+        </button>`;
+    }).join('');
+}
+
+function toggleScAlertMenu(event) {
+    event.stopPropagation();
+    const menu = document.getElementById('scAlertMenu');
+    if (menu) menu.classList.toggle('open');
+}
+
+document.addEventListener('click', e => {
+    const menu = document.getElementById('scAlertMenu');
+    if (menu && menu.classList.contains('open') && !e.target.closest('#scAlertMenu') && !e.target.closest('#scAlertBell')) {
+        menu.classList.remove('open');
+    }
+});
+
+function openScMention(propertyKey) {
+    const menu = document.getElementById('scAlertMenu');
+    if (menu) menu.classList.remove('open');
+    openScDetail(propertyKey);
+}
+
+function markScMentionsRead(propertyKey) {
+    fetch('/scorecard/api/notes/mentions/read', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ property_key: propertyKey }),
+    }).then(r => r.json()).then(res => {
+        if (res && res.marked) refreshScAlertBadge();
+    }).catch(() => {});
 }
 
 function measureOptions(m) {
@@ -2354,6 +2547,13 @@ function measureValClass(m, val) {
     if (val === null || val === undefined || val === '') return 'mv-empty';
     if (m.type === 'num5') return '';
     return val ? 'mv-pass' : 'mv-fail';
+}
+
+function measureNoteBtnHtml(key) {
+    if (!scNotesData || scNotesPropertyKey !== (scDetailData && scDetailData.PROPERTY_KEY)) return '';
+    const n = scNotesForMeasure(key).length;
+    const cnt = n ? ` <span class="cnt">${n}</span>` : '';
+    return ` <button type="button" class="sc-measure-note-btn" onclick="event.stopPropagation(); composeScNoteFor('${key}')" title="Add or view notes for this measure">Note${cnt}</button>`;
 }
 
 function measureRowHtml(m) {
@@ -2370,7 +2570,7 @@ function measureRowHtml(m) {
 
     if (!d.can_edit) {
         return `<div class="popout-row">
-            <div class="popout-label">${esc(m.label)}${infoIcon}</div>
+            <div class="popout-label">${esc(m.label)}${infoIcon}${measureNoteBtnHtml(m.key)}</div>
             <div class="sc-readonly-val ${cls}">${displayText}</div>
             ${scoreExplanationHtml(m, d)}
         </div>`;
@@ -2384,7 +2584,7 @@ function measureRowHtml(m) {
         ? `<span class="sc-override-by">Overridden by ${esc(lockedBy)}${reasonTxt ? ' -- ' + esc(reasonTxt) : ''}</span>`
         : '';
     return `<div class="popout-row">
-        <div class="popout-label">${esc(m.label)}${infoIcon}</div>
+        <div class="popout-label">${esc(m.label)}${infoIcon}${measureNoteBtnHtml(m.key)}</div>
         <div class="sc-measure-value">
             <select class="${cls}" onchange="saveScMeasure('${m.key}', this.value, this)">${optHtml}</select>
             <label class="sc-override-wrap ${locked ? 'active' : ''}" title="Override: protect this value from being overwritten by the next pipeline run">
@@ -3107,5 +3307,7 @@ function scAddSelectedDueDates() {
 
 loadData();
 initScSignoutInterception();
+refreshScAlertBadge();
+setInterval(refreshScAlertBadge, 120000);
 </script>
 {% endblock %}
