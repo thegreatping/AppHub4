@@ -383,22 +383,22 @@
         {% if view_as_email %}
         <span class="sc-view-as-banner" title="Simulating this RM's view of the Scorecard">
             <i class="fa-solid fa-eye"></i> Viewing as RM: <b>{{ view_as_email }}</b>
-            <button type="button" class="sc-view-as-clear" onclick="scViewAsClear()" title="Return to admin view">&times; Exit</button>
+            <button type="button" class="sc-view-as-clear" onclick="scViewAsClear()" title="Return to admin view">Exit</button>
         </span>
         {% elif view_as_pm_property_key %}
         <span class="sc-view-as-banner" title="Simulating a Property Manager's read-only view">
             <i class="fa-solid fa-eye"></i> Viewing as PM: <b>{{ view_as_pm_label or view_as_pm_property_key }}</b>
-            <button type="button" class="sc-view-as-clear" onclick="scViewAsClear()" title="Return to admin view">&times; Exit</button>
+            <button type="button" class="sc-view-as-clear" onclick="scViewAsClear()" title="Return to admin view">Exit</button>
         </span>
         {% elif view_as_rvp_email %}
         <span class="sc-view-as-banner" title="Simulating this RVP's regional view of the Scorecard">
             <i class="fa-solid fa-eye"></i> Viewing as RVP: <b>{{ view_as_rvp_email }}</b>
-            <button type="button" class="sc-view-as-clear" onclick="scViewAsClear()" title="Return to admin view">&times; Exit</button>
+            <button type="button" class="sc-view-as-clear" onclick="scViewAsClear()" title="Return to admin view">Exit</button>
         </span>
         {% elif view_as_ed_email %}
         <span class="sc-view-as-banner" title="Simulating this Executive Director's read-only portfolio view">
             <i class="fa-solid fa-eye"></i> Viewing as ED: <b>{{ view_as_ed_email }}</b>
-            <button type="button" class="sc-view-as-clear" onclick="scViewAsClear()" title="Return to admin view">&times; Exit</button>
+            <button type="button" class="sc-view-as-clear" onclick="scViewAsClear()" title="Return to admin view">Exit</button>
         </span>
         {% else %}
         <span class="sc-view-as-picker">
@@ -1148,7 +1148,7 @@ const SC_HELP_CONTENT = {
           <div class="sc-crit-name">Regional Manager view</div>
           <div class="sc-crit-body">
             <p>Sees only their own portfolio (via RM_EMAIL match against PROPERTY_0). Can enter RM Scores 0-5, save notes, and set overrides on any measure for any property they own. No admin surfaces are visible to them.</p>
-            <p>To see the app exactly as an RM sees it, use <b>View as...</b> in the header and pick their name. Use "&times; Exit" to return to Admin.</p>
+            <p>To see the app exactly as an RM sees it, use <b>View as...</b> in the header and pick their name. Use "Exit" to return to Admin.</p>
           </div>
         </div>
 
@@ -1208,7 +1208,7 @@ const SC_HELP_CONTENT = {
 
         <div class="sc-crit-item">
           <div class="sc-crit-name">View as...</div>
-          <div class="sc-crit-body"><p>Pick any Regional Manager or Property Manager from the dropdown to see the app exactly as they see it. Great for helping users troubleshoot. Click "&times; Exit" in the purple banner to return to your Admin view.</p></div>
+          <div class="sc-crit-body"><p>Pick any Regional Manager or Property Manager from the dropdown to see the app exactly as they see it. Great for helping users troubleshoot. Click "Exit" in the purple banner to return to your Admin view.</p></div>
         </div>
 
         <div class="sc-crit-item">
