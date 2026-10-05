@@ -1,6 +1,12 @@
 {% extends "shell.html" %}
 {% block head %}
 <style>
+    :root {
+        --sc-brand-cyan: #00a9c8;
+        --sc-brand-orange: #ff6600;
+        --sc-brand-magenta: #cc0066;
+        --sc-fail-background: #ffe6f2;
+    }
     .sc-container { padding: 18px 24px 40px; max-width: 100%; }
 
     .sc-tabbar { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--border-medium); }
@@ -56,8 +62,8 @@
     .sc-table thead tr:nth-child(2) th { font-weight: 700; color: var(--text-primary); cursor: pointer; user-select: none; }
     .sc-table thead tr:nth-child(2) th:hover { color: var(--accent-cyan); }
     .sc-table thead tr:nth-child(3) th { z-index: 2; }
-    .sc-table th.grp-leadership { background: rgba(103,232,224,0.55); color: #04222c !important; font-weight: 900; letter-spacing: 0.6px; }
-    .sc-table th.grp-maintenance { background: rgba(251,191,36,0.55); color: #3b2200 !important; font-weight: 900; letter-spacing: 0.6px; }
+    .sc-table th.grp-leadership { background: var(--sc-brand-cyan); color: #04222c !important; font-weight: 900; letter-spacing: 0.6px; }
+    .sc-table th.grp-maintenance { background: var(--sc-brand-orange); color: #3b2200 !important; font-weight: 900; letter-spacing: 0.6px; }
     .sc-table th.id-col, .sc-table td.id-col { text-align: left; }
     .sc-table td.id-col.name-col { font-weight: 600; color: var(--text-primary); }
     #scFFTable td { text-align: center; }
@@ -266,14 +272,8 @@
     }
 
     .sc-bool-cell { text-align: center; }
-    .sc-chip-pass { display: inline-block; min-width: 48px; padding: 1px 7px; border-radius: 3px; font-family: Consolas, monospace; font-weight: 700; background: rgba(74,222,128,0.16); color: #4ade80; text-align: center; }
-    .sc-chip-fail { display: inline-block; min-width: 48px; padding: 1px 7px; border-radius: 3px; font-family: Consolas, monospace; font-weight: 700; background: rgba(243,139,168,0.18); color: #f38ba8; text-align: center; }
-    [data-theme="medium"] .sc-chip-pass, [data-theme="light"] .sc-chip-pass {
-        color: #ffffff; background: #8ac09e; font-weight: 800;
-    }
-    [data-theme="medium"] .sc-chip-fail, [data-theme="light"] .sc-chip-fail {
-        color: #ffffff; background: #dc8e8e; font-weight: 800;
-    }
+    .sc-chip-pass { display: inline-block; min-width: 48px; padding: 1px 7px; border-radius: 3px; font-family: Consolas, monospace; font-weight: 700; background: var(--sc-brand-cyan); color: #04222c; text-align: center; }
+    .sc-chip-fail { display: inline-block; min-width: 48px; padding: 1px 7px; border-radius: 3px; font-family: Consolas, monospace; font-weight: 700; background: var(--sc-fail-background); color: var(--sc-brand-magenta); text-align: center; }
     .sc-chip-na { color: var(--text-secondary); }
     /* Overridden cells: the "orange border" wraps the value block only (not the whole
        td) so the visual pop stays tight against the data. */
@@ -282,7 +282,7 @@
     .sc-table td.sc-overridden .sc-chip-fail,
     .sc-table td.sc-overridden .sc-chip-neutral,
     .sc-table td.sc-overridden .sc-hug {
-        box-shadow: 0 0 0 2px #ff9800;
+        box-shadow: 0 0 0 2px var(--sc-brand-orange);
     }
     .sc-hug { display: inline-block; padding: 1px 6px; border-radius: 3px; }
 
@@ -436,7 +436,7 @@
             <p><strong>How to use it.</strong></p>
             <ul>
                 <li>Rows are your properties. Each row totals to the Overall Score at the far left.</li>
-                <li>Green <span class="sc-chip-pass" style="min-width:24px;">P</span> = pass, red <span class="sc-chip-fail" style="min-width:24px;">F</span> = fail; the number in the RM Score column is the RM's subjective 0-5 rating. Cells with an orange border have been manually overridden &mdash; hover for who and why.</li>
+                <li>Cyan <span class="sc-chip-pass" style="min-width:24px;">P</span> = pass, magenta <span class="sc-chip-fail" style="min-width:24px;">F</span> = fail; the number in the RM Score column is the RM's subjective 0-5 rating. Cells with an orange border have been manually overridden &mdash; hover for who and why.</li>
                 <li>Click any row to open the property's slideout for detail, notes, and RM score entry.</li>
                 <li>The ribbon at the top shows how many communities you're seeing, how many RM Scores you've saved, and how many communities have comments.</li>
                 <li>Click any column header to sort. Use the filter row under the header names to narrow down. Use the search box for a quick free-text filter.</li>
@@ -1046,8 +1046,8 @@ const SC_HELP_CONTENT = {
         </div>
 
         <div class="sc-crit-item">
-          <div class="sc-crit-name">Green P / Red F chips</div>
-          <div class="sc-crit-body"><p>Green <span class="sc-chip-pass" style="min-width:24px;">P</span> = the property passed that measure this quarter. Red <span class="sc-chip-fail" style="min-width:24px;">F</span> = failed. Two dashes (--) means no data yet for that measure. Some measures default to PASS when there's no data; you'll see this called out in the slideout.</p></div>
+          <div class="sc-crit-name">Cyan P / Magenta F chips</div>
+          <div class="sc-crit-body"><p>Cyan <span class="sc-chip-pass" style="min-width:24px;">P</span> = the property passed that measure this quarter. Magenta <span class="sc-chip-fail" style="min-width:24px;">F</span> = failed. Two dashes (--) means no data yet for that measure. Some measures default to PASS when there's no data; you'll see this called out in the slideout.</p></div>
         </div>
 
         <div class="sc-crit-item">
