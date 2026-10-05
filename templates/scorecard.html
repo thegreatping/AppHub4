@@ -139,6 +139,9 @@
     .sc-detail-scores { flex: 1 1 58%; min-width: 0; overflow-y: auto; padding: 8px 18px 24px; border-right: 1px solid var(--border-medium); }
     .sc-detail-notes { flex: 1 1 42%; min-width: 0; overflow-y: auto; padding: 8px 18px 24px; }
     .sc-detail-notes .popout-section { margin-top: 0; }
+    /* Highlight only measures that failed; passes/missing stay neutral. */
+    .sc-detail-scores .popout-row.sc-row-fail { background: rgba(204,0,102,0.10); box-shadow: inset 3px 0 0 var(--sc-brand-magenta); border-radius: 3px; }
+    .sc-detail-scores .popout-row.sc-row-fail .popout-label { color: var(--sc-brand-magenta); font-weight: 700; }
     @media (max-width: 900px) {
         .sc-detail-cols { flex-direction: column; }
         .sc-detail-scores { border-right: none; border-bottom: 1px solid var(--border-medium); }
@@ -2618,6 +2621,15 @@ function measureNoteBtnHtml(key) {
     return ` <button type="button" class="sc-measure-note-btn" onclick="event.stopPropagation(); composeScNoteFor('${key}')" title="Add or view notes for this measure">Note${cnt}</button>`;
 }
 
+// A measure "fails" when a pass/fail (bool) or yes/no (bool01) value is 0;
+// missing (--, defaults to pass) and the subjective RM Score never count.
+function isScMeasureFail(m, d) {
+    const v = d[m.key];
+    if (v === null || v === undefined || v === '') return false;
+    if (m.type === 'bool' || m.type === 'bool01') return Number(v) === 0;
+    return false;
+}
+
 function measureRowHtml(m) {
     const d = scDetailData;
     const val = d[m.key];
@@ -2629,9 +2641,10 @@ function measureRowHtml(m) {
     const infoIcon = m.key === 'NOI'
         ? ` <span class="sc-noi-info" title="NOI formula &amp; reference links" onclick="event.stopPropagation(); openNoiInfoModal()">&#9432;</span>`
         : '';
+    const failCls = isScMeasureFail(m, d) ? 'sc-row-fail' : '';
 
     if (!d.can_edit) {
-        return `<div class="popout-row">
+        return `<div class="popout-row ${failCls}">
             <div class="popout-label">${esc(m.label)}${infoIcon}${measureNoteBtnHtml(m.key)}</div>
             <div class="sc-readonly-val ${cls}">${displayText}</div>
             ${scoreExplanationHtml(m, d)}
@@ -2645,7 +2658,7 @@ function measureRowHtml(m) {
     const byHtml = (locked && lockedBy)
         ? `<span class="sc-override-by">Overridden by ${esc(lockedBy)}${reasonTxt ? ' -- ' + esc(reasonTxt) : ''}</span>`
         : '';
-    return `<div class="popout-row">
+    return `<div class="popout-row ${failCls}">
         <div class="popout-label">${esc(m.label)}${infoIcon}${measureNoteBtnHtml(m.key)}</div>
         <div class="sc-measure-value">
             <select class="${cls}" onchange="saveScMeasure('${m.key}', this.value, this)">${optHtml}</select>
