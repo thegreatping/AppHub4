@@ -937,7 +937,7 @@ function closeScReference() {
 }
 function showScReferenceTab(tab) {
     scRefTab = tab;
-    ['criteria', 'bonus', 'paycom'].forEach(t => {
+    ['help', 'criteria', 'bonus', 'paycom', 'feedback'].forEach(t => {
         document.getElementById(`scRefTab_${t}`).classList.toggle('active', t === tab);
     });
     const body = document.getElementById('scRefBody');
@@ -977,7 +977,7 @@ function showScReferenceTab(tab) {
 }
 
 // ============================================================================
-// Help & user guide -- tabbed modal opened by the big ? button in the header.
+// Help & user guide -- displayed inside the shared Help & Criteria modal.
 // Non-technical content aimed at end users. Tabs and content adapt to the
 // current role (admin sees an Admin Features tab; RMs/PMs do not).
 // ============================================================================
