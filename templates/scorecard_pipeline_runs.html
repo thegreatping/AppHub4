@@ -5,13 +5,6 @@
     .spr-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border-medium); }
     .spr-title { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); }
     .spr-subtitle { font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; }
-    .spr-back { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 6px 12px; border-radius: 4px; font-size: 0.78rem; cursor: pointer; text-decoration: none; }
-    .spr-back:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
-    .spr-refresh { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 5px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; margin-left: 6px; }
-    .spr-refresh:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
-    .spr-run-now { background: var(--accent-cyan); border: 1px solid var(--accent-cyan); color: #fff; padding: 5px 12px; border-radius: 4px; font-size: 0.78rem; font-weight: 600; cursor: pointer; }
-    .spr-run-now:hover { filter: brightness(1.1); }
-    .spr-run-now:disabled { opacity: 0.5; cursor: not-allowed; }
     .spr-trigger-banner { display: none; margin-bottom: 10px; padding: 8px 14px; border-radius: 5px; font-size: 0.78rem; align-items: center; gap: 10px; }
     .spr-trigger-banner.on { display: flex; }
     .spr-trigger-banner.pending { background: rgba(59,130,246,0.10); border: 1px solid rgba(59,130,246,0.35); color: var(--text-primary); }
@@ -68,16 +61,16 @@
 {% endblock %}
 {% block content %}
 <div class="spr-container">
-    <div class="spr-header">
-        <div>
+    <div class="spr-header sc-admin-header">
+        <div class="sc-admin-heading">
             <div class="spr-title"><i class="fa-solid fa-play-circle" style="color: var(--accent-cyan); margin-right: 6px;"></i> Scorecard Notebook Runs</div>
             <div class="spr-subtitle">Recent executions of NB_LEADERSHIP_SCORECARD_UPDATE (last 50) with per-step outcomes. Admin-only.</div>
         </div>
-        <div style="display:flex; align-items:center; gap:6px;">
-            <button class="spr-run-now" id="sprRunNow" onclick="triggerSprRun()" title="Kick off NB_LEADERSHIP_SCORECARD_UPDATE in Fabric right now">&#9658; Run now</button>
-            <button class="spr-refresh" onclick="loadSprRuns()" title="Refresh">&#8635; Refresh</button>
-            <a href="/scorecard/admin/tables" class="spr-back" title="Scorecard Table Manager"><i class="fa-solid fa-database"></i> Table Manager</a>
-            <a href="/scorecard/" class="spr-back">&larr; Back to Scorecard</a>
+        <div class="sc-admin-actions">
+            <button type="button" class="sc-admin-action sc-admin-action-primary" id="sprRunNow" onclick="triggerSprRun()" title="Kick off NB_LEADERSHIP_SCORECARD_UPDATE in Fabric right now"><i class="fa-solid fa-play" aria-hidden="true"></i> Run now</button>
+            <button type="button" class="sc-admin-action" onclick="loadSprRuns()" title="Refresh"><i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Refresh</button>
+            <a href="/scorecard/admin/tables" class="sc-admin-action" title="Scorecard Table Manager"><i class="fa-solid fa-database" aria-hidden="true"></i> Table Manager</a>
+            <a href="/scorecard/" class="sc-admin-action" title="Back to Scorecard"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to Scorecard</a>
         </div>
     </div>
 

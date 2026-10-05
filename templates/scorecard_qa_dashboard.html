@@ -1,15 +1,15 @@
 {% extends "shell.html" %}
 {% block title %}Leadership Scorecard - All Testers{% endblock %}
 {% block content %}
-<div class="content-header">
+<div class="content-header sc-admin-header">
     <div class="header-left">
         <i class="fa-solid fa-users" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
         <span class="page-title">Leadership Scorecard - All Testers</span>
         <span class="page-subtitle">Admin aggregate view of every tester's QA progress</span>
     </div>
-    <div class="header-right">
-        <a href="/scorecard/admin/qa" class="sc-reference-btn" title="Back to my QA checklist"><i class="fa-solid fa-arrow-left"></i> My Checklist</a>
-        <a href="/scorecard/" class="sc-reference-btn" title="Back to Scorecard"><i class="fa-solid fa-arrow-left"></i> Scorecard</a>
+    <div class="header-right sc-admin-actions">
+      <a href="/scorecard/admin/qa" class="sc-admin-action" title="Back to my QA checklist"><i class="fa-solid fa-clipboard-check" aria-hidden="true"></i> My Checklist</a>
+      <a href="/scorecard/" class="sc-admin-action" title="Back to Scorecard"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to Scorecard</a>
     </div>
 </div>
 

@@ -1,23 +1,23 @@
 {% extends "shell.html" %}
 {% block title %}Leadership Scorecard - QA Sign-Off{% endblock %}
 {% block content %}
-<div class="content-header">
+<div class="content-header sc-admin-header">
     <div class="header-left">
         <i class="fa-solid fa-clipboard-check" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
         <span class="page-title" id="qas_page_title">{% if qa_tester_view %}Tester QA Review{% else %}Leadership Scorecard - QA Sign-Off{% endif %}</span>
         <span class="page-subtitle">{% if qa_tester_view %}Read-only review of this tester's entries and notes{% else %}Your private tester checklist{% endif %}</span>
     </div>
-    <div class="header-right">
+    <div class="header-right sc-admin-actions">
       {% if qa_tester_view %}
-      <a href="/scorecard/admin/qa/dashboard" class="sc-reference-btn" title="Close tester detail and return to All Testers"><i class="fa-solid fa-arrow-left"></i> Close Tester Detail</a>
+      <a href="/scorecard/admin/qa/dashboard" class="sc-admin-action" title="Close tester detail and return to All Testers"><i class="fa-solid fa-users" aria-hidden="true"></i> Close Tester Detail</a>
       {% else %}
-        <a href="?popout=1" target="_blank" rel="noopener" class="sc-reference-btn" title="Open this checklist in a new browser tab so you can test the Scorecard side-by-side"><i class="fa-solid fa-up-right-from-square"></i> Open in new tab</a>
+        <a href="?popout=1" target="_blank" rel="noopener" class="sc-admin-action" title="Open this checklist in a new browser tab so you can test the Scorecard side-by-side"><i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i> Open in new tab</a>
         {% if is_admin %}
-        <a href="/scorecard/admin/qa/dashboard" class="sc-reference-btn" title="See every tester's progress"><i class="fa-solid fa-users"></i> All Testers</a>
+        <a href="/scorecard/admin/qa/dashboard" class="sc-admin-action" title="See every tester's progress"><i class="fa-solid fa-users" aria-hidden="true"></i> All Testers</a>
         {% endif %}
-        <a href="/scorecard/" class="sc-reference-btn" title="Back to Scorecard"><i class="fa-solid fa-arrow-left"></i> Back to Scorecard</a>
-        <a href="/scorecard/admin/runs" class="sc-reference-btn" title="Notebook Runs viewer">&#9654; Notebook Runs</a>
+        <a href="/scorecard/admin/runs" class="sc-admin-action" title="Notebook Runs viewer"><i class="fa-solid fa-play-circle" aria-hidden="true"></i> Notebook Runs</a>
         {% endif %}
+        <a href="/scorecard/" class="sc-admin-action" title="Back to Scorecard"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to Scorecard</a>
     </div>
 </div>
 
