@@ -70,6 +70,7 @@
     #scFFTable td.id-col { text-align: left; }
     .sc-table tbody tr { cursor: pointer; }
     .sc-table tbody tr:hover td { background: var(--hover-bg-strong); }
+    #scTable .sc-column-active { background-image: linear-gradient(rgba(0,169,200,0.14), rgba(0,169,200,0.14)); box-shadow: inset 1px 0 rgba(0,169,200,0.5), inset -1px 0 rgba(0,169,200,0.5); }
     .sc-table td.notes-col { text-align: left; max-width: 220px; overflow: hidden; text-overflow: ellipsis; color: var(--text-secondary); }
     .sort-arrow { font-size: 0.62rem; color: var(--accent-cyan); margin-left: 3px; }
 
@@ -1598,7 +1599,23 @@ function renderChipBar() {
     bar.innerHTML = chips.join('') + `<span class="sc-chip-clear" onclick="clearAllFilters()">Clear all</span>`;
 }
 
+let scHighlightedColumn = -1;
+
+function highlightScColumn(target) {
+    const table = document.getElementById('scTable');
+    const cell = target instanceof Element ? target.closest('td, th') : null;
+    const column = cell && cell.closest('table') === table && cell.parentElement !== table.tHead.rows[0]
+        ? cell.cellIndex : -1;
+    if (column === scHighlightedColumn) return;
+    table.querySelectorAll('.sc-column-active').forEach(element => element.classList.remove('sc-column-active'));
+    scHighlightedColumn = column;
+    if (column < 0) return;
+    const rows = [...table.tHead.rows].slice(1).concat([...table.tBodies].flatMap(body => [...body.rows]));
+    rows.forEach(row => row.cells[column]?.classList.add('sc-column-active'));
+}
+
 function render() {
+    highlightScColumn(null);
     renderHeader();
     const rows = getFilteredSorted();
     renderBody(rows);
@@ -1608,6 +1625,12 @@ function render() {
     document.getElementById('scTable').style.display = rows.length ? '' : 'none';
     renderFallForecast();
 }
+
+const scColumnHoverTable = document.getElementById('scTable');
+scColumnHoverTable.addEventListener('pointerover', event => highlightScColumn(event.target));
+scColumnHoverTable.addEventListener('pointerleave', () => highlightScColumn(document.activeElement));
+scColumnHoverTable.addEventListener('focusin', event => highlightScColumn(event.target));
+scColumnHoverTable.addEventListener('focusout', event => highlightScColumn(event.relatedTarget));
 
 function onSearchInput(val) { searchQuery = val; render(); }
 function clearSearch() { searchQuery = ''; const el = document.getElementById('scSearch'); if (el) el.value = ''; render(); }
