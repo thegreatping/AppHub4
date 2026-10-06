@@ -2342,27 +2342,38 @@ def api_data():
             r["OVERALL"] = (r["LDRTOTAL"] or 0) + (r["MSTOTAL"] or 0)
 
         prior_payload = None
+        prior_quarters = []
         if request.args.get("prior") == "1":
-            q_num = int(quarter[1])
-            prev_ay, prev_q = (ay - 1, "Q4") if q_num == 1 else (ay, f"Q{q_num - 1}")
-            prior_cols = ["PROPERTY_KEY", "PRERM", "LDRTOTAL", "MSTOTAL"]
-            prior_rows = conn.fetchall(f"""
-                SELECT sc.PROPERTY_KEY, sc.PRERM, sc.LDRTOTAL, sc.MSTOTAL
-                FROM dbo.SCORECARD_CORE sc LEFT JOIN dbo.PROPERTY_0 p ON p.PROPERTY_KEY = sc.PROPERTY_KEY
-                WHERE sc.FLAG_CURRENT = 1 AND sc.AY = ? AND sc.QUARTER = ? AND {where_sql}
-            """, tuple([prev_ay, prev_q] + where_params))
-            prior_payload = {
-                "ay": prev_ay, "quarter": prev_q, "quarter_label": f"{prev_q} {prev_ay}",
-                "rows": [dict(zip(prior_cols, r)) for r in prior_rows],
-            }
-            for r in prior_payload["rows"]:
-                r["OVERALL"] = (r["LDRTOTAL"] or 0) + (r["MSTOTAL"] or 0)
+            # Two prior quarters (immediately prior, then the one before) with
+            # per-measure values so the grid can show quarter-over-quarter
+            # history on hover (Item #16). prior_quarter stays = the first
+            # prior for backward compat with the "Show prior quarter totals"
+            # toggle.
+            pcols = ["PROPERTY_KEY"] + _MEASURE_KEYS + ["PRERM", "LDRTOTAL", "MSTOTAL"]
+            pcol_sql = ", ".join(f"sc.{c}" for c in pcols)
+            a, qn = ay, int(quarter[1])
+            for _ in range(2):
+                a, qn = (a - 1, 4) if qn == 1 else (a, qn - 1)
+                prows = conn.fetchall(f"""
+                    SELECT {pcol_sql}
+                    FROM dbo.SCORECARD_CORE sc LEFT JOIN dbo.PROPERTY_0 p ON p.PROPERTY_KEY = sc.PROPERTY_KEY
+                    WHERE sc.FLAG_CURRENT = 1 AND sc.AY = ? AND sc.QUARTER = ? AND {where_sql}
+                """, tuple([a, f"Q{qn}"] + where_params))
+                prq = {
+                    "ay": a, "quarter": f"Q{qn}", "quarter_label": f"Q{qn} {a}",
+                    "rows": [dict(zip(pcols, r)) for r in prows],
+                }
+                for r in prq["rows"]:
+                    r["OVERALL"] = (r["LDRTOTAL"] or 0) + (r["MSTOTAL"] or 0)
+                prior_quarters.append(prq)
+            prior_payload = prior_quarters[0] if prior_quarters else None
 
         return jsonify({
             "ay": ay, "quarter": quarter, "quarter_label": f"{quarter} {ay}",
             "is_admin": admin,
             "rows": data,
             "prior_quarter": prior_payload,
+            "prior_quarters": prior_quarters,
         })
     finally:
         conn.close()

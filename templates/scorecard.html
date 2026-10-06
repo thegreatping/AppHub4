@@ -783,7 +783,7 @@
 <div class="sc-ref-overlay" id="scInputRemindersOverlay" onclick="if(event.target===this) closeScInputReminders()" onkeydown="scInputRemindersKeydown(event)">
     <div class="sc-ref-modal" role="dialog" aria-modal="true" aria-labelledby="scInputRemindersTitle">
         <div class="sc-ref-header">
-            <div class="sc-ref-title" id="scInputRemindersTitle">RM Input Reminder Drafts</div>
+            <div class="sc-ref-title" id="scInputRemindersTitle">RM Input Reminders</div>
             <button type="button" class="sc-ref-close" onclick="closeScInputReminders()" title="Close reminder drafts" aria-label="Close reminder drafts"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>
         <div class="sc-ref-body sc-reminder-body" id="scInputRemindersBody"></div>
@@ -1449,12 +1449,26 @@ const DRILLDOWN_KEYS = new Set(['TC', 'TR', 'PCARD', 'RA', 'IIPP', 'LFA', 'PMLEO
 
 let allRows = [];
 let priorByPropertyKey = {};
+let scPriorQuarters = [];   // [{quarter_label, byKey:{pk->row}}] up to 2 priors (Item #16)
 let colFilters = {};      // key -> Set of allowed display-values, or undefined/null = "All"
 let searchQuery = '';
 let quickFilters = { inputsSaved: false, needsInput: false, hasNotes: false };
 let sort = { col: null, dir: 1 };
 let showPrior = false;
 let scQuarterLabel = '';
+let scLoadedPeriod = {};
+let scMailAvailability = { available: false, reason: 'Checking email availability...' };
+
+async function refreshScMailStatus() {
+    try {
+        const response = await fetch('/scorecard/api/mail/status');
+        const status = await response.json();
+        scMailAvailability = response.ok ? status : { available: false, reason: status.error || 'Email is unavailable.' };
+    } catch (_) {
+        scMailAvailability = { available: false, reason: 'Email is unavailable.' };
+    }
+    return scMailAvailability;
+}
 
 function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1480,7 +1494,13 @@ async function loadData() {
     if (data.prior_quarter && data.prior_quarter.rows) {
         data.prior_quarter.rows.forEach(r => { priorByPropertyKey[r.PROPERTY_KEY] = r; });
     }
+    scPriorQuarters = (data.prior_quarters || []).map(pq => ({
+        quarter_label: pq.quarter_label,
+        byKey: Object.fromEntries((pq.rows || []).map(r => [r.PROPERTY_KEY, r])),
+    }));
     scQuarterLabel = data.quarter_label || '';
+    scLoadedPeriod = { ay: data.ay, quarter: data.quarter };
+    await refreshScMailStatus();
     document.getElementById('scQuarterLabel').innerHTML = data.quarter_label
         ? `<span class="sc-quarter-badge">${esc(data.quarter_label)}</span> -- ${data.is_admin ? 'All Properties (Admin)' : (window.SC_IS_PM ? 'My Property (Read-only)' : 'My Portfolio')}`
         : 'No data available yet';
@@ -1652,6 +1672,19 @@ function renderBody(rows) {
     }).join('');
 }
 
+// Hover text showing this measure's value in the prior quarter(s) -- quarter-
+// over-quarter history without adding columns (Item #16).
+function priorCellTooltip(c, row) {
+    if (!scPriorQuarters.length) return '';
+    const parts = [];
+    for (const pq of scPriorQuarters) {
+        const pr = pq.byKey[row.PROPERTY_KEY];
+        if (!pr) continue;
+        parts.push(`${pq.quarter_label}: ${displayVal(c, pr)}`);
+    }
+    return parts.length ? `Prior -- ${parts.join('; ')}` : '';
+}
+
 function cellHtml(c, row) {
     const v = row[c.key];
     // RMSCORE has no pipeline-computed baseline, so its _LOCKED bit is a
@@ -1661,9 +1694,11 @@ function cellHtml(c, row) {
     const lockedCls = isLocked ? ' sc-overridden' : '';
     const lockedBy = row[`${c.key}_LOCKED_BY`];
     const reasonTxt = row[`${c.key}_REASON`];
-    const titleAttr = isLocked && lockedBy
-        ? ` title="Overridden by ${esc(lockedBy)}${reasonTxt ? ' -- ' + esc(reasonTxt) : ''}"`
-        : '';
+    const _overrideTxt = (isLocked && lockedBy)
+        ? `Overridden by ${esc(lockedBy)}${reasonTxt ? ' -- ' + esc(reasonTxt) : ''}` : '';
+    const _priorTxt = priorCellTooltip(c, row);
+    const _titleParts = [_overrideTxt, _priorTxt].filter(Boolean);
+    const titleAttr = _titleParts.length ? ` title="${_titleParts.join(' | ')}"` : '';
     if (c.type === 'bool') {
         if (v === null || v === undefined) return `<td class="sc-chip-na sc-bool-cell${lockedCls}"${titleAttr}>--</td>`;
         return `<td class="sc-bool-cell${lockedCls}"${titleAttr}>${v ? '<span class="sc-chip-pass">P</span>' : '<span class="sc-chip-fail">F</span>'}</td>`;
@@ -1764,6 +1799,7 @@ function showScIncompleteInputs() {
     render();
 }
 let scInputReminderGroups = [];
+let scInputReminderPeriod = {};
 
 function collectScInputReminders(rows) {
     const groups = new Map();
@@ -1780,17 +1816,20 @@ function collectScInputReminders(rows) {
     return { groups: [...groups.values()].sort((first, second) => first.email.localeCompare(second.email)), unassigned };
 }
 
-function openScInputReminders() {
+async function openScInputReminders() {
     if (!document.getElementById('scRemindInputsBtn') || !quickFilters.needsInput) return;
+    await refreshScMailStatus();
     const rows = getFilteredSorted();
     const reminders = collectScInputReminders(rows);
     scInputReminderGroups = reminders.groups;
+    scInputReminderPeriod = { ...scLoadedPeriod };
     const rowHtml = row => `<li>${esc(row.PROPERTY_NAME || row.ENTITY_NUMBER || row.PROPERTY_KEY)}: ${esc(missingScRmInputs(row).map(key => SC_RM_INPUT_LABELS[key]).join(', '))}</li>`;
     let html = `<p class="sc-ref-intro">${rows.length} incomplete properties | ${reminders.groups.length} RM recipients | ${esc(scQuarterLabel)}</p>`;
+    if (!scMailAvailability.available) html += `<p role="status">${esc(scMailAvailability.reason)}</p>`;
     if (reminders.unassigned.length) {
         html += `<div class="sc-reminder-row" role="status"><div><b>Missing or invalid RM email (${reminders.unassigned.length})</b><ul>${reminders.unassigned.map(rowHtml).join('')}</ul></div></div>`;
     }
-    html += reminders.groups.map((group, index) => `<section class="sc-reminder-row"><div><b>${esc(group.name || group.email)}</b><div class="sc-reminder-email">${esc(group.email)}</div><ul>${group.rows.map(rowHtml).join('')}</ul></div><button type="button" class="sc-reference-btn" onclick="composeScInputReminder(${index})" title="Open an unsent draft to ${esc(group.email)}"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Compose draft</button></section>`).join('');
+    html += reminders.groups.map((group, index) => `<section class="sc-reminder-row"><div><b>${esc(group.name || group.email)}</b><div class="sc-reminder-email">${esc(group.email)}</div><ul>${group.rows.map(rowHtml).join('')}</ul><div id="scReminderStatus${index}" role="status"></div></div><div><button type="button" class="sc-reference-btn" onclick="sendScInputReminder(${index}, this)" ${scMailAvailability.available ? '' : 'disabled'} title="Send as your signed-in account"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Send email</button><button type="button" class="sc-reference-btn" onclick="composeScInputReminder(${index})" title="Open an unsent draft to ${esc(group.email)}"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Compose draft</button></div></section>`).join('');
     document.getElementById('scInputRemindersBody').innerHTML = html;
     document.getElementById('scInputRemindersOverlay').classList.add('open');
     document.getElementById('scInputRemindersOverlay').querySelector('.sc-ref-close').focus();
@@ -1840,6 +1879,32 @@ function composeScInputReminder(index) {
     document.body.appendChild(link);
     link.click();
     link.remove();
+}
+
+async function sendScInputReminder(index, button) {
+    const group = scInputReminderGroups[index];
+    if (!group || !confirm(`Send this reminder to ${group.email} as your signed-in account?`)) return;
+    group.requestId ||= crypto.randomUUID();
+    button.disabled = true;
+    const status = document.getElementById(`scReminderStatus${index}`);
+    status.textContent = 'Sending...';
+    try {
+        const response = await fetch('/scorecard/api/mail/reminder', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-AppHub-Mail': '1' },
+            body: JSON.stringify({ ...scInputReminderPeriod, rm_email: group.email, property_keys: group.rows.map(row => row.PROPERTY_KEY), request_id: group.requestId }),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            status.textContent = result.error || 'Email could not be sent.';
+            return;
+        }
+        status.textContent = result.status === 'accepted'
+            ? `Accepted by Microsoft Graph for ${result.recipient}.`
+            : result.status === 'rejected' ? 'Microsoft Graph rejected this message.'
+            : 'Send result is unconfirmed. Check Sent Items before sending another reminder.';
+    } catch (_) {
+        status.textContent = 'Send result is unconfirmed. Check Sent Items before sending another reminder.';
+    }
 }
 function clearColFilter(key) { delete colFilters[key]; render(); }
 function clearSort() { sort = { col: null, dir: 1 }; render(); }
@@ -2724,8 +2789,10 @@ function notesSectionHtml(d) {
         <textarea id="scNotesInput" class="sc-notes-input" placeholder="Add a note (explain a result, leave context, or tag someone)..."></textarea>
         ${mentionChips}
         <div class="sc-notes-actions">
-            <button type="button" class="sc-blurb-toggle" onclick="addScNote()">Add note</button>
+            ${candidates.length ? `<label><input type="checkbox" id="scNoteEmailMentions" ${scMailAvailability.available ? '' : 'disabled'}> Email mentioned people</label>` : ''}
+            <button type="button" id="scAddNoteBtn" class="sc-blurb-toggle" onclick="addScNote()">Add note</button>
         </div>
+        ${candidates.length && !scMailAvailability.available ? `<div class="sc-notes-meta">${esc(scMailAvailability.reason)}</div>` : ''}
     </div>
     ${thread}`;
 }
@@ -2746,10 +2813,14 @@ function addScNote() {
     if (!text) { input?.focus(); return; }
     const measureKey = document.getElementById('scNoteMeasure')?.value || '';
     const mentions = [...document.querySelectorAll('.sc-note-mention:checked')].map(cb => cb.value);
+    const emailMentions = Boolean(document.getElementById('scNoteEmailMentions')?.checked);
+    const addButton = document.getElementById('scAddNoteBtn');
+    if (addButton?.disabled) return;
+    if (addButton) addButton.disabled = true;
     const pk = scDetailData.PROPERTY_KEY;
     fetch(`/scorecard/api/notes/${pk}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, measure_key: measureKey || null, mentions }),
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-AppHub-Mail': '1' },
+        body: JSON.stringify({ text, measure_key: measureKey || null, mentions, email_mentions: emailMentions }),
     }).then(r => r.json()).then(res => {
         if (res.error) { alert(res.error); return; }
         const note = res.note;
@@ -2757,13 +2828,18 @@ function addScNote() {
         scNotesData.notes.push(note);
         scNoteComposeMeasure = '';
         renderScDetail();
+        const notification = res.email_notification;
+        if (emailMentions && mentions.length && notification && !['accepted', 'not_requested'].includes(notification.status)) {
+            alert(`Note saved. Email alerts were not fully accepted: ${notification.reason || 'check Sent Items; the in-app mentions are still available.'}`);
+        }
         if (!measureKey) {
             scDetailData.NOTES = note.text;
             const row = allRows.find(r => r.PROPERTY_KEY === pk);
             if (row && !scDetailData.is_pm_author) { row.NOTES = note.text; }
             render();
         }
-    });
+        }).catch(() => alert('The note-save result could not be confirmed. Refresh the notes before trying again.'))
+            .finally(() => { if (addButton?.isConnected) addButton.disabled = false; });
 }
 
 function deleteScNote(noteId) {
