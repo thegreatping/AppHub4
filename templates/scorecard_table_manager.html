@@ -39,6 +39,9 @@
     .stm-cap-note { font-size: 0.7rem; color: #f59e0b; font-weight: 600; margin-left: 6px; }
     .stm-export { margin-left: auto; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 5px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; }
     .stm-export:hover { border-color: var(--accent-cyan); }
+    .stm-rowlimit { display: inline-flex; align-items: center; gap: 5px; font-size: 0.75rem; color: var(--text-secondary); }
+    .stm-rowlimit select { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); border-radius: 4px; padding: 3px 6px; font-size: 0.75rem; cursor: pointer; }
+    .stm-rowlimit select:hover { border-color: var(--accent-cyan); }
     .stm-error-banner { display: none; font-size: 0.72rem; color: #f87171; background: rgba(248,113,113,0.10); border: 1px solid rgba(248,113,113,0.4); border-radius: 4px; padding: 6px 10px; margin-bottom: 8px; }
     .stm-error-banner.on { display: block; }
 
@@ -241,6 +244,7 @@ let stmEditRowIdx = null;
 // text = LIKE substring (blank = ignore). values = [...]  IN clause (null = ignore).
 let stmColFilters = {};
 let stmSort = null;
+let stmRowLimit = 3000;   // on-screen browse cap; user-adjustable (Item #19)
 let stmRequeryTick = 0;
 let stmFilterDebounce = null;
 // Filter dropdown popover state
@@ -388,6 +392,7 @@ async function loadStmTable() {
         params.set('sort_col', stmSort.col);
         params.set('sort_dir', stmSort.dir || 'ASC');
     }
+    params.set('limit', stmRowLimit);
     let r, j;
     try {
         r = await fetch(`/scorecard/api/admin/table/${encodeURIComponent(stmCurrentKey)}?${params}`);
@@ -473,7 +478,7 @@ function renderStmContent() {
         ${filterBadge}
     </div>`;
     const capNote = atLimit
-        ? `<span class="stm-cap-note">&#9888; Row cap of ${limit.toLocaleString()} reached &mdash; narrow a column filter to see more.</span>`
+        ? `<span class="stm-cap-note">&#9888; Showing the first ${limit.toLocaleString()} rows &mdash; raise "Rows" above, narrow a column filter, or use "Export all" to get every matching row.</span>`
         : '';
     const isEditableTable = Array.isArray(cfg.primary_key) && cfg.primary_key.length > 0 && Array.isArray(cfg.editable_columns) && cfg.editable_columns.length > 0;
     const selectedCount = stmSelectedRowKeys.size;
@@ -482,13 +487,16 @@ function renderStmContent() {
         : '';
     const hiddenCount = stmHiddenCols.size;
     const colsBtn = `<button class="stm-cols-btn${hiddenCount > 0 ? ' active' : ''}" onclick="openStmColsPopover(event)" title="Show/hide columns">&#9881; Cols${hiddenCount > 0 ? ` (${columns.length - hiddenCount}/${columns.length})` : ''}</button>`;
+    const rowLimitSelect = `<label class="stm-rowlimit" title="How many rows to load on screen (max 10,000). Use Export all for the complete set.">Rows <select onchange="setStmRowLimit(this.value)">${[1000, 3000, 10000].map(n => `<option value="${n}" ${stmRowLimit === n ? 'selected' : ''}>${n.toLocaleString()}</option>`).join('')}</select></label>`;
     const toolbar = `<div class="stm-toolbar">
         <span class="count">${rows.length.toLocaleString()} rows &middot; ${activeFilterCount} column filter${activeFilterCount === 1 ? '' : 's'} active${selectedCount > 0 ? ` &middot; <span style="color: var(--accent-cyan); font-weight:700;">${selectedCount} selected</span>` : ''}</span>
+        ${rowLimitSelect}
         ${activeFilterCount ? '<button class="stm-clear-filters" onclick="clearStmFilters()">Clear filters</button>' : ''}
         ${bulkEditBtn}
         ${capNote}
         ${colsBtn}
-        <button class="stm-export" onclick="exportStmTable()">&#128190; Export CSV</button>
+        <button class="stm-export" onclick="exportStmTable()" title="Download the rows currently loaded on screen">&#128190; Export CSV</button>
+        <button class="stm-export" style="margin-left:0;" onclick="exportStmTableAll()" title="Download every matching row from the source (bypasses the on-screen cap)">&#128229; Export all</button>
     </div>
     <div class="stm-error-banner" id="stmErrorBanner"></div>`;
     const visibleColumns = columns.filter(c => !stmHiddenCols.has(c));
@@ -835,6 +843,29 @@ function exportStmTable() {
     document.body.appendChild(a);
     a.click();
     URL.revokeObjectURL(a.href);
+    a.remove();
+}
+
+function setStmRowLimit(v) {
+    stmRowLimit = parseInt(v, 10) || 3000;
+    loadStmTable();
+}
+
+// Download every matching row from the source server-side, bypassing the
+// on-screen cap (Item #19). Honors the active column filters + sort.
+function exportStmTableAll() {
+    if (!stmCurrentKey) return;
+    const params = new URLSearchParams();
+    const activeFilters = stmSerializeColFilters();
+    if (Object.keys(activeFilters).length) params.set('col_filters', JSON.stringify(activeFilters));
+    if (stmSort && stmSort.col) {
+        params.set('sort_col', stmSort.col);
+        params.set('sort_dir', stmSort.dir || 'ASC');
+    }
+    const a = document.createElement('a');
+    a.href = `/scorecard/api/admin/table/${encodeURIComponent(stmCurrentKey)}/export?${params}`;
+    document.body.appendChild(a);
+    a.click();
     a.remove();
 }
 

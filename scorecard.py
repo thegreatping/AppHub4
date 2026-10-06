@@ -1289,6 +1289,111 @@ def api_admin_table(table_key):
     return jsonify({"columns": columns, "rows": result, "config": cfg_out})
 
 
+@scorecard_bp.route("/api/admin/table/<table_key>/export")
+@login_required
+def api_admin_table_export(table_key):
+    """Stream the FULL filtered table as a CSV download (admin-only),
+    bypassing the on-screen browse cap so the complete source can be pulled
+    (Item #19 -- "extend the rows for timecards"). Same registry whitelist +
+    column-filter/sort builder as the browse endpoint; hard-capped at 100000
+    rows as a runaway guard."""
+    import csv as _csv
+    import io as _io
+    from flask import Response
+    check = _require_access()
+    if check:
+        return check
+    if not _is_admin():
+        return jsonify({"error": "admin only"}), 403
+    cfg = _load_scorecard_tables().get(table_key)
+    if not cfg:
+        return jsonify({"error": "unknown table"}), 404
+
+    try:
+        col_filters = json.loads(request.args.get("col_filters") or "{}")
+    except json.JSONDecodeError:
+        return jsonify({"error": "col_filters must be valid JSON"}), 400
+    if not isinstance(col_filters, dict):
+        return jsonify({"error": "col_filters must be a JSON object"}), 400
+    col_filters = _clean_col_filters(col_filters)
+
+    sort_col = (request.args.get("sort_col") or "").strip() or None
+    sort_dir = (request.args.get("sort_dir") or "ASC").upper()
+    if sort_dir not in ("ASC", "DESC"):
+        sort_dir = "ASC"
+    if sort_col and not _IDENTIFIER_RE.match(sort_col):
+        return jsonify({"error": f"invalid column name: {sort_col}"}), 400
+
+    env = _get_env()
+    try:
+        where_parts, where_params = _build_col_filter_where(cfg, env, col_filters)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    where_clause = f" WHERE {' AND '.join(where_parts)}" if where_parts else ""
+
+    # PROPERTY_NAME is a post-join display column (not a real DB column), so
+    # sorting by it happens in-memory after the fetch, as in the browse path.
+    sort_python_side = (sort_col == "PROPERTY_NAME")
+    if sort_col and not sort_python_side:
+        order_clause = f" ORDER BY [{sort_col}] {sort_dir}"
+    else:
+        default_sql_order = cfg.get("sql_order_by")
+        order_clause = f" ORDER BY {default_sql_order}" if default_sql_order else ""
+
+    export_cap = 100000
+    conn = None
+    try:
+        conn = SafeConnection(env, cfg["db"], None, direct=cfg.get("direct", False))
+    except ValueError as e:
+        if "No endpoint found" in str(e) or "FABRIC_" in str(e):
+            return jsonify({"error": (f"Live export of '{cfg['db']}' source tables is not yet "
+                                      "available in the hosted beta environment.")}), 503
+        raise
+    try:
+        sql = f"SELECT TOP {export_cap} * FROM {cfg['schema']}.[{cfg['table']}]{where_clause}{order_clause}"
+        cur = conn.execute(sql, where_params if where_params else None)
+        columns = [d[0] for d in cur.description]
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    join_name = bool(cfg.get("join_property_name")) and "PROPERTY_KEY" in columns
+    name_map = _get_property_name_map(env) if join_name else {}
+    out_columns = (["PROPERTY_NAME"] + [c for c in columns if c != "PROPERTY_NAME"]) if join_name else columns
+
+    rowmaps = []
+    for r in rows:
+        rowmap = {}
+        for i, col in enumerate(columns):
+            val = r[i]
+            if hasattr(val, "isoformat"):
+                val = val.isoformat()
+            rowmap[col] = val
+        if join_name:
+            pk = rowmap.get("PROPERTY_KEY")
+            nm = name_map.get(pk)
+            rowmap["PROPERTY_NAME"] = nm if nm else (f"(unknown: {pk})" if pk is not None else "(unknown)")
+        rowmaps.append(rowmap)
+
+    if sort_python_side:
+        def _sort_key(rm):
+            name = rm.get("PROPERTY_NAME") or ""
+            return (1 if name.startswith("(unknown") else 0, name.lower(), str(rm.get("PROPERTY_KEY") or ""))
+        rowmaps.sort(key=_sort_key, reverse=(sort_dir == "DESC"))
+
+    buf = _io.StringIO()
+    buf.write("\ufeff")
+    writer = _csv.writer(buf)
+    writer.writerow(out_columns)
+    for rm in rowmaps:
+        writer.writerow([rm.get(c, "") for c in out_columns])
+
+    stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{table_key}_full_{stamp}.csv"
+    return Response(buf.getvalue(), mimetype="text/csv",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
 @scorecard_bp.route("/api/admin/table/<table_key>/distinct")
 @login_required
 def api_admin_table_distinct(table_key):
