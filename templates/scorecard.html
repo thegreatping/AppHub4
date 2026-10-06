@@ -384,6 +384,25 @@
     .col-filter-item input, .col-filter-all-row input { flex-shrink: 0; cursor: pointer; }
     .col-filter-item span { overflow: hidden; text-overflow: ellipsis; }
 
+    /* Unified header menu (sort + show data + multi-select filter) */
+    .sc-head-th { cursor: pointer; }
+    .sc-head-caret { font-size: 0.55rem; color: var(--text-secondary); margin-left: 3px; }
+    .sc-head-th:hover .sc-head-caret { color: var(--accent-cyan); }
+    .sc-head-filter-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-cyan); margin-left: 3px; vertical-align: middle; }
+    .col-head-action { display: flex; align-items: center; gap: 8px; padding: 7px 10px; font-size: 0.72rem; color: var(--text-primary); cursor: pointer; white-space: nowrap; }
+    .col-head-action:hover { background: var(--hover-bg-strong); color: var(--accent-cyan); }
+    .col-head-action .ico { width: 14px; text-align: center; flex-shrink: 0; color: var(--text-secondary); font-size: 0.72rem; }
+    .col-head-action:hover .ico { color: var(--accent-cyan); }
+    .col-head-divider { height: 1px; background: var(--border-subtle); margin: 2px 0; }
+    .col-filter-item.selected { color: var(--accent-cyan); font-weight: 600; }
+    .col-filter-hint { padding: 5px 8px 0; font-size: 0.58rem; color: var(--text-secondary); line-height: 1.4; }
+    .col-filter-footer { display: flex; justify-content: space-between; gap: 8px; padding: 6px 8px; border-top: 1px solid var(--border-subtle); }
+    .col-filter-footer button { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); border-radius: 4px; padding: 3px 12px; font-size: 0.68rem; cursor: pointer; }
+    .col-filter-footer button:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    /* Drilldown reuses the header-menu styling but must sit above the modal. */
+    .sc-dd-head-menu { z-index: 1300; }
+    .sc-dd-head-th { cursor: pointer; }
+
     .sc-reference-btn { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 7px 14px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; }
     .sc-reference-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
     .sc-ref-body.sc-reminder-body { font-size: 0.85rem; }
@@ -537,7 +556,8 @@
             <button type="button" class="sc-export-btn" onclick="showCalPrompt()">&#128197; Add to Outlook</button>
             <button type="button" class="sc-export-btn" onclick="exportSubjectiveScores()">&#128190; Download My Scores</button>
             {% endif %}
-            <button type="button" class="sc-export-btn" id="scFullExportBtn" style="display:none;" onclick="exportFullSummary()">&#128190; Full Summary Export</button>
+            <button type="button" class="sc-export-btn" id="scFullExportBtn" style="display:none;" onclick="exportFullSummaryXls()" title="Excel with failure highlights">&#128190; Full Summary (Excel)</button>
+            <button type="button" class="sc-export-btn" id="scFullExportCsvBtn" style="display:none;" onclick="exportFullSummary()" title="Plain CSV (no highlights)">CSV</button>
         </div>
     </div>
 
@@ -672,9 +692,11 @@
                     autocomplete="off" oninput="onDdPropertyInput()" onfocus="onDdPropertyInput()">
                 <div class="sc-dd-combo-list" id="scDdPropertyList"></div>
             </div>
+            <input type="text" id="scDdFilterInput" class="sc-dd-search" style="max-width:170px;flex:0 0 auto;" placeholder="Filter rows..." autocomplete="off" oninput="onDdFilterInput(this.value)">
             <span class="sc-dd-legend"><span class="sc-dd-legend-swatch"></span>Fails the business rule</span>
             <span id="scDdCount" class="sc-dd-count"></span>
-            <button type="button" class="sc-dd-export-btn" onclick="exportDrilldownExcel()">&#128190; Export</button>
+            <button type="button" class="sc-dd-export-btn" onclick="exportDrilldownXls()" title="Excel with the dashboard failure highlights">&#128190; Excel</button>
+            <button type="button" class="sc-dd-export-btn" onclick="exportDrilldownExcel()" title="Plain CSV (no highlights)">CSV</button>
         </div>
         <div class="sc-dd-table-wrap">
             <table class="sc-dd-table" id="scDdTable">
@@ -1148,7 +1170,7 @@ const SC_HELP_CONTENT = {
         <div class="sc-crit-item">
           <div class="sc-crit-name">Column headers &mdash; sort, filter, drill in</div>
           <div class="sc-crit-body">
-            <p><b>Click a header</b> to sort. Click again to reverse. <b>Click the funnel icon</b> next to a header to filter (Excel-style multi-select).</p>
+            <p><b>Click any column header</b> to open its menu: <b>Sort A to Z / Z to A</b>, <b>Show Data</b> (opens the underlying records for measure columns), and a <b>filter</b> list. In the filter, type to narrow the list, <b>click a value</b> to show only it, or <b>Ctrl+click</b> to pick several. A small dot on a header means that column is filtered.</p>
             <p><b>Click the measure name</b> (Timecard, Training, IIPP, etc.) to drill into the source rows that produced that pass/fail &mdash; useful when someone disagrees with a fail.</p>
           </div>
         </div>
@@ -1463,6 +1485,8 @@ async function loadData() {
         ? `<span class="sc-quarter-badge">${esc(data.quarter_label)}</span> -- ${data.is_admin ? 'All Properties (Admin)' : (window.SC_IS_PM ? 'My Property (Read-only)' : 'My Portfolio')}`
         : 'No data available yet';
     document.getElementById('scFullExportBtn').style.display = window.SC_IS_ADMIN ? '' : 'none';
+    const _csvBtn = document.getElementById('scFullExportCsvBtn');
+    if (_csvBtn) _csvBtn.style.display = window.SC_IS_ADMIN ? '' : 'none';
     render();
     _scPopulateQuarterPicker(data.ay, data.quarter);
 }
@@ -1555,25 +1579,17 @@ function renderHeader() {
         <th class="grp-maintenance" colspan="${MAINT_COLS.length + (showPrior ? 1 : 0)}">Maintenance</th>
         <th></th>
     </tr>`;
+    const hc = (c, extraCls = '') => `<th class="sc-head-th ${extraCls}" onclick="openHeadMenu('${c.key}', this, event)" title="${esc(blurbFor(c.key) || c.label)}">${esc(c.label)}${sortArrow(c.key)}${headMenuMarks(c.key)}</th>`;
     const labelRow = `<tr>
-        ${ID_COLS.map(c => `<th class="id-col" onclick="sortCol('${c.key}')">${esc(c.label)}${sortArrow(c.key)}</th>`).join('')}
-        <th class="sc-overall-header" onclick="sortCol('OVERALL')">${esc(OVERALL_COL.label)}${sortArrow('OVERALL')}</th>
-        ${LEADERSHIP_COLS.map(c => `<th onclick="sortCol('${c.key}')" title="${esc(blurbFor(c.key))}">${esc(c.label)}${sortArrow(c.key)}${ddIconHtml(c)}</th>`).join('')}
+        ${ID_COLS.map(c => hc(c, 'id-col')).join('')}
+        ${hc(OVERALL_COL, 'sc-overall-header')}
+        ${LEADERSHIP_COLS.map(c => hc(c)).join('')}
         ${showPrior ? `<th class="sc-prior-col">Prior Ldr Total</th>` : ''}
-        ${MAINT_COLS.map(c => `<th onclick="sortCol('${c.key}')" title="${esc(blurbFor(c.key))}">${esc(c.label)}${sortArrow(c.key)}${ddIconHtml(c)}</th>`).join('')}
+        ${MAINT_COLS.map(c => hc(c)).join('')}
         ${showPrior ? `<th class="sc-prior-col">Prior Maint Total</th>` : ''}
-        <th onclick="sortCol('NOTES')">Notes${sortArrow('NOTES')}</th>
+        ${hc(NOTES_COL)}
     </tr>`;
-    const filterRow = `<tr class="col-search-row">
-        ${ID_COLS.map(c => filterCellHtml(c)).join('')}
-        ${filterCellHtml(OVERALL_COL)}
-        ${LEADERSHIP_COLS.map(c => filterCellHtml(c)).join('')}
-        ${showPrior ? `<th></th>` : ''}
-        ${MAINT_COLS.map(c => filterCellHtml(c)).join('')}
-        ${showPrior ? `<th></th>` : ''}
-        ${filterCellHtml(NOTES_COL)}
-    </tr>`;
-    thead.innerHTML = groupRow + labelRow + filterRow;
+    thead.innerHTML = groupRow + labelRow;
     applyStickyHeaderOffsets();
 }
 
@@ -1835,52 +1851,74 @@ function clearAllFilters() {
 }
 function toggleQ1History(checked) { showPrior = checked; render(); }
 
-// ── Excel-style shared floating column filter menu (same pattern as edm.html) ──
+// ── Unified header menu: sort + Show Data + Excel-style multi-select filter ──
+// One popover opened by clicking any column header. Replaces the old separate
+// sort-on-click, funnel filter row, and magnifier drilldown icon (Item #18).
 const _sharedColFilterMenu = document.createElement('div');
 _sharedColFilterMenu.className = 'col-filter-menu';
 _sharedColFilterMenu.id = 'scSharedColFilterMenu';
 document.body.appendChild(_sharedColFilterMenu);
 
-function toggleColFilterMenu(key, btnEl) {
+function headMenuMarks(key) {
+    const dot = colFilters[key] ? '<span class="sc-head-filter-dot" title="Column is filtered"></span>' : '';
+    return `${dot}<span class="sc-head-caret">\u25BE</span>`;
+}
+
+function openHeadMenu(key, thEl, event) {
+    if (event) event.stopPropagation();
     const menu = _sharedColFilterMenu;
     const wasOpenForThis = menu.classList.contains('open') && menu.dataset.col === key;
     closeColFilterMenus();
     if (wasOpenForThis) return;
     menu.dataset.col = key;
-    positionColFilterMenu(btnEl);
-    renderColFilterMenuContents(key);
+    renderHeadMenuContents(key);
+    positionColFilterMenu(thEl);
     menu.classList.add('open');
 }
 
-function positionColFilterMenu(btnEl) {
+function positionColFilterMenu(anchorEl) {
     const menu = _sharedColFilterMenu;
-    const rect = btnEl.getBoundingClientRect();
-    const width = Math.max(rect.width, 190);
+    const rect = anchorEl.getBoundingClientRect();
+    const width = Math.max(rect.width, 210);
     let left = Math.min(rect.left, window.innerWidth - width - 8);
     let top = rect.bottom + 2;
-    if (top + 260 > window.innerHeight) top = Math.max(8, rect.top - 260);
+    if (top + 340 > window.innerHeight) top = Math.max(8, window.innerHeight - 340 - 8);
     menu.style.left = Math.max(8, left) + 'px';
     menu.style.top = top + 'px';
     menu.style.width = width + 'px';
 }
 
-function renderColFilterMenuContents(key) {
+function renderHeadMenuContents(key) {
     const col = COL_BY_KEY[key];
     const menu = _sharedColFilterMenu;
     const all = distinctColValues(col);
     const sel = colFilters[key];
     const isAllSelected = !sel;
+    const showData = DRILLDOWN_KEYS.has(key)
+        ? `<div class="col-head-action" onclick="headShowData('${key}')"><span class="ico">&#128269;</span> Show Data</div>
+           <div class="col-head-divider"></div>` : '';
     menu.innerHTML = `
+        <div class="col-head-action" onclick="headSort('${key}', 1)"><span class="ico">&#9650;</span> Sort A to Z</div>
+        <div class="col-head-action" onclick="headSort('${key}', -1)"><span class="ico">&#9660;</span> Sort Z to A</div>
+        <div class="col-head-divider"></div>
+        ${showData}
         <div class="col-filter-search"><input type="text" placeholder="Filter list..." oninput="filterColFilterItems(this)"></div>
-        <label class="col-filter-all-row">
-            <input type="checkbox" data-col="${esc(key)}" data-role="all" ${isAllSelected ? 'checked' : ''}>
-            <strong>All</strong>
-        </label>
+        <div class="col-filter-all-row" onclick="headFilterAll('${key}')">
+            <input type="checkbox" ${isAllSelected ? 'checked' : ''} tabindex="-1" style="pointer-events:none"> <strong>(Select all)</strong>
+        </div>
         <div class="col-filter-list">
-            ${all.map(v => `<label class="col-filter-item">
-                <input type="checkbox" data-col="${esc(key)}" data-value="${esc(v)}" ${(isAllSelected || sel.has(v)) ? 'checked' : ''}>
-                <span>${esc(v)}</span>
-            </label>`).join('')}
+            ${all.map(v => {
+                const checked = isAllSelected || sel.has(v);
+                const vEsc = esc(v).replace(/'/g, "\\'");
+                return `<div class="col-filter-item ${checked ? 'selected' : ''}" onclick="onHeadFilterItemClick(event, '${esc(key)}', '${vEsc}')">
+                    <input type="checkbox" ${checked ? 'checked' : ''} tabindex="-1" style="pointer-events:none"><span>${esc(v)}</span>
+                </div>`;
+            }).join('')}
+        </div>
+        <div class="col-filter-hint">Click a value to show only it &bull; Ctrl+click to multi-select</div>
+        <div class="col-filter-footer">
+            <button type="button" onclick="headFilterClear('${esc(key)}')">Clear</button>
+            <button type="button" onclick="closeColFilterMenus()">Done</button>
         </div>`;
 }
 
@@ -1894,40 +1932,58 @@ function filterColFilterItems(inputEl) {
 
 function closeColFilterMenus() { _sharedColFilterMenu.classList.remove('open'); }
 
-function toggleColFilterAll(key, checked) {
-    colFilters[key] = checked ? null : new Set();
-    afterColFilterChange(key);
+function refreshHeadMenu(key) {
+    const menu = _sharedColFilterMenu;
+    if (!(menu.classList.contains('open') && menu.dataset.col === key)) return;
+    const searchVal = menu.querySelector('.col-filter-search input')?.value || '';
+    renderHeadMenuContents(key);
+    const si = menu.querySelector('.col-filter-search input');
+    if (si && searchVal) { si.value = searchVal; filterColFilterItems(si); }
 }
 
-function toggleColFilterValue(key, val, checked) {
+function headSort(key, dir) {
+    sort = { col: key, dir: dir };
+    closeColFilterMenus();
+    render();
+}
+
+function headShowData(key) {
+    closeColFilterMenus();
+    openDrilldown(key);
+}
+
+function onHeadFilterItemClick(event, key, value) {
     const col = COL_BY_KEY[key];
     const all = distinctColValues(col);
-    let sel = colFilters[key];
-    if (!sel) sel = new Set(all);
-    if (checked) sel.add(val); else sel.delete(val);
-    colFilters[key] = (sel.size === all.length) ? null : sel;
-    afterColFilterChange(key);
-}
-
-function afterColFilterChange(key) {
-    render();
-    const menu = _sharedColFilterMenu;
-    if (menu.classList.contains('open') && menu.dataset.col === key) {
-        const searchVal = menu.querySelector('.col-filter-search input')?.value || '';
-        renderColFilterMenuContents(key);
-        const newSearchInput = menu.querySelector('.col-filter-search input');
-        if (newSearchInput && searchVal) { newSearchInput.value = searchVal; filterColFilterItems(newSearchInput); }
+    if (event && (event.ctrlKey || event.metaKey)) {
+        // Ctrl/Cmd+click: toggle this value in a multi-selection.
+        const sel = colFilters[key] ? new Set(colFilters[key]) : new Set(all);
+        if (sel.has(value)) sel.delete(value); else sel.add(value);
+        colFilters[key] = (sel.size >= all.length) ? null : sel;
+    } else {
+        // Plain click: isolate to just this value (click again to clear).
+        const cur = colFilters[key];
+        if (cur && cur.size === 1 && cur.has(value)) delete colFilters[key];
+        else colFilters[key] = new Set([value]);
     }
+    refreshHeadMenu(key);
+    render();
 }
 
-document.addEventListener('change', e => {
-    const cb = e.target.closest('.col-filter-menu input[type=checkbox]');
-    if (!cb) return;
-    if (cb.dataset.role === 'all') toggleColFilterAll(cb.dataset.col, cb.checked);
-    else toggleColFilterValue(cb.dataset.col, cb.dataset.value, cb.checked);
-});
+function headFilterAll(key) {
+    colFilters[key] = colFilters[key] ? null : new Set();
+    refreshHeadMenu(key);
+    render();
+}
+
+function headFilterClear(key) {
+    delete colFilters[key];
+    refreshHeadMenu(key);
+    render();
+}
+
 document.addEventListener('pointerdown', e => {
-    if (e.target.closest('.col-search-wrap') || e.target.closest('.col-filter-menu')) return;
+    if (e.target.closest('.sc-head-th') || e.target.closest('.col-filter-menu')) return;
     closeColFilterMenus();
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeColFilterMenus(); });
@@ -1961,6 +2017,10 @@ function openDrilldown(measureCode) {
     scDdMeasureCode = measureCode;
     scDdSelectedProperty = null;
     scDdSort = { col: null, dir: 1 };
+    scDdFilterText = '';
+    scDdColFilters = {};
+    const fin = document.getElementById('scDdFilterInput'); if (fin) fin.value = '';
+    closeDdHeadMenu();
     fetchDrilldownData();
 }
 
@@ -2045,10 +2105,120 @@ function sortDdCol(col) {
     renderDrilldownTable();
 }
 
+// ── Drilldown column menu: sort + free-text + multi-select filter (Item #18) ──
+let scDdFilterText = '';
+let scDdColFilters = {};   // drilldown column name -> Set of allowed display values
+const _scDdHeadMenu = document.createElement('div');
+_scDdHeadMenu.className = 'col-filter-menu sc-dd-head-menu';
+document.body.appendChild(_scDdHeadMenu);
+
+function onDdFilterInput(v) { scDdFilterText = v; renderDrilldownTable(); }
+
+function ddDistinctValues(col) {
+    const set = new Set((scDrilldownData && scDrilldownData.rows ? scDrilldownData.rows : []).map(r => String(r[col] ?? '--')));
+    return [...set].sort();
+}
+
+function ddColMark(col) {
+    const dot = scDdColFilters[col] ? '<span class="sc-head-filter-dot" title="Column is filtered"></span>' : '';
+    return `${dot}<span class="sc-head-caret">\u25BE</span>`;
+}
+
+function openDdHeadMenu(col, thEl, event) {
+    if (event) event.stopPropagation();
+    const menu = _scDdHeadMenu;
+    const wasOpen = menu.classList.contains('open') && menu.dataset.col === col;
+    menu.classList.remove('open');
+    if (wasOpen) return;
+    menu.dataset.col = col;
+    renderDdHeadMenu(col);
+    const rect = thEl.getBoundingClientRect();
+    const width = Math.max(rect.width, 200);
+    let left = Math.min(rect.left, window.innerWidth - width - 8);
+    let top = rect.bottom + 2;
+    if (top + 340 > window.innerHeight) top = Math.max(8, window.innerHeight - 340 - 8);
+    menu.style.left = Math.max(8, left) + 'px';
+    menu.style.top = top + 'px';
+    menu.style.width = width + 'px';
+    menu.classList.add('open');
+}
+
+function renderDdHeadMenu(col) {
+    const menu = _scDdHeadMenu;
+    const all = ddDistinctValues(col);
+    const sel = scDdColFilters[col];
+    const isAll = !sel;
+    const cEsc = col.replace(/'/g, "\\'");
+    menu.innerHTML = `
+        <div class="col-head-action" onclick="ddHeadSort('${cEsc}', 1)"><span class="ico">&#9650;</span> Sort A to Z</div>
+        <div class="col-head-action" onclick="ddHeadSort('${cEsc}', -1)"><span class="ico">&#9660;</span> Sort Z to A</div>
+        <div class="col-head-divider"></div>
+        <div class="col-filter-search"><input type="text" placeholder="Filter list..." oninput="filterColFilterItems(this)"></div>
+        <div class="col-filter-all-row" onclick="ddHeadFilterAll('${cEsc}')"><input type="checkbox" ${isAll ? 'checked' : ''} tabindex="-1" style="pointer-events:none"> <strong>(Select all)</strong></div>
+        <div class="col-filter-list">
+            ${all.map(v => { const ck = isAll || sel.has(v); const ve = esc(v).replace(/'/g, "\\'"); return `<div class="col-filter-item ${ck ? 'selected' : ''}" onclick="onDdHeadItemClick(event, '${cEsc}', '${ve}')"><input type="checkbox" ${ck ? 'checked' : ''} tabindex="-1" style="pointer-events:none"><span>${esc(v)}</span></div>`; }).join('')}
+        </div>
+        <div class="col-filter-hint">Click a value to show only it &bull; Ctrl+click to multi-select</div>
+        <div class="col-filter-footer"><button type="button" onclick="ddHeadFilterClear('${cEsc}')">Clear</button><button type="button" onclick="closeDdHeadMenu()">Done</button></div>`;
+}
+
+function closeDdHeadMenu() { _scDdHeadMenu.classList.remove('open'); }
+
+function refreshDdHeadMenu(col) {
+    const m = _scDdHeadMenu;
+    if (!(m.classList.contains('open') && m.dataset.col === col)) return;
+    const s = m.querySelector('.col-filter-search input')?.value || '';
+    renderDdHeadMenu(col);
+    const si = m.querySelector('.col-filter-search input');
+    if (si && s) { si.value = s; filterColFilterItems(si); }
+}
+
+function ddHeadSort(col, dir) { scDdSort = { col, dir }; closeDdHeadMenu(); renderDrilldownTable(); }
+
+function ddHeadFilterAll(col) {
+    scDdColFilters[col] = scDdColFilters[col] ? null : new Set();
+    if (scDdColFilters[col] === null) delete scDdColFilters[col];
+    refreshDdHeadMenu(col);
+    renderDrilldownTable();
+}
+
+function ddHeadFilterClear(col) { delete scDdColFilters[col]; refreshDdHeadMenu(col); renderDrilldownTable(); }
+
+function onDdHeadItemClick(event, col, value) {
+    const all = ddDistinctValues(col);
+    if (event && (event.ctrlKey || event.metaKey)) {
+        const sel = scDdColFilters[col] ? new Set(scDdColFilters[col]) : new Set(all);
+        if (sel.has(value)) sel.delete(value); else sel.add(value);
+        if (sel.size >= all.length) delete scDdColFilters[col]; else scDdColFilters[col] = sel;
+    } else {
+        const cur = scDdColFilters[col];
+        if (cur && cur.size === 1 && cur.has(value)) delete scDdColFilters[col];
+        else scDdColFilters[col] = new Set([value]);
+    }
+    refreshDdHeadMenu(col);
+    renderDrilldownTable();
+}
+
+document.addEventListener('pointerdown', e => {
+    if (e.target.closest('.sc-dd-head-th') || e.target.closest('.sc-dd-head-menu')) return;
+    closeDdHeadMenu();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDdHeadMenu(); });
+
 function renderDrilldownTable() {
     if (!scDrilldownData) return;
     const { columns, rows } = scDrilldownData;
     let filtered = rows;
+    // Free-text filter across all columns (Item #18, s5_r3).
+    if (scDdFilterText) {
+        const q = scDdFilterText.toLowerCase();
+        filtered = filtered.filter(r => columns.some(c => String(r[c] ?? '').toLowerCase().includes(q)));
+    }
+    // Per-column multi-select filters (Item #18, s5_r2).
+    for (const [fcol, fsel] of Object.entries(scDdColFilters)) {
+        if (!fsel) continue;
+        filtered = filtered.filter(r => fsel.has(String(r[fcol] ?? '--')));
+    }
     if (scDdSort.col) {
         const col = scDdSort.col, dir = scDdSort.dir;
         filtered = filtered.slice().sort((a, b) => {
@@ -2063,7 +2233,8 @@ function renderDrilldownTable() {
     }
     document.getElementById('scDdThead').innerHTML = `<tr>${columns.map(c => {
         const arrow = scDdSort.col === c ? `<span class="sort-arrow">${scDdSort.dir === 1 ? '\u25B2' : '\u25BC'}</span>` : '';
-        return `<th onclick="sortDdCol('${c.replace(/'/g, "\\'")}')">${esc(c)}${arrow}</th>`;
+        const cEsc = c.replace(/'/g, "\\'");
+        return `<th class="sc-dd-head-th" onclick="openDdHeadMenu('${cEsc}', this, event)">${esc(c)}${arrow}${ddColMark(c)}</th>`;
     }).join('')}</tr>`;
     if (!rows.length) {
         document.getElementById('scDdTbody').innerHTML =
@@ -2074,7 +2245,7 @@ function renderDrilldownTable() {
     }
     document.getElementById('scDdTbody').innerHTML = filtered.map(r =>
         `<tr class="${r._fail ? 'sc-dd-fail-row' : ''}">${columns.map(c => `<td>${esc(r[c] ?? '--')}</td>`).join('')}</tr>`
-    ).join('') || `<tr><td colspan="${columns.length}" class="sc-dd-empty">No rows match this property.</td></tr>`;
+    ).join('') || `<tr><td colspan="${columns.length}" class="sc-dd-empty">No rows match the current filters.</td></tr>`;
     document.getElementById('scDdCount').textContent = `${filtered.length} of ${rows.length} shown`;
     scDdVisibleRows = filtered;
 }
@@ -2111,6 +2282,70 @@ function exportDrilldownExcel() {
     link.click();
     URL.revokeObjectURL(link.href);
     link.remove();
+}
+
+// Excel (.xls as an HTML table) that keeps the dashboard's failure highlight
+// (magenta fill) so the exported file visually matches the grid (Item #18, s5_r4).
+function _xlsDownload(tableHtml, filename) {
+    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"></head><body>${tableHtml}</body></html>`;
+    const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    URL.revokeObjectURL(link.href);
+    link.remove();
+}
+
+const _XLS_FAIL_STYLE = 'background:#FAD4E3;color:#8a1538;font-weight:bold;';
+const _XLS_HEAD_STYLE = 'background:#1f2a44;color:#ffffff;border:1px solid #cccccc;padding:4px 8px;text-align:left;';
+const _XLS_CELL_STYLE = 'border:1px solid #cccccc;padding:3px 8px;';
+
+function exportDrilldownXls() {
+    if (!scDrilldownData || !scDdVisibleRows.length) { alert('No rows to export.'); return; }
+    const { columns, label, quarter_label } = scDrilldownData;
+    const span = columns.length + 1;
+    const headCells = columns.map(c => `<th style="${_XLS_HEAD_STYLE}">${esc(c)}</th>`).join('')
+        + `<th style="${_XLS_HEAD_STYLE}">Fails Business Rule</th>`;
+    const bodyRows = scDdVisibleRows.map(r => {
+        const fill = r._fail ? _XLS_FAIL_STYLE : '';
+        const cells = columns.map(c => `<td style="${_XLS_CELL_STYLE}${fill}">${esc(r[c] ?? '--')}</td>`).join('');
+        return `<tr>${cells}<td style="${_XLS_CELL_STYLE}${fill}">${r._fail ? 'Yes' : ''}</td></tr>`;
+    }).join('');
+    const title = (label || 'Measure').replace(/&amp;/g, '&');
+    const meta = `Property: ${scDdSelectedProperty || 'All Properties'}${scDdFilterText ? ' | Filter: ' + scDdFilterText : ''}`;
+    const table = `<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:10pt;">`
+        + `<tr><td colspan="${span}" style="font-weight:bold;font-size:12pt;">${esc(title)} -- ${esc(quarter_label || '')}</td></tr>`
+        + `<tr><td colspan="${span}">${esc(meta)}</td></tr>`
+        + `<tr><td colspan="${span}"></td></tr>`
+        + `<tr>${headCells}</tr>${bodyRows}</table>`;
+    _xlsDownload(table, `scorecard_${(scDdMeasureCode || 'measure').toLowerCase()}_${ddExportDateStampET()}.xls`);
+}
+
+function exportFullSummaryXls() {
+    if (!window.SC_IS_ADMIN) return;
+    if (!allRows.length) { alert('No data to export.'); return; }
+    const head = [
+        { key: 'ENTITY_NUMBER', label: 'Entity' }, { key: 'PROPERTY_NAME', label: 'Property' },
+        { key: 'RM_NAME', label: 'RM' }, OVERALL_COL, ...LEADERSHIP_COLS, ...MAINT_COLS,
+    ];
+    const headCells = head.map(c => `<th style="${_XLS_HEAD_STYLE}">${esc(c.label)}</th>`).join('');
+    const sorted = allRows.slice().sort((a, b) => (a.PROPERTY_NAME || '').localeCompare(b.PROPERTY_NAME || ''));
+    const bodyRows = sorted.map(r => {
+        const cells = head.map(c => {
+            const col = COL_BY_KEY[c.key] || c;
+            const isFail = col.type === 'bool' && r[c.key] === 0;
+            const fill = isFail ? _XLS_FAIL_STYLE : '';
+            return `<td style="${_XLS_CELL_STYLE}${fill}">${esc(displayVal(col, r))}</td>`;
+        }).join('');
+        return `<tr>${cells}</tr>`;
+    }).join('');
+    const table = `<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:10pt;">`
+        + `<tr><td colspan="${head.length}" style="font-weight:bold;font-size:12pt;">Leadership Scorecard -- Full Summary -- ${esc(scQuarterLabel)}</td></tr>`
+        + `<tr><td colspan="${head.length}"></td></tr>`
+        + `<tr>${headCells}</tr>${bodyRows}</table>`;
+    _xlsDownload(table, `${scQuarterLabel} - Full Summary - ${scExportTimestamp()}.xls`);
 }
 
 function openScDetail(propertyKey) {
