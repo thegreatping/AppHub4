@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Molly Blazier - Scorecard QA feedback</title></head>
+<body style="margin:0;padding:24px;background:#eef2f7;color:#202a38;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:1.55;">
+<div style="max-width:820px;margin:0 auto;background:#ffffff;border:1px solid #d8e0eb;border-radius:6px;overflow:hidden;">
+  <div style="background:#13223a;padding:22px 26px;color:#ffffff;">
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#8fd8df;">Leadership Scorecard | Beta QA</div>
+    <h1 style="font-size:23px;margin:5px 0 0;color:#ffffff;">Molly Blazier - Feedback Triage</h1>
+    <div style="font-size:12px;color:#bcc9da;margin-top:7px;">Submitted October 2, 2026 | Production | Chrome desktop | Decision: NO-GO</div>
+  </div>
+  <div style="padding:24px 26px;">
+    <p style="margin-top:0;">Molly's feedback is in. Her decision is <b style="color:#a52828;">NO-GO - fix blockers, retest</b>. The record contains 75 scenarios: 44 Pass, 12 Fail, 11 Blocked, 7 checked with no result, and 1 unchecked. The 12 Fail selections are not 12 confirmed software defects; several notes describe feature requests, unclear test instructions, or assignment data requiring validation.</p>
+
+    <h2 style="font-size:16px;color:#a52828;border-bottom:1px solid #e2e8f0;padding-bottom:6px;">Errors / Bugs to Triage</h2>
+    <ol style="padding-left:22px;">
+      <li style="margin:0 0 9px;"><b>LEO Compliance detail/calculation:</b> Molly sees July in the drilldown, but expects all three quarter months to be represented. Validate quarter aggregation and detail rows; possible score correctness issue.</li>
+      <li style="margin:0 0 9px;"><b>Override reason flow:</b> Changing a measure from -- to Pass reportedly did not prompt for a reason. Reproduce the no-data-to-value path and confirm a non-empty reason is required and audited.</li>
+      <li style="margin:0 0 9px;"><b>Slideout Export to Email:</b> Reported not working. Reproduce in production and dev and capture which send/draft path fails.</li>
+      <li style="margin:0 0 9px;"><b>Grid scroll/filter behavior:</b> Horizontal scrollbar reportedly disappears when the About panel is expanded; deselecting all filter values reportedly prevents scrolling to results. Reproduce both.</li>
+      <li style="margin:0 0 9px;"><b>Property counts:</b> Main grid and supporting tabs reportedly omit new properties inconsistently. Compare their source, quarter, and reportable filters.</li>
+      <li style="margin:0 0 9px;"><b>Executive Director assignment:</b> Molly says Dale Rex is an RM, not ED, for UIndy. Current PROPERTY_0 lists College Crossing at National and Greyhound Village with Dale as EXEC_DIR and Lisa Brownlee as RM. This is an assignment conflict; confirm with the property-data owner before changing role logic.</li>
+      <li style="margin:0 0 9px;"><b>Fall Forecast alignment:</b> Property header reportedly is not left-aligned.</li>
+    </ol>
+
+    <h2 style="font-size:16px;color:#315f94;border-bottom:1px solid #e2e8f0;padding-bottom:6px;">Feature Changes Requested</h2>
+    <ul style="padding-left:20px;">
+      <li>Update welcome copy to refer to PM and Maintenance bonuses; combine Help with Criteria &amp; Guides, remove its leading icon, and provide a separate feedback area.</li>
+      <li>Make button and return-navigation patterns consistent; relabel the simulator control from "x Exit" to "Exit".</li>
+      <li>Review Peak brand colors for passing, failing, and overridden values; add column highlighting.</li>
+      <li>Redesign RM input tracking: show complete vs incomplete properties and provide an authorized email reminder workflow.</li>
+      <li>Support multiple timestamped notes, per-measure notes, PM/ED note entry, author-owned deletion rules, and mentions/alerts.</li>
+      <li>Offer a full-page/expanded property detail option; move "Show How this was Scored" outside the slideout and highlight failures only.</li>
+      <li>Show prior-quarter values by hover and/or adjacent columns; extend Timecard detail rows.</li>
+      <li>Clarify override policy (Molly requests RVP-only overrides) and clear an override when a value returns to its original value.</li>
+      <li>Improve supporting details: header-driven open, multi-select, filtering, and carry dashboard highlights into exports.</li>
+      <li>Reformat the spreadsheet export to the stakeholders' target format; obtain a sample template first.</li>
+      <li>Track mobile usability as a Phase 2 request unless mobile is required for beta.</li>
+    </ul>
+
+    <h2 style="font-size:16px;color:#7a5c12;border-bottom:1px solid #e2e8f0;padding-bottom:6px;">Access / Clarification / Retest</h2>
+    <ul style="padding-left:20px;">
+      <li>Molly could not edit or locate bulk edit in Table Manager despite selecting Admin. Verify actual entitlements and reproduce as a real admin.</li>
+      <li>Provide a guided explanation of Notebook Runs, audit trail locations, the "locked" marker, and where RM identity is maintained (PROPERTY_0). She recorded testing 48 West RM Score from 5 to 2; verify it persists after a pipeline run.</li>
+      <li>Clarify that the run list displays up to 50 runs; fewer than 50 is expected if fewer exist.</li>
+      <li>Provide a safe setup for the blocked missing-property, session-timeout, simulated-network-drop, and empty-data tests. Do not create invalid production records for testing.</li>
+    </ul>
+
+    <div style="background:#f1f5f9;border-left:4px solid #13858b;padding:12px 15px;margin-top:20px;">
+      <b>Recommended order:</b> First reproduce the LEO scoring/detail and override-reason issues; then test email export and grid filter/scroll behavior; confirm the PROPERTY_0 assignment with its owner. Keep feature requests in a separate scope decision so they do not get mistaken for release-blocking bugs.
+    </div>
+    <p style="font-size:12px;color:#667085;margin:18px 0 0;">Source: Molly's private QA record in dbo.SCORECARD_QA_META and dbo.SCORECARD_QA_STATE. This is an unsent draft/report; no QA rows were changed.</p>
+  </div>
+</div>
+</body></html>
