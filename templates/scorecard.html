@@ -787,6 +787,7 @@
 window.SC_MEASURE_DEFS = {{ measure_defs | tojson }};
 window.SC_IS_ADMIN = {{ 'true' if is_admin else 'false' }};
 window.SC_IS_PM = {{ 'true' if is_pm else 'false' }};
+window.SC_IS_RVP = {{ 'true' if is_rvp else 'false' }};
 window.SC_PM_PROPERTY_KEY = {{ pm_property_key if pm_property_key is not none else 'null' }};
 </script>
 <script>
@@ -1088,7 +1089,7 @@ function composeScFeedback() {
 
 // Role-aware content bank. Uses window.SC_IS_ADMIN and window.SC_IS_PM to
 // customize each tab's copy. All content is written for non-technical users.
-const _roleLabel = window.SC_IS_ADMIN ? 'Admin' : (window.SC_IS_PM ? 'Property Manager' : 'Regional Manager');
+const _roleLabel = window.SC_IS_ADMIN ? 'Admin' : (window.SC_IS_PM ? 'Property Manager' : (window.SC_IS_RVP ? 'Regional Vice President' : 'Regional Manager'));
 
 const SC_HELP_CONTENT = {
     welcome: `
@@ -1098,7 +1099,8 @@ const SC_HELP_CONTENT = {
           <div class="sc-crit-name">You're signed in as: <span style="color:var(--accent-cyan);">${_roleLabel}</span></div>
           <div class="sc-crit-body">
             ${window.SC_IS_ADMIN ? '<p>As an Admin you can see all properties, run the update notebook, use "View as..." to see the app from any RM or PM\'s point of view, and edit or override any measure.</p>' : ''}
-            ${!window.SC_IS_ADMIN && !window.SC_IS_PM ? '<p>As a Regional Manager you see only your own portfolio. You can enter your RM Score, save notes, and override measures on your properties.</p>' : ''}
+            ${!window.SC_IS_ADMIN && !window.SC_IS_PM && window.SC_IS_RVP ? '<p>As a Regional Vice President you see every property in your region. You can enter RM Scores, confirm Surveys and NOI, save notes, and override the pipeline-computed measures on your properties.</p>' : ''}
+            ${!window.SC_IS_ADMIN && !window.SC_IS_PM && !window.SC_IS_RVP ? '<p>As a Regional Manager you see only your own portfolio. You can enter your RM Score, confirm Surveys and NOI, and save notes on your properties. Overriding the pipeline-computed measures is reserved for RVPs and Admins.</p>' : ''}
             ${window.SC_IS_PM ? '<p>As a Property Manager you see only your assigned property, in read-only mode. You can browse everything, but editing is reserved for RMs and Admins.</p>' : ''}
           </div>
         </div>
@@ -1188,7 +1190,8 @@ const SC_HELP_CONTENT = {
           <div class="sc-crit-name">Leadership and Maintenance sections</div>
           <div class="sc-crit-body">
             ${window.SC_IS_PM ? '<p>Each measure shows its current value (Pass, Fail, a score, etc.) with an explanation of how it was computed. Everything here is read-only for you.</p>' : ''}
-            ${!window.SC_IS_PM ? '<p>Each measure shows its current value. You can change any objective measure with the dropdown, and check the <b>Override</b> box to protect that value from being overwritten by the next automatic update. Add an optional reason ("credit of 1 from Director of Ops Support"). Uncheck Override to hand control back to the automatic pipeline.</p>' : ''}
+            ${!window.SC_IS_PM && (window.SC_IS_ADMIN || window.SC_IS_RVP) ? '<p>Each measure shows its current value. You can change any pipeline-computed measure with the dropdown, and check the <b>Override</b> box to protect that value from being overwritten by the next automatic update. Add an optional reason ("credit of 1 from Director of Ops Support"). Uncheck Override to hand control back to the automatic pipeline. When you set a value back to its original, the Override box clears itself automatically.</p>' : ''}
+            ${!window.SC_IS_PM && !window.SC_IS_ADMIN && !window.SC_IS_RVP ? '<p>Each measure shows its current value with an explanation of how it was computed. You can set your RM Score, Surveys, and NOI directly; the pipeline-computed measures are read-only for you -- only an RVP or Admin can override those.</p>' : ''}
           </div>
         </div>
 
@@ -1230,7 +1233,7 @@ const SC_HELP_CONTENT = {
         <div class="sc-crit-item">
           <div class="sc-crit-name">Regional Manager view</div>
           <div class="sc-crit-body">
-            <p>Sees only their own portfolio (via RM_EMAIL match against PROPERTY_0). Can enter RM Scores 0-5, save notes, and set overrides on any measure for any property they own. No admin surfaces are visible to them.</p>
+            <p>Sees only their own portfolio (via RM_EMAIL match against PROPERTY_0). Can enter RM Scores 0-5, confirm Surveys and NOI, and save notes for any property they own. Overriding the pipeline-computed measures is reserved for RVPs and Admins -- RMs see those rows read-only. No admin surfaces are visible to them.</p>
             <p>To see the app exactly as an RM sees it, use <b>View as...</b> in the header and pick their name. Use "Exit" to return to Admin.</p>
           </div>
         </div>
@@ -1260,7 +1263,7 @@ const SC_HELP_CONTENT = {
           <div class="sc-crit-body"><p>Talk to your Regional Manager. RMs and Admins can adjust values, add notes explaining a fail, and override measures where they have reason to.</p></div>
         </div>
     ` : `
-        <p class="sc-ref-intro">You are signed in as a <b>Regional Manager</b>. Here's what your day-to-day looks like in the app.</p>
+        <p class="sc-ref-intro">You are signed in as a <b>${window.SC_IS_RVP ? 'Regional Vice President' : 'Regional Manager'}</b>. Here's what your day-to-day looks like in the app.</p>
 
         <div class="sc-crit-item">
           <div class="sc-crit-name">Which properties do you see?</div>
@@ -1275,15 +1278,16 @@ const SC_HELP_CONTENT = {
               <li><b>Enter your RM Score (0-5) for each PM you manage.</b> This is a subjective read on their leadership this quarter. It goes into the Overall Score.</li>
               <li><b>Confirm Surveys and NOI (Yes/No) for each property.</b> These are the two other subjective inputs on the scorecard.</li>
               <li><b>Note down anything that needs context.</b> Free-text field per property; supports the bonus conversation.</li>
-              <li><b>Override anything that isn't right</b>, and add a short reason so anyone reading later understands why.</li>
+              ${window.SC_IS_RVP ? '<li><b>Override anything that isn\'t right</b>, and add a short reason so anyone reading later understands why.</li>' : ''}
             </ol>
           </div>
         </div>
 
+        ${window.SC_IS_RVP ? `
         <div class="sc-crit-item">
           <div class="sc-crit-name">Overrides &mdash; when do you use them?</div>
           <div class="sc-crit-body"><p>The most common cases: (a) an automated data feed missed a legitimate credit of 1 (e.g., "credit from the Director of Operations Support") or (b) the source data is known to be incomplete for that quarter. Add a reason so it's clear later.</p></div>
-        </div>
+        </div>` : ''}
     `),
 
     admin: `
@@ -2643,7 +2647,13 @@ function measureRowHtml(m) {
         : '';
     const failCls = isScMeasureFail(m, d) ? 'sc-row-fail' : '';
 
-    if (!d.can_edit) {
+    // RM Score / Surveys / NOI are RM-entered inputs (editable by RMs); the
+    // pipeline-computed measures are override-only, limited to RVP/Admin
+    // (Item #17). Everyone read-only loses editing on both.
+    const isRmInput = Object.prototype.hasOwnProperty.call(SC_RM_INPUT_LABELS, m.key);
+    const canEditThis = isRmInput ? d.can_edit : d.can_override;
+
+    if (!canEditThis) {
         return `<div class="popout-row ${failCls}">
             <div class="popout-label">${esc(m.label)}${infoIcon}${measureNoteBtnHtml(m.key)}</div>
             <div class="sc-readonly-val ${cls}">${displayText}</div>
@@ -2676,7 +2686,12 @@ function saveScMeasure(field, valueStr, selectEl) {
     if (!scDetailData || valueStr === '') return;
     const value = parseInt(valueStr, 10);
     const originalValue = scDetailData[field];
-    const baselineVal = scDetailBaseline ? scDetailBaseline[field] : undefined;
+    // Prefer the server-captured pre-override original (persists across
+    // sessions) so returning the value to it auto-deselects Override even
+    // after reopening; fall back to the value shown when the slideout opened.
+    const origVal = scDetailData[`${field}_ORIG`];
+    const hasOrig = origVal !== undefined && origVal !== null;
+    const baselineVal = hasOrig ? origVal : (scDetailBaseline ? scDetailBaseline[field] : undefined);
     const shouldBeLocked = baselineVal !== undefined && value !== baselineVal;
     const wasLocked = !!scDetailData[`${field}_LOCKED`];
     let overrideReason = null;
@@ -2704,10 +2719,15 @@ function saveScMeasure(field, valueStr, selectEl) {
         if (row) { row[field] = value; row.LDRTOTAL = res.ldrtotal; row.MSTOTAL = res.mstotal; row.OVERALL = res.overall; render(); }
 
         // Auto-manage the Override checkbox: checked when the picked value
-        // differs from what was showing when the slideout was opened
-        // ("the incoming value"), unchecked when it's set back to match.
-        if (shouldBeLocked) setScOverride(field, true, overrideReason);
-        else if (wasLocked) setScOverride(field, false, null);
+        // differs from the original (the captured pre-override value, or the
+        // incoming value when the slideout opened), unchecked when it's set
+        // back to match.
+        if (shouldBeLocked) {
+            if (!hasOrig) scDetailData[`${field}_ORIG`] = originalValue;
+            setScOverride(field, true, overrideReason);
+        } else if (wasLocked) {
+            setScOverride(field, false, null);
+        }
     });
 }
 
@@ -2745,6 +2765,7 @@ function setScOverride(field, enabled, reason) {
         scDetailData[`${field}_LOCKED`] = enabled;
         scDetailData[`${field}_LOCKED_BY`] = res.locked_by ?? null;
         scDetailData[`${field}_REASON`] = res.reason ?? null;
+        if (!enabled) delete scDetailData[`${field}_ORIG`];
         renderScDetail();
         const row = allRows.find(r => r.PROPERTY_KEY === scDetailData.PROPERTY_KEY);
         if (row) {

@@ -85,6 +85,14 @@ _MEASURE_KEYS = [m["key"] for m in _MEASURE_DEFS]
 _MEASURE_DEFS_BY_KEY = {m["key"]: m for m in _MEASURE_DEFS}
 _OBJECTIVE_KEYS = ["TC", "TR", "PCARD", "RA", "IIPP", "LFA", "PMLEO", "REP", "WO"]
 _MAINT_TOTAL_KEYS = ["MSLEO", "CURB", "PUBLICAREAS", "MAINT", "LOGS", "MSWO", "NOI", "SURVEYS"]
+# RM-entered subjective inputs -- the RM sets these directly every quarter
+# (RM Score, Surveys, NOI). They are NOT pipeline-computed, so they are not
+# "overrides" and stay editable by RMs. Everything else is pipeline-computed
+# and may only be overridden by an RVP or Admin (Item #17, 2026-10-06).
+_RM_INPUT_KEYS = ("RMSCORE", "SURVEYS", "NOI")
+# The 15 pipeline-computed measures that carry the Override checkbox. Only
+# these are RVP/Admin-gated and tracked in dbo.SCORECARD_OVERRIDE_BASELINE.
+_OVERRIDE_MEASURE_KEYS = [k for k in _MEASURE_KEYS if k not in _RM_INPUT_KEYS]
 # <key>_LOCKED / _LOCKED_BY / _REASON companion columns -- appended to the
 # grid query so the main table can outline overridden cells and show a
 # who/why tooltip without a separate per-property fetch.
@@ -2423,9 +2431,21 @@ def api_property_detail(property_key):
         data["is_admin"] = admin
         # Reaching this line already proves the caller is either an admin or
         # the RM who owns this property (see _scoped_property_row) -- both
-        # are allowed to override, per stakeholder direction 2026-09-22.
+        # are allowed to edit RM inputs (RM Score / Surveys / NOI) + notes.
         # PMs are always read-only regardless of ownership match.
         data["can_edit"] = not _is_pm()
+        # Overriding the 15 pipeline-computed measures is RVP/Admin-only
+        # (Item #17, 2026-10-06). RMs see those rows read-only.
+        data["can_override"] = _is_admin() or _is_rvp()
+        # Attach each tracked measure's captured pre-override original value
+        # as <field>_ORIG so the slideout can auto-deselect the Override
+        # checkbox when the value is set back to it (Item #17, Change 1).
+        for brow in conn.fetchall(
+            "SELECT FIELD_NAME, ORIG_VALUE FROM dbo.SCORECARD_OVERRIDE_BASELINE "
+            "WHERE PROPERTY_KEY = ? AND AY = ? AND QUARTER = ?",
+            [property_key, ay, quarter],
+        ):
+            data[f"{brow[0]}_ORIG"] = brow[1]
         return jsonify(data)
     finally:
         conn.close()
@@ -2775,6 +2795,8 @@ def api_toggle_override(property_key):
     reason = (payload.get("reason") or "").strip() or None
     if field not in _MEASURE_KEYS:
         return jsonify({"error": f"unknown field '{field}'"}), 400
+    if field in _OVERRIDE_MEASURE_KEYS and not (_is_admin() or _is_rvp()):
+        return jsonify({"error": "overriding measures is restricted to RVPs and admins"}), 403
     if enabled and not reason:
         return jsonify({"error": "an override reason is required"}), 400
 
@@ -2798,6 +2820,14 @@ def api_toggle_override(property_key):
             conn, property_key, ay, quarter, admin, email,
             f"{field}_LOCKED = ?, {field}_LOCKED_BY = ?, {field}_REASON = ?, DATE_UPDATED = SYSUTCDATETIME(), UPDATED_BY = ?",
             [1 if enabled else 0, locked_by, reason_val, user.get("email", "")])
+        # Turning an override OFF hands the measure back to the pipeline, so
+        # drop its captured original baseline -- a future override re-captures
+        # a fresh one (Item #17, Change 1).
+        if not enabled and field in _OVERRIDE_MEASURE_KEYS:
+            conn.execute(
+                "DELETE FROM dbo.SCORECARD_OVERRIDE_BASELINE "
+                "WHERE PROPERTY_KEY = ? AND AY = ? AND QUARTER = ? AND FIELD_NAME = ?",
+                [property_key, ay, quarter, field])
         conn.commit()
         _audit_scorecard_change(
             source_table_key="scorecard_core",
@@ -2838,6 +2868,8 @@ def api_patch_property(property_key):
     field = next(iter(payload.keys()), None)
     if field not in _MEASURE_KEYS:
         return jsonify({"error": f"unknown field '{field}'"}), 400
+    if field in _OVERRIDE_MEASURE_KEYS and not (_is_admin() or _is_rvp()):
+        return jsonify({"error": "overriding measures is restricted to RVPs and admins"}), 403
     value = payload.get(field)
 
     env = _get_env()
@@ -2852,6 +2884,21 @@ def api_patch_property(property_key):
         if owned is None:
             return jsonify({"error": "not found or not authorized"}), 404
         old_value = owned[1]
+
+        # Capture the pre-override original the FIRST time a pipeline measure
+        # is edited away from its current value, so the Override checkbox can
+        # auto-deselect if the value is later set back to it -- even across
+        # sessions (Item #17, Change 1). Insert-if-absent keeps the earliest
+        # (true pipeline) value; it is cleared when the override is removed.
+        if field in _OVERRIDE_MEASURE_KEYS and old_value != value:
+            conn.execute(
+                "INSERT INTO dbo.SCORECARD_OVERRIDE_BASELINE "
+                "    (PROPERTY_KEY, AY, QUARTER, FIELD_NAME, ORIG_VALUE, CAPTURED_BY) "
+                "SELECT ?, ?, ?, ?, ?, ? "
+                "WHERE NOT EXISTS (SELECT 1 FROM dbo.SCORECARD_OVERRIDE_BASELINE "
+                "    WHERE PROPERTY_KEY = ? AND AY = ? AND QUARTER = ? AND FIELD_NAME = ?)",
+                [property_key, ay, quarter, field, old_value, user.get("email", ""),
+                 property_key, ay, quarter, field])
 
         updated_by_name = None
         if field == "RMSCORE":
