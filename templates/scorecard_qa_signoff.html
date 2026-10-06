@@ -273,7 +273,7 @@ const SCENARIOS = [
   ]},
 
   { section: '10. Admin-only: Notebook Runs', rows: [
-    { role: 'ADMIN', text: 'Notebook Runs page loads. Recent 50 run rows are visible.' },
+    { role: 'ADMIN', text: 'Notebook Runs page loads. Up to 50 recent run rows are visible (fewer than 50 is expected when fewer runs exist).' },
     { role: 'ADMIN', text: 'Each run expands to show per-step status, duration, and any error message.' },
     { role: 'ADMIN', text: '"Run now" button triggers an immediate Fabric run. Refreshing the list shows the new run within ~60 seconds.' },
     { role: 'ADMIN', text: 'URL parameter ?run_id=<id> deep-links directly to that run and auto-expands it.' },
@@ -291,7 +291,7 @@ const SCENARIOS = [
     { role: 'ADMIN', text: 'After a run with unchanged source data, DATE_UPDATED on SCORECARD_CORE rows is preserved (not stamped to now).' },
     { role: 'ADMIN', text: 'After a run with fresh source data, DATE_UPDATED advances for affected rows only.' },
     { role: 'ADMIN', text: 'RM manually entered subjective values (RMSCORE, SURVEYS, NOI, NOTES) survive re-runs without being overwritten.' },
-    { role: 'ADMIN', text: 'PROPERTY_0 RM_EMAIL / RM_NAME reflected in grid within seconds of change (no waiting for next run).' },
+    { role: 'ADMIN', text: 'PROPERTY_0 RM_EMAIL / RM_NAME reflected in grid within seconds of change (no waiting for next run).', removed: true },
   ]},
 
   { section: '13. Cross-Browser Sanity', rows: [
@@ -301,10 +301,10 @@ const SCENARIOS = [
   ]},
 
   { section: '14. Error Handling & Edge Cases', rows: [
-    { role: 'ALL',   text: 'Direct URL to a property that does not exist returns 404 with clean message (not a stack trace).' },
-    { role: 'ALL',   text: 'Session timeout mid-edit fails gracefully (redirects to login, does not corrupt saved data).' },
-    { role: 'ALL',   text: 'Simulated network drop during a PATCH shows a user-visible error (not a silent failure).' },
-    { role: 'ADMIN', text: 'Empty state: if pipeline has not run for the current AY/QUARTER, /api/data returns "no data available" and grid shows "No data".' },
+    { role: 'ALL',   text: 'Direct URL to a property that does not exist returns 404 with clean message (not a stack trace).', removed: true },
+    { role: 'ALL',   text: 'Session timeout mid-edit fails gracefully (redirects to login, does not corrupt saved data).', removed: true },
+    { role: 'ALL',   text: 'Simulated network drop during a PATCH shows a user-visible error (not a silent failure).', removed: true },
+    { role: 'ADMIN', text: 'Empty state: if pipeline has not run for the current AY/QUARTER, /api/data returns "no data available" and grid shows "No data".', removed: true },
   ]},
 ];
 
@@ -354,9 +354,13 @@ function renderChecklist() {
   let total = 0;
   let html = '';
   SCENARIOS.forEach((section, sIdx) => {
+    // Sections whose rows are all removed from the tester regimen are hidden
+    // entirely; removed rows keep their array slot so sN_rM keys stay stable.
+    if (!section.rows.some(r => !r.removed)) return;
     const tableWrapClass = window.QA_READONLY_TESTER_VIEW ? ' class="qas-table-wrap"' : '';
     html += `<h2>${esc(section.section)}</h2><div${tableWrapClass}><table class="qas-table"><tr><th class="col-check">Done</th><th class="col-role">Role</th><th class="col-scenario">Scenario</th><th class="col-status">Result</th><th class="col-notes">Tester Notes</th><th class="col-resolution">What We Did</th><th class="col-touched">Last touched</th></tr>`;
     section.rows.forEach((row, rIdx) => {
+      if (row.removed) return;
       const key = `s${sIdx}_r${rIdx}`;
       html += `<tr data-row-key="${key}">
         <td class="col-check"><input type="checkbox" id="chk_${key}" {{ 'disabled' if qa_tester_view else '' }} onchange="saveRow('${key}')"></td>
