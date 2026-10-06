@@ -2683,14 +2683,19 @@ function measureRowHtml(m) {
 }
 
 function saveScMeasure(field, valueStr, selectEl) {
-    if (!scDetailData || valueStr === '') return;
-    const value = parseInt(valueStr, 10);
+    if (!scDetailData) return;
+    // "--" (empty) clears the value back to blank/null. This must be allowed
+    // through -- an early return on '' previously stopped an overridden
+    // measure from being reverted to an original of "--", leaving the
+    // Override checkbox and reason stuck on.
+    const value = valueStr === '' ? null : parseInt(valueStr, 10);
     const originalValue = scDetailData[field];
     // Prefer the server-captured pre-override original (persists across
     // sessions) so returning the value to it auto-deselects Override even
     // after reopening; fall back to the value shown when the slideout opened.
-    const origVal = scDetailData[`${field}_ORIG`];
-    const hasOrig = origVal !== undefined && origVal !== null;
+    // Use hasOwnProperty so a captured original of null ("--") still counts.
+    const hasOrig = Object.prototype.hasOwnProperty.call(scDetailData, `${field}_ORIG`);
+    const origVal = hasOrig ? scDetailData[`${field}_ORIG`] : undefined;
     const baselineVal = hasOrig ? origVal : (scDetailBaseline ? scDetailBaseline[field] : undefined);
     const shouldBeLocked = baselineVal !== undefined && value !== baselineVal;
     const wasLocked = !!scDetailData[`${field}_LOCKED`];
