@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/apphub.css') }}?v=52">
     <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('apphub_theme') || 'dark');</script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/fontawesome.min.css') }}?v=2">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/table_menu.css') }}?v=1">
     {% block head %}{% endblock %}
 </head>
 <body>
@@ -967,5 +968,6 @@
             });
         });
     </script>
+    <script src="{{ url_for('static', filename='js/table_menu.js') }}?v=4"></script>
 </body>
 </html>

@@ -1,0 +1,55 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   Shared unified column header menu (sort + Excel-style filter).
+   Drop-in for every module data table. Mirrors the Leadership Scorecard
+   header menu look/feel, minus the "Show Data" drilldown option.
+   Scorecard's own tables (.sc-table/.sc-dd-table) are intentionally excluded.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.tm-th { cursor: pointer; }
+.tm-caret { font-size: 0.55rem; color: var(--text-secondary); margin-left: 4px; }
+.tm-th:hover .tm-caret { color: var(--accent-cyan); }
+.tm-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-cyan); margin-left: 4px; vertical-align: middle; }
+
+.tm-row-hidden { display: none !important; }
+
+.tm-menu {
+    display: none;
+    position: fixed;
+    z-index: 1400;
+    min-width: 210px;
+    max-width: 320px;
+    background: var(--surface-raised);
+    border: 1px solid var(--border-input);
+    border-radius: 4px;
+    box-shadow: 0 8px 24px var(--shadow-overlay);
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: normal;
+    font-family: inherit;
+}
+.tm-menu.open { display: block; }
+
+.tm-action { display: flex; align-items: center; gap: 8px; padding: 7px 10px; font-size: 0.72rem; color: var(--text-primary); cursor: pointer; white-space: nowrap; }
+.tm-action:hover { background: var(--hover-bg-strong); color: var(--accent-cyan); }
+.tm-action .ico { width: 14px; text-align: center; flex-shrink: 0; color: var(--text-secondary); font-size: 0.72rem; }
+.tm-action:hover .ico { color: var(--accent-cyan); }
+.tm-divider { height: 1px; background: var(--border-subtle); margin: 2px 0; }
+
+.tm-search { padding: 6px; border-bottom: 1px solid var(--border-subtle); }
+.tm-search input { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 4px 6px; border-radius: 4px; font-size: 0.7rem; }
+.tm-search input:focus { outline: none; border-color: var(--accent-cyan); }
+
+.tm-all-row { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--border-subtle); cursor: pointer; font-size: 0.7rem; color: var(--text-primary); }
+.tm-all-row input { flex-shrink: 0; cursor: pointer; }
+
+.tm-list { max-height: 240px; overflow-y: auto; }
+.tm-item { display: flex; align-items: center; gap: 6px; padding: 4px 8px; font-size: 0.7rem; color: var(--text-primary); cursor: pointer; white-space: nowrap; }
+.tm-item:hover { background: var(--hover-bg-strong); }
+.tm-item.selected { color: var(--accent-cyan); font-weight: 600; }
+.tm-item input { flex-shrink: 0; cursor: pointer; }
+.tm-item span { overflow: hidden; text-overflow: ellipsis; }
+
+.tm-hint { padding: 5px 8px 0; font-size: 0.58rem; color: var(--text-secondary); line-height: 1.4; }
+.tm-footer { display: flex; justify-content: space-between; gap: 8px; padding: 6px 8px; border-top: 1px solid var(--border-subtle); }
+.tm-footer button { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); border-radius: 4px; padding: 3px 12px; font-size: 0.68rem; cursor: pointer; }
+.tm-footer button:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
