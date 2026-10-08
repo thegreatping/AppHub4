@@ -1,0 +1,170 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   Peak Academy LMS — AppHub conformance styling.
+   Scoped under .pa (page body) + a few header helpers. Uses AppHub theme
+   tokens so it follows Theme Studio + light/mid/dark. Data tables carry the
+   shared .data-table class, so their chrome + the column sort/filter menu come
+   from apphub.css + table_menu.* — this file only styles the rest.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Compliance bands stay semantic (green / amber / red) across themes. */
+.pa {
+  --pa-good: #22c55e;
+  --pa-warn: #f59e0b;
+  --pa-bad: #ef4444;
+  --pa-none: var(--border-input);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+
+/* ── Header meta (as-of / synced / role badge / refresh) ─────────────────── */
+.pa-meta { display: flex; align-items: center; gap: 10px; margin-left: auto; font-size: 0.78rem; color: var(--text-secondary); }
+.pa-asof, .pa-synced { white-space: nowrap; }
+.pa-synced { opacity: .8; }
+.pa-badge { background: var(--input-bg); border: 1px solid var(--border-input); border-radius: 10px; padding: 1px 9px; font-size: 0.68rem; font-weight: 700; letter-spacing: .04em; color: var(--text-primary); }
+.pa-role-admin { background: rgba(168,85,247,.18); border-color: #a855f7; color: #d8b4fe; }
+.pa-role-rvp, .pa-role-rm, .pa-role-pm { background: rgba(34,197,94,.14); border-color: var(--pa-good); color: var(--pa-good); }
+.pa-role-none { opacity: .7; }
+.pa-refresh { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); border-radius: 4px; padding: 4px 10px; font-size: 0.74rem; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+.pa-refresh:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+
+/* ── In-module tab bar ──────────────────────────────────────────────────── */
+.pa-tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--border-input); margin: 0 0 16px; padding: 0 4px; }
+.pa-tab { padding: 9px 16px; font-size: 0.82rem; color: var(--text-secondary); border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; text-decoration: none; }
+.pa-tab:hover { color: var(--text-primary); background: var(--hover-bg); text-decoration: none; }
+.pa-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); font-weight: 600; }
+
+.pa-body { padding: 0 4px 24px; }
+.pa a { color: var(--accent-cyan); text-decoration: none; }
+.pa a:hover { text-decoration: underline; }
+
+/* ── Crumbs ─────────────────────────────────────────────────────────────── */
+.pa .crumbs { margin-bottom: 14px; color: var(--text-secondary); font-size: 0.8rem; }
+.pa .crumbs a { color: var(--accent-cyan); }
+.pa .crumbs .people { margin-left: 12px; }
+
+/* ── Filters ────────────────────────────────────────────────────────────── */
+.pa .filters { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin-bottom: 16px; }
+.pa .filters label, .pa label.search { display: flex; flex-direction: column; font-size: 0.72rem; color: var(--text-secondary); gap: 3px; }
+.pa label.search.inline { margin: 0 0 10px; max-width: 280px; }
+.pa select, .pa input[type=search], .pa input[type=number], .pa input[type=date] {
+  font: inherit; font-size: 0.8rem; padding: 5px 8px; border: 1px solid var(--border-input);
+  border-radius: 4px; background: var(--input-bg); color: var(--text-primary); min-width: 160px;
+}
+.pa select:focus, .pa input:focus { outline: none; border-color: var(--accent-cyan); }
+.pa .clear { font-size: 0.8rem; padding-bottom: 6px; }
+.pa .filters label.disabled { opacity: .55; cursor: help; }
+.pa .filters label.check { flex-direction: row; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-primary); padding-bottom: 6px; }
+.pa input.short { min-width: 0; width: 90px; }
+
+/* ── KPI strip ──────────────────────────────────────────────────────────── */
+.pa .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.pa .kpi { background: var(--card-bg); border: 1px solid var(--border-input); border-radius: 6px; padding: 12px 16px; }
+.pa .kpi-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); }
+.pa .kpi-value { font-size: 1.9rem; font-weight: 700; line-height: 1.2; color: var(--text-primary); }
+.pa .kpi-sub { font-size: 0.72rem; color: var(--text-secondary); }
+.pa .kpi-main { border-top: 4px solid var(--pa-none); }
+.pa .kpi-main.band-good { border-top-color: var(--pa-good); }
+.pa .kpi-main.band-warn { border-top-color: var(--pa-warn); }
+.pa .kpi-main.band-bad { border-top-color: var(--pa-bad); }
+/* The band-* class also lives on the tile; keep the tile on card bg (only the
+   top border and the progress-bar fills should carry the band colour). */
+.pa .kpi.band-good, .pa .kpi.band-warn, .pa .kpi.band-bad, .pa .kpi.band-none { background: var(--card-bg); }
+
+/* ── Cards ──────────────────────────────────────────────────────────────── */
+.pa .card { background: var(--card-bg); border: 1px solid var(--border-input); border-radius: 6px; padding: 14px 16px; margin-bottom: 16px; }
+.pa .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.pa .card-head h2 { font-size: 1rem; margin: 0 0 10px; color: var(--text-primary); }
+.pa .card-head h2 small { font-weight: 400; color: var(--text-secondary); font-size: 0.72rem; margin-left: 6px; }
+.pa .card-head a { font-size: 0.8rem; }
+.pa .exports { font-size: 0.8rem; color: var(--text-secondary); }
+.pa .exports a { margin-left: 8px; }
+
+/* ── Tables: base chrome from .data-table; only cell helpers here ───────── */
+.pa .num { text-align: right !important; font-variant-numeric: tabular-nums; }
+.pa .pctcol { min-width: 190px; white-space: nowrap; }
+.pa table.grid th.wide, .pa .grid td.wide { min-width: 260px; }
+.pa .grid.wrap-head th { white-space: normal; }
+
+/* ── Progress bars ──────────────────────────────────────────────────────── */
+.pa .bar { display: inline-block; width: 120px; height: 10px; background: var(--input-bg); border-radius: 5px; overflow: hidden; vertical-align: middle; }
+.pa .bar .fill { height: 100%; }
+.pa .bar-label { display: inline-block; width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
+.pa .band-good { background: var(--pa-good); }
+.pa .band-warn { background: var(--pa-warn); }
+.pa .band-bad { background: var(--pa-bad); }
+.pa .band-none { background: var(--pa-none); }
+.pa .band-plain { background: var(--accent-cyan); }
+.pa .bad-text { color: var(--pa-bad); font-weight: 600; }
+.pa .good-text { color: var(--pa-good); }
+.pa .muted, .pa .sub { color: var(--text-secondary); }
+.pa .sub { font-size: 0.72rem; }
+
+/* ── Status pills ───────────────────────────────────────────────────────── */
+.pa .status { display: inline-block; border-radius: 10px; padding: 1px 9px; font-size: 0.72rem; white-space: nowrap; }
+.pa .s-completed-on-time { background: rgba(34,197,94,.16); color: var(--pa-good); }
+.pa .s-compliance-achievable { background: rgba(6,182,212,.16); color: var(--accent-cyan); }
+.pa .s-not-compliant { background: rgba(239,68,68,.16); color: var(--pa-bad); }
+.pa .s-completed-late { background: rgba(245,158,11,.16); color: var(--pa-warn); }
+
+/* ── Empty state ────────────────────────────────────────────────────────── */
+.pa .empty { background: var(--card-bg); border: 1px dashed var(--border-input); border-radius: 6px; padding: 28px; color: var(--text-secondary); text-align: center; }
+
+/* ── Overview dashboard tiles ───────────────────────────────────────────── */
+.pa .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.pa .tile { background: var(--card-bg); border: 1px solid var(--border-input); border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; }
+.pa .tile h3 { margin: 0; background: var(--section-hd-bg, var(--accent-cyan)); color: var(--text-primary); font-size: 0.92rem; font-weight: 600; text-align: center; padding: 7px 10px; border-bottom: 1px solid var(--border-input); }
+.pa .tile-body { padding: 10px 14px; }
+.pa .tile-big { font-size: 2.1rem; font-weight: 700; text-align: center; padding-top: 10px; line-height: 1.1; color: var(--text-primary); }
+.pa .tile-caption { text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 8px; }
+.pa .tile-split { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--border-input); margin-top: auto; }
+.pa .tile-split > div { padding: 8px 6px; text-align: center; }
+.pa .tile-split > div + div { border-left: 1px solid var(--border-input); }
+.pa .tile-split b { display: block; font-size: 1.1rem; color: var(--text-primary); }
+.pa .tile-split span { font-size: 0.68rem; color: var(--text-secondary); }
+.pa .tile-split .pending { opacity: .55; cursor: help; }
+.pa .tile-foot { font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 6px; border-top: 1px solid var(--border-input); margin-top: auto; }
+
+/* ── Donuts ─────────────────────────────────────────────────────────────── */
+.pa .donut-row { display: flex; align-items: center; gap: 10px; }
+.pa .donut { width: 110px; height: 110px; flex: none; }
+.pa .donut-track { fill: none; stroke: var(--input-bg); stroke-width: 12; }
+.pa .donut-fill { fill: none; stroke-width: 12; stroke-linecap: butt; }
+.pa .donut-value { text-anchor: middle; font-size: 20px; font-weight: 600; fill: var(--text-primary); }
+.pa .donut-label { text-anchor: middle; font-size: 10px; fill: var(--text-secondary); }
+.pa .band-stroke-good { stroke: var(--pa-good); }
+.pa .band-stroke-warn { stroke: var(--pa-warn); }
+.pa .band-stroke-bad { stroke: var(--pa-bad); }
+.pa .band-stroke-none { stroke: var(--pa-none); }
+.pa dl.mini { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: baseline; font-size: 0.72rem; }
+.pa dl.mini dt { font-weight: 600; font-size: 1rem; text-align: right; color: var(--text-primary); }
+.pa dl.mini dd { margin: 0; color: var(--text-secondary); }
+
+.pa .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+.pa .grid.compact td, .pa .grid.compact th { padding: 5px 8px; }
+.pa .more { font-size: 0.72rem; color: var(--text-secondary); padding-top: 6px; }
+.pa .tag { font-size: 0.66rem; background: var(--input-bg); color: var(--text-secondary); border-radius: 8px; padding: 0 6px; margin-left: 6px; }
+.pa .lede { max-width: 900px; color: var(--text-secondary); margin: 0 0 14px; }
+.pa .note { font-size: 0.8rem; background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.4); border-radius: 4px; padding: 6px 10px; margin: 0 0 12px; color: var(--text-primary); }
+.pa .spaced { margin-bottom: 16px; }
+
+/* ── Reports ────────────────────────────────────────────────────────────── */
+.pa .report-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.pa .report-card { background: var(--card-bg); border: 1px solid var(--border-input); border-left: 4px solid var(--accent-cyan); border-radius: 6px; padding: 12px 14px; }
+.pa .report-card.status-blocked { border-left-color: var(--pa-none); }
+.pa .report-card.locked { opacity: .6; }
+.pa .report-card h3 { margin: 6px 0 4px; font-size: 1rem; color: var(--text-primary); }
+.pa .report-card p { margin: 4px 0; font-size: 0.8rem; color: var(--text-secondary); }
+.pa .report-card .why { color: var(--pa-warn); }
+.pa .report-top { display: flex; gap: 6px; }
+.pa .aud, .pa .flag { display: inline-block; font-size: 0.66rem; border-radius: 8px; padding: 1px 8px; font-weight: 600; }
+.pa .aud-managers { background: rgba(6,182,212,.16); color: var(--accent-cyan); }
+.pa .aud-admin { background: rgba(168,85,247,.18); color: #d8b4fe; }
+.pa .flag.blocked { background: var(--input-bg); color: var(--text-secondary); }
+.pa .flag.provisional { background: rgba(245,158,11,.16); color: var(--pa-warn); cursor: help; }
+.pa .flag.confirmed { background: rgba(34,197,94,.16); color: var(--pa-good); }
+.pa .blocked-box { text-align: left; color: var(--text-secondary); background: var(--input-bg); }
+.pa .grid.defs td { vertical-align: top; }
+.pa .grid.defs td.term { font-weight: 600; white-space: nowrap; }
+.pa .grid.questions td:last-child { width: 26%; }
+
+@media (max-width: 1000px) { .pa .two-col { grid-template-columns: 1fr; } }

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% from "_macros.html" import donut, bar, plainbar, empty, filter_bar %}
+{% block title %}Overview{% endblock %}
+{% block heading %}Training Compliance Overview{% endblock %}
+
+{% block pa_main %}
+{{ filter_bar(options, f, show=('property', 'rvp', 'rm', 'role', 'category'), period=period) }}
+
+<section class="tiles">
+  <div class="tile">
+    <h3>Training Compliance</h3>
+    <div class="tile-body donut-row">
+      {{ donut(kpi.compliance.pct, "compliant") }}
+      <dl class="mini">
+        <dt>{{ kpi.compliance.compliant | num }}</dt><dd>Compliant associates</dd>
+        <dt>{{ kpi.compliance.not_compliant | num }}</dt><dd>Not compliant</dd>
+        <dt>{{ kpi.compliance.total | num }}</dt><dd>Associates with mandatory training</dd>
+      </dl>
+    </div>
+    <div class="tile-foot">Assignment-level compliance: {{ kpi.assignment_pct | pct }}</div>
+  </div>
+
+  <div class="tile">
+    <h3>Courses Past Due</h3>
+    <div class="tile-big bad-text">{{ kpi.past_due.n | num }}</div>
+    <div class="tile-caption">Total past due</div>
+    <div class="tile-split">
+      <div><b>{{ kpi.past_due.associates | num }}</b><span>Associates affected</span></div>
+      <div><b>{{ '%.1f' % kpi.past_due.avg_days if kpi.past_due.avg_days is not none else '–' }}</b><span>Avg. days past due</span></div>
+    </div>
+  </div>
+
+  <div class="tile">
+    <h3>Upcoming Courses</h3>
+    <div class="tile-big">{{ kpi.upcoming.n | num }}</div>
+    <div class="tile-caption">Due in next {{ upcoming_days }} days</div>
+    <div class="tile-split">
+      <div><b>{{ kpi.upcoming.associates | num }}</b><span>Associates affected</span></div>
+      <div><b>{{ kpi.upcoming.courses | num }}</b><span>Distinct courses</span></div>
+    </div>
+  </div>
+
+  <div class="tile">
+    <h3>Course Completions</h3>
+    <div class="tile-big good-text">{{ kpi.completions.n | num }}</div>
+    <div class="tile-caption">Completed in selected period</div>
+    <div class="tile-split">
+      <div><b>{{ kpi.completions.associates | num }}</b><span>Unique associates</span></div>
+      <div><b>{{ kpi.completions.courses | num }}</b><span>Distinct courses</span></div>
+    </div>
+  </div>
+
+  <div class="tile">
+    <h3>Total Training Hours</h3>
+    <div class="tile-big">{{ kpi.hours.total | hours }}</div>
+    <div class="tile-caption">Hours completed in selected period</div>
+    <div class="tile-split">
+      <div><b>{{ kpi.hours.per_associate | hours if kpi.hours.per_associate is not none else '–' }}</b><span>Avg. hours per associate</span></div>
+      <div class="pending" title="No budget figure exists yet; see Definitions."><b>–</b><span>Hours budget (QTD)</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="two-col">
+  <div class="card">
+    <div class="card-head"><h2>Compliance by Office Location <small>lowest first</small></h2>
+      <a href="{{ url_for('lms.locations', **request.args) }}">All locations →</a></div>
+    {% if by_loc %}
+    <table class="grid compact">
+      {% for r in by_loc[:12] %}
+      <tr>
+        <td><a href="{{ url_for('lms.location', key=r.property_key) }}">{{ r.property_name }}</a></td>
+        <td class="num muted">{{ r.assigned | num }}</td>
+        <td class="pctcol">{{ bar(r.pct) }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% if by_loc | length > 12 %}<div class="more">+ {{ by_loc | length - 12 }} more locations</div>{% endif %}
+    {% else %}{{ empty("No mandatory assignments yet.") }}{% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>CORE Training Progress <small>average completion by plan</small></h2>
+      <a href="{{ url_for('lms.core') }}">CORE Onboarding →</a></div>
+    {% if plans %}
+    <table class="grid compact">
+      {% for p in plans %}
+      <tr>
+        <td><a href="{{ url_for('lms.core_plan', plan_id=p.plan_id) }}">{{ p.title }}</a></td>
+        <td class="num muted">{{ p.learners }} learner{{ 's' if p.learners != 1 }}{% if p.behind %} · <span class="bad-text">{{ p.behind }} behind</span>{% endif %}</td>
+        <td class="pctcol">{{ plainbar(p.avg_pct) }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}{{ empty("No one is enrolled in a CORE plan yet.") }}{% endif %}
+  </div>
+</section>
+
+<section class="two-col">
+  <div class="card">
+    <div class="card-head"><h2>Courses Past Due by Associate</h2>
+      <a href="{{ url_for('lms.report', slug='all-inclusive') }}">All open assignments →</a></div>
+    {% if worst %}
+    <table class="grid compact">
+      <thead><tr><th>Associate</th><th>Location</th><th>Course</th><th>Due</th><th class="num">Days Past Due</th></tr></thead>
+      {% for r in worst %}
+      <tr>
+        <td><a href="{{ url_for('lms.person', uid=r.LMS_USER_ID) }}">{{ r.NAME_FULL }}</a></td>
+        <td>{{ r.PROPERTY_NAME }}</td><td>{{ r.COURSE_TITLE }}</td>
+        <td>{{ r.DATETIME_DUE | date }}</td><td class="num bad-text">{{ r.DAYS_PAST_DUE | num }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}{{ empty("Nothing past due.") }}{% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Recent Course Completions</h2>
+      <a href="{{ url_for('lms.report', slug='course-completions', period=period) }}">All completions →</a></div>
+    {% if recent %}
+    <table class="grid compact">
+      <thead><tr><th>Associate</th><th>Location</th><th>Course</th><th>Completed</th><th class="num">Hours</th></tr></thead>
+      {% for r in recent %}
+      <tr>
+        <td><a href="{{ url_for('lms.person', uid=r.LMS_USER_ID) }}">{{ r.NAME_FULL }}</a></td>
+        <td>{{ r.PROPERTY_NAME }}</td><td>{{ r.COURSE_TITLE }}</td>
+        <td>{{ r.DATETIME_COMPLETED | date }}</td>
+        <td class="num">{{ (r.TRAINING_MINUTES / 60) | hours if r.TRAINING_MINUTES is not none }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}{{ empty("No completions in this period.") }}{% endif %}
+  </div>
+</section>
+{% endblock %}

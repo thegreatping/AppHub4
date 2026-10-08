@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_macros.html" import exports, empty %}
+{% block title %}{{ course.COURSE_TITLE }}{% endblock %}
+{% block heading %}{{ course.COURSE_TITLE }}{% endblock %}
+
+{% block crumbs %}
+<nav class="crumbs"><a href="{{ url_for('lms.courses') }}">Course Details</a> › {{ course.COURSE_TITLE }}
+  <span class="people">{{ course.COURSE_TYPE }}{% if course.DURATION_IN_MINUTES %} · {{ course.DURATION_IN_MINUTES | num }} min{% endif %}
+  {% if not course.FLAG_PUBLISHED %} · unpublished{% endif %}{% if course.FLAG_HAS_CERTIFICATE %} · certificate{% endif %}</span>
+</nav>
+{% endblock %}
+
+{% block pa_main %}
+{% if course.COURSE_DESCRIPTION %}<p class="lede">{{ course.COURSE_DESCRIPTION | striptags | truncate(400) }}</p>{% endif %}
+{% if plans %}
+<p class="muted">Part of: {% for p in plans %}<a href="{{ url_for('lms.core_plan', plan_id=p.LMS_TRAINING_PLAN_ID) }}">{{ p.TRAINING_PLAN_TITLE }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>
+{% endif %}
+
+<section class="card">
+  <div class="card-head">
+    <h2>Learners <small>{{ rows | length }} · past due first</small></h2>
+    {{ exports() }}
+  </div>
+  {% if rows %}
+  <table class="grid sortable">
+    <thead><tr><th>Associate</th><th>Location</th><th>Job Title</th><th>Progress</th>
+      <th data-sort="date">Enrolled</th><th data-sort="date">Due</th><th data-sort="date">Completed</th><th>Compliance</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><a href="{{ url_for('lms.person', uid=r.LMS_USER_ID) }}">{{ r.NAME_FULL }}</a></td>
+        <td>{{ r.PROPERTY_NAME }}</td><td>{{ r.JOB_TITLE or '' }}</td>
+        <td>{{ r.COURSE_PASSING_STATUS | progress }}</td>
+        <td data-value="{{ r.DATETIME_REGISTERED }}">{{ r.DATETIME_REGISTERED | date }}</td>
+        <td data-value="{{ r.DATETIME_DUE }}">{{ r.DATETIME_DUE | date }}</td>
+        <td data-value="{{ r.DATETIME_COMPLETED }}">{{ r.DATETIME_COMPLETED | date }}</td>
+        <td>{% if r.COMPLIANCE_STATUS %}<span class="status s-{{ r.COMPLIANCE_STATUS | lower | replace(' ', '-') }}">{{ r.COMPLIANCE_STATUS | titlecase }}</span>{% else %}<span class="muted">Not mandatory</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}{{ empty("No learners at your locations.") }}{% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "_macros.html" import plainbar, exports, empty, filter_bar %}
+{% block title %}{{ rep.title }}{% endblock %}
+{% block heading %}{{ rep.title }}{% endblock %}
+
+{% block crumbs %}
+<nav class="crumbs"><a href="{{ url_for('lms.reports') }}">Reports</a> › {{ rep.title }}
+  <span class="people"><span class="aud aud-{{ rep.audience | lower }}">{{ rep.audience }}</span> {{ rep.ask }}</span></nav>
+{% endblock %}
+
+{% block pa_main %}
+{% if rep.status == 'blocked' %}
+  <div class="empty blocked-box"><b>Not buildable yet.</b> {{ rep.blocked_by }}</div>
+{% else %}
+
+{% call filter_bar(options, f, show=rep.controls, period=period if 'period' in rep.controls else none) %}
+  {% if 'days' in rep.controls %}
+  <label>Due within (days)
+    <input type="number" name="days" min="0" value="{{ days }}" class="short" onchange="this.form.submit()">
+  </label>
+  {% endif %}
+  {% if 'undated' in rep.controls %}
+  <label class="check"><input type="checkbox" name="undated" value="1" {{ 'checked' if request.args.undated }} onchange="this.form.submit()"> Include open assignments with no due date</label>
+  {% endif %}
+  {% if 'dates' in rep.controls %}
+  <label>From <input type="date" name="start" value="{{ request.args.start or (start.isoformat() if start) }}" onchange="this.form.submit()"></label>
+  <label>To <input type="date" name="end" value="{{ request.args.end or end.isoformat() }}" onchange="this.form.submit()"></label>
+  {% endif %}
+  {% if 'q' in rep.controls %}
+  <label>Associate <input type="search" name="q" value="{{ request.args.q or '' }}" placeholder="Name or email" onchange="this.form.submit()"></label>
+  {% endif %}
+  {% if 'zeros' in rep.controls %}
+  <label class="check"><input type="checkbox" name="zeros" value="1" {{ 'checked' if request.args.zeros }} onchange="this.form.submit()"> Include associates with no hours</label>
+  {% endif %}
+{% endcall %}
+
+{% if rep.note %}<p class="note"><b>Provisional:</b> {{ rep.note }} <a href="{{ url_for('lms.definitions') }}">Definitions</a></p>{% endif %}
+
+<section class="card">
+  <div class="card-head">
+    <h2>{{ total | num }} row{{ 's' if total != 1 }}
+      {% if total > rows | length %}<small>showing the first {{ rows | length | num }}; export for all</small>{% endif %}</h2>
+    {{ exports() }}
+  </div>
+  {% if rows %}
+  <table class="grid sortable wrap-head">
+    <thead><tr>
+      {% for key, label, kind in columns %}
+      <th class="{{ 'num' if kind in ('num', 'hours') }} {{ 'pctcol' if kind == 'bar' }}" {% if kind in ('date', 'bar') %}data-sort="{{ 'date' if kind == 'date' else 'num' }}"{% endif %}>{{ label }}</th>
+      {% endfor %}
+    </tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+      {% for key, label, kind in columns %}
+        {% set v = r[key] %}
+        {% set href = r._href[key] if r._href is defined and r._href and key in r._href else none %}
+        {% if kind == 'num' %}<td class="num">{{ v | num }}</td>
+        {% elif kind == 'hours' %}<td class="num">{{ v | hours }}</td>
+        {% elif kind == 'date' %}<td data-value="{{ v }}">{{ v | date }}</td>
+        {% elif kind == 'bar' %}<td class="pctcol" data-value="{{ v if v is not none else -1 }}">{{ plainbar(v, r.FLAG_BEHIND) }}</td>
+        {% elif kind == 'progress' %}<td>{{ v | progress }}</td>
+        {% elif kind == 'status' %}<td>{% if v %}<span class="status s-{{ v | lower | replace(' ', '-') }}">{{ v | titlecase }}</span>{% else %}<span class="muted">Not mandatory</span>{% endif %}</td>
+        {% else %}<td>{% if href %}<a href="{{ href }}">{{ v if v is not none }}</a>{% else %}{{ v if v is not none }}{% endif %}</td>
+        {% endif %}
+      {% endfor %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}{{ empty("Nothing to report for these filters.") }}{% endif %}
+</section>
+{% endif %}
+{% endblock %}

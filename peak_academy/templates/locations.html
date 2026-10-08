@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import kpis, bar, exports, empty, filter_bar %}
+{% block title %}Location Compliance{% endblock %}
+{% block heading %}Training Compliance{% endblock %}
+
+{% block pa_main %}
+
+{% call filter_bar(options, f, show=('property_type', 'rvp', 'rm', 'role')) %}
+  <label class="search">Find location <input type="search" data-filter-table="loc-table" placeholder="Type to filter…"></label>
+{% endcall %}
+
+{{ kpis(totals) }}
+
+<section class="card">
+  <div class="card-head">
+    <h2>Compliance by Location <small>{{ rows | length }} location{{ "s" if rows | length != 1 }} · lowest first</small></h2>
+    {{ exports() }}
+  </div>
+  {% if rows %}
+  <table class="grid sortable" id="loc-table">
+    <thead><tr>
+      <th>Location</th><th>RVP</th><th>RM</th>
+      <th class="num">Associates</th><th class="num">Assigned</th><th class="num">Compliant</th>
+      <th class="num">Past Due</th><th class="pctcol" data-sort="num">Compliance</th>
+    </tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><a href="{{ url_for('lms.location', key=r.property_key) }}">{{ r.property_name }}</a></td>
+        <td>{{ r.rvp_name | titlecase }}</td>
+        <td>{{ r.rm_name | titlecase }}</td>
+        <td class="num">{{ r.associates | num }}</td>
+        <td class="num">{{ r.assigned | num }}</td>
+        <td class="num">{{ r.compliant | num }}</td>
+        <td class="num {{ 'bad-text' if r.not_compliant }}">{{ r.not_compliant | num }}</td>
+        <td class="pctcol" data-value="{{ r.pct if r.pct is not none else -1 }}">{{ bar(r.pct) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    {{ empty("No mandatory assignments match these filters yet.") }}
+  {% endif %}
+</section>
+{% endblock %}

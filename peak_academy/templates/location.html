@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "_macros.html" import kpis, bar, exports, empty %}
+{% block title %}{{ name }}{% endblock %}
+{% block heading %}{{ name }}{% endblock %}
+
+{% block crumbs %}
+<nav class="crumbs"><a href="{{ url_for('lms.locations') }}">Training Compliance</a> › {{ name }}
+  {% if info %}
+  <span class="people">
+    {% if info.PM_NAME %}PM {{ info.PM_NAME | titlecase }}{% endif %}
+    {% if info.RM_NAME %} · RM {{ info.RM_NAME | titlecase }}{% endif %}
+    {% if info.RVP_NAME %} · RVP {{ info.RVP_NAME | titlecase }}{% endif %}
+  </span>
+  {% endif %}
+</nav>
+{% endblock %}
+
+{% block pa_main %}
+{{ kpis(totals) }}
+
+<section class="card">
+  <div class="card-head">
+    <h2>Compliance by Associate <small>{{ rows | length }} associate{{ "s" if rows | length != 1 }} · lowest first</small></h2>
+    {{ exports() }}
+  </div>
+  {% if rows %}
+  <label class="search inline">Find associate <input type="search" data-filter-table="assoc-table" placeholder="Type to filter…"></label>
+  <table class="grid sortable" id="assoc-table">
+    <thead><tr>
+      <th>Associate</th><th>Job Title</th>
+      <th class="num">Assigned</th><th class="num">Compliant</th><th class="num">Past Due</th>
+      <th class="num">Most Days Past Due</th><th class="pctcol" data-sort="num">Compliance</th>
+    </tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><a href="{{ url_for('lms.person', uid=r.lms_user_id) }}">{{ r.name }}</a></td>
+        <td>{{ r.job_title or '' }}</td>
+        <td class="num">{{ r.assigned | num }}</td>
+        <td class="num">{{ r.compliant | num }}</td>
+        <td class="num {{ 'bad-text' if r.not_compliant }}">{{ r.not_compliant | num }}</td>
+        <td class="num">{{ r.max_days_past_due | num }}</td>
+        <td class="pctcol" data-value="{{ r.pct if r.pct is not none else -1 }}">{{ bar(r.pct) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    {{ empty("No mandatory assignments at this location yet.") }}
+  {% endif %}
+</section>
+{% endblock %}

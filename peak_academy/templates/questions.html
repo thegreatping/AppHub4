@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_macros.html" import exports %}
+{% block title %}Open Questions{% endblock %}
+{% block heading %}Open Questions{% endblock %}
+
+{% block pa_main %}
+<p class="lede">{{ total }} decisions L&amp;D still needs to make. Send answers to Ryan whenever you have them,
+  quoting the number (e.g. S13), or export to Excel, fill in the <b>Your answer</b> column and send it back.
+  Answered items move to <a href="{{ url_for('lms.definitions') }}">Definitions</a>. Only admins see this tab.</p>
+
+{% for heading, items in sections %}
+<section class="card spaced">
+  <div class="card-head">
+    <h2>{{ heading }} <small>{{ items | length }}</small></h2>
+    {% if loop.first %}{{ exports() }}{% endif %}
+  </div>
+  <table class="grid defs questions">
+    <thead><tr><th>#</th><th>Question</th><th>What the app does today</th></tr></thead>
+    <tbody>
+    {% for id, topic, question, today in items %}
+      <tr>
+        <td class="term">{{ id }}</td>
+        <td><b>{{ topic }}.</b> {{ question }}</td>
+        <td class="muted">{{ today }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endfor %}
+{% endblock %}

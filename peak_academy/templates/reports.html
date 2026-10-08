@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block heading %}Reports{% endblock %}
+
+{% block pa_main %}
+<p class="lede">The reports L&amp;D asked for to replace Grace Hill. Admin reports are visible to admins only.</p>
+<section class="report-grid">
+  {% for r in reports %}
+  {% set locked = r.audience == 'Admin' and not viewer.is_admin %}
+  <div class="report-card status-{{ r.status }} {{ 'locked' if locked }}">
+    <div class="report-top">
+      <span class="aud aud-{{ r.audience | lower }}">{{ r.audience }}</span>
+      {% if r.status == 'blocked' %}<span class="flag blocked">Blocked</span>
+      {% elif r.note %}<span class="flag provisional" title="{{ r.note }}">Provisional rule</span>{% endif %}
+    </div>
+    <h3>{% if locked %}{{ r.title }}{% else %}<a href="{{ url_for('lms.report', slug=r.slug) }}">{{ r.title }}</a>{% endif %}</h3>
+    <p>{{ r.ask }}</p>
+    {% if r.status == 'blocked' %}<p class="why">{{ r.blocked_by }}</p>{% endif %}
+    {% if locked %}<p class="muted">Admins only.</p>{% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}

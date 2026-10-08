@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_macros.html" import plainbar, pace, exports, empty %}
+{% block title %}{{ title }}{% endblock %}
+{% block heading %}{{ title }}{% endblock %}
+
+{% block crumbs %}
+<nav class="crumbs"><a href="{{ url_for('lms.core') }}">CORE Onboarding</a> › {{ title }}</nav>
+{% endblock %}
+
+{% block pa_main %}
+{# Learners first and full width: it's what a supervisor acts on, and its columns don't fit half a page. #}
+<section class="card spaced">
+  <div class="card-head">
+    <h2>Learners <small>{{ rows | length }} · least progress first{% if behind %} · <span class="bad-text">{{ behind }} behind</span>{% endif %}</small></h2>
+    {{ exports() }}
+  </div>
+  {% if rows %}
+  <table class="grid sortable">
+    <thead><tr><th>Associate</th><th>Location</th><th>Plan Status</th><th class="num">Done</th>
+      <th class="pctcol" data-sort="num">Progress</th><th data-sort="date">Enrolled</th>
+      <th data-sort="date">Due</th>
+      <th class="num" data-sort="num" title="Hours of CORE training per workday (Mon–Fri) needed to finish by the due date. Red = more than {{ budget }} a day.">Pace Needed</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><a href="{{ url_for('lms.person', uid=r.LMS_USER_ID) }}">{{ r.NAME_FULL }}</a></td>
+        <td>{{ r.PROPERTY_NAME }}</td>
+        <td>{{ r.PLAN_STATUS | progress }}</td>
+        <td class="num">{{ r.COURSES_DONE }} / {{ r.COURSES_TOTAL }}</td>
+        <td class="pctcol" data-value="{{ r.PCT if r.PCT is not none else -1 }}">{{ plainbar(r.PCT, r.FLAG_BEHIND) }}</td>
+        <td data-value="{{ r.DATETIME_REGISTERED }}">{{ r.DATETIME_REGISTERED | date }}</td>
+        <td data-value="{{ r.DATETIME_DUE }}">{{ r.DATETIME_DUE | date }}</td>
+        <td class="num" data-value="{{ r.HOURS_PER_DAY if r.HOURS_PER_DAY is not none else (999 if r.FLAG_BEHIND else -1) }}">{{ pace(r) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="note">Red = behind: the course time left is more than {{ budget }} per workday until the due date
+    (placeholder budget; see <a href="{{ url_for('lms.definitions') }}">Definitions</a>).</p>
+  {% else %}{{ empty("No one at your locations is enrolled in this plan yet.") }}{% endif %}
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>Courses in this plan <small>completion among its learners</small></h2></div>
+  <table class="grid compact">
+    {% for c in courses %}
+    <tr>
+      <td class="num muted">{{ c.order }}.</td>
+      <td><a href="{{ url_for('lms.course', cid=c.course_id) }}">{{ c.title }}</a></td>
+      <td class="pctcol">{{ plainbar(c.pct) }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

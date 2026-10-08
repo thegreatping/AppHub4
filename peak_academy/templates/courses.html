@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_macros.html" import plainbar, exports, empty, filter_bar %}
+{% block title %}Course Details{% endblock %}
+{% block heading %}Course Details{% endblock %}
+
+{% block pa_main %}
+{% call filter_bar(options, f, show=('property', 'role')) %}
+  <label>Show
+    <select name="show" onchange="this.form.submit()">
+      <option value="active" {{ 'selected' if show == 'active' }}>Courses with learners</option>
+      <option value="published" {{ 'selected' if show == 'published' }}>All published courses</option>
+      <option value="all" {{ 'selected' if show == 'all' }}>Entire catalog</option>
+    </select>
+  </label>
+  <label class="search">Find course <input type="search" data-filter-table="course-table" placeholder="Type to filter…"></label>
+{% endcall %}
+
+<section class="card">
+  <div class="card-head">
+    <h2>Courses <small>{{ rows | length }} shown · learner counts reflect your locations</small></h2>
+    {{ exports() }}
+  </div>
+  {% if rows %}
+  <table class="grid sortable" id="course-table">
+    <thead><tr>
+      <th class="wide">Course</th><th>Type</th><th class="num">Minutes</th><th class="num">CORE Plans</th>
+      <th class="num">Enrolled</th><th class="num">In Progress</th><th class="num">Completed</th>
+      <th class="num">Past Due</th><th class="pctcol" data-sort="num">Completion</th>
+    </tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><a href="{{ url_for('lms.course', cid=r.LMS_COURSE_ID) }}">{{ r.COURSE_TITLE }}</a>
+          {% if not r.FLAG_PUBLISHED %}<span class="tag">unpublished</span>{% endif %}</td>
+        <td>{{ r.COURSE_TYPE }}</td>
+        <td class="num">{{ r.DURATION_IN_MINUTES | num }}</td>
+        <td class="num">{{ r.core_plans | num if r.core_plans }}</td>
+        <td class="num">{{ r.enrolled | num }}</td>
+        <td class="num">{{ r.in_progress | num }}</td>
+        <td class="num">{{ r.completed | num }}</td>
+        <td class="num {{ 'bad-text' if r.past_due }}">{{ r.past_due | num if r.past_due }}</td>
+        <td class="pctcol" data-value="{{ r.completion_pct if r.completion_pct is not none else -1 }}">{{ plainbar(r.completion_pct) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}{{ empty("No courses match. Try \"All published courses\".") }}{% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,135 @@
+{% macro kpis(t, show_associates=True) %}
+<section class="kpis">
+  <div class="kpi kpi-main band-{{ t.pct | band }}">
+    <div class="kpi-label">Compliance</div>
+    <div class="kpi-value">{{ t.pct | pct }}</div>
+    <div class="kpi-sub">{{ t.compliant | num }} of {{ t.assigned | num }} mandatory assignments not past due</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Past Due</div>
+    <div class="kpi-value bad-text">{{ t.not_compliant | num }}</div>
+    <div class="kpi-sub">assignments</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Open, Not Yet Due</div>
+    <div class="kpi-value">{{ t.achievable | num }}</div>
+    <div class="kpi-sub">assignments</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Completed</div>
+    <div class="kpi-value">{{ t.completed | num }}</div>
+    <div class="kpi-sub">assignments</div>
+  </div>
+  {% if show_associates %}
+  <div class="kpi">
+    <div class="kpi-label">Associates</div>
+    <div class="kpi-value">{{ t.associates | num }}</div>
+    <div class="kpi-sub">with mandatory assignments</div>
+  </div>
+  {% endif %}
+</section>
+{% endmacro %}
+
+{% macro bar(p) %}
+<div class="bar"><div class="fill band-{{ p | band }}" style="width: {{ ((p or 0) * 100) | round(0) }}%"></div></div>
+<span class="bar-label">{{ p | pct }}</span>
+{% endmacro %}
+
+{# behind: red instead of the neutral colour (CORE learner falling behind pace). #}
+{% macro plainbar(p, behind=false) %}
+<div class="bar"><div class="fill {{ 'band-bad' if behind else 'band-plain' }}" style="width: {{ ((p or 0) * 100) | round(0) }}%"></div></div>
+<span class="bar-label">{{ p | pct }}</span>
+{% endmacro %}
+
+{# SVG donut for a 0..1 ratio. #}
+{% macro donut(p, label) %}
+{% set r = 42 %}{% set c = 2 * 3.14159 * r %}
+<svg class="donut" viewBox="0 0 110 110" role="img" aria-label="{{ p | pct }} {{ label }}">
+  <circle cx="55" cy="55" r="{{ r }}" class="donut-track"/>
+  {% if p is not none %}
+  <circle cx="55" cy="55" r="{{ r }}" class="donut-fill band-stroke-{{ p | band }}"
+          stroke-dasharray="{{ (p * c) | round(2) }} {{ c | round(2) }}" transform="rotate(-90 55 55)"/>
+  {% endif %}
+  <text x="55" y="53" class="donut-value">{{ p | pct }}</text>
+  <text x="55" y="70" class="donut-label">{{ label }}</text>
+</svg>
+{% endmacro %}
+
+{% macro exports() %}
+<div class="exports">
+  Export:
+  <a href="?{{ request.query_string.decode() }}{{ '&' if request.query_string }}format=xlsx">Excel</a>
+  <a href="?{{ request.query_string.decode() }}{{ '&' if request.query_string }}format=csv">CSV</a>
+</div>
+{% endmacro %}
+
+{# Hours per workday a CORE learner needs to finish on time; red when behind. #}
+{% macro pace(r) %}
+{% if r.FLAG_BEHIND and r.HOURS_PER_DAY is none %}<span class="bad-text">Out of time</span>
+{% elif r.HOURS_PER_DAY is not none %}<span class="{{ 'bad-text' if r.FLAG_BEHIND }}">{{ r.HOURS_PER_DAY | hours }} h/day</span>{% endif %}
+{% endmacro %}
+
+{% macro empty(msg) %}
+<div class="empty">{{ msg }}</div>
+{% endmacro %}
+
+{# Filter form. show: which standard selects to render; period: current preset or none.
+   Extra inputs can be passed with {% call filter_bar(...) %} ... {% endcall %}. #}
+{% macro filter_bar(options, f, show=('property', 'role'), period=none) %}
+<form class="filters" method="get">
+  {% if 'property' in show and options.property | length > 1 %}
+  <label>Office location
+    <select name="property" onchange="this.form.submit()">
+      <option value="">All</option>
+      {% for k, n in options.property %}<option value="{{ k }}" {{ 'selected' if f and f.property_key == k }}>{{ n }}</option>{% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  {% if 'role' in show %}
+  <label>Associate role
+    <select name="role" onchange="this.form.submit()">
+      <option value="">All</option>
+      {% for o in options.role %}<option value="{{ o }}" {{ 'selected' if f and f.role == o }}>{{ o | titlecase }}</option>{% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  {% if 'property_type' in show %}
+  <label>Property type
+    <select name="property_type" onchange="this.form.submit()">
+      <option value="">All</option>
+      {% for o in options.property_type %}<option {{ 'selected' if f and f.property_type == o }}>{{ o }}</option>{% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  {% if 'rvp' in show and options.rvp | length > 1 %}
+  <label>RVP
+    <select name="rvp" onchange="this.form.submit()">
+      <option value="">All</option>
+      {% for o in options.rvp %}<option value="{{ o }}" {{ 'selected' if f and f.rvp == o }}>{{ o | titlecase }}</option>{% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  {% if 'rm' in show and options.rm | length > 1 %}
+  <label>RM
+    <select name="rm" onchange="this.form.submit()">
+      <option value="">All</option>
+      {% for o in options.rm %}<option value="{{ o }}" {{ 'selected' if f and f.rm == o }}>{{ o | titlecase }}</option>{% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  {% if 'category' in show %}
+  <label class="disabled" title="Blocked: nothing in the LMS extract links a course to its category yet.">Training category
+    <select disabled><option>Not available yet</option></select>
+  </label>
+  {% endif %}
+  {% if period %}
+  <label title="Filters course completions and training hours only. Compliance, past due and upcoming always include every open assignment.">Completions &amp; hours
+    <select name="period" onchange="this.form.submit()">
+      {% for k, label in periods %}<option value="{{ k }}" {{ 'selected' if period == k }}>{{ label }}</option>{% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  {% if caller %}{{ caller() }}{% endif %}
+  {% if request.args %}<a class="clear" href="{{ request.path }}">Clear filters</a>{% endif %}
+</form>
+{% endmacro %}

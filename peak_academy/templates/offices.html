@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bar, exports, empty, filter_bar %}
+{% block title %}Office Locations{% endblock %}
+{% block heading %}Office Locations{% endblock %}
+
+{% block pa_main %}
+{% call filter_bar(options, f, show=('property_type', 'rvp', 'rm', 'role'), period=period) %}
+  <label class="search">Find location <input type="search" data-filter-table="office-table" placeholder="Type to filter…"></label>
+{% endcall %}
+
+<section class="card">
+  <div class="card-head">
+    <h2>Training Activity by Location <small>{{ rows | length }} locations · completions &amp; hours for the selected period</small></h2>
+    {{ exports() }}
+  </div>
+  {% if rows %}
+  <table class="grid sortable" id="office-table">
+    <thead><tr>
+      <th>Location</th><th>RVP</th><th>RM</th><th class="num">Associates</th>
+      <th class="num">Completions</th><th class="num">Hours</th><th class="num">Hours / Associate</th>
+      <th class="num">Past Due</th><th class="num">Due Next 30d</th><th class="pctcol" data-sort="num">Compliance</th>
+    </tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><a href="{{ url_for('lms.location', key=r.property_key) }}">{{ r.property_name }}</a></td>
+        <td>{{ r.rvp_name | titlecase }}</td><td>{{ r.rm_name | titlecase }}</td>
+        <td class="num">{{ r.associates | num }}</td>
+        <td class="num">{{ r.completions | num }}</td>
+        <td class="num">{{ r.hours | hours }}</td>
+        <td class="num">{{ r.hours_per_associate | hours }}</td>
+        <td class="num {{ 'bad-text' if r.past_due }}">{{ r.past_due | num }}</td>
+        <td class="num">{{ r.upcoming | num }}</td>
+        <td class="pctcol" data-value="{{ r.pct if r.pct is not none else -1 }}">{{ bar(r.pct) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}{{ empty("No locations match these filters.") }}{% endif %}
+</section>
+{% endblock %}

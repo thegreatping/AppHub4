@@ -30,6 +30,7 @@ APP_ID_MAP = {
     5: "property_data_manager_pdm",
     2: "rm_inspections",
     36: "leadership_scorecard",
+    38: "peak_academy_lms",
 }
 
 # Reverse: string ID → App_ID
@@ -144,6 +145,16 @@ MODULES = [
         "description": "Submit and track ideas through the Peak Link program.",
         "type": "flask",
         "route": "/peak-link/",
+        "admin_only": False,
+    },
+    {
+        "id": "peak_academy_lms",
+        "name": "Peak Academy",
+        "icon": "fa-solid fa-graduation-cap",
+        "color": "#13a2c4",
+        "description": "Training compliance and Peak Academy LMS reporting (Zensai LMS365).",
+        "type": "flask",
+        "route": "/peak-academy/",
         "admin_only": False,
     },
     {

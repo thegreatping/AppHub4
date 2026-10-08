@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bar, exports, empty, filter_bar %}
+{% block title %}Associate Training{% endblock %}
+{% block heading %}Associate Training{% endblock %}
+
+{% block pa_main %}
+{% call filter_bar(options, f, show=('property', 'role'), period=period) %}
+  <label class="search">Find associate <input type="search" data-filter-table="people-table" placeholder="Name, email, title…"></label>
+{% endcall %}
+
+<section class="card">
+  <div class="card-head">
+    <h2>Associates <small>{{ rows | length }} · most past due first · completions &amp; hours for the selected period</small></h2>
+    {{ exports() }}
+  </div>
+  {% if rows %}
+  <table class="grid sortable" id="people-table">
+    <thead><tr><th>Associate</th><th>Location</th><th>Role</th>
+      <th class="num">Assigned</th><th class="num">Open</th><th class="num">Past Due</th>
+      <th class="num">Completed</th><th class="num">Hours</th><th class="pctcol" data-sort="num">Compliance</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><a href="{{ url_for('lms.person', uid=r.LMS_USER_ID) }}">{{ r.NAME_FULL }}</a>
+          <div class="sub">{{ r.JOB_TITLE or '' }}</div></td>
+        <td>{{ r.PROPERTY_NAME }}</td>
+        <td>{{ r.GROUP_TYPE | titlecase }}</td>
+        <td class="num">{{ r.assigned | num }}</td>
+        <td class="num">{{ r.open | num }}</td>
+        <td class="num {{ 'bad-text' if r.past_due }}">{{ r.past_due | num }}</td>
+        <td class="num">{{ r.completed | num }}</td>
+        <td class="num">{{ r.hours | hours }}</td>
+        <td class="pctcol" data-value="{{ r.compliance_pct if r.compliance_pct is not none else -1 }}">{{ bar(r.compliance_pct) if r.mandatory else '' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}{{ empty("No associates match these filters.") }}{% endif %}
+</section>
+{% endblock %}

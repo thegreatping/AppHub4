@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Definitions{% endblock %}
+{% block heading %}Definitions{% endblock %}
+
+{% block pa_main %}
+<p class="lede">How every number in Peak Academy reporting is calculated. Rows marked
+  <span class="flag provisional">Needs sign-off</span> are working assumptions that L&amp;D still needs to confirm.
+  {% if viewer.is_admin %}The questions behind them are on <a href="{{ url_for('lms.questions') }}">Open Questions</a>.{% endif %}</p>
+
+<section class="card spaced">
+  <table class="grid defs">
+    <thead><tr><th>Term</th><th>Definition</th><th></th></tr></thead>
+    <tbody>
+    {% for term, text, confirmed in definitions %}
+      <tr>
+        <td class="term">{{ term }}</td>
+        <td>{{ text }}</td>
+        <td>{% if confirmed %}<span class="flag confirmed">Agreed</span>{% else %}<span class="flag provisional">Needs sign-off</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>Not available yet</h2></div>
+  <table class="grid defs">
+    {% for what, why in blocked %}
+    <tr><td class="term">{{ what }}</td><td>{{ why }}</td></tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

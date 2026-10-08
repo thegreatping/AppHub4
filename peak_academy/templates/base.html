@@ -1,0 +1,59 @@
+{% extends "shell.html" %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('lms.static', filename='peak_academy.css') }}?v=2">
+{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div class="header-left">
+    <i class="fa-solid fa-graduation-cap" style="color: var(--accent-cyan); font-size: 1.1rem; margin-right: 4px;"></i>
+    <span class="page-title">Peak Academy</span>
+    <span class="page-subtitle">{% block heading %}Training Compliance{% endblock %}</span>
+  </div>
+  <div class="pa-meta">
+    {% if snap.as_of %}<span class="pa-asof">As of {{ snap.as_of | date }}</span>{% endif %}
+    {% if snap.synced_at %}<span class="pa-synced">LMS synced {{ snap.synced_at | date }}</span>{% endif %}
+    <span class="pa-badge pa-role-{{ viewer.role }}">{{ viewer.role | upper }}</span>
+    {% if viewer.is_admin %}
+    <form method="post" action="{{ url_for('lms.refresh') }}" style="margin:0;">
+      <button class="pa-refresh" title="Re-read the warehouse"><i class="fa-solid fa-rotate"></i> Refresh data</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="pa">
+  <nav class="pa-tabs">
+    {% for endpoint, label in nav %}
+    <a href="{{ url_for(endpoint) }}" class="pa-tab {{ 'active' if active_tab == endpoint }}">{{ label }}</a>
+    {% endfor %}
+  </nav>
+  <div class="pa-body">
+    {% block crumbs %}{% endblock %}
+    {% if viewer.role == 'none' and request.endpoint != 'lms.definitions' %}
+      <div class="empty">No locations are assigned to {{ viewer.email or "you" }}. Access follows the PM / RM / RVP
+        listed on each property; ask the L&amp;D team if this looks wrong.</div>
+    {% else %}
+      {% block pa_main %}{% endblock %}
+    {% endif %}
+  </div>
+</div>
+
+<script src="{{ url_for('lms.static', filename='app.js') }}?v=1"></script>
+<script>
+// Conform LMS grids to the shared AppHub column sort/filter menu (table_menu.js).
+(function () {
+  function conform() {
+    document.querySelectorAll('.pa table.grid').forEach(function (t) {
+      t.classList.remove('sortable');      // drop the LMS click-sort; the shared menu takes over
+      t.classList.add('data-table');       // opt into the shared header menu
+    });
+    if (window.TableMenu && window.TableMenu.enhanceAll) window.TableMenu.enhanceAll();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', conform);
+  else conform();
+})();
+</script>
+{% endblock %}
+

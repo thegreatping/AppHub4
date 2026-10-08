@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block heading %}{{ title }}{% endblock %}
+{% block pa_main %}
+<div class="empty">{{ body }} <a href="{{ url_for('lms.locations') }}">Back to locations</a></div>
+{% endblock %}

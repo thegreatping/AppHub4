@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_macros.html" import plainbar, empty, filter_bar %}
+{% block title %}CORE Onboarding{% endblock %}
+{% block heading %}CORE Onboarding{% endblock %}
+
+{% block pa_main %}
+{{ filter_bar(options, f, show=('property', 'role')) }}
+
+<section class="card">
+  <div class="card-head">
+    <h2>CORE Training Plans <small>{{ plans | length }} plans · {{ learners }} learner enrollment{{ 's' if learners != 1 }}</small></h2>
+    <a href="{{ url_for('lms.report', slug='core-progress', **request.args) }}">CORE Progress Report →</a>
+  </div>
+  <table class="grid sortable">
+    <thead><tr><th class="wide">Plan</th><th class="num">Courses</th><th class="num">Learners</th>
+      <th class="num">Fully Complete</th><th class="num">Behind</th><th class="pctcol" data-sort="num">Average Progress</th></tr></thead>
+    <tbody>
+    {% for p in plans %}
+      <tr>
+        <td><a href="{{ url_for('lms.core_plan', plan_id=p.plan_id) }}">{{ p.title }}</a></td>
+        <td class="num">{{ p.courses }}</td>
+        <td class="num">{{ p.learners }}</td>
+        <td class="num">{{ p.complete }}</td>
+        <td class="num {{ 'bad-text' if p.behind }}">{{ p.behind }}</td>
+        <td class="pctcol" data-value="{{ p.avg_pct if p.avg_pct is not none else -1 }}">{{ plainbar(p.avg_pct) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "_macros.html" import kpis, plainbar, exports, empty %}
+{% block title %}{{ user.NAME_FULL }}{% endblock %}
+{% block heading %}{{ user.NAME_FULL }}{% endblock %}
+
+{% block crumbs %}
+<nav class="crumbs">
+  <a href="{{ url_for('lms.people') }}">Associate Training</a> ›
+  <a href="{{ url_for('lms.location', key=key) }}">{{ user.PROPERTY_NAME or 'Unassigned' }}</a> ›
+  {{ user.NAME_FULL }}
+  <span class="people">{{ user.JOB_TITLE or '' }}{% if user.EMAIL %} · <a href="mailto:{{ user.EMAIL }}">{{ user.EMAIL }}</a>{% endif %}
+    {% if user.DATETIME_HIRED %} · hired {{ user.DATETIME_HIRED | date }}{% endif %}</span>
+</nav>
+{% endblock %}
+
+{% block pa_main %}
+{{ kpis(totals, show_associates=False) }}
+<p class="muted">Training hours credited, all time: <b>{{ hours | hours }}</b></p>
+
+{% if plans %}
+<section class="card spaced">
+  <div class="card-head"><h2>CORE Plans</h2></div>
+  <table class="grid compact">
+    {% for p in plans %}
+    <tr>
+      <td><a href="{{ url_for('lms.core_plan', plan_id=p.LMS_TRAINING_PLAN_ID) }}">{{ p.PLAN_TITLE }}</a></td>
+      <td>{{ p.PLAN_STATUS | progress }}</td>
+      <td class="num">{{ p.COURSES_DONE }} / {{ p.COURSES_TOTAL }} courses</td>
+      <td class="pctcol">{{ plainbar(p.PCT, p.FLAG_BEHIND) }}</td>
+      <td class="muted">{% if p.DATETIME_DUE %}Due {{ p.DATETIME_DUE | date }}{% endif %}{% if p.FLAG_BEHIND %} · <span class="bad-text">Behind</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endif %}
+
+<section class="card">
+  <div class="card-head">
+    <h2>All Assignments <small>past due first</small></h2>
+    {{ exports() }}
+  </div>
+  {% if rows %}
+  <table class="grid sortable">
+    <thead><tr>
+      <th class="wide">Course</th><th>Compliance</th><th>Progress</th>
+      <th data-sort="date">Due</th><th data-sort="date">Completed</th>
+      <th class="num">Days Past Due</th><th class="num">Days To Due</th><th class="num">Hours</th>
+    </tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><a href="{{ url_for('lms.course', cid=r.LMS_COURSE_ID) }}">{{ r.COURSE_TITLE }}</a></td>
+        <td>{% if r.COMPLIANCE_STATUS %}<span class="status s-{{ r.COMPLIANCE_STATUS | lower | replace(' ', '-') }}">{{ r.COMPLIANCE_STATUS | titlecase }}</span>{% else %}<span class="muted">Not mandatory</span>{% endif %}</td>
+        <td>{{ r.COURSE_PASSING_STATUS | progress }}</td>
+        <td data-value="{{ r.DATETIME_DUE }}">{{ r.DATETIME_DUE | date }}</td>
+        <td data-value="{{ r.DATETIME_COMPLETED }}">{{ r.DATETIME_COMPLETED | date }}</td>
+        <td class="num {{ 'bad-text' if r.DAYS_PAST_DUE }}">{{ r.DAYS_PAST_DUE | num }}</td>
+        <td class="num">{{ r.DAYS_TO_DUE | num }}</td>
+        <td class="num">{{ (r.TRAINING_MINUTES / 60) | hours if r.TRAINING_MINUTES is not none }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}{{ empty("No course assignments for this associate.") }}{% endif %}
+</section>
+{% endblock %}
