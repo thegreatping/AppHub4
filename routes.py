@@ -230,10 +230,11 @@ def get_theme_settings(app_id):
         # Presets and _global are fetched directly; other IDs check the module opt-in flag
         if app_id != '_global' and not app_id.startswith('_preset_'):
             _ensure_module_flags_table(conn)
-            flag_row = conn.fetchone(
+            flag_rows = conn.fetchall(
                 "SELECT theme_studio_enabled FROM dbo.APPHUB_MODULE_FLAGS WHERE module_id = ?",
                 (app_id,)
             )
+            flag_row = flag_rows[0] if flag_rows else None
             opted_in = (flag_row is None) or bool(flag_row[0])
             if not opted_in:
                 return jsonify({})
@@ -245,9 +246,9 @@ def get_theme_settings(app_id):
         result = {}
         for r in rows:
             try:
-                result[r["theme"]] = json.loads(r["overrides"] or "{}")
+                result[r[0]] = json.loads(r[1] or "{}")
             except Exception:
-                result[r["theme"]] = {}
+                result[r[0]] = {}
         return jsonify(result)
     except Exception:
         return jsonify({}), 200  # fail silently — don't break the page
