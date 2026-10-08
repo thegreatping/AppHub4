@@ -14,6 +14,11 @@ from helpers import load_env, SafeConnection
 _env = None
 _log = None
 
+# Title groups whose members are AppHub developers as a group (admin on every
+# module + dev tools), in addition to any individual MODULE_AUDIENCE 'developer'
+# grants. Future members of these groups become developers automatically.
+_DEV_TITLE_GROUPS = {"BUSINESS INTELLIGENCE"}
+
 
 def _get_env():
     global _env
@@ -171,6 +176,11 @@ def resolve_access(title_group, email):
             WHERE GRANT_TYPE = 'developer' AND LOWER(GRANT_VALUE) = ?
         """, (email.lower(),))
         is_developer = len(dev_rows) > 0
+
+        # The Business Intelligence team are developers as a group (covers current
+        # and future BI members without a per-person MODULE_AUDIENCE grant).
+        if (title_group or "").strip().upper() in _DEV_TITLE_GROUPS:
+            is_developer = True
 
         return {
             "modules": modules,
