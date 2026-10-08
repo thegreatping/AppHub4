@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leadership Scorecard - Text Change Approvals (Batch 2: copy rewrites)</title>
+<style>
+:root{color-scheme:dark;--bg:#0d1525;--panel:#152139;--raised:#1b2a45;--line:#2b3b5a;--text:#edf3fb;--muted:#9cabc2;--cyan:#51d6d2;--red:#ff7777;--amber:#ffc857;--green:#6ce0a1}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 "Segoe UI",Arial,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:26px 26px 110px}
+h1{margin:0;color:var(--cyan);font-size:23px}
+.sub{color:var(--muted);margin:5px 0 18px}
+.intro{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--cyan);border-radius:6px;padding:14px 18px;margin-bottom:20px;color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:12px 0}
+.card.off{opacity:.5}
+.card-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.card-head input{width:18px;height:18px;accent-color:var(--cyan);cursor:pointer;flex:0 0 auto}
+.pill{font-size:11px;font-weight:700;color:var(--cyan);background:#0f3233;border-radius:9px;padding:2px 9px;white-space:nowrap}
+.loc{font-size:11.5px;color:var(--muted)}
+.title{font-weight:700;font-size:14px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:760px){.cols{grid-template-columns:1fr}}
+.box{border-radius:6px;padding:9px 11px;font-size:12.5px;white-space:pre-wrap;word-break:break-word}
+.box.cur{background:#2a1620;border:1px solid #5a2b38}
+.box.cur .lab{color:var(--red)}
+.box.new{background:#13261b;border:1px solid #2b5a3c}
+.box.new .lab{color:var(--green)}
+.lab{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;font-weight:700}
+.bar{position:fixed;left:0;right:0;bottom:0;background:#0b1322;border-top:1px solid var(--line);padding:12px 26px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.bar button{background:var(--cyan);border:none;color:#04222c;border-radius:5px;padding:9px 15px;font-weight:700;cursor:pointer}
+.bar button.sec{background:var(--panel);color:var(--text);border:1px solid var(--line)}
+.bar strong{color:var(--cyan)}
+#out{flex:1;min-width:240px;background:#0b1322;border:1px solid var(--line);color:var(--text);border-radius:5px;padding:7px 9px;font:12px Consolas,monospace}
+</style>
+</head>
+<body><div class="wrap">
+<h1>Text Change Approvals &mdash; Batch 2 (copy rewrites)</h1>
+<div class="sub">Leadership Scorecard beta checklist &middot; the deferred subjective rewrites &middot; generated 2026-10-08</div>
+<div class="intro">Same drill: each change is <b>checked (approved) by default</b>. Uncheck anything you want to skip, click <b>Copy approved list</b> and paste it back &mdash; or just say &ldquo;apply all.&rdquo; These are drafts for your review; nothing is applied until you confirm.</div>
+
+<div id="cards"></div>
+
+<div class="bar">
+  <button onclick="copyApproved()">Copy approved list</button>
+  <button class="sec" onclick="setAll(true)">Check all</button>
+  <button class="sec" onclick="setAll(false)">Uncheck all</button>
+  <strong id="count"></strong>
+  <input id="out" readonly placeholder="Approved Item #s will appear here">
+</div>
+
+<script>
+const CHANGES = [
+  {id:'68', item:'#68', loc:'scorecard.html &middot; Fall Forecast column labels (FF_COLS)',
+   title:'Consistent Fall Forecast column names (drop "CY")',
+   cur:"Complete CY      New CY      Renewal CY\n(Target and vs Target columns already match)",
+   neu:"Complete         New         Renewal\nSo each group reads: Complete / Complete Target / Complete vs Target; New / New Target / New vs Target; Renewal / Renewal Target / Renewal vs Target."},
+
+  {id:'56', item:'#56', loc:'scorecard.html &middot; Overall Score column header tooltip',
+   title:'Add a description for Overall Score (hover tooltip on the column header)',
+   cur:"Hovering the Overall Score header shows only: \"Overall Score\".",
+   neu:"Hover shows: \"Overall Score = Leadership (Pre-RM) + Maintenance + RM Score. The property's total points for the quarter; higher is better.\"",
+   note:'Small code tweak: add a blurb to OVERALL_COL and let the header tooltip use it (same hover mechanism the measure columns already use).'},
+
+  {id:'32', item:'#32', loc:'scorecard.html &middot; Help > "Where do the numbers come from?"',
+   title:'Turn the data-sources paragraph into bullets',
+   cur:"Every objective measure is pulled automatically from the systems that already track that data (Paycom for timecards, Grace Hill for training, Entrata for work orders, etc.). Nothing on the Scorecard tab is hand-entered on the objective side.",
+   neu:"Every objective measure is pulled automatically from the system that already tracks that data \u2014 nothing on the Scorecard tab is hand-entered on the objective side:\n\u2022 Paycom \u2014 timecards\n\u2022 Grace Hill \u2014 training\n\u2022 Entrata \u2014 work orders\n\u2022 \u2026and the other source systems behind each measure."},
+
+  {id:'35', item:'#35', loc:'scorecard.html &middot; Help > FAQ tab',
+   title:'Make the FAQ shorter (trim each answer to one line; questions unchanged)',
+   cur:"6 Q&A items with multi-sentence answers:\n\u2022 Why does this property show a fail when I know it passed?  (3 sentences)\n\u2022 I saved my RM Score but the Overall didn't change.  (3 sentences)\n\u2022 Why is the quarter I'm seeing not the current one?  (2 sentences)\n\u2022 A measure shows \"--\" instead of P/F. What does that mean?  (3 sentences)\n\u2022 Can I bulk edit RM Scores?  (2 sentences)\n\u2022 The app is loading really slowly.  (3 sentences)",
+   neu:"Same 6 questions, one concise answer each:\n\u2022 Fail you disagree with? Click the measure to see the source rows; override with a reason if the data's wrong, else tell Craig.\n\u2022 RM Score didn't update Overall? It's instant \u2014 refresh, and screenshot Craig if it persists.\n\u2022 Wrong quarter? It always shows the last completed quarter (now Q2 2026), switching automatically after quarter-end.\n\u2022 \"--\" means no source data arrived this quarter; most measures default to PASS, a few fail \u2014 \"How was this scored?\" says which.\n\u2022 Bulk edit RM Scores? Not yet \u2014 enter each in the property slideout.\n\u2022 Slow? First load pulls a lot of data, then it's snappy; refresh, then screenshot Craig if not."},
+];
+
+function esc(s){const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;}
+function render(){
+  document.getElementById('cards').innerHTML = CHANGES.map(c=>`
+    <div class="card" id="card_${c.id}">
+      <div class="card-head">
+        <input type="checkbox" id="chk_${c.id}" checked onchange="sync()">
+        <span class="pill">Item ${c.item} &middot; ${c.id}</span>
+        <span class="title">${c.title}</span>
+      </div>
+      <div class="loc" style="margin-bottom:8px">${c.loc}</div>
+      <div class="cols">
+        <div class="box cur"><span class="lab">Current</span>${esc(c.cur)}</div>
+        <div class="box new"><span class="lab">Proposed</span>${esc(c.neu)}</div>
+      </div>
+      ${c.note?`<div class="loc" style="margin-top:8px;color:var(--amber)">Note: ${c.note}</div>`:''}
+    </div>`).join('');
+  sync();
+}
+function sync(){
+  const ap=[];
+  CHANGES.forEach(c=>{
+    const on=document.getElementById('chk_'+c.id).checked;
+    document.getElementById('card_'+c.id).classList.toggle('off',!on);
+    if(on)ap.push(c.id);
+  });
+  document.getElementById('count').textContent=`${ap.length} of ${CHANGES.length} approved`;
+  document.getElementById('out').value=ap.join(', ');
+}
+function setAll(v){CHANGES.forEach(c=>document.getElementById('chk_'+c.id).checked=v);sync();}
+function copyApproved(){const o=document.getElementById('out');o.select();navigator.clipboard&&navigator.clipboard.writeText(o.value);}
+render();
+</script>
+</div></body></html>

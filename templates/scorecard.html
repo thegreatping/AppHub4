@@ -1137,7 +1137,13 @@ const SC_HELP_CONTENT = {
         <div class="sc-crit-item">
           <div class="sc-crit-name">Where do the numbers come from?</div>
           <div class="sc-crit-body">
-            <p>Every objective measure is pulled automatically from the systems that already track that data (Paycom for timecards, Grace Hill for training, Entrata for work orders, etc.). Nothing on the Scorecard tab is hand-entered on the objective side.</p>
+            <p>Every objective measure is pulled automatically from the system that already tracks that data &mdash; nothing on the Scorecard tab is hand-entered on the objective side:</p>
+            <ul>
+              <li><b>Paycom</b> &mdash; timecards</li>
+              <li><b>Grace Hill</b> &mdash; training</li>
+              <li><b>Entrata</b> &mdash; work orders</li>
+              <li>&hellip;and the other source systems behind each measure.</li>
+            </ul>
             <p>Subjective inputs (your RM Score of 0-5, whether Surveys were completed, whether NOI met budget, and notes) are entered by you in the slideout.</p>
           </div>
         </div>
@@ -1340,32 +1346,32 @@ const SC_HELP_CONTENT = {
 
         <div class="sc-crit-item">
           <div class="sc-crit-name">Why does this property show a fail when I know it passed?</div>
-          <div class="sc-crit-body"><p>Click the measure name in the header to drill into the source rows. You'll see the exact underlying data (timecard approvals, work orders, etc.) that produced the fail. If the source data is genuinely wrong, use the override to correct it and add a reason. If the source is right and the measure is still marked wrong, that's a bug &mdash; tell Craig.</p></div>
+          <div class="sc-crit-body"><p>Click the measure name to see the source rows; override with a reason if the data's wrong, otherwise tell Craig.</p></div>
         </div>
 
         <div class="sc-crit-item">
           <div class="sc-crit-name">I saved my RM Score but the Overall didn't change.</div>
-          <div class="sc-crit-body"><p>It should update instantly (right there in the slideout and behind it in the grid). If it didn't, refresh the page. If that still doesn't work, please screenshot and send it to Craig.</p></div>
+          <div class="sc-crit-body"><p>It updates instantly &mdash; if not, refresh, then screenshot Craig if it persists.</p></div>
         </div>
 
         <div class="sc-crit-item">
           <div class="sc-crit-name">Why is the quarter I'm seeing not the current one?</div>
-          <div class="sc-crit-body"><p>The scorecard always shows the <b>last completed quarter</b>, not the one in progress. Today is Q3 2026, so the scorecard shows Q2 2026. The pipeline switches automatically the day after quarter-end.</p></div>
+          <div class="sc-crit-body"><p>It always shows the <b>last completed quarter</b> (today is Q3 2026, so it shows Q2 2026), switching automatically the day after quarter-end.</p></div>
         </div>
 
         <div class="sc-crit-item">
           <div class="sc-crit-name">A measure shows "--" instead of P/F. What does that mean?</div>
-          <div class="sc-crit-body"><p>No source data has arrived for that measure for that property this quarter. Most measures default to PASS when data is missing (so we don't penalize you for a data feed problem), but a few genuinely fail. The slideout's "How was this scored?" text will tell you which behavior applies.</p></div>
+          <div class="sc-crit-body"><p>No source data arrived for that measure this quarter; most default to PASS, a few fail &mdash; the slideout's "How was this scored?" says which.</p></div>
         </div>
 
         <div class="sc-crit-item">
           <div class="sc-crit-name">Can I bulk edit RM Scores?</div>
-          <div class="sc-crit-body"><p>Not yet. You have to open each property's slideout and enter the score. If bulk edit becomes a real need, tell Craig and it'll get added.</p></div>
+          <div class="sc-crit-body"><p>Not yet &mdash; open each property's slideout to enter the score.</p></div>
         </div>
 
         <div class="sc-crit-item">
           <div class="sc-crit-name">The app is loading really slowly.</div>
-          <div class="sc-crit-body"><p>First load pulls quite a bit of data. After that, it should be snappy. If it's still slow, refresh; if still slow, screenshot and send it to Craig.</p></div>
+          <div class="sc-crit-body"><p>First load pulls a lot of data, then it's snappy; refresh, then screenshot Craig if not.</p></div>
         </div>
     `,
 
@@ -1413,7 +1419,7 @@ const ID_COLS = [
     { key: 'PROPERTY_TYPE', label: 'Type', type: 'text' },
     { key: 'RM_NAME', label: 'RM', type: 'text' },
 ];
-const OVERALL_COL = { key: 'OVERALL', label: 'Overall Score', type: 'total' };
+const OVERALL_COL = { key: 'OVERALL', label: 'Overall Score', type: 'total', blurb: "Overall Score = Leadership (Pre-RM) + Maintenance + RM Score. The property's total points for the quarter; higher is better." };
 const LEADERSHIP_COLS = [
     { key: 'RMSCORE', label: 'RM Score', type: 'num' },
     { key: 'TC', label: 'Timecard', type: 'bool' },
@@ -1598,7 +1604,7 @@ function renderHeader() {
         <th class="grp-maintenance" colspan="${MAINT_COLS.length + (showPrior ? 1 : 0)}">Maintenance</th>
         <th></th>
     </tr>`;
-    const hc = (c, extraCls = '') => `<th class="sc-head-th ${extraCls}" onclick="openHeadMenu('${c.key}', this, event)" title="${esc(blurbFor(c.key) || c.label)}">${esc(c.label)}${sortArrow(c.key)}${headMenuMarks(c.key)}</th>`;
+    const hc = (c, extraCls = '') => `<th class="sc-head-th ${extraCls}" onclick="openHeadMenu('${c.key}', this, event)" title="${esc(c.blurb || blurbFor(c.key) || c.label)}">${esc(c.label)}${sortArrow(c.key)}${headMenuMarks(c.key)}</th>`;
     const labelRow = `<tr>
         ${ID_COLS.map(c => hc(c, 'id-col')).join('')}
         ${hc(OVERALL_COL, 'sc-overall-header')}
@@ -3248,13 +3254,13 @@ const FF_COLS = [
     { key: 'ENTITY_NUMBER', label: 'Entity' },
     { key: 'PROPERTY_TYPE', label: 'Type' },
     { key: 'RM_NAME', label: 'RM' },
-    { key: 'COMPLETE_CY', label: 'Complete CY' },
+    { key: 'COMPLETE_CY', label: 'Complete' },
     { key: 'COMPLETE_TARGET', label: 'Complete Target' },
     { key: 'COMPLETE_VS_TARGET', label: 'Complete vs Target' },
-    { key: 'NEW_CY', label: 'New CY' },
+    { key: 'NEW_CY', label: 'New' },
     { key: 'NEW_TARGET', label: 'New Target' },
     { key: 'NEW_VS_TARGET', label: 'New vs Target' },
-    { key: 'RENEWAL_CY', label: 'Renewal CY' },
+    { key: 'RENEWAL_CY', label: 'Renewal' },
     { key: 'RENEWAL_TARGET', label: 'Renewal Target' },
     { key: 'RENEWAL_VS_TARGET', label: 'Renewal vs Target' },
 ];
