@@ -1,10 +1,12 @@
 """Entra ID (Azure AD) authentication."""
 import os
+import secrets
 import msal
 from functools import wraps
 from flask import Blueprint, redirect, url_for, session, request, current_app
 from helpers import load_env, SafeConnection
 from modules import APP_ID_MAP
+from delegated_mail import store_mail_cache, discard_mail_cache
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -71,9 +73,11 @@ def _redirect_uri():
 def login():
     """Initiate Entra ID login flow."""
     app_msal = _build_msal_app()
+    session["auth_state"] = secrets.token_urlsafe(32)
     auth_url = app_msal.get_authorization_request_url(
         scopes=current_app.config["AZURE_SCOPE"],
         redirect_uri=_redirect_uri(),
+        state=session["auth_state"],
     )
     return redirect(auth_url)
 
@@ -90,6 +94,9 @@ def callback():
 
 def _callback_inner():
     """Actual callback logic — wrapped so exceptions are visible."""
+    expected_state = session.pop("auth_state", "")
+    if not expected_state or not secrets.compare_digest(expected_state, request.args.get("state", "")):
+        return "Invalid sign-in state. Please start sign-in again.", 400
     if request.args.get("error"):
         return f"Auth error: {request.args.get('error_description')}", 403
 
@@ -97,7 +104,8 @@ def _callback_inner():
     if not code:
         return redirect(url_for("auth.login"))
 
-    app_msal = _build_msal_app()
+    cache = msal.SerializableTokenCache()
+    app_msal = _build_msal_app(cache=cache)
     try:
         result = app_msal.acquire_token_by_authorization_code(
             code,
@@ -121,18 +129,25 @@ def _callback_inner():
         "oid": id_claims.get("oid", ""),
     }
     session["is_dev_mode"] = False
+    try:
+        store_mail_cache(cache, id_claims.get("oid", ""))
+    except Exception:
+        session.pop("mail_cache_handle", None)
+        current_app.logger.warning("Delegated mail cache unavailable after sign-in")
 
     # Resolve module access and developer flag from DB
     try:
         from security import get_employee_info, resolve_access
         emp = get_employee_info(email)
         title_group = emp["title_group"] if emp else ""
+        session["title_group"] = title_group
         access = resolve_access(title_group, email)
         session["user_modules"] = access["modules"]
         session["is_developer"] = access["is_developer"]
         session["security_level"] = 100 if access["is_developer"] else 1
         session["_access_error"] = None
     except Exception as exc:
+        session["title_group"] = ""
         session["user_modules"] = []
         session["is_developer"] = False
         session["security_level"] = 0
@@ -144,6 +159,10 @@ def _callback_inner():
 @auth_bp.route("/logout")
 def logout():
     """Clear session and redirect to Entra ID logout."""
+    try:
+        discard_mail_cache()
+    except Exception:
+        current_app.logger.warning("Delegated mail cache cleanup unavailable")
     session.clear()
     authority = current_app.config["AZURE_AUTHORITY"]
     return redirect(

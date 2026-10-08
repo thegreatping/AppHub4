@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:Segoe UI,Arial,sans-serif;color:#1f2a37;">
+<div style="max-width:680px;margin:0 auto;padding:24px;">
+  <div style="background:#0d1525;border-radius:8px 8px 0 0;padding:18px 22px;">
+    <div style="font-size:18px;font-weight:700;color:#51d6d2;">AppHub - Leadership Scorecard</div>
+    <div style="font-size:13px;color:#9cabc2;margin-top:3px;">Request to enable email reminders and @mention alerts</div>
+  </div>
+
+  <div style="background:#ffffff;border:1px solid #e3e8ef;border-top:none;border-radius:0 0 8px 8px;padding:22px;">
+    <p style="margin:0 0 14px;font-size:14px;line-height:1.6;">
+      Hi [Admin],
+    </p>
+    <p style="margin:0 0 14px;font-size:14px;line-height:1.6;">
+      The Leadership Scorecard app needs one Entra (Azure AD) permission so it can send
+      reminder emails and mention notifications <b>as the signed-in user</b> (not from a
+      shared/service mailbox). This is the delegated "send as yourself" pattern.
+    </p>
+
+    <div style="background:#f0fbfb;border:1px solid #bfe9e7;border-radius:6px;padding:14px 16px;margin:0 0 18px;">
+      <div style="font-size:13px;font-weight:700;color:#0f766e;margin-bottom:6px;">App registration to change</div>
+      <div style="font-size:13px;line-height:1.7;">
+        Name: <b>AppHub 4.0</b><br>
+        Client (Application) ID: <b>5f4a66ee-3e05-407d-80ca-b27290dd3b89</b><br>
+        Permission needed: <b>Microsoft Graph &gt; Mail.Send (Delegated)</b>
+      </div>
+    </div>
+
+    <div style="font-size:14px;font-weight:700;margin:0 0 8px;">Checklist</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <tr>
+        <td style="width:26px;vertical-align:top;padding:7px 6px;border-bottom:1px solid #eef1f5;">[ ]</td>
+        <td style="padding:7px 6px;border-bottom:1px solid #eef1f5;line-height:1.5;">
+          Open Entra admin center &gt; App registrations &gt; <b>AppHub 4.0</b> (client ID above).
+        </td>
+      </tr>
+      <tr>
+        <td style="vertical-align:top;padding:7px 6px;border-bottom:1px solid #eef1f5;">[ ]</td>
+        <td style="padding:7px 6px;border-bottom:1px solid #eef1f5;line-height:1.5;">
+          Go to <b>API permissions</b> &gt; <b>Add a permission</b> &gt; <b>Microsoft Graph</b> &gt;
+          <b>Delegated permissions</b>.
+        </td>
+      </tr>
+      <tr>
+        <td style="vertical-align:top;padding:7px 6px;border-bottom:1px solid #eef1f5;">[ ]</td>
+        <td style="padding:7px 6px;border-bottom:1px solid #eef1f5;line-height:1.5;">
+          Search for and add <b>Mail.Send</b> (delegated). Do <b>not</b> add the
+          Application-level Mail.Send.
+        </td>
+      </tr>
+      <tr>
+        <td style="vertical-align:top;padding:7px 6px;border-bottom:1px solid #eef1f5;">[ ]</td>
+        <td style="padding:7px 6px;border-bottom:1px solid #eef1f5;line-height:1.5;">
+          Click <b>Grant admin consent for [Tenant]</b> so users are not prompted individually.
+        </td>
+      </tr>
+      <tr>
+        <td style="vertical-align:top;padding:7px 6px;border-bottom:1px solid #eef1f5;">[ ]</td>
+        <td style="padding:7px 6px;border-bottom:1px solid #eef1f5;line-height:1.5;">
+          Confirm the existing redirect URI is unchanged:
+          <span style="font-family:Consolas,monospace;">https://apphub40-g2ceaha4h4bcgjhc.centralus-01.azurewebsites.net/auth/callback</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="vertical-align:top;padding:7px 6px;">[ ]</td>
+        <td style="padding:7px 6px;line-height:1.5;">
+          Reply to let me know it is granted. I will enable the in-app send from there.
+        </td>
+      </tr>
+    </table>
+
+    <div style="font-size:14px;font-weight:700;margin:20px 0 8px;">What this does (and does not) allow</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <tr>
+        <td style="width:50%;vertical-align:top;padding:10px 12px;background:#f1fdf5;border:1px solid #c9ecd6;border-radius:6px;">
+          <div style="font-weight:700;color:#15803d;margin-bottom:4px;">Allows</div>
+          <div style="line-height:1.6;">
+            - Send email only as the <b>currently signed-in user</b><br>
+            - Replies go back to that person<br>
+            - No shared or service mailbox needed
+          </div>
+        </td>
+        <td style="width:14px;"></td>
+        <td style="width:50%;vertical-align:top;padding:10px 12px;background:#fdf3f3;border:1px solid #f0cccc;border-radius:6px;">
+          <div style="font-weight:700;color:#b91c1c;margin-bottom:4px;">Does NOT allow</div>
+          <div style="line-height:1.6;">
+            - Reading anyone's mailbox<br>
+            - Sending as other people<br>
+            - Background/automated sending with no one logged in
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:#53617a;">
+      Context: the app already signs users in with Entra SSO (scopes User.Read, openid, profile,
+      offline_access). Adding delegated Mail.Send lets it call Microsoft Graph /me/sendMail on
+      behalf of the signed-in user. Until this is granted, reminders fall back to opening a
+      pre-filled draft in the user's mail client, and @mention alerts show only inside the app.
+    </p>
+
+    <p style="margin:16px 0 0;font-size:14px;">Thanks,<br>Craig</p>
+  </div>
+</div>
+</body>
+</html>

@@ -306,6 +306,123 @@ const SCENARIOS = [
     { role: 'ALL',   text: 'Simulated network drop during a PATCH shows a user-visible error (not a silent failure).', removed: true },
     { role: 'ADMIN', text: 'Empty state: if pipeline has not run for the current AY/QUARTER, /api/data returns "no data available" and grid shows "No data".', removed: true },
   ]},
+
+  // ── Beta Checklist change requests (CR 30-107), mirrored from
+  //    "Leadership Scorecard Beta Checklist 10.2.26". Appended at the end so
+  //    existing sN_rM keys above stay stable.
+  { section: '15. Beta: Help, Guides & Text (CR 30-43)', rows: [
+    { role: 'ALL', text: 'CR 30 - Change help text from "RM bonuses" to "PM and Maintenance bonuses."' },
+    { role: 'ALL', text: 'CR 31 - Combine "?" help with Criteria & Guides (or About the Scorecard tab). Rename to "Criteria." Remove icon.' },
+    { role: 'ALL', text: 'CR 32 - Add short instructions up front (incl. "click headers to sort/search"). Let users hide them.' },
+    { role: 'ALL', text: 'CR 33 - Add hover descriptions for Scorecard and Fall Forecast tabs.' },
+    { role: 'ALL', text: 'CR 34 - Turn long paragraphs into bullets (e.g., data sources: Paycom, Grace Hill, Entrata).' },
+    { role: 'ALL', text: 'CR 35 - Remove "finance sign-off / bonus calc form" wording under Export to Excel.' },
+    { role: 'ALL', text: 'CR 36 - Quarterly to-do: remove "override anything that isn\'t right." Fix text overlap in RM view.' },
+    { role: 'ALL', text: 'CR 37 - Make the FAQ shorter.' },
+    { role: 'ALL', text: 'CR 38 - Make every "contact Craig" a pre-filled email or help desk link with a set subject line (e.g., "Quarterly Bonus - Leadership Scorecard").' },
+    { role: 'ALL', text: 'CR 39 - Move feedback to its own tile.' },
+    { role: 'ALL', text: 'CR 40 - Rename Criteria sub-tabs: "Criteria," "Bonus Calculation Form," "Entering Bonuses in Paycom." Drop "Guide" from each.' },
+    { role: 'ALL', text: 'CR 41 - Criteria tab: add Expand All/Collapse All, a search bar, and links to source systems (Paycom, Peak Academy).' },
+    { role: 'ALL', text: 'CR 42 - Show each metric\'s definition on hover in the column header.' },
+    { role: 'ALL', text: 'CR 43 - Create a quick cheat sheet and a beta testing/demo script.' },
+  ]},
+
+  { section: '16. Beta: Buttons & Navigation (CR 44-51)', rows: [
+    { role: 'ALL', text: 'CR 44 - Use one button style everywhere. Add "Back to Scorecard" on Data Flow and Diagram.' },
+    { role: 'ALL', text: 'CR 45 - Fix "page not found" on Diagram/Data Flow.' },
+    { role: 'ALL', text: 'CR 46 - Hide QA Sign-Off from RMs and PMs.' },
+    { role: 'ALL', text: 'CR 47 - Open admin pages in a new tab.' },
+    { role: 'ALL', text: 'CR 48 - Remove icons from all buttons (incl. floppy disk).' },
+    { role: 'ALL', text: 'CR 49 - Rename "Add to Outlook" to "Add Due Dates." Update to Q3 due dates.' },
+    { role: 'ALL', text: 'CR 50 - Remove "Download My Scores."' },
+    { role: 'ALL', text: 'CR 51 - Reorder tabs: Scorecard, Compare Quarters, Fall Forecast.' },
+  ]},
+
+  { section: '17. Beta: Properties & Users (CR 52-55)', rows: [
+    { role: 'ALL', text: 'CR 52 - Make property counts match across all tabs (106 vs. 111).' },
+    { role: 'ALL', text: 'CR 53 - Auto-hide ineligible properties (new contracts, new developments).' },
+    { role: 'ALL', text: 'CR 54 - Remove Solaire Wilson and Kennect Nashville. Rename Lakeshore Towers to "Sky Glass."' },
+    { role: 'ALL', text: 'CR 55 - Change Dale from Executive Director to Regional Manager.' },
+  ]},
+
+  { section: '18. Beta: Grid Look & Scoring (CR 56-68)', rows: [
+    { role: 'ALL', text: 'CR 56 - Use brand colors: Leadership header 00a9c8, Maintenance header FF6600, failed numbers CC0066.' },
+    { role: 'ALL', text: 'CR 57 - Remove P/F chips and colors. Go back to 0/1 so totals add up.' },
+    { role: 'ALL', text: 'CR 58 - Highlight only fails (grid and explanations).' },
+    { role: 'ALL', text: 'CR 59 - Rename "PPV/P Card" to "PPV."' },
+    { role: 'ALL', text: 'CR 60 - Make headers the same width, centered, with wrapped text.' },
+    { role: 'ALL', text: 'CR 61 - Verify Overall Score formula (PM + Maintenance?). 48 West shows 2 but RM score is 5.' },
+    { role: 'ALL', text: 'CR 62 - Add a description for Overall Score.' },
+    { role: 'ALL', text: 'CR 63 - Fix horizontal scrollbar disappearing when About the Scorecard is expanded. Make it collapsible.' },
+    { role: 'ALL', text: 'CR 64 - Let users hide/rearrange columns. Exports keep the standard order.' },
+    { role: 'ALL', text: 'CR 65 - Highlight the column on hover, like rows.' },
+    { role: 'ALL', text: 'CR 66 - Add a Leadership/Maintenance toggle or expand/collapse.' },
+    { role: 'ALL', text: 'CR 67 - Timecard rule: change "West Coast" to "California only." Note CA properties can submit time cards.' },
+    { role: 'ALL', text: 'CR 68 - PM LEO Compliance: require all 3 months. Show all 3 months in supporting detail. Load Sam\'s September data.' },
+  ]},
+
+  { section: '19. Beta: Filters & Sort (CR 69-73)', rows: [
+    { role: 'ALL', text: 'CR 69 - Fix filters: after "deselect all" you can\'t scroll; multi-select only works if clicked fast; other filters don\'t work.' },
+    { role: 'ALL', text: 'CR 70 - Simplify sort to a single arrow click.' },
+    { role: 'ALL', text: 'CR 71 - Fix the "failing business rule only" filter.' },
+    { role: 'ALL', text: 'CR 72 - "RM Inputs Saved" shows only properties with all 3 inputs done (RM score, surveys, NOI).' },
+    { role: 'ALL', text: 'CR 73 - Add an "RM Inputs Incomplete" button with an email reminder option.' },
+  ]},
+
+  { section: '20. Beta: Prior Quarters (CR 74)', rows: [
+    { role: 'ALL', text: 'CR 74 - Show prior-quarter scores on hover. Also allow columns next to each criterion (e.g., Timecards Q3, Q2, Q1).' },
+  ]},
+
+  { section: '21. Beta: Editing, Overrides & Slideout (CR 75-80)', rows: [
+    { role: 'ALL', text: 'CR 75 - Edit fillable items directly in the grid: RM score (0-5), surveys (0/1), controllable NOI.' },
+    { role: 'ALL', text: 'CR 76 - Replace the slideout with a full expanded view or click-a-cell detail view.' },
+    { role: 'ALL', text: 'CR 77 - Move "Show How This Was Scored" outside the slideout.' },
+    { role: 'ALL', text: 'CR 78 - Lock objective measures for RMs and PMs. Only RVPs can override.' },
+    { role: 'ALL', text: 'CR 79 - Always show override pop-up. Reason required; rename to "Reason for Override." Allow screenshot upload.' },
+    { role: 'ALL', text: 'CR 80 - Auto-uncheck override when a value goes back to its original.' },
+  ]},
+
+  { section: '22. Beta: Notes (CR 81-86)', rows: [
+    { role: 'ALL', text: 'CR 81 - Add notes on each criterion plus a far-right column summarizing all notes.' },
+    { role: 'ALL', text: 'CR 82 - Keep separate timestamped notes with author name (no adding onto one note).' },
+    { role: 'ALL', text: 'CR 83 - EDs and PMs can add notes on their own property. Nobody can delete others\' notes.' },
+    { role: 'ALL', text: 'CR 84 - Make RM and RVP notes visible to EDs and PMs.' },
+    { role: 'ALL', text: 'CR 85 - Add tagging with in-app alert and email to the tagged person.' },
+    { role: 'ALL', text: 'CR 86 - Allow bullet formatting in notes.' },
+  ]},
+
+  { section: '23. Beta: Supporting Detail & Export (CR 87-92)', rows: [
+    { role: 'ALL', text: 'CR 87 - Remove the magnifying glass. Open drill-down by clicking the header or cell.' },
+    { role: 'ALL', text: 'CR 88 - Hide "show data source" and business rule text. Show fails only.' },
+    { role: 'ALL', text: 'CR 89 - Allow multi-select of properties in supporting detail.' },
+    { role: 'ALL', text: 'CR 90 - Add entity ID on IIPP.' },
+    { role: 'ALL', text: 'CR 91 - Carry dashboard highlights into exports. Match download and export layouts.' },
+    { role: 'ALL', text: 'CR 92 - Allow export of all supporting detail to Excel.' },
+  ]},
+
+  { section: '24. Beta: Fall Forecast (CR 93-97)', rows: [
+    { role: 'ALL', text: 'CR 93 - Consistent column names: Complete, Complete Target, Complete vs Target; New, New Target, New vs Target.' },
+    { role: 'ALL', text: 'CR 94 - Left-align the Property header.' },
+    { role: 'ALL', text: 'CR 95 - Change search placeholder to "Search."' },
+    { role: 'ALL', text: 'CR 96 - Rename button to "Excel Export" and remove icon.' },
+    { role: 'ALL', text: 'CR 97 - Output data in Bonus Calculation Form format (ranges TBD).' },
+  ]},
+
+  { section: '25. Beta: Admin Tools (CR 98-99)', rows: [
+    { role: 'ADMIN', text: 'CR 98 - Table Manager freezes on scroll. 3,000-row cap too low for time cards.' },
+    { role: 'ADMIN', text: 'CR 99 - Audit rows: show where to find them. Add who changed it and when.' },
+  ]},
+
+  { section: '26. Beta: Misc / Decisions (CR 100-107)', rows: [
+    { role: 'ALL', text: 'CR 100 - Export to Email is broken (Outlook denied).' },
+    { role: 'ALL', text: 'CR 101 - Can data owners (Sam, Sophia) override? What about RVPs?' },
+    { role: 'ALL', text: 'CR 102 - What does "change pass to fail and auto-override when data is updated" mean?' },
+    { role: 'ALL', text: 'CR 103 - How to handle partial-quarter properties (1.5-month join/disposal)?' },
+    { role: 'ALL', text: 'CR 104 - Should Craig ask Mandy to designate RM testers?' },
+    { role: 'ALL', text: 'CR 105 - Mobile: screen too small to use. Is a mobile app a future goal?' },
+    { role: 'ALL', text: 'CR 106 - Future: data owners answer questions/enter exceptions; AI reads exception emails.' },
+    { role: 'ALL', text: 'CR 107 - Future: quarter-over-quarter coaching suggestions.' },
+  ]},
 ];
 
 const roleClass = { ADMIN: 'qas-b-admin', RM: 'qas-b-rm', PM: 'qas-b-pm', ALL: 'qas-b-all' };

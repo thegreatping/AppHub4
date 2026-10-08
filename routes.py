@@ -108,6 +108,7 @@ def impersonate():
         session["real_user"] = session.get("user")
         session["real_modules"] = session.get("user_modules")
         session["real_is_developer"] = session.get("is_developer", False)
+        session["real_title_group"] = session.get("title_group", "")
 
     session["is_impersonating"] = True
     session["impersonating_user"] = {
@@ -123,6 +124,7 @@ def impersonate():
         "oid": session.get("real_user", {}).get("oid") or session.get("user", {}).get("oid"),
     }
     session["is_developer"] = False
+    session["title_group"] = emp.get("title_group", "")
     session["user_modules"] = [
         {"id": m["id"], "name": m["name"], "access": m["access"]}
         for m in access["modules"]
@@ -176,7 +178,9 @@ def _stop_impersonation():
         session["user"] = session.get("real_user")
         session["user_modules"] = session.get("real_modules")
         session["is_developer"] = session.get("real_is_developer", False)
+        session["title_group"] = session.get("real_title_group", "")
     for k in ("real_user", "real_modules", "real_is_developer",
+              "real_title_group",
               "sc_pm_property_key", "sc_is_rvp", "sc_is_ed",
               "sc_view_as_email", "sc_view_as_pm_property_key",
               "sc_view_as_rvp_email", "sc_view_as_ed_email"):

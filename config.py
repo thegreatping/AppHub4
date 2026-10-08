@@ -15,7 +15,8 @@ class Config:
     AZURE_TENANT_ID = os.environ.get("AZURE_TENANT_ID", "")
     AZURE_AUTHORITY = f"https://login.microsoftonline.com/{os.environ.get('AZURE_TENANT_ID', 'common')}"
     AZURE_REDIRECT_URI = os.environ.get("AZURE_REDIRECT_URI", "http://localhost:5000/auth/callback")
-    AZURE_SCOPE = ["User.Read"]
+    AZURE_SCOPE = ["User.Read", "Mail.Send"]
+    MAIL_CACHE_PATH = os.environ.get("APPHUB_MAIL_CACHE_PATH", "")
 
     # Graph API — FabricPipelineApp service principal (Sites.ReadWrite.All)
     # Used for SharePoint list access (Peak Link and any future SP-backed modules).

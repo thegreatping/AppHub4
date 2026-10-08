@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Leadership Scorecard - Beta Reveal Demo Script</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+:root{
+  --bg:#0b1220; --panel:#101a2e; --panel2:#152140; --border:#223055;
+  --text:#e6edf5; --mute:#92a0bf; --accent:#00d4ff; --good:#4ade80;
+  --bad:#f87171; --warn:#fbbf24; --purple:#c084fc;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:14px/1.55 "Segoe UI",system-ui,sans-serif}
+.container{max-width:1180px;margin:0 auto;padding:28px 36px 100px}
+h1{color:var(--accent);font-size:26px;margin:0 0 4px}
+h2{color:var(--warn);font-size:18px;text-transform:uppercase;letter-spacing:1px;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+h3{color:var(--accent);font-size:15px;margin:18px 0 8px}
+p{margin:6px 0 10px}
+.sub{color:var(--mute);margin-top:2px}
+.hero{background:var(--panel);border-left:4px solid var(--accent);border-radius:8px;padding:18px 22px;margin:18px 0 26px}
+.hero p{margin:8px 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:12px 0}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px 16px}
+.card h4{margin:0 0 6px;color:var(--accent);font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+.card p{font-size:13px;color:var(--mute);margin:4px 0}
+.pill{display:inline-block;padding:2px 9px;border-radius:9px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-right:4px}
+.p-adm{background:rgba(0,212,255,.15);color:var(--accent)}
+.p-all{background:rgba(251,191,36,.15);color:var(--warn)}
+.p-rm{background:rgba(74,222,128,.15);color:var(--good)}
+.p-pm{background:rgba(192,132,252,.15);color:var(--purple)}
+.p-beta{background:rgba(248,113,113,.15);color:var(--bad)}
+
+details.sec{background:var(--panel);border:1px solid var(--border);border-radius:8px;margin:14px 0;overflow:hidden}
+details.sec>summary{list-style:none;cursor:pointer;padding:14px 18px;background:var(--panel2);display:flex;align-items:center;gap:12px;font-weight:600;font-size:15px}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary::before{content:"\25B6";color:var(--accent);transition:transform .15s;display:inline-block;font-size:11px}
+details.sec[open]>summary::before{transform:rotate(90deg)}
+details.sec>summary .count{margin-left:auto;color:var(--mute);font-size:12px;font-weight:400}
+details.sec>summary .count .done{color:var(--good)}
+.sec-body{padding:14px 18px}
+.sec-intro{color:var(--mute);font-size:13px;margin-bottom:12px}
+
+.item{display:flex;align-items:flex-start;gap:10px;padding:9px 10px;border-bottom:1px dashed var(--border);transition:background .1s}
+.item:last-child{border-bottom:none}
+.item:hover{background:rgba(255,255,255,.02)}
+.item input[type=checkbox]{margin-top:4px;width:17px;height:17px;cursor:pointer;accent-color:var(--accent)}
+.item .body{flex:1}
+.item .label{font-weight:600;color:var(--text)}
+.item.done .label{color:var(--mute);text-decoration:line-through}
+.item .say{font-size:12.5px;color:var(--mute);margin-top:3px}
+.item .say b{color:#cad8ee}
+.item .meta{margin-left:10px;display:flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:80px;text-align:right}
+
+.toolbar{position:sticky;top:0;z-index:10;background:var(--bg);padding:10px 0;margin-bottom:14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px}
+.toolbar .progress{flex:1;display:flex;align-items:center;gap:12px}
+.toolbar .bar{flex:1;background:var(--panel2);height:9px;border-radius:5px;overflow:hidden}
+.toolbar .fill{height:100%;background:linear-gradient(90deg,var(--good),var(--accent));width:0%;transition:width .25s}
+.toolbar .pct{font-weight:700;color:var(--accent);min-width:48px;text-align:right}
+.toolbar button{background:var(--panel);color:var(--text);border:1px solid var(--border);padding:7px 12px;border-radius:5px;cursor:pointer;font-size:12.5px;font-weight:600}
+.toolbar button:hover{background:var(--panel2)}
+.toolbar button.danger{color:var(--bad);border-color:rgba(248,113,113,.4)}
+
+.note{background:rgba(0,212,255,.07);border-left:3px solid var(--accent);padding:8px 12px;border-radius:4px;font-size:12.5px;margin:10px 0}
+.warn{background:rgba(251,191,36,.07);border-left:3px solid var(--warn);padding:8px 12px;border-radius:4px;font-size:12.5px;margin:10px 0}
+
+code{background:var(--panel2);padding:1px 6px;border-radius:3px;font-size:12px;color:#cad8ee}
+.kbd{display:inline-block;background:var(--panel2);border:1px solid var(--border);border-bottom-width:2px;border-radius:3px;padding:1px 6px;font-family:ui-monospace,monospace;font-size:11px;color:#cad8ee}
+hr{border:none;border-top:1px solid var(--border);margin:30px 0}
+a{color:var(--accent)}
+.foot{text-align:center;color:var(--mute);font-size:11px;margin-top:36px}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1><i class="fa-solid fa-chart-line" style="margin-right:8px"></i>Leadership Scorecard - Beta Reveal Demo Script</h1>
+<div class="sub">Walk-through checklist for the beta reveal. Check items off as you demo each one. Progress is saved in your browser.</div>
+
+<!-- =================== OVERVIEW =================== -->
+<div class="hero">
+  <h3 style="margin-top:0">What this app does</h3>
+  <p>The Leadership Scorecard is a quarterly performance snapshot for every active property. Each property gets a <b>Leadership</b> half (what the Property Manager owns) and a <b>Maintenance</b> half (what the Maintenance Supervisor owns). Measures are scored Pass/Fail against stakeholder-approved thresholds; the RM then adds a subjective 0-5 <b>RM Score</b>. The sum of all measures plus RM Score = the property's <b>Overall Score</b>, which feeds the quarterly bonus process.</p>
+
+  <h3>Where the data comes from</h3>
+  <p>Fourteen measures across six source systems: Entrata (timecard, work orders, P-Card, LEO compliance, training), Reputation.com (REP), RM-entered quarterly inspections (CURB/PUBLICAREAS/MAINT/LOGS), and RM manual entry (RMSCORE/SURVEYS/NOI). A nightly Fabric notebook (<code>NB_LEADERSHIP_SCORECARD_UPDATE</code>) pulls each source, applies the business rule registered in <code>control.SCORECARD_MEASURE_RULES</code>, and writes to <code>dbo.SCORECARD_CORE</code>. If a source has zero rows for the current quarter, the measure shows <b>--</b> for every property (no stale defaults).</p>
+
+  <h3>Who uses it, and how</h3>
+  <p><span class="pill p-rm">RM</span> sees their own portfolio read-write (can enter RM Score, add notes, request overrides). <span class="pill p-pm">PM</span> sees their property read-only. <span class="pill p-adm">Admin</span> sees every reportable property, can impersonate roles, run the pipeline, edit tables, and sign off. <b>RVPs</b> see every property in their region.</p>
+
+  <h3>What the beta covers</h3>
+  <p>The Leadership Scorecard module is the only beta module in this release. Every other AppHub app is still invite-only until GA. The Scorecard is open to all logged-in users, scoped by role.</p>
+</div>
+
+<!-- =================== TOOLBAR =================== -->
+<div class="toolbar">
+  <div class="progress">
+    <div class="bar"><div class="fill" id="barFill"></div></div>
+    <div class="pct" id="pctLbl">0%</div>
+  </div>
+  <button onclick="expandAll(true)">Expand all</button>
+  <button onclick="expandAll(false)">Collapse all</button>
+  <button class="danger" onclick="if(confirm('Clear every check? Start demo over.'))resetAll()">Reset</button>
+</div>
+
+<!-- =================== PRE-DEMO =================== -->
+<details class="sec" open>
+  <summary><i class="fa-solid fa-play"></i> 0 - Pre-demo setup<span class="count"></span></summary>
+  <div class="sec-body">
+    <div class="sec-intro">Before the audience joins, make sure the demo environment is primed.</div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Open Chrome, sign in to <code>https://apphub40-g2ceaha4h4bcgjhc.centralus-01.azurewebsites.net</code></div>
+      <div class="say">Say: <b>"Everything you'll see today runs on Azure, authenticated via your PeakMade identity."</b></div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Confirm the quarter chip shows <b>Q3 2026</b></div>
+      <div class="say">The top-of-page quarter badge tells the audience we're on live production data for the current quarter.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Open a second tab to <code>/scorecard/admin/qa</code> as a parked tab</div>
+      <div class="say">Lets you flip to QA Sign-Off instantly when you reach that part of the walk-through.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Close any "Dangerous site" bypass prompts before sharing screen</div>
+      <div class="say">Chrome Safe Browsing may flag the azurewebsites.net URL once. Click through <b>Details &rarr; visit this unsafe site</b> on each tab you'll demo.</div>
+    </div></div>
+  </div>
+</details>
+
+<!-- =================== DASHBOARD =================== -->
+<details class="sec">
+  <summary><i class="fa-solid fa-house"></i> 1 - AppHub Dashboard & Favorites<span class="count"></span></summary>
+  <div class="sec-body">
+    <div class="sec-intro">Starting point for every user. Shows the single Favorites system and the app launcher grid.</div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Left-nav Favorites section (<span class="pill p-all">ALL</span>)</div>
+      <div class="say">Pinned shortcut to every app the user has starred. <b>Updates live</b> when a favorite is toggled anywhere.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Top-of-dashboard Favorites row (<span class="pill p-all">ALL</span>)</div>
+      <div class="say">Big tiles for faster desktop launching. Backed by the same database table as the nav - toggle in one, update in both.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Heart icon on any All-Apps card toggles favorite state</div>
+      <div class="say">Saves to <code>USER_MODULE_FAVORITES</code>, keyed on the user's email. Impersonated identity gets their own list.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Click <b>Leadership Scorecard</b> tile to enter the beta app</div>
+    </div></div>
+  </div>
+</details>
+
+<!-- =================== SCORECARD MAIN TAB =================== -->
+<details class="sec">
+  <summary><i class="fa-solid fa-table"></i> 2 - Scorecard tab (the main grid)<span class="count"></span></summary>
+  <div class="sec-body">
+    <div class="sec-intro">Core screen. One row per property, measures grouped into Leadership vs Maintenance, Overall Score at the far left.</div>
+
+    <h3>Page header controls</h3>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Quarter chip + <b>Quarter Picker</b> dropdown (<span class="pill p-all">ALL</span>)</div>
+      <div class="say">Default = current quarter. Dropdown lets any user jump to prior quarters that already exist in <code>SCORECARD_CORE</code>. Hidden until there are 2+ quarters to choose from.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>View as...</b> picker (<span class="pill p-adm">ADMIN</span>)</div>
+      <div class="say">Lets an admin see the Scorecard exactly like an RM, PM, or RVP would see it, without changing their actual session identity. Great for triage and training.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>Criteria & Guides</b> button (<span class="pill p-all">ALL</span>)</div>
+      <div class="say">Pop-out reference drawer. Every measure, every threshold, every rule in one place - the single source of truth for "why did I fail?" questions.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>Help</b> circle-? button (<span class="pill p-all">ALL</span>)</div>
+      <div class="say">Role-aware user guide. Content adapts: Admin sees Admin content, RM sees RM content, PM sees PM content.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>QA Sign-Off</b> button (<span class="pill p-all">ALL</span>)</div>
+      <div class="say">Opens the beta QA checklist - each tester has their own private record, admins see everyone's progress.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>All Testers</b> button (<span class="pill p-adm">ADMIN</span>)</div>
+      <div class="say">Admin aggregate view of QA progress across every tester, with pass/fail breakdowns and expandable fail-row details.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>Table Manager</b> button (<span class="pill p-adm">ADMIN</span>)</div>
+      <div class="say">Browse any table feeding or produced by the pipeline. Edit values with full audit trail.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>Notebook Runs</b> button (<span class="pill p-adm">ADMIN</span>)</div>
+      <div class="say">Recent pipeline executions, per-step duration and row counts. Click any run for drill-down.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>Data Flow</b> + <b>Diagram</b> buttons (<span class="pill p-adm">ADMIN</span>)</div>
+      <div class="say">Interactive architecture diagrams - helpful for new engineers and auditors.</div>
+    </div></div>
+
+    <h3>Ribbon stats</h3>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Communities count</div>
+      <div class="say">How many properties the current view includes. Admin: 110. RM: just their portfolio.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>RM Inputs Saved</b> stat (clickable filter)</div>
+      <div class="say">Clicking filters the grid to just the properties missing RM input - a quick triage view for the end-of-quarter deadline.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>Comments</b> stat (clickable filter)</div>
+      <div class="say">Click to narrow down to only properties where someone left a note.</div>
+    </div></div>
+
+    <h3>Grid behavior</h3>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Column header click = sort</div>
+      <div class="say">Click once to sort ascending, again to reverse. Overall Score, RM Score, and every measure all sortable.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Filter row under every header</div>
+      <div class="say">Per-column text/dropdown filter. For P/F measures, dropdown offers P/F/-- so you can see "every failing TC property" in two clicks.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Search box (free-text filter)</div>
+      <div class="say">Full-text search across property name, entity #, RM name, PM name.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">P/F chips, numeric scores, <b>--</b> dashes</div>
+      <div class="say">Green P = pass, red F = fail, <b>--</b> = source data not delivered for this quarter yet (new behavior: no silent defaulting).</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Orange-bordered cells = manual override</div>
+      <div class="say">Hover any orange cell to see who overrode it, when, and the reason. Full audit trail.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>Download My Scores</b> export button</div>
+      <div class="say">XLS export of every row currently visible with every measure column. The export respects whatever filters/sort you've applied.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>Full Export</b> button (<span class="pill p-adm">ADMIN</span>)</div>
+      <div class="say">Unfiltered admin-only XLS of the entire SCORECARD_CORE, for bonus-committee prep.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Click any row &rarr; opens the Property Slideout</div>
+      <div class="say">Transition to the next section of the demo.</div>
+    </div></div>
+  </div>
+</details>
+
+<!-- =================== SLIDEOUT =================== -->
+<details class="sec">
+  <summary><i class="fa-solid fa-window-restore"></i> 3 - Property Slideout<span class="count"></span></summary>
+  <div class="sec-body">
+    <div class="sec-intro">Opens from any row click. The deep-dive panel where RMs enter their input and admins override.</div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Property header: name, entity #, RM, PM, address</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">PRERM chip (Leadership Total)</div>
+      <div class="say">Shows the sum of Leadership measures BEFORE adding the RM's subjective score. Mirrors the production DAX convention.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Per-measure rows: value, threshold, Pass/Fail, override indicator</div>
+      <div class="say">Each row explains WHY the property passed or failed - the raw metric, the rule, and whether anyone overrode it.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>RM Score</b> 0-5 input (<span class="pill p-rm">RM</span>, <span class="pill p-adm">ADMIN</span>)</div>
+      <div class="say">The RM's subjective rating. Saves instantly. Audit trail records who entered what and when.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>Notes / Comments</b> text area</div>
+      <div class="say">Narrative context attached to the property for this quarter. Visible to RVP and admins.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>Override Measure</b> UI (<span class="pill p-adm">ADMIN</span>)</div>
+      <div class="say">Admin-only. Lets you set any measure to any value for this property+quarter with a required reason. Writes to SCORECARD_TABLE_MANAGER_AUDIT.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Close slideout (X / click outside)</div>
+    </div></div>
+  </div>
+</details>
+
+<!-- =================== FALL FORECAST =================== -->
+<details class="sec">
+  <summary><i class="fa-solid fa-chart-area"></i> 4 - Fall Forecast tab<span class="count"></span></summary>
+  <div class="sec-body">
+    <div class="sec-intro">Secondary tab showing forecast tier assignments and budget targets.</div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Property forecast tier (Tier 1/2/3/4) per property</div>
+      <div class="say">Tier is derived from occupancy ramp and lease velocity. Drives which bonus multiplier applies.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Budget vs actual + variance %</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Filterable by property name / tier / RM</div>
+    </div></div>
+  </div>
+</details>
+
+<!-- =================== COMPARE QUARTERS =================== -->
+<details class="sec">
+  <summary><i class="fa-solid fa-arrows-left-right"></i> 5 - Compare Quarters tab<span class="count"></span></summary>
+  <div class="sec-body">
+    <div class="sec-intro">Side-by-side delta view, built for RVPs reviewing trajectory and for bonus-committee prep.</div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Two quarter pickers (Quarter A, Quarter B)</div>
+      <div class="say">Defaults: Quarter A = immediately prior quarter, Quarter B = current quarter. Any historical quarter in SCORECARD_CORE is pickable.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Properties count badge</div>
+      <div class="say">Reflects whatever role scope the user has (RM = portfolio, PM = property, Admin = all).</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Per-property delta row (B minus A, color-coded)</div>
+      <div class="say">Positive deltas green, negative deltas red. Click any row for the slideout diff.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Rollups: PRERM, Leadership Total, Maintenance Total, Overall</div>
+    </div></div>
+  </div>
+</details>
+
+<!-- =================== VIEW AS / IMPERSONATE =================== -->
+<details class="sec">
+  <summary><i class="fa-solid fa-user-shield"></i> 6 - View As vs Impersonate (admin only)<span class="count"></span></summary>
+  <div class="sec-body">
+    <div class="sec-intro">Two different simulation tools. Explain the difference so testers don't confuse them.</div>
+
+    <div class="warn"><b>View As</b> changes WHAT YOU SEE in the Scorecard only (read-only sim). <b>Impersonate</b> fully swaps your session identity across the entire AppHub platform (edits log as that person).</div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Scorecard <b>View as...</b> picker &rarr; select an RM / PM / RVP</div>
+      <div class="say">Grid instantly rescopes. Yellow banner at top shows who you're viewing as. &times; Exit returns to admin view.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Shell nav top-right: <b>Dev Mode</b> checkbox</div>
+      <div class="say">Flipping Dev Mode on reveals the Impersonate panel. Required gate to prevent accidental identity swaps.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>Impersonate</b> search + Go button</div>
+      <div class="say">Type an employee name, pick, hit Go. Your entire session swaps. Great for QA'ing another user's experience.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">"Viewing as: &lt;Name&gt;" chip with &times; to stop</div>
+      <div class="say">Visual safety net - obvious indicator you're not yourself. Click &times; to restore your real session.</div>
+    </div></div>
+  </div>
+</details>
+
+<!-- =================== QA SIGN-OFF =================== -->
+<details class="sec">
+  <summary><i class="fa-solid fa-clipboard-check"></i> 7 - QA Sign-Off page<span class="count"></span></summary>
+  <div class="sec-body">
+    <div class="sec-intro">Each tester's private checklist (75 scenarios) - how we collect beta feedback.</div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Hero banner: "This is your private QA checklist"</div>
+      <div class="say">Explains that every tester (including impersonated identities) has their own record.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Meta fields: Tester Name, Date, Environment, Browser, Test Role</div>
+      <div class="say">Test Role is auto-populated from the effective user's actual access level (View-As beats real role beats admin fallback).</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Progress bar + checked / pass / fail / blocked tallies</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Per-row: checkbox, Pass/Fail/Blocked dropdown, Notes, Last Touched timestamp</div>
+      <div class="say">Changes save instantly to the database. Last Touched records the identity so impersonation is visible in audit.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Sign-Off panel: Tester signature, Approver signature, GO / NO-GO / CONDITIONAL decision, blockers</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>Reset My Rows</b> button</div>
+      <div class="say">Wipes just this tester's row state (meta kept). Good for restarting a clean QA pass after a code change.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>Open in new tab</b> / <b>Back to Scorecard</b> links</div>
+      <div class="say">Pop out mode strips the AppHub shell chrome so testers can size the checklist alongside the live Scorecard.</div>
+    </div></div>
+  </div>
+</details>
+
+<!-- =================== ALL TESTERS DASHBOARD =================== -->
+<details class="sec">
+  <summary><i class="fa-solid fa-users"></i> 8 - All Testers Dashboard (admin)<span class="count"></span></summary>
+  <div class="sec-body">
+    <div class="sec-intro">Aggregated QA progress across every tester - triage view.</div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Summary tiles: testers / finished / with any fail / GO sign-offs</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Per-tester row: name/email, progress bar, PASS/FAIL/BLOCK/PEND pills</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Env / Browser / Role / Decision / Blockers columns</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">"Show N failing row(s)" expander per tester</div>
+      <div class="say">Expands to show each failing scenario key + the tester's notes - lets you triage specific blockers without opening each tester's checklist.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Per-tester <b>Reset</b> + <b>Wipe ALL Testers</b> buttons</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Refresh button (manual re-pull)</div>
+    </div></div>
+  </div>
+</details>
+
+<!-- =================== TABLE MANAGER =================== -->
+<details class="sec">
+  <summary><i class="fa-solid fa-database"></i> 9 - Table Manager (admin)<span class="count"></span></summary>
+  <div class="sec-body">
+    <div class="sec-intro">Direct read/edit access to every table in the pipeline.</div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Left-nav list of every registered table</div>
+      <div class="say">Grouped by source vs output. Each entry shows row count and last-updated timestamp.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Click a table &rarr; browse top 3000 rows with filters</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Per-column filter dropdowns (distinct values pre-loaded)</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Row-level edit, bulk edit, insert, delete</div>
+      <div class="say">Every edit appends to <code>SCORECARD_TABLE_MANAGER_AUDIT</code> - who, when, before/after.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Per-row <b>Audit</b> history link</div>
+    </div></div>
+  </div>
+</details>
+
+<!-- =================== NOTEBOOK RUNS =================== -->
+<details class="sec">
+  <summary><i class="fa-solid fa-play-circle"></i> 10 - Notebook Runs (admin)<span class="count"></span></summary>
+  <div class="sec-body">
+    <div class="sec-intro">Pipeline health dashboard. Confirms the nightly refresh ran and shows per-step breakdown.</div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Last 50 runs list with status + duration</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Click a run &rarr; 18 per-step rows (import, process, export)</div>
+      <div class="say">Shows which step failed, how many rows each stage processed, exact timing. First place to look if the grid data looks stale.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label"><b>Trigger Run Now</b> button</div>
+      <div class="say">Admin ad-hoc re-run button. Hits the Fabric REST API, polls, returns status when done.</div>
+    </div></div>
+  </div>
+</details>
+
+<!-- =================== DATA FLOW / DIAGRAM =================== -->
+<details class="sec">
+  <summary><i class="fa-solid fa-diagram-project"></i> 11 - Data Flow + Table Manager Diagrams (admin)<span class="count"></span></summary>
+  <div class="sec-body">
+    <div class="sec-intro">Standalone HTML diagrams opened in a new tab - no AppHub chrome, just the visuals.</div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Data Flow diagram: Entrata &rarr; Fabric notebook &rarr; SCORECARD_CORE</div>
+      <div class="say">End-to-end pipeline visualization. Great artifact for data governance reviews.</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Table Manager diagram: table relationships, FK edges, cardinality</div>
+    </div></div>
+  </div>
+</details>
+
+<!-- =================== CLOSE =================== -->
+<details class="sec">
+  <summary><i class="fa-solid fa-flag-checkered"></i> 12 - Closing & next steps<span class="count"></span></summary>
+  <div class="sec-body">
+    <div class="sec-intro">Wrap-up talking points.</div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Explain how to submit feedback: /scorecard/admin/qa</div>
+      <div class="say">Say: <b>"Every tester gets their own QA checklist. Please go through the 75 scenarios, mark pass/fail/blocked, and leave notes on anything that confused you."</b></div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Promise the GO/NO-GO review window</div>
+      <div class="say">E.g. "We'll triage all FAIL rows this week; next Monday we meet on go/no-go for full launch."</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Point to the Help button + Criteria & Guides for self-service answers</div>
+    </div></div>
+
+    <div class="item"><input type="checkbox"><div class="body">
+      <div class="label">Thank testers; take questions</div>
+    </div></div>
+  </div>
+</details>
+
+<div class="foot">Progress saved locally in your browser. Reset button clears everything.</div>
+</div>
+
+<script>
+const KEY = 'scorecardBetaReveal_v1';
+function loadState(){
+  let saved={};
+  try{saved = JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){}
+  document.querySelectorAll('.item').forEach((it,idx)=>{
+    const cb = it.querySelector('input[type=checkbox]');
+    cb.dataset.idx = idx;
+    if (saved[idx]) { cb.checked = true; it.classList.add('done'); }
+    cb.addEventListener('change', ()=>{
+      it.classList.toggle('done', cb.checked);
+      saveState();
+      updateCounts();
+    });
+  });
+  updateCounts();
+}
+function saveState(){
+  const obj={};
+  document.querySelectorAll('.item input[type=checkbox]').forEach((cb,idx)=>{
+    if(cb.checked) obj[idx]=1;
+  });
+  localStorage.setItem(KEY, JSON.stringify(obj));
+}
+function updateCounts(){
+  let totalAll=0, doneAll=0;
+  document.querySelectorAll('details.sec').forEach(sec=>{
+    const items = sec.querySelectorAll('.item');
+    let done=0;
+    items.forEach(it=>{
+      if (it.querySelector('input[type=checkbox]').checked) done++;
+    });
+    totalAll += items.length;
+    doneAll += done;
+    const cnt = sec.querySelector('summary .count');
+    if (cnt) cnt.innerHTML = `<span class="done">${done}</span> / ${items.length}`;
+  });
+  const pct = totalAll ? Math.round(100*doneAll/totalAll) : 0;
+  document.getElementById('barFill').style.width = pct + '%';
+  document.getElementById('pctLbl').textContent = pct + '%';
+}
+function expandAll(open){
+  document.querySelectorAll('details.sec').forEach(d=> d.open = open);
+}
+function resetAll(){
+  localStorage.removeItem(KEY);
+  document.querySelectorAll('.item input[type=checkbox]').forEach(cb=>{cb.checked=false; cb.closest('.item').classList.remove('done')});
+  updateCounts();
+}
+loadState();
+</script>
+</body>
+</html>

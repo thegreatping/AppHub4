@@ -6,6 +6,7 @@ os.environ.setdefault("FLASK_SECRET_KEY", "dev-local-testing-key")
 
 from app import app
 from flask import session
+app.config["LOCAL_AUTH_BYPASS"] = True
 
 
 @app.before_request

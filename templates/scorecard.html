@@ -553,8 +553,7 @@
                 Show prior quarter totals
             </label>
             {% if not is_pm %}
-            <button type="button" class="sc-export-btn" onclick="showCalPrompt()">&#128197; Add to Outlook</button>
-            <button type="button" class="sc-export-btn" onclick="exportSubjectiveScores()">&#128190; Download My Scores</button>
+            <button type="button" class="sc-export-btn" onclick="showCalPrompt()">&#128197; Add Due Dates</button>
             {% endif %}
             <button type="button" class="sc-export-btn" id="scFullExportBtn" style="display:none;" onclick="exportFullSummaryXls()" title="Excel with failure highlights">&#128190; Full Summary (Excel)</button>
             <button type="button" class="sc-export-btn" id="scFullExportCsvBtn" style="display:none;" onclick="exportFullSummary()" title="Plain CSV (no highlights)">CSV</button>
@@ -582,7 +581,7 @@
                 <li>Rows are your properties; columns pair actual (CY) vs. target with a variance column showing how far ahead or behind you are.</li>
                 <li>Positive variance = ahead of target (good). Negative = behind (needs attention).</li>
                 <li>Search box narrows to a specific property, entity, or RM.</li>
-                <li>The <strong>Bonus Calc Form Export</strong> button generates the standardized workbook for finance sign-off.</li>
+                <li>The <strong>Excel Export</strong> button generates the standardized workbook.</li>
             </ul>
         </div>
     </details>
@@ -593,9 +592,9 @@
         </div>
         <div class="sc-toolbar">
             {% if is_admin %}
-            <input type="text" class="sc-search" id="scFFSearch" placeholder="Search property, entity, or RM..." oninput="renderFallForecast()">
+            <input type="text" class="sc-search" id="scFFSearch" placeholder="Search" oninput="renderFallForecast()">
             {% endif %}
-            <button type="button" class="sc-export-btn" onclick="exportBonusCalcForm()">&#128190; Export to Excel</button>
+            <button type="button" class="sc-export-btn" onclick="exportBonusCalcForm()">Excel Export</button>
         </div>
     </div>
     <div class="sc-table-wrap">
@@ -759,9 +758,9 @@
         </div>
         <div class="sc-ref-tabs" id="scReferenceTabs">
             <button type="button" class="sc-ref-tab" id="scRefTab_help" onclick="showScReferenceTab('help')">Help &amp; How-To</button>
-            <button type="button" class="sc-ref-tab" id="scRefTab_criteria" onclick="showScReferenceTab('criteria')">Criteria Breakdown</button>
-            <button type="button" class="sc-ref-tab" id="scRefTab_bonus" onclick="showScReferenceTab('bonus')">Bonus Calc Form Guide</button>
-            <button type="button" class="sc-ref-tab" id="scRefTab_paycom" onclick="showScReferenceTab('paycom')">Paycom Guide</button>
+            <button type="button" class="sc-ref-tab" id="scRefTab_criteria" onclick="showScReferenceTab('criteria')">Criteria</button>
+            <button type="button" class="sc-ref-tab" id="scRefTab_bonus" onclick="showScReferenceTab('bonus')">Bonus Calculation Form</button>
+            <button type="button" class="sc-ref-tab" id="scRefTab_paycom" onclick="showScReferenceTab('paycom')">Entering Bonuses in Paycom</button>
             <button type="button" class="sc-ref-tab" id="scRefTab_feedback" onclick="showScReferenceTab('feedback')">Feedback</button>
         </div>
         <div class="sc-ref-tabs" id="scHelpTabs" style="display:none;">
@@ -1245,7 +1244,7 @@ const SC_HELP_CONTENT = {
 
         <div class="sc-crit-item">
           <div class="sc-crit-name">Export to Excel</div>
-          <div class="sc-crit-body"><p>The button in the top-right generates the standardized Bonus Calc Form spreadsheet for finance sign-off. All the columns are already in the exact order finance expects.</p></div>
+          <div class="sc-crit-body"><p>The button in the top-right generates the standardized Excel workbook. All the columns are already in the exact order expected.</p></div>
         </div>
     `,
 
@@ -1300,7 +1299,7 @@ const SC_HELP_CONTENT = {
               <li><b>Enter your RM Score (0-5) for each PM you manage.</b> This is a subjective read on their leadership this quarter. It goes into the Overall Score.</li>
               <li><b>Confirm Surveys and NOI (Yes/No) for each property.</b> These are the two other subjective inputs on the scorecard.</li>
               <li><b>Note down anything that needs context.</b> Free-text field per property; supports the bonus conversation.</li>
-              ${window.SC_IS_RVP ? '<li><b>Override anything that isn\'t right</b>, and add a short reason so anyone reading later understands why.</li>' : ''}
+              ${window.SC_IS_RVP ? '<li><b>Correct a measure when the source data is wrong</b>, and add a short reason so anyone reading later understands why.</li>' : ''}
             </ol>
           </div>
         </div>
@@ -1419,7 +1418,7 @@ const LEADERSHIP_COLS = [
     { key: 'RMSCORE', label: 'RM Score', type: 'num' },
     { key: 'TC', label: 'Timecard', type: 'bool' },
     { key: 'TR', label: 'Training', type: 'bool' },
-    { key: 'PCARD', label: 'PPV / PCard', type: 'bool' },
+    { key: 'PCARD', label: 'PPV', type: 'bool' },
     { key: 'RA', label: 'Risk Assmt', type: 'bool' },
     { key: 'IIPP', label: 'IIPP', type: 'bool' },
     { key: 'LFA', label: 'Lease File Audit', type: 'bool' },

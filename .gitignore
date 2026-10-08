@@ -37,3 +37,12 @@ msapp_extract/
 
 # Fabric REST API token (client_credentials); mirror of .fabric_token.json
 .fabric_api_token.json
+
+# Scratch / transient — agent temp scripts, local backups, logs, caches, archives
+_tmp_*
+*.bak
+*.patch
+_backup_*.sql
+logs/
+_pa_cache/
+*.zip

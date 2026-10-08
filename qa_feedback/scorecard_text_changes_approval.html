@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leadership Scorecard - Text Change Approvals (Batch 1)</title>
+<style>
+:root{color-scheme:dark;--bg:#0d1525;--panel:#152139;--raised:#1b2a45;--line:#2b3b5a;--text:#edf3fb;--muted:#9cabc2;--cyan:#51d6d2;--red:#ff7777;--amber:#ffc857;--green:#6ce0a1}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 "Segoe UI",Arial,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:26px 26px 110px}
+h1{margin:0;color:var(--cyan);font-size:23px}
+.sub{color:var(--muted);margin:5px 0 18px}
+.intro{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--cyan);border-radius:6px;padding:14px 18px;margin-bottom:20px;color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:12px 0}
+.card.off{opacity:.5}
+.card-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.card-head input{width:18px;height:18px;accent-color:var(--cyan);cursor:pointer;flex:0 0 auto}
+.pill{font-size:11px;font-weight:700;color:var(--cyan);background:#0f3233;border-radius:9px;padding:2px 9px;white-space:nowrap}
+.loc{font-size:11.5px;color:var(--muted)}
+.title{font-weight:700;font-size:14px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:720px){.cols{grid-template-columns:1fr}}
+.box{border-radius:6px;padding:9px 11px;font-size:12.5px;white-space:pre-wrap;word-break:break-word}
+.box.cur{background:#2a1620;border:1px solid #5a2b38}
+.box.cur .lab{color:var(--red)}
+.box.new{background:#13261b;border:1px solid #2b5a3c}
+.box.new .lab{color:var(--green)}
+.lab{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;font-weight:700}
+code{background:#0b1322;border:1px solid var(--line);border-radius:3px;padding:1px 4px;font-size:11.5px}
+.bar{position:fixed;left:0;right:0;bottom:0;background:#0b1322;border-top:1px solid var(--line);padding:12px 26px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.bar button{background:var(--cyan);border:none;color:#04222c;border-radius:5px;padding:9px 15px;font-weight:700;cursor:pointer}
+.bar button.sec{background:var(--panel);color:var(--text);border:1px solid var(--line)}
+.bar strong{color:var(--cyan)}
+#out{flex:1;min-width:240px;background:#0b1322;border:1px solid var(--line);color:var(--text);border-radius:5px;padding:7px 9px;font:12px Consolas,monospace}
+.defer{margin-top:26px;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:6px;padding:14px 18px}
+.defer h2{font-size:14px;color:var(--amber);margin:0 0 8px;text-transform:uppercase;letter-spacing:.6px}
+.defer li{color:var(--muted);margin:4px 0}
+</style>
+</head>
+<body><div class="wrap">
+<h1>Text Change Approvals &mdash; Batch 1</h1>
+<div class="sub">Leadership Scorecard beta checklist &middot; pinpointed wording/label changes &middot; generated 2026-10-08</div>
+<div class="intro">Every change below is <b>checked (approved) by default</b>. Uncheck anything you want to skip, then click <b>Copy approved list</b> and paste it back to Craig &mdash; or just say &ldquo;apply all.&rdquo; Nothing is applied until you confirm. Current text is shown exactly as it appears today; proposed text is exactly what it will become.</div>
+
+<div id="cards"></div>
+
+<div class="defer">
+  <h2>Deferred to the next pass (subjective copy rewrites)</h2>
+  <ul>
+    <li><b>Item #32</b> &mdash; Turn long paragraphs into bullets (data sources etc.).</li>
+    <li><b>Item #35</b> &mdash; Make the FAQ shorter.</li>
+    <li><b>Item #56</b> &mdash; Add a description for Overall Score.</li>
+    <li><b>Item #68</b> &mdash; Fall Forecast consistent column names (Complete / Complete Target / Complete vs Target&hellip;).</li>
+  </ul>
+  <div style="color:var(--muted);font-size:12.5px">These need a judgment call on tone/length/layout, so I&rsquo;ll bring concrete drafts for these separately rather than guess here.</div>
+</div>
+
+<div class="bar">
+  <button onclick="copyApproved()">Copy approved list</button>
+  <button class="sec" onclick="setAll(true)">Check all</button>
+  <button class="sec" onclick="setAll(false)">Uncheck all</button>
+  <strong id="count"></strong>
+  <input id="out" readonly placeholder="Approved Item #s will appear here">
+</div>
+
+<script>
+const CHANGES = [
+  {id:'38a', item:'#38', loc:'scorecard.html &middot; Criteria &amp; Guides sub-tab',
+   title:'Rename reference sub-tab', cur:'Criteria Breakdown', neu:'Criteria'},
+  {id:'38b', item:'#38', loc:'scorecard.html &middot; Criteria &amp; Guides sub-tab',
+   title:'Rename reference sub-tab (drop "Guide")', cur:'Bonus Calc Form Guide', neu:'Bonus Calculation Form'},
+  {id:'38c', item:'#38', loc:'scorecard.html &middot; Criteria &amp; Guides sub-tab',
+   title:'Rename reference sub-tab (drop "Guide")', cur:'Paycom Guide', neu:'Entering Bonuses in Paycom'},
+  {id:'46', item:'#46', loc:'scorecard.html &middot; Scorecard toolbar button',
+   title:'Rename "Add to Outlook" button', cur:'\uD83D\uDCC5 Add to Outlook', neu:'\uD83D\uDCC5 Add Due Dates',
+   note:'The separate "update to Q3 due dates" (data) is tracked under the same item and handled separately.'},
+  {id:'47', item:'#47', loc:'scorecard.html &middot; Scorecard toolbar button',
+   title:'Remove "Download My Scores" button', cur:'\uD83D\uDCBE Download My Scores  (button)', neu:'(button removed entirely)'},
+  {id:'53', item:'#53', loc:'scorecard.html &middot; measure column label',
+   title:'Rename "PPV / PCard" column', cur:'PPV / PCard', neu:'PPV'},
+  {id:'59', item:'#59', loc:'scorecard.py L52 &middot; Timecard measure blurb',
+   title:'"West Coast" \u2192 "California" in the Timecard rule blurb',
+   cur:'\u2026(+10h10m buffer, +2h more for West Coast properties). Pass if ~100% approved\u2026',
+   neu:'\u2026(+10h10m buffer, +2h more for California properties). Pass if ~100% approved\u2026'},
+  {id:'69', item:'#69', loc:'scorecard.html &middot; Fall Forecast search box',
+   title:'Simplify Fall Forecast search placeholder', cur:'Search property, entity, or RM...', neu:'Search'},
+  {id:'70', item:'#70', loc:'scorecard.html &middot; Fall Forecast export button',
+   title:'Rename "Export to Excel" + remove icon', cur:'\uD83D\uDCBE Export to Excel', neu:'Excel Export'},
+  {id:'33a', item:'#33', loc:'scorecard.html &middot; About Fall Forecast blurb',
+   title:'Drop "finance sign-off / bonus calc form" wording',
+   cur:'The Bonus Calc Form Export button generates the standardized workbook for finance sign-off.',
+   neu:'The Excel Export button generates the standardized workbook.'},
+  {id:'33b', item:'#33', loc:'scorecard.html &middot; Criteria > Export to Excel description',
+   title:'Drop "finance sign-off / bonus calc form" wording',
+   cur:'The button in the top-right generates the standardized Bonus Calc Form spreadsheet for finance sign-off. All the columns are already in the exact order finance expects.',
+   neu:'The button in the top-right generates the standardized Excel workbook. All the columns are already in the exact order expected.'},
+  {id:'34', item:'#34', loc:'scorecard.html &middot; RVP quarterly to-do list',
+   title:'Remove "override anything that isn\u2019t right" wording',
+   cur:'Override anything that isn\u2019t right, and add a short reason so anyone reading later understands why.',
+   neu:'Correct a measure when the source data is wrong, and add a short reason so anyone reading later understands why.',
+   note:'The related "fix text overlap in RM view" is a layout fix, tracked separately under the same item.'},
+];
+
+function esc(s){const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;}
+
+function render(){
+  document.getElementById('cards').innerHTML = CHANGES.map(c=>`
+    <div class="card" id="card_${c.id}">
+      <div class="card-head">
+        <input type="checkbox" id="chk_${c.id}" checked onchange="sync()">
+        <span class="pill">Item ${c.item} &middot; ${c.id}</span>
+        <span class="title">${c.title}</span>
+      </div>
+      <div class="loc" style="margin-bottom:8px">${c.loc}</div>
+      <div class="cols">
+        <div class="box cur"><span class="lab">Current</span>${esc(c.cur)}</div>
+        <div class="box new"><span class="lab">Proposed</span>${esc(c.neu)}</div>
+      </div>
+      ${c.note?`<div class="loc" style="margin-top:8px;color:var(--amber)">Note: ${c.note}</div>`:''}
+    </div>`).join('');
+  sync();
+}
+function sync(){
+  const ap=[];
+  CHANGES.forEach(c=>{
+    const on=document.getElementById('chk_'+c.id).checked;
+    document.getElementById('card_'+c.id).classList.toggle('off',!on);
+    if(on)ap.push(c.id);
+  });
+  document.getElementById('count').textContent=`${ap.length} of ${CHANGES.length} approved`;
+  document.getElementById('out').value=ap.join(', ');
+}
+function setAll(v){CHANGES.forEach(c=>document.getElementById('chk_'+c.id).checked=v);sync();}
+function copyApproved(){const o=document.getElementById('out');o.select();navigator.clipboard&&navigator.clipboard.writeText(o.value);}
+render();
+</script>
+</div></body></html>

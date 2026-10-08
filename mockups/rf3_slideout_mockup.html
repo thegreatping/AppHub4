@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<title>RF 3 Slideout Redesign — Mockup</title>
+<style>
+/* ═════════════════════ THEME VARS ═════════════════════ */
+:root,[data-theme="dark"]{
+  --nav-bg:#0f1729; --nav-text:#e2e8f0;
+  --content-bg:#111b2e; --content-header:#162035;
+  --surface:#162035; --card:#1c2d4a;
+  --text:#f1f5f9; --text2:#94a3b8;
+  --bm:rgba(255,255,255,.10); --bl:rgba(255,255,255,.05);
+  --bi:rgba(255,255,255,.14); --ibg:rgba(255,255,255,.05);
+  --hov:rgba(255,255,255,.04); --hovs:rgba(255,255,255,.09);
+  --accent-cyan:#67e8e0; --accent-blue:#64b5f6;
+  --accent-gold:#fbbf24; --accent-orange:#fb923c;
+  --accent-green:#4ade80; --accent-red:#f87171;
+  --backdrop:rgba(0,0,0,.55);
+}
+[data-theme="medium"]{
+  --nav-bg:#2d3748; --nav-text:#f1f5f9;
+  --content-bg:#232f3e; --content-header:#1a2535;
+  --surface:#1e2d3e; --card:#1a2535;
+  --text:#e2e8f0; --text2:#94a3b8;
+  --bm:rgba(255,255,255,.08); --bl:rgba(255,255,255,.05);
+  --bi:rgba(255,255,255,.18); --ibg:#1a2535;
+  --accent-cyan:#2dd4bf; --accent-blue:#60a5fa;
+  --accent-gold:#d4840a; --accent-orange:#fb923c;
+  --accent-green:#4ade80; --accent-red:#f87171;
+  --backdrop:rgba(0,0,0,.5);
+}
+[data-theme="light"]{
+  --nav-bg:#e2e8f0; --nav-text:#1e293b;
+  --content-bg:#c8d4e0; --content-header:#d8e2ec;
+  --surface:#d8e2ec; --card:#ecf0f5;
+  --text:#0f172a; --text2:#1e3a5f;
+  --bm:rgba(0,0,0,.15); --bl:rgba(0,0,0,.08);
+  --bi:rgba(0,0,0,.22); --ibg:#f2f5f8;
+  --hov:rgba(0,0,0,.03); --hovs:rgba(0,0,0,.07);
+  --accent-cyan:#0d9488; --accent-blue:#2563eb;
+  --accent-gold:#92400e; --accent-orange:#c2410c;
+  --accent-green:#14532d; --accent-red:#dc2626;
+  --backdrop:rgba(15,23,42,.35);
+}
+
+/* ═════════════════════ BASE / SHELL ═════════════════════ */
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;background:var(--content-bg);color:var(--text);}
+.shell{display:flex;height:100vh;overflow:hidden;}
+.nav{width:240px;background:var(--nav-bg);color:var(--nav-text);padding:12px 8px;flex-shrink:0;border-right:1px solid var(--bm);}
+.nav-brand{font-weight:800;font-size:16px;letter-spacing:.5px;padding:6px 8px 14px;color:var(--nav-text);}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;cursor:pointer;color:var(--nav-text);opacity:.72;font-size:13px;}
+.nav-item:hover{background:var(--hov);opacity:1;}
+.nav-item.active{background:var(--accent-cyan);color:#000;font-weight:700;opacity:1;}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.6;}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+
+/* ═════════════════════ TOP BAR ═════════════════════ */
+.topbar{display:flex;align-items:center;gap:12px;padding:8px 14px;background:var(--content-header);border-bottom:1px solid var(--bm);flex-shrink:0;}
+.topbar-title{font-size:14px;font-weight:700;color:var(--accent-cyan);flex-shrink:0;}
+.topbar-mode{background:var(--ibg);border:1px solid var(--bi);border-radius:16px;padding:2px 10px;font-size:11px;color:var(--text2);letter-spacing:.4px;text-transform:uppercase;font-weight:700;}
+.topbar-spacer{flex:1;}
+.theme-toggle{display:flex;gap:2px;background:var(--ibg);border:1px solid var(--bi);border-radius:16px;padding:2px;}
+.theme-toggle button{background:transparent;border:none;color:var(--text2);padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;border-radius:12px;letter-spacing:.4px;}
+.theme-toggle button.active{background:var(--accent-cyan);color:#000;}
+
+/* ═════════════════════ CONTEXT HEADER ═════════════════════ */
+.ctx{background:var(--content-header);border-bottom:1px solid var(--bm);padding:10px 14px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;flex-shrink:0;}
+.ctx-blk{display:flex;flex-direction:column;gap:2px;}
+.ctx-lbl{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);}
+.ctx-val{background:transparent;border:none;color:var(--text);font-size:1rem;font-weight:800;cursor:pointer;padding:2px 22px 2px 0;position:relative;}
+.ctx-val::after{content:'▼';font-size:.55rem;position:absolute;right:4px;top:50%;transform:translateY(-45%);color:var(--text2);}
+.ctx-val.prop{color:var(--accent-blue);}
+.ctx-val.plan{color:var(--accent-green);font-size:.85rem;}
+.ctx-val.fp{color:var(--accent-gold);}
+.ctx-val.ay{color:var(--accent-cyan);}
+.ctx-sub{font-size:.65rem;color:var(--text2);}
+.ctx-sep{width:1px;height:38px;background:var(--bm);}
+
+/* ═════════════════════ METRIC STRIP (columnized) ═════════════════════ */
+.metrics{display:flex;flex-wrap:wrap;gap:8px;padding:8px 14px;background:var(--content-bg);border-bottom:1px solid var(--bm);flex-shrink:0;}
+.kpi{flex:1 1 auto;min-width:170px;background:rgba(100,181,246,.06);border:1px solid rgba(100,181,246,.20);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;overflow:hidden;}
+.kpi.gold{background:rgba(251,191,36,.06);border-color:rgba(251,191,36,.22);}
+.kpi-title{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.kpi-title.gold{color:var(--accent-gold);}
+.hdr-row,.val-row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px;}
+.hdr{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.3px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hdr.b{color:var(--accent-blue);}
+.hdr.g{color:var(--accent-green);}
+.hdr.f{color:var(--accent-gold);}
+.hdr.p{color:var(--accent-orange);}
+.val{font-size:.9rem;font-weight:800;text-align:center;white-space:pre-line;line-height:1.15;}
+.val.b{color:var(--accent-blue);}.val.g{color:var(--accent-green);}
+.val.f{color:var(--accent-gold);}.val.p{color:var(--accent-orange);}
+.val.r{color:var(--accent-red);}
+
+/* ═════════════════════ MAIN CANVAS ═════════════════════ */
+.canvas{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:14px;}
+
+/* Path-to-budget strip */
+.ptb{background:rgba(100,181,246,.05);border:1px solid rgba(100,181,246,.16);border-radius:8px;padding:8px 14px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;font-size:.78rem;}
+.ptb-lbl{color:var(--accent-blue);font-weight:800;letter-spacing:.3px;}
+.ptb-item strong{color:var(--text);font-weight:800;margin-left:4px;}
+.ptb-item span{color:var(--text2);}
+
+/* Focus panel (Rate Trends chart placeholder) */
+.focus{background:var(--surface);border:1px solid var(--bm);border-radius:10px;padding:14px;}
+.focus-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.focus-title{font-size:.85rem;font-weight:800;color:var(--text);}
+.focus-sub{font-size:.72rem;color:var(--text2);}
+.chart{height:180px;background:linear-gradient(180deg,rgba(100,181,246,.10),transparent 90%);border-radius:6px;position:relative;overflow:hidden;}
+.chart::before{content:'';position:absolute;inset:0;background:
+  repeating-linear-gradient(0deg,transparent 0,transparent 44px,var(--bl) 44px,var(--bl) 45px),
+  repeating-linear-gradient(90deg,transparent 0,transparent 60px,var(--bl) 60px,var(--bl) 61px);
+  opacity:.5;}
+.chart svg{position:absolute;inset:0;width:100%;height:100%;}
+.chart-legend{display:flex;gap:14px;font-size:.7rem;margin-top:8px;color:var(--text2);}
+.chart-legend .swatch{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;}
+
+/* Renewals / New chips (the "opener" cards for slideouts) */
+.chip-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.chip{background:var(--surface);border:1px solid var(--bm);border-radius:10px;padding:14px;cursor:pointer;transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;position:relative;overflow:hidden;}
+.chip:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.28);}
+.chip.renew{border-left:4px solid #f87171;background:linear-gradient(90deg,rgba(248,113,113,.12),var(--surface) 45%);}
+.chip.new{border-left:4px solid #10b981;background:linear-gradient(90deg,rgba(16,185,129,.12),var(--surface) 45%);}
+.chip:hover.renew{border-color:#f87171;}
+.chip:hover.new{border-color:#10b981;}
+.chip-title{display:flex;align-items:center;gap:8px;font-size:.9rem;font-weight:800;margin-bottom:10px;color:var(--text);}
+.chip-title .icon{font-size:1rem;}
+.chip.renew .icon{color:#f87171;}
+.chip.new .icon{color:#10b981;}
+.chip-title .arrow{margin-left:auto;color:var(--text2);font-size:.9rem;transition:transform .2s;}
+.chip:hover .arrow{transform:translateX(4px);color:var(--text);}
+.chip-mini{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:.72rem;}
+.mini-lbl{color:var(--text2);text-transform:uppercase;font-size:.58rem;letter-spacing:.3px;font-weight:700;}
+.mini-val{font-size:.95rem;font-weight:800;color:var(--text);margin-top:2px;}
+.mini-val.up{color:var(--accent-green);}
+.mini-val.dn{color:var(--accent-red);}
+.mini-val.warn{color:var(--accent-gold);}
+.chip-hint{margin-top:8px;font-size:.68rem;color:var(--text2);font-style:italic;}
+
+/* ═════════════════════ SLIDEOUT ═════════════════════ */
+.slideout{position:absolute;top:0;right:0;height:100%;width:min(760px,72%);background:var(--content-header);border-left:1px solid var(--bm);box-shadow:-12px 0 32px rgba(0,0,0,.35);transform:translateX(100%);transition:transform .28s cubic-bezier(.22,.61,.36,1);z-index:20;display:flex;flex-direction:column;overflow:hidden;}
+.slideout.open{transform:translateX(0);}
+.slideout.renew{border-top:3px solid #f87171;}
+.slideout.new{border-top:3px solid #10b981;}
+.backdrop{position:absolute;inset:0;background:var(--backdrop);opacity:0;pointer-events:none;transition:opacity .2s;z-index:15;}
+.backdrop.on{opacity:1;pointer-events:auto;}
+.so-hdr{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--bm);background:var(--surface);flex-shrink:0;}
+.so-title{font-size:1rem;font-weight:800;flex:1;}
+.so-title .icon{margin-right:8px;}
+.slideout.renew .so-title .icon{color:#f87171;}
+.slideout.new .so-title .icon{color:#10b981;}
+.so-fp{font-size:.75rem;color:var(--text2);margin-left:8px;font-weight:400;}
+.so-close{background:var(--ibg);border:1px solid var(--bi);color:var(--text);width:30px;height:30px;border-radius:6px;font-size:1rem;cursor:pointer;line-height:1;}
+.so-close:hover{background:var(--hovs);}
+.so-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px;}
+
+/* Slideout tier table */
+.tier-hdr{display:grid;grid-template-columns:60px 1.4fr 1fr 1fr 1fr 90px;gap:8px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--text2);padding:0 8px;}
+.tier-row{display:grid;grid-template-columns:60px 1.4fr 1fr 1fr 1fr 90px;gap:8px;padding:8px;border:1px solid var(--bm);border-radius:6px;background:var(--card);align-items:center;}
+.tier-row.total{background:var(--surface);border-color:var(--bi);font-weight:700;}
+.tier-tier{font-weight:800;font-size:.85rem;}
+.tier-window{font-size:.72rem;color:var(--text2);}
+.tier-num{font-weight:700;text-align:right;font-size:.85rem;}
+.tier-bud{color:var(--accent-blue);}
+.tier-act{color:var(--accent-green);}
+.tier-fc{color:var(--accent-gold);}
+.tier-delta{text-align:right;font-weight:800;font-size:.85rem;}
+.tier-delta.up{color:var(--accent-green);}
+.tier-delta.dn{color:var(--accent-red);}
+.tier-delta.zero{color:var(--text2);}
+
+/* Slideout summary + inducement row */
+.so-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.sum-card{background:var(--card);border:1px solid var(--bm);border-radius:8px;padding:10px 12px;text-align:center;}
+.sum-lbl{font-size:.6rem;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);font-weight:700;}
+.sum-val{font-size:1.1rem;font-weight:800;margin-top:4px;}
+.so-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:var(--card);border:1px dashed var(--bm);border-radius:8px;padding:10px 14px;}
+.so-actions label{font-size:.72rem;color:var(--text2);text-transform:uppercase;letter-spacing:.3px;font-weight:700;}
+.so-actions input[type=number]{background:var(--ibg);border:1px solid var(--bi);color:var(--text);border-radius:4px;padding:5px 8px;width:110px;font-size:.85rem;font-weight:700;}
+.so-actions button{background:var(--accent-cyan);color:#000;border:none;border-radius:5px;padding:6px 14px;font-size:.75rem;font-weight:800;cursor:pointer;letter-spacing:.4px;}
+.so-actions button.ghost{background:transparent;color:var(--text2);border:1px solid var(--bi);}
+
+/* Chart in slideout */
+.so-chart{background:var(--card);border:1px solid var(--bm);border-radius:8px;padding:12px;}
+.so-chart-title{font-size:.75rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px;}
+.so-chart .chart{height:140px;background:linear-gradient(180deg,rgba(103,232,224,.10),transparent 90%);}
+
+/* Callout at bottom */
+.mockup-note{position:fixed;bottom:14px;right:14px;background:var(--surface);border:1px solid var(--bi);border-left:3px solid var(--accent-cyan);padding:10px 14px;border-radius:8px;font-size:.72rem;color:var(--text2);box-shadow:0 6px 18px rgba(0,0,0,.35);max-width:340px;z-index:5;}
+.mockup-note strong{color:var(--accent-cyan);}
+.kbd{background:var(--ibg);border:1px solid var(--bi);border-radius:3px;padding:1px 5px;font-family:monospace;font-size:.7rem;color:var(--text);}
+
+/* Scrollbar polish */
+.canvas::-webkit-scrollbar,.so-body::-webkit-scrollbar{width:8px;}
+.canvas::-webkit-scrollbar-thumb,.so-body::-webkit-scrollbar-thumb{background:var(--bi);border-radius:4px;}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- ────────── NAV ────────── -->
+  <aside class="nav">
+    <div class="nav-brand">Peak AppHub</div>
+    <div class="nav-item"><span class="dot" style="color:#94a3b8"></span> Dashboard</div>
+    <div class="nav-item"><span class="dot" style="color:#94a3b8"></span> AppHub Maint.</div>
+    <div class="nav-item"><span class="dot" style="color:#94a3b8"></span> Property Data</div>
+    <div class="nav-item"><span class="dot" style="color:#94a3b8"></span> Employee Data</div>
+    <div class="nav-item"><span class="dot" style="color:#94a3b8"></span> Scorecard</div>
+    <div class="nav-item active"><span class="dot"></span> RF 3</div>
+    <div class="nav-item"><span class="dot" style="color:#94a3b8"></span> Rent Forecasting 2.0</div>
+  </aside>
+
+  <!-- ────────── MAIN ────────── -->
+  <main class="main">
+    <div class="topbar">
+      <span class="topbar-title">■ RF 3 — Redesign Preview</span>
+      <span class="topbar-mode">Slideout Layout</span>
+      <span class="topbar-spacer"></span>
+      <div class="theme-toggle" id="themeToggle">
+        <button data-theme-btn="dark" class="active">Dark</button>
+        <button data-theme-btn="medium">Medium</button>
+        <button data-theme-btn="light">Light</button>
+      </div>
+    </div>
+
+    <!-- Context bar: property, plan, AY, floor plan -->
+    <div class="ctx">
+      <div class="ctx-blk"><span class="ctx-lbl">■ Property</span><button class="ctx-val prop">THEORY MADISON</button><span class="ctx-sub">716bd total</span></div>
+      <div class="ctx-sep"></div>
+      <div class="ctx-blk"><span class="ctx-lbl">■ Plan</span><button class="ctx-val plan">2027-2028 Rates</button><span class="ctx-sub">Approved · v3</span></div>
+      <div class="ctx-sep"></div>
+      <div class="ctx-blk"><span class="ctx-lbl">■ AY</span><button class="ctx-val ay">2027</button><span class="ctx-sub">FY25-26 · 03.15.26</span></div>
+      <div class="ctx-sep"></div>
+      <div class="ctx-blk"><span class="ctx-lbl">▶ Floor Plan</span><button class="ctx-val fp">B3 — 2x2 type</button><span class="ctx-sub">180bd</span></div>
+    </div>
+
+    <!-- Metric strip: property + floor plan KPIs (same columnized pattern) -->
+    <div class="metrics">
+      <div class="kpi">
+        <div class="kpi-title">■ Property Prelease %</div>
+        <div class="hdr-row"><span class="hdr b">Budget</span><span class="hdr g">Actual</span><span class="hdr f">Fcst</span></div>
+        <div class="val-row"><span class="val b">97.0%</span><span class="val g">60.5%</span><span class="val f">96.9%</span></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-title">■ Property Avg Rate</div>
+        <div class="hdr-row"><span class="hdr b">Budget</span><span class="hdr g">Actual</span><span class="hdr f">Fcst</span></div>
+        <div class="val-row"><span class="val b">$1,405</span><span class="val g">$1,391</span><span class="val f">$1,357</span></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-title">■ Property NER</div>
+        <div class="hdr-row"><span class="hdr b">Budget</span><span class="hdr g">Actual</span><span class="hdr f">Fcst</span><span class="hdr p">w/plan</span></div>
+        <div class="val-row"><span class="val b">$1,395</span><span class="val g">$1,391</span><span class="val f">$1,357</span><span class="val p">$1,349</span></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-title">▶ FP Prelease %</div>
+        <div class="hdr-row"><span class="hdr b">Budget</span><span class="hdr g">Actual</span><span class="hdr f">Fcst</span></div>
+        <div class="val-row"><span class="val b">100.0%</span><span class="val g">57.2%</span><span class="val f">100.0%</span></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-title">▶ FP Avg Rate</div>
+        <div class="hdr-row"><span class="hdr b">Budget</span><span class="hdr g">Actual</span><span class="hdr f">Fcst</span></div>
+        <div class="val-row"><span class="val b">$1,057</span><span class="val g">$1,095</span><span class="val f">$1,092</span></div>
+      </div>
+      <div class="kpi gold">
+        <div class="kpi-title gold">▶ FP Left to Budget · B3</div>
+        <div class="hdr-row"><span class="hdr r">Actuals</span><span class="hdr g">Forecast</span><span class="hdr f">Remaining</span></div>
+        <div class="val-row"><span class="val r">103</span><span class="val g">180</span><span class="val f">-103</span></div>
+      </div>
+    </div>
+
+    <!-- MAIN CANVAS: cleaner overview + chips for detail panels -->
+    <div class="canvas">
+      <!-- Path to Budget strip -->
+      <div class="ptb">
+        <span class="ptb-lbl">🎯 Path to Budget</span>
+        <span class="ptb-item"><span>Beds left:</span><strong>77</strong></span>
+        <span class="ptb-item"><span>NER needed:</span><strong>$1,205</strong></span>
+        <span class="ptb-item"><span>Proj occ:</span><strong>96.9%</strong></span>
+        <span class="ptb-item"><span>Proj avg rate:</span><strong>$1,357</strong></span>
+        <span class="ptb-item"><span>Proj NER:</span><strong>$1,357</strong></span>
+      </div>
+
+      <!-- Rate Trends chart (kept front and center - the primary visualization) -->
+      <div class="focus">
+        <div class="focus-hdr">
+          <span class="focus-title">Rate Trends — B3</span>
+          <span class="focus-sub">Budget vs Actuals vs Reforecast · weekly by tier</span>
+        </div>
+        <div class="chart">
+          <svg viewBox="0 0 800 180" preserveAspectRatio="none">
+            <path d="M0,140 L60,132 L120,120 L180,114 L240,108 L300,104 L360,100 L420,96 L480,92 L540,88 L600,86 L660,84 L720,82 L800,80"
+                  fill="none" stroke="var(--accent-blue)" stroke-width="2.5"/>
+            <path d="M0,155 L60,148 L120,138 L180,128 L240,118 L300,110 L360,102 L420,96 L480,90 L540,84"
+                  fill="none" stroke="var(--accent-green)" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M540,84 L600,80 L660,78 L720,76 L800,74"
+                  fill="none" stroke="var(--accent-gold)" stroke-width="2.5" stroke-dasharray="6,4"/>
+          </svg>
+        </div>
+        <div class="chart-legend">
+          <span><span class="swatch" style="background:var(--accent-blue)"></span>Budget</span>
+          <span><span class="swatch" style="background:var(--accent-green)"></span>Actuals</span>
+          <span><span class="swatch" style="background:var(--accent-gold)"></span>Reforecast</span>
+        </div>
+      </div>
+
+      <!-- Chip row: Renewals + New Leases openers -->
+      <div class="chip-row">
+
+        <!-- ── RENEWALS chip ── -->
+        <div class="chip renew" onclick="openSlideout('renew')">
+          <div class="chip-title">
+            <span class="icon">▶</span>
+            <span>Renewals — B3</span>
+            <span class="arrow">↗</span>
+          </div>
+          <div class="chip-mini">
+            <div><div class="mini-lbl">Budget</div><div class="mini-val">72 beds</div></div>
+            <div><div class="mini-lbl">Actual</div><div class="mini-val up">42</div></div>
+            <div><div class="mini-lbl">Fcst</div><div class="mini-val warn">72</div></div>
+            <div><div class="mini-lbl">Delta</div><div class="mini-val dn">-30</div></div>
+          </div>
+          <div class="chip-hint">Click to open tier detail, rate ratchet, plan inducements &rsaquo;</div>
+        </div>
+
+        <!-- ── NEW LEASES chip ── -->
+        <div class="chip new" onclick="openSlideout('new')">
+          <div class="chip-title">
+            <span class="icon">▶</span>
+            <span>New Leases — B3</span>
+            <span class="arrow">↗</span>
+          </div>
+          <div class="chip-mini">
+            <div><div class="mini-lbl">Budget</div><div class="mini-val">108 beds</div></div>
+            <div><div class="mini-lbl">Actual</div><div class="mini-val up">61</div></div>
+            <div><div class="mini-lbl">Fcst</div><div class="mini-val warn">108</div></div>
+            <div><div class="mini-lbl">Delta</div><div class="mini-val dn">-47</div></div>
+          </div>
+          <div class="chip-hint">Click to open tier detail, rate ratchet, plan inducements &rsaquo;</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═════════════ SLIDEOUT: RENEWALS ═════════════ -->
+    <div class="backdrop" id="backdrop" onclick="closeSlideout()"></div>
+
+    <aside class="slideout renew" id="soRenew">
+      <div class="so-hdr">
+        <div class="so-title"><span class="icon">▶</span>Renewals<span class="so-fp">— B3 · 2x2 type · 180bd</span></div>
+        <button class="so-close" onclick="closeSlideout()">×</button>
+      </div>
+      <div class="so-body">
+        <div class="so-summary">
+          <div class="sum-card"><div class="sum-lbl">Budget</div><div class="sum-val" style="color:var(--accent-blue)">72</div></div>
+          <div class="sum-card"><div class="sum-lbl">Actual</div><div class="sum-val" style="color:var(--accent-green)">42</div></div>
+          <div class="sum-card"><div class="sum-lbl">Reforecast</div><div class="sum-val" style="color:var(--accent-gold)">72</div></div>
+          <div class="sum-card"><div class="sum-lbl">Delta vs Bud</div><div class="sum-val" style="color:var(--accent-red)">-30</div></div>
+        </div>
+
+        <!-- Tier table -->
+        <div>
+          <div class="tier-hdr">
+            <span>Tier</span><span>Rate Window</span><span style="text-align:right">Bud</span><span style="text-align:right">Act</span><span style="text-align:right">Fcst</span><span style="text-align:right">Δ</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
+            <div class="tier-row"><span class="tier-tier">T1</span><span class="tier-window">$1,050 — $1,079</span><span class="tier-num tier-bud">14</span><span class="tier-num tier-act">10</span><span class="tier-num tier-fc">14</span><span class="tier-delta dn">-4</span></div>
+            <div class="tier-row"><span class="tier-tier">T2</span><span class="tier-window">$1,080 — $1,109</span><span class="tier-num tier-bud">18</span><span class="tier-num tier-act">12</span><span class="tier-num tier-fc">18</span><span class="tier-delta dn">-6</span></div>
+            <div class="tier-row"><span class="tier-tier">T3</span><span class="tier-window">$1,110 — $1,139</span><span class="tier-num tier-bud">20</span><span class="tier-num tier-act">11</span><span class="tier-num tier-fc">20</span><span class="tier-delta dn">-9</span></div>
+            <div class="tier-row"><span class="tier-tier">T4</span><span class="tier-window">$1,140 — $1,169</span><span class="tier-num tier-bud">14</span><span class="tier-num tier-act">7</span><span class="tier-num tier-fc">14</span><span class="tier-delta dn">-7</span></div>
+            <div class="tier-row"><span class="tier-tier">T5</span><span class="tier-window">$1,170 — $1,199</span><span class="tier-num tier-bud">6</span><span class="tier-num tier-act">2</span><span class="tier-num tier-fc">6</span><span class="tier-delta dn">-4</span></div>
+            <div class="tier-row total"><span class="tier-tier">Total</span><span class="tier-window">All tiers</span><span class="tier-num tier-bud">72</span><span class="tier-num tier-act">42</span><span class="tier-num tier-fc">72</span><span class="tier-delta dn">-30</span></div>
+          </div>
+        </div>
+
+        <!-- Rate Trends chart in slideout -->
+        <div class="so-chart">
+          <div class="so-chart-title">Renewal Rate Trends — weekly</div>
+          <div class="chart">
+            <svg viewBox="0 0 800 140" preserveAspectRatio="none">
+              <path d="M0,110 L100,102 L200,95 L300,88 L400,82 L500,76 L600,72 L700,68 L800,66"
+                    fill="none" stroke="var(--accent-blue)" stroke-width="2.5"/>
+              <path d="M0,120 L100,112 L200,104 L300,98 L400,90"
+                    fill="none" stroke="var(--accent-green)" stroke-width="2.5"/>
+              <path d="M400,90 L500,84 L600,78 L700,72 L800,68"
+                    fill="none" stroke="var(--accent-gold)" stroke-width="2.5" stroke-dasharray="6,4"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Actions: rate ratchet, plan-inducements -->
+        <div class="so-actions">
+          <label>Renewal Rate Ratchet</label>
+          <input type="number" value="25" step="5">
+          <span style="color:var(--text2);font-size:.72rem">$/bed</span>
+          <label style="margin-left:12px">Plan Inducements</label>
+          <input type="number" value="0" step="100" placeholder="$/year">
+          <button>Apply</button>
+          <button class="ghost">Reset</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ═════════════ SLIDEOUT: NEW LEASES ═════════════ -->
+    <aside class="slideout new" id="soNew">
+      <div class="so-hdr">
+        <div class="so-title"><span class="icon">▶</span>New Leases<span class="so-fp">— B3 · 2x2 type · 180bd</span></div>
+        <button class="so-close" onclick="closeSlideout()">×</button>
+      </div>
+      <div class="so-body">
+        <div class="so-summary">
+          <div class="sum-card"><div class="sum-lbl">Budget</div><div class="sum-val" style="color:var(--accent-blue)">108</div></div>
+          <div class="sum-card"><div class="sum-lbl">Actual</div><div class="sum-val" style="color:var(--accent-green)">61</div></div>
+          <div class="sum-card"><div class="sum-lbl">Reforecast</div><div class="sum-val" style="color:var(--accent-gold)">108</div></div>
+          <div class="sum-card"><div class="sum-lbl">Delta vs Bud</div><div class="sum-val" style="color:var(--accent-red)">-47</div></div>
+        </div>
+
+        <div>
+          <div class="tier-hdr">
+            <span>Tier</span><span>Rate Window</span><span style="text-align:right">Bud</span><span style="text-align:right">Act</span><span style="text-align:right">Fcst</span><span style="text-align:right">Δ</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
+            <div class="tier-row"><span class="tier-tier">T1</span><span class="tier-window">$1,050 — $1,079</span><span class="tier-num tier-bud">20</span><span class="tier-num tier-act">14</span><span class="tier-num tier-fc">20</span><span class="tier-delta dn">-6</span></div>
+            <div class="tier-row"><span class="tier-tier">T2</span><span class="tier-window">$1,080 — $1,109</span><span class="tier-num tier-bud">26</span><span class="tier-num tier-act">16</span><span class="tier-num tier-fc">26</span><span class="tier-delta dn">-10</span></div>
+            <div class="tier-row"><span class="tier-tier">T3</span><span class="tier-window">$1,110 — $1,139</span><span class="tier-num tier-bud">30</span><span class="tier-num tier-act">15</span><span class="tier-num tier-fc">30</span><span class="tier-delta dn">-15</span></div>
+            <div class="tier-row"><span class="tier-tier">T4</span><span class="tier-window">$1,140 — $1,169</span><span class="tier-num tier-bud">22</span><span class="tier-num tier-act">11</span><span class="tier-num tier-fc">22</span><span class="tier-delta dn">-11</span></div>
+            <div class="tier-row"><span class="tier-tier">T5</span><span class="tier-window">$1,170 — $1,199</span><span class="tier-num tier-bud">10</span><span class="tier-num tier-act">5</span><span class="tier-num tier-fc">10</span><span class="tier-delta dn">-5</span></div>
+            <div class="tier-row total"><span class="tier-tier">Total</span><span class="tier-window">All tiers</span><span class="tier-num tier-bud">108</span><span class="tier-num tier-act">61</span><span class="tier-num tier-fc">108</span><span class="tier-delta dn">-47</span></div>
+          </div>
+        </div>
+
+        <div class="so-chart">
+          <div class="so-chart-title">New Leases Rate Trends — weekly</div>
+          <div class="chart">
+            <svg viewBox="0 0 800 140" preserveAspectRatio="none">
+              <path d="M0,120 L100,108 L200,96 L300,86 L400,78 L500,72 L600,68 L700,64 L800,62"
+                    fill="none" stroke="var(--accent-blue)" stroke-width="2.5"/>
+              <path d="M0,128 L100,118 L200,108 L300,100 L400,92"
+                    fill="none" stroke="var(--accent-green)" stroke-width="2.5"/>
+              <path d="M400,92 L500,86 L600,80 L700,74 L800,68"
+                    fill="none" stroke="var(--accent-gold)" stroke-width="2.5" stroke-dasharray="6,4"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="so-actions">
+          <label>New Rate Ratchet</label>
+          <input type="number" value="50" step="5">
+          <span style="color:var(--text2);font-size:.72rem">$/bed</span>
+          <label style="margin-left:12px">Plan Inducements</label>
+          <input type="number" value="500" step="100" placeholder="$/year">
+          <button>Apply</button>
+          <button class="ghost">Reset</button>
+        </div>
+      </div>
+    </aside>
+
+  </main>
+</div>
+
+<!-- Info callout for the reviewer -->
+<div class="mockup-note">
+  <strong>Mockup — try it:</strong> Click either the <em>Renewals</em> or <em>New Leases</em> chip to slide out. Click the backdrop, the ×, or press <span class="kbd">Esc</span> to close. Try all three themes. Data is static (THEORY MADISON @ AY 2027, floor plan B3).
+</div>
+
+<script>
+// ── Theme toggle
+document.getElementById('themeToggle').addEventListener('click', e => {
+  const btn = e.target.closest('[data-theme-btn]');
+  if (!btn) return;
+  document.documentElement.setAttribute('data-theme', btn.dataset.themeBtn);
+  document.querySelectorAll('[data-theme-btn]').forEach(b => b.classList.toggle('active', b === btn));
+});
+
+// ── Slideout open/close
+function openSlideout(which) {
+  document.getElementById('backdrop').classList.add('on');
+  document.getElementById(which === 'renew' ? 'soRenew' : 'soNew').classList.add('open');
+}
+function closeSlideout() {
+  document.getElementById('backdrop').classList.remove('on');
+  document.getElementById('soRenew').classList.remove('open');
+  document.getElementById('soNew').classList.remove('open');
+}
+window.addEventListener('keydown', e => { if (e.key === 'Escape') closeSlideout(); });
+</script>
+</body>
+</html>

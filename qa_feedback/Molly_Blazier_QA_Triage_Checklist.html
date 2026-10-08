@@ -23,6 +23,10 @@
 .item-reference a:hover{text-decoration:underline}
 .item-reference a:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 .item[id]{scroll-margin-top:65px}
+.item .title{cursor:pointer}
+.item .title::after{content:"\25BE";margin-left:7px;color:var(--muted);font-size:11px;vertical-align:1px}
+.item.collapsed .title::after{content:"\25B8"}
+.item.collapsed .quote,.item.collapsed .action,.item.collapsed .what-we-did{display:none}
 </style>
 </head>
 <body><main class="wrap">
@@ -220,8 +224,39 @@ document.querySelectorAll('.item').forEach(it=>{
   outcome.querySelector('span').textContent=it.dataset.outcome||'';
   content.appendChild(outcome);
 });
+// Continue the triage Item # sequence onto the carried-over Beta Checklist 10.2
+// items (not matched above), numbering them in document order starting at #30.
+let betaItemNumber=30;
+document.querySelectorAll('.item').forEach(it=>{
+  if(it.dataset.itemNumber)return;
+  const quote=it.querySelector('.quote');
+  if(!quote||quote.textContent.indexOf('Beta Checklist 10.2 #')===-1)return;
+  const title=it.querySelector('.title');
+  if(!title)return;
+  it.id=`triage-${betaItemNumber}`;
+  it.dataset.itemNumber=String(betaItemNumber);
+  const label=document.createElement('span');
+  label.className='item-reference';
+  const link=document.createElement('a');
+  link.href=`#${it.id}`;
+  link.textContent=`Item #${betaItemNumber}`;
+  label.appendChild(link);
+  title.prepend(label);
+  betaItemNumber++;
+});
+// Make every item collapsible; default collapsed. Clicking the title toggles it,
+// except clicks on the Item # anchor link (which should still jump to the item).
+document.querySelectorAll('.item').forEach(it=>{
+  it.classList.add('collapsed');
+  const title=it.querySelector('.title');
+  if(!title)return;
+  title.addEventListener('click',e=>{
+    if(e.target.closest('.item-reference'))return;
+    it.classList.toggle('collapsed');
+  });
+});
 </script>
 <script>
-const KEY='molly_qa_triage_v1';function update(){let saved={};try{saved=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){};const items=[...document.querySelectorAll('.item')];items.forEach((it,i)=>{const cb=it.querySelector('input');const resolved=it.dataset.resolved==='true';cb.checked=resolved||!!saved[i];cb.disabled=resolved;it.classList.toggle('done',cb.checked);cb.onchange=()=>{it.classList.toggle('done',cb.checked);const x={};items.forEach((n,j)=>{if(n.querySelector('input').checked)x[j]=1});localStorage.setItem(KEY,JSON.stringify(x));updateProgress()}});updateProgress()}function updateProgress(){const xs=[...document.querySelectorAll('.item input')],n=xs.filter(x=>x.checked).length,p=xs.length?Math.round(100*n/xs.length):0;document.getElementById('fill').style.width=p+'%';document.getElementById('pct').textContent=p+'%'}function expand(v){document.querySelectorAll('details').forEach(x=>x.open=v)}function resetChecks(){if(confirm('Clear all triage checks in this browser?')){localStorage.removeItem(KEY);update()}}update();
+const KEY='molly_qa_triage_v1';function update(){let saved={};try{saved=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){};const items=[...document.querySelectorAll('.item')];items.forEach((it,i)=>{const cb=it.querySelector('input');const resolved=it.dataset.resolved==='true';cb.checked=resolved||!!saved[i];cb.disabled=resolved;it.classList.toggle('done',cb.checked);cb.onchange=()=>{it.classList.toggle('done',cb.checked);const x={};items.forEach((n,j)=>{if(n.querySelector('input').checked)x[j]=1});localStorage.setItem(KEY,JSON.stringify(x));updateProgress()}});updateProgress()}function updateProgress(){const xs=[...document.querySelectorAll('.item input')],n=xs.filter(x=>x.checked).length,p=xs.length?Math.round(100*n/xs.length):0;document.getElementById('fill').style.width=p+'%';document.getElementById('pct').textContent=p+'%'}function expand(v){document.querySelectorAll('details').forEach(x=>x.open=v);document.querySelectorAll('.item').forEach(it=>it.classList.toggle('collapsed',!v))}function resetChecks(){if(confirm('Clear all triage checks in this browser?')){localStorage.removeItem(KEY);update()}}update();
 </script>
 </body></html>

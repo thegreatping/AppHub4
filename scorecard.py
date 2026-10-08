@@ -7,7 +7,10 @@ Data source : WH_PROD2 (LS_TIMESHEET, LS_TRAINING, LS_PREPAID_VISA, LS_RISK_ASSE
 Identity    : DB_APP_SUPPORT.dbo.Emp_Core (NOT EMPLOYEE_F -- EMPLOYEE_F is being retired)
 APP_ID      : 36
 """
-from flask import Blueprint, render_template, session, jsonify, request, abort, send_file
+from flask import Blueprint, render_template, session, jsonify, request, abort, send_file, current_app
+from html import escape
+from urllib.parse import urlsplit
+from uuid import UUID
 import json
 import os
 import re
@@ -15,6 +18,7 @@ from auth import login_required
 from nav import build_nav_modules
 from helpers import load_env, SafeConnection, _get_fabric_api_token
 import datetime
+from delegated_mail import mail_status, mail_block_reason, mail_request_allowed, send_mail, MailUnavailable
 
 scorecard_bp = Blueprint("scorecard", __name__, url_prefix="/scorecard")
 
@@ -45,7 +49,7 @@ _GRID_COLUMNS = [
 # same explanation doesn't have to be maintained in two places from scratch.
 _MEASURE_DEFS = [
     {"key": "TC", "label": "Timecard Approval", "group": "leadership", "type": "bool",
-     "blurb": "Paycom timecards approved by a Supervisor, checked against the NY/Non-NY due-date calendars (+10h10m buffer, +2h more for West Coast properties). Pass if ~100% approved on time; defaults to PASS if no timecard data exists for the quarter."},
+     "blurb": "Paycom timecards approved by a Supervisor, checked against the NY/Non-NY due-date calendars (+10h10m buffer, +2h more for California properties). Pass if ~100% approved on time; defaults to PASS if no timecard data exists for the quarter."},
     {"key": "TR", "label": "Training Compliance", "group": "leadership", "type": "bool",
      "blurb": "Average of the last recorded monthly compliance % (Grace Hill, soon Peak Academy) across the quarter's 3 months. Pass threshold is >=94%."},
     {"key": "PCARD", "label": "PPV / P-Card", "group": "leadership", "type": "bool",
@@ -3071,6 +3075,114 @@ def _signed_in_email():
     return (session.get("user", {}).get("email") or "").lower()
 
 
+def _mail_scorecard_url():
+    configured = urlsplit(current_app.config.get("AZURE_REDIRECT_URI", ""))
+    base = f"{configured.scheme}://{configured.netloc}" if configured.scheme == "https" and configured.netloc else request.host_url.rstrip("/")
+    return base + "/scorecard/"
+
+
+@scorecard_bp.route("/api/mail/status")
+@login_required
+def api_mail_status():
+    check = _require_access()
+    if check:
+        return check
+    return jsonify(mail_status())
+
+
+@scorecard_bp.route("/api/mail/reminder", methods=["POST"])
+@login_required
+def api_mail_reminder():
+    check = _require_access()
+    if check:
+        return check
+    if not mail_request_allowed():
+        return jsonify({"error": "An in-app JSON email request is required."}), 403
+    reason = mail_block_reason()
+    if reason:
+        return jsonify({"error": reason}), 403
+    payload = request.get_json() or {}
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Invalid email request."}), 400
+    keys = payload.get("property_keys")
+    try:
+        request_id = str(UUID(payload.get("request_id", "")))
+        ay = int(str(payload.get("ay", "")))
+        quarter = payload.get("quarter")
+    except (ValueError, TypeError, AttributeError):
+        return jsonify({"error": "Period and request_id are required."}), 400
+    if quarter not in ("Q1", "Q2", "Q3", "Q4") or not isinstance(keys, list) or not 1 <= len(keys) <= 100:
+        return jsonify({"error": "Choose 1 to 100 properties and a valid quarter."}), 400
+    if any(type(key) is not int for key in keys):
+        return jsonify({"error": "Property keys must be integers."}), 400
+    conn = SafeConnection(_get_env(), "DB_APP_SUPPORT", None, direct=True)
+    try:
+        cols = ["PROPERTY_KEY", "PROPERTY_NAME", "RM_EMAIL", "RM_NAME", "RMSCORE", "SURVEYS", "NOI"]
+        rows = []
+        for key in sorted(set(keys)):
+            row = _scoped_property_row(conn, key, ay, quarter, _is_admin(), _effective_rm_email(), cols)
+            if row is None:
+                return jsonify({"error": "A property is unavailable or outside your authorized scope."}), 403
+            rows.append(dict(zip(cols, row)))
+    finally:
+        conn.close()
+    recipients = {(row["RM_EMAIL"] or "").strip().lower() for row in rows}
+    if len(recipients) != 1 or not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", next(iter(recipients))):
+        return jsonify({"error": "Properties must have the same valid RM email. Refresh the reminder list."}), 400
+    recipient = next(iter(recipients))
+    if payload.get("rm_email") != recipient:
+        return jsonify({"error": "RM assignment changed. Refresh the reminder list before sending."}), 409
+    labels = {"RMSCORE": "RM Score", "SURVEYS": "Surveys & Reviews", "NOI": "Controllable NOI"}
+    items = []
+    for row in rows:
+        missing = [label for key, label in labels.items() if row[key] is None or row[key] == ""]
+        if missing:
+            items.append(f"<li>{escape(str(row['PROPERTY_NAME'] or row['PROPERTY_KEY']))}: {escape(', '.join(missing))}</li>")
+    if not items:
+        return jsonify({"error": "These properties no longer have missing RM inputs. Refresh the grid."}), 409
+    body = (f"<p>Hello {escape(str(rows[0]['RM_NAME'] or 'there'))},</p>"
+            f"<p>Please complete the missing RM inputs for {escape(quarter)} {ay}.</p>"
+            f"<ul>{''.join(items)}</ul><p><a href=\"{escape(_mail_scorecard_url(), quote=True)}\">Open Leadership Scorecard</a></p>")
+    try:
+        result = send_mail([recipient], f"{quarter} {ay} - RM inputs reminder", body, f"reminder:{request_id}")
+    except MailUnavailable as exc:
+        return jsonify({"error": str(exc)}), 409
+    except Exception:
+        current_app.logger.warning("Scorecard reminder mail unavailable")
+        return jsonify({"error": "Email is unavailable. No automatic retry was made."}), 503
+    return jsonify({**result, "recipient": recipient})
+
+
+def _email_note_mentions(note_id, property_name, author_name, text, measure_key, mentions):
+    if not mentions:
+        return {"status": "not_requested", "results": []}
+    if not mail_request_allowed():
+        return {"status": "skipped", "reason": "Email was not requested from the app.", "results": []}
+    reason = mail_block_reason()
+    if reason:
+        return {"status": "skipped", "reason": reason, "results": []}
+    measure = _MEASURE_DEFS_BY_KEY.get(measure_key, {}).get("label", "Property note")
+    body = (f"<p>{escape(str(author_name))} mentioned you in a Leadership Scorecard note.</p>"
+            f"<p><b>{escape(str(property_name))}</b> - {escape(measure)}</p>"
+            f"<p>{escape(text).replace(chr(10), '<br>')}</p>"
+            f"<p><a href=\"{escape(_mail_scorecard_url(), quote=True)}\">Open Leadership Scorecard</a></p>")
+    results = []
+    for mention in mentions:
+        recipient = mention["email"]
+        if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", recipient):
+            results.append({"recipient": recipient, "status": "skipped"})
+            continue
+        try:
+            result = send_mail([recipient], f"Scorecard mention - {property_name}", body, f"note:{note_id}:{recipient.lower()}")
+            results.append({"recipient": recipient, **result})
+        except MailUnavailable as exc:
+            return {"status": "skipped", "reason": str(exc), "results": results}
+        except Exception:
+            current_app.logger.warning("Note saved but mention mail unavailable")
+            results.append({"recipient": recipient, "status": "unavailable"})
+    return {"status": "accepted" if results and all(result["status"] == "accepted" for result in results) else "partial", "results": results}
+
+
 def _mention_candidates(conn, property_key):
     """Who can be @mentioned on a property's notes: its RM, RVP (from
     PROPERTY_0) and PM (from Emp_Core). Best-effort names; de-duped by email."""
@@ -3217,7 +3329,8 @@ def api_add_note(property_key):
         ay, quarter = _latest_period(conn)
         if ay is None:
             return jsonify({"error": "no data available"}), 404
-        if _scoped_property_row(conn, property_key, ay, quarter, admin, email, ["PROPERTY_KEY"]) is None:
+        property_row = _scoped_property_row(conn, property_key, ay, quarter, admin, email, ["PROPERTY_KEY", "PROPERTY_NAME"])
+        if property_row is None:
             return jsonify({"error": "not found or not authorized"}), 404
 
         candidates = {c["email"].lower(): c for c in _mention_candidates(conn, property_key)}
@@ -3258,7 +3371,8 @@ def api_add_note(property_key):
             changed_by=author_email,
             reason="note add",
         )
-        return jsonify({"ok": True, "note": {
+        notification = _email_note_mentions(new_id, property_row[1], author_name, text, measure_key, added_mentions) if payload.get("email_mentions") is True else {"status": "not_requested", "results": []}
+        return jsonify({"ok": True, "email_notification": notification, "note": {
             "note_id": new_id,
             "measure_key": measure_key,
             "text": text,
