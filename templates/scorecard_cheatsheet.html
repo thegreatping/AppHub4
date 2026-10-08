@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leadership Scorecard - Cheat Sheet &amp; Beta Guide</title>
+<style>
+  :root { --cyan:#00a9c8; --orange:#FF6600; --ink:#1f2d3d; --muted:#5b6b7d; --line:#dfe6ee; --bg:#f4f7fa; --panel:#ffffff; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.6 Calibri, Arial, sans-serif; }
+  .sheet { max-width: 900px; margin: 0 auto; padding: 28px 28px 60px; }
+  .top { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  h1 { font-family:Calibri, Arial, sans-serif; font-size:24px; margin:0 0 2px; color:var(--cyan); }
+  .sub { font-family:Calibri, Arial, sans-serif; color:var(--muted); margin:0 0 18px; font-size:13.5px; }
+  .actions { display:flex; gap:8px; }
+  .actions button, .actions a { font-family:Calibri, Arial, sans-serif; font-size:13px; border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:6px; padding:8px 14px; cursor:pointer; text-decoration:none; }
+  .actions button:hover, .actions a:hover { border-color:var(--cyan); color:var(--cyan); }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px 22px; margin:16px 0; }
+  .card h2 { font-family:Calibri, Arial, sans-serif; font-size:17px; margin:0 0 12px; color:var(--ink); border-bottom:2px solid var(--cyan); padding-bottom:6px; }
+  .card h2.orange { border-bottom-color:var(--orange); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px 26px; }
+  @media (max-width:640px){ .grid2 { grid-template-columns:1fr; } }
+  .blk h3 { font-family:Calibri, Arial, sans-serif; font-size:14px; margin:0 0 4px; color:var(--cyan); }
+  .blk p, .blk ul { font-family:Calibri, Arial, sans-serif; margin:0 0 8px; }
+  ul { padding-left:20px; }
+  li { font-family:Calibri, Arial, sans-serif; margin-bottom:5px; }
+  .chip { display:inline-block; font-family:Calibri, Arial, sans-serif; font-size:12px; font-weight:700; padding:1px 8px; border-radius:10px; }
+  .chip.one { background:#e3f6fb; color:#0b6f85; }
+  .chip.zero { background:#fde6e6; color:#b11; }
+  ol.steps { counter-reset: step; list-style:none; padding-left:0; }
+  ol.steps > li { position:relative; padding:8px 0 8px 40px; border-bottom:1px dashed var(--line); }
+  ol.steps > li:last-child { border-bottom:none; }
+  ol.steps > li::before { counter-increment: step; content: counter(step); position:absolute; left:0; top:8px; width:26px; height:26px; background:var(--cyan); color:#fff; border-radius:50%; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .role { font-family:Calibri, Arial, sans-serif; font-size:11.5px; font-weight:700; color:#fff; background:var(--orange); border-radius:9px; padding:1px 7px; margin-left:6px; }
+  a { color:var(--cyan); }
+  .foot { font-family:Calibri, Arial, sans-serif; color:var(--muted); font-size:12.5px; margin-top:18px; text-align:center; }
+  @media print { body { background:#fff; } .actions { display:none; } .card { break-inside: avoid; border-color:#ccc; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="top">
+    <div>
+      <h1>Leadership Scorecard &mdash; Cheat Sheet &amp; Beta Guide</h1>
+      <p class="sub">Quick reference for using the Scorecard, plus a step-by-step script for beta testing. Print or share this page's link.</p>
+    </div>
+    <div class="actions">
+      <button type="button" onclick="window.print()">Print / Save PDF</button>
+      <a href="/scorecard/">Open Scorecard</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Cheat Sheet</h2>
+    <div class="grid2">
+      <div class="blk">
+        <h3>What it is</h3>
+        <p>A quarterly performance snapshot per property. It drives the <strong>Property Manager</strong> and <strong>Maintenance Supervisor</strong> bonuses, split into Leadership and Maintenance measures.</p>
+      </div>
+      <div class="blk">
+        <h3>The three tabs</h3>
+        <ul>
+          <li><strong>Scorecard</strong> &mdash; the pass/fail grid + Overall Score.</li>
+          <li><strong>Fall Forecast</strong> &mdash; leasing vs. target (feeds the Bonus Calculation Form).</li>
+          <li><strong>Compare Quarters</strong> &mdash; per-property deltas between two quarters.</li>
+        </ul>
+      </div>
+      <div class="blk">
+        <h3>Reading the grid</h3>
+        <ul>
+          <li><span class="chip one">1</span> = credit earned, <span class="chip zero">0</span> = not earned.</li>
+          <li><strong>Overall Score</strong> = Leadership + Maintenance + RM Score.</li>
+          <li>An orange outline means a cell was manually overridden (hover for who &amp; why).</li>
+        </ul>
+      </div>
+      <div class="blk">
+        <h3>Your inputs <span class="role">RM</span></h3>
+        <p>Open a property's slideout to enter <strong>RM Score (0&ndash;5)</strong>, <strong>Surveys</strong>, and <strong>Controllable NOI</strong>. They save instantly and the Overall Score updates.</p>
+      </div>
+      <div class="blk">
+        <h3>Handy actions</h3>
+        <ul>
+          <li>Click a <strong>column header</strong> to sort or filter.</li>
+          <li>Click a <strong>row</strong> for the property slideout &amp; notes.</li>
+          <li><strong>Help &amp; Criteria</strong> &mdash; definitions, bonus form, Paycom guide.</li>
+          <li><strong>Feedback</strong> button &mdash; send us a note anytime.</li>
+        </ul>
+      </div>
+      <div class="blk">
+        <h3>Questions?</h3>
+        <p>Email <a href="mailto:cpell@peakmade.com?subject=Leadership%20Scorecard%20-%20Question">Craig Pell</a>. A screenshot helps a lot.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="orange">Beta Testing / Demo Script</h2>
+    <p style="margin-top:0;color:var(--muted);font-size:13.5px;">Walk through these in order. Note anything confusing or broken via the <strong>Feedback</strong> button.</p>
+    <ol class="steps">
+      <li>Open the Scorecard and confirm the login completes and the grid loads.</li>
+      <li>Confirm the scope is right: RMs see their portfolio; PMs see their one property (read-only).</li>
+      <li>Open <strong>Help &amp; Criteria &rarr; Criteria</strong>. Search for a measure, then use <strong>Expand All / Collapse All</strong>.</li>
+      <li>Click a <strong>column header</strong> to sort; click again to reverse. Open a column filter and narrow the list.</li>
+      <li>Hover a measure header &mdash; confirm its definition appears as a tooltip.</li>
+      <li>Click a property <strong>row</strong> to open the slideout; turn on <strong>&ldquo;How was this scored?&rdquo;</strong> and read an explanation.</li>
+      <li><span class="role">RM</span> Enter an <strong>RM Score</strong>, mark <strong>Surveys</strong> and <strong>NOI</strong>, and save a <strong>note</strong>. Confirm the Overall Score updates.</li>
+      <li>Open a <strong>drill-down</strong> (click a measure header) and review the source rows; try the &ldquo;fails only&rdquo; filter and an export.</li>
+      <li>Switch to <strong>Fall Forecast</strong>; review Complete / New / Renewal vs. target and try <strong>Excel Export</strong>.</li>
+      <li>Switch to <strong>Compare Quarters</strong> and pick two quarters (once more than one quarter exists).</li>
+      <li>Use the <strong>Feedback</strong> button to send one real piece of feedback end-to-end.</li>
+    </ol>
+  </div>
+
+  <div class="foot">Leadership Scorecard (AppHub 4.0) &middot; beta &mdash; thanks for testing. Share this page's link with anyone who needs the quick start.</div>
+</div>
+</body>
+</html>

@@ -30,6 +30,12 @@
     .sc-tab-blurb-body strong { color: var(--text-primary); }
     .sc-tab-blurb-body ul { margin: 4px 0 8px; padding-left: 20px; }
     .sc-tab-blurb-body li { margin-bottom: 4px; }
+    /* Dismissible quick-start tip shown above the grid; hidden state persists in localStorage. */
+    .sc-hint { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 12px; padding: 9px 14px; background: var(--input-bg); border: 1px solid var(--border-input); border-left: 3px solid var(--accent-cyan); border-radius: 6px; font-size: 0.85rem; line-height: 1.5; color: var(--text-primary); }
+    .sc-hint .sc-hint-icon { color: var(--accent-cyan); flex: 0 0 auto; margin-top: 2px; }
+    .sc-hint .sc-hint-text { flex: 1; }
+    .sc-hint .sc-hint-close { flex: 0 0 auto; background: none; border: none; color: var(--text-secondary); font-size: 1.15rem; line-height: 1; cursor: pointer; padding: 0 2px; }
+    .sc-hint .sc-hint-close:hover { color: var(--accent-cyan); }
 
     /* Ribbon stat bar */
     .sc-ribbon { display: flex; align-items: center; gap: 22px; padding: 12px 16px; background: var(--surface-raised); border: 1px solid var(--border-medium); border-radius: 8px; margin-bottom: 12px; flex-wrap: wrap; }
@@ -434,6 +440,19 @@
     .sc-guide-section { margin-bottom: 16px; }
     .sc-guide-section h4 { font-size: 0.85rem; color: var(--accent-cyan); margin: 0 0 6px; }
     .sc-guide-section ol { margin: 0; padding-left: 20px; font-size: 0.8rem; color: var(--text-primary); line-height: 1.6; }
+    /* Criteria tab: search + expand/collapse + collapsible items + source links (#39) */
+    .sc-crit-toolbar { display: flex; gap: 8px; align-items: center; margin: 4px 0 8px; flex-wrap: wrap; }
+    .sc-crit-search { flex: 1; min-width: 160px; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 6px 10px; border-radius: 4px; font-size: 0.8rem; font-family: inherit; }
+    .sc-crit-search:focus { outline: none; border-color: var(--accent-cyan); }
+    .sc-crit-mini { padding: 5px 10px !important; font-size: 0.75rem !important; }
+    .sc-crit-links { font-size: 0.78rem; color: var(--text-secondary); margin: 0 0 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .sc-crit-links a { color: var(--accent-cyan); text-decoration: none; }
+    .sc-crit-links a:hover { text-decoration: underline; }
+    .sc-crit-link-pending { color: var(--text-secondary); font-style: italic; }
+    .sc-crit-collapsible .sc-crit-name { cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .sc-crit-collapsible .sc-crit-name::before { content: '\25BE'; color: var(--text-secondary); font-size: 0.7rem; }
+    .sc-crit-collapsible.collapsed .sc-crit-name::before { content: '\25B8'; }
+    .sc-crit-collapsible.collapsed .sc-crit-src, .sc-crit-collapsible.collapsed .sc-crit-body { display: none; }
 
     .sc-cal-modal { max-width: 480px; }
     .sc-cal-all { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-primary); margin-bottom: 8px; cursor: pointer; }
@@ -493,6 +512,8 @@
             <div class="sc-alert-menu" id="scAlertMenu"></div>
         </span>
         <button type="button" class="sc-reference-btn" onclick="openScReference()">Help &amp; Criteria</button>
+        <button type="button" class="sc-reference-btn" onclick="openScFeedback()" title="Send feedback about the Leadership Scorecard">Feedback</button>
+        <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/cheat-sheet','_blank','noopener')" title="Printable one-page cheat sheet and beta testing guide">Cheat Sheet</button>
         <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/qa'" title="Your private pre-beta QA sign-off checklist"><i class="fa-solid fa-clipboard-check"></i> QA Sign-Off</button>
         {% if is_admin %}
         <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/qa/dashboard'" title="Admin aggregate view of every tester's QA progress"><i class="fa-solid fa-users"></i> All Testers</button>
@@ -507,12 +528,17 @@
 <div class="sc-container">
 
     <div class="sc-tabbar">
-        <button type="button" class="sc-tab active" id="scTabBtn_scorecard" onclick="showScTab('scorecard')">Scorecard</button>
-        <button type="button" class="sc-tab" id="scTabBtn_fallforecast" onclick="showScTab('fallforecast')">Fall Forecast</button>
-        <button type="button" class="sc-tab" id="scTabBtn_compare" onclick="showScTab('compare')">Compare Quarters</button>
+        <button type="button" class="sc-tab active" id="scTabBtn_scorecard" onclick="showScTab('scorecard')" title="Quarterly pass/fail grid per property, rolled up to an Overall Score (Leadership + Maintenance + RM Score).">Scorecard</button>
+        <button type="button" class="sc-tab" id="scTabBtn_fallforecast" onclick="showScTab('fallforecast')" title="Weekly leasing snapshot vs. target (Complete / New / Renewal) that feeds the Bonus Calculation Form.">Fall Forecast</button>
+        <button type="button" class="sc-tab" id="scTabBtn_compare" onclick="showScTab('compare')" title="Pick two quarters and see per-property deltas on every measure plus the rollups.">Compare Quarters</button>
     </div>
 
     <div id="scView_scorecard">
+    <div class="sc-hint" id="scHint">
+        <i class="fa-solid fa-circle-info sc-hint-icon" aria-hidden="true"></i>
+        <span class="sc-hint-text"><strong>Quick start:</strong> Click a column header to sort or filter it, click any row to open its details, and use the search box to find a property. Enter your RM Score, Surveys, and NOI in a property's slideout.</span>
+        <button type="button" class="sc-hint-close" onclick="dismissScHint()" title="Hide this tip" aria-label="Hide this tip">&times;</button>
+    </div>
     <details class="sc-tab-blurb" id="scBlurbScorecard">
         <summary><i class="fa-solid fa-info-circle"></i> About the Scorecard tab &mdash; click to expand</summary>
         <div class="sc-tab-blurb-body">
@@ -1037,8 +1063,24 @@ function openScReference() {
     document.getElementById('scReferenceOverlay').classList.add('open');
     showScReferenceTab(scRefTab);
 }
+function openScFeedback() {
+    document.getElementById('scReferenceOverlay').classList.add('open');
+    showScReferenceTab('feedback');
+}
 function closeScReference() {
     document.getElementById('scReferenceOverlay').classList.remove('open');
+}
+// Criteria tab (#39): filter items by text and bulk expand/collapse.
+function filterScCriteria(q) {
+    q = (q || '').trim().toLowerCase();
+    document.querySelectorAll('#scRefBody .sc-crit-collapsible').forEach(el => {
+        const match = !q || el.textContent.toLowerCase().includes(q);
+        el.style.display = match ? '' : 'none';
+        if (q && match) el.classList.remove('collapsed');
+    });
+}
+function toggleAllScCrit(expand) {
+    document.querySelectorAll('#scRefBody .sc-crit-collapsible').forEach(el => el.classList.toggle('collapsed', !expand));
 }
 function showScReferenceTab(tab) {
     scRefTab = tab;
@@ -1065,10 +1107,16 @@ function showScReferenceTab(tab) {
     }
     if (tab === 'criteria') {
         let h = '<p class="sc-ref-intro">Each community earns a credit of 1 or 0 per measure. These are the definitions and data sources behind every column on the scorecard.</p>';
+        h += `<div class="sc-crit-toolbar">
+            <input type="text" id="scCritSearch" class="sc-crit-search" placeholder="Search criteria..." oninput="filterScCriteria(this.value)">
+            <button type="button" class="sc-reference-btn sc-crit-mini" onclick="toggleAllScCrit(true)">Expand all</button>
+            <button type="button" class="sc-reference-btn sc-crit-mini" onclick="toggleAllScCrit(false)">Collapse all</button>
+        </div>
+        <div class="sc-crit-links"><span>Source systems:</span><a href="https://www.paycomonline.net/" target="_blank" rel="noopener">Paycom</a><span class="sc-crit-link-pending" id="scCritLinkAcademy">Peak Academy</span></div>`;
         SC_CRITERIA.forEach(c => {
             if (c.name === 'Using the Sheets') return;
             const src = c.src ? `<div class="sc-crit-src">Source: ${esc(c.src)}</div>` : '';
-            h += `<div class="sc-crit-item"><div class="sc-crit-name">${esc(c.name)}</div>${src}<div class="sc-crit-body">${scCritHtml(c.def)}</div></div>`;
+            h += `<div class="sc-crit-item sc-crit-collapsible"><div class="sc-crit-name" onclick="this.parentElement.classList.toggle('collapsed')">${esc(c.name)}</div>${src}<div class="sc-crit-body">${scCritHtml(c.def)}</div></div>`;
         });
         body.innerHTML = h;
     } else {
@@ -1346,12 +1394,12 @@ const SC_HELP_CONTENT = {
 
         <div class="sc-crit-item">
           <div class="sc-crit-name">Why does this property show a fail when I know it passed?</div>
-          <div class="sc-crit-body"><p>Click the measure name to see the source rows; override with a reason if the data's wrong, otherwise tell Craig.</p></div>
+          <div class="sc-crit-body"><p>Click the measure name to see the source rows; override with a reason if the data's wrong, otherwise <a href="mailto:cpell@peakmade.com?subject=Leadership%20Scorecard%20-%20Scoring%20question">tell Craig</a>.</p></div>
         </div>
 
         <div class="sc-crit-item">
           <div class="sc-crit-name">I saved my RM Score but the Overall didn't change.</div>
-          <div class="sc-crit-body"><p>It updates instantly &mdash; if not, refresh, then screenshot Craig if it persists.</p></div>
+          <div class="sc-crit-body"><p>It updates instantly &mdash; if not, refresh, then <a href="mailto:cpell@peakmade.com?subject=Leadership%20Scorecard%20-%20Bug%20report">email Craig</a> a screenshot if it persists.</p></div>
         </div>
 
         <div class="sc-crit-item">
@@ -1371,7 +1419,7 @@ const SC_HELP_CONTENT = {
 
         <div class="sc-crit-item">
           <div class="sc-crit-name">The app is loading really slowly.</div>
-          <div class="sc-crit-body"><p>First load pulls a lot of data, then it's snappy; refresh, then screenshot Craig if not.</p></div>
+          <div class="sc-crit-body"><p>First load pulls a lot of data, then it's snappy; refresh, then <a href="mailto:cpell@peakmade.com?subject=Leadership%20Scorecard%20-%20Performance">email Craig</a> a screenshot if not.</p></div>
         </div>
     `,
 
@@ -1381,7 +1429,7 @@ const SC_HELP_CONTENT = {
         <div class="sc-crit-item">
           <div class="sc-crit-name">App questions, bug reports, feature requests</div>
           <div class="sc-crit-body">
-            <p>Contact <b>Craig Pell</b> &mdash; <a href="mailto:cpell@peakmade.com">cpell@peakmade.com</a></p>
+            <p>Contact <b>Craig Pell</b> &mdash; <a href="mailto:cpell@peakmade.com?subject=Leadership%20Scorecard%20-%20Question">cpell@peakmade.com</a></p>
             <p>Include a screenshot when you can; makes a huge difference in getting it fixed fast.</p>
           </div>
         </div>
@@ -1390,14 +1438,14 @@ const SC_HELP_CONTENT = {
           <div class="sc-crit-name">Questions about a specific pass/fail score</div>
           <div class="sc-crit-body">
             <p>First, click the measure name in the header of the Scorecard grid to drill into the source records. That'll tell you exactly what data drove the result.</p>
-            <p>If the source data itself is wrong, that's a conversation with the team that owns that source (Payroll for timecards, Compliance for LEO/Risk Assessment, etc.). Ask Craig if you're not sure who owns a source.</p>
+            <p>If the source data itself is wrong, that's a conversation with the team that owns that source (Payroll for timecards, Compliance for LEO/Risk Assessment, etc.). <a href="mailto:cpell@peakmade.com?subject=Leadership%20Scorecard%20-%20Data%20source%20question">Ask Craig</a> if you're not sure who owns a source.</p>
           </div>
         </div>
 
         <div class="sc-crit-item">
           <div class="sc-crit-name">Access issues</div>
           <div class="sc-crit-body">
-            <p>Can't log in? Login succeeds but you see the wrong properties (or no properties)? Contact <b>Craig Pell</b>.</p>
+            <p>Can't log in? Login succeeds but you see the wrong properties (or no properties)? Contact <b><a href="mailto:cpell@peakmade.com?subject=Leadership%20Scorecard%20-%20Access%20issue">Craig Pell</a></b>.</p>
           </div>
         </div>
 
@@ -3511,6 +3559,14 @@ function scViewAsClear() {
         });
 }
 
+// Dismissible quick-start tip above the grid; hidden state persists per browser.
+function dismissScHint() {
+    const el = document.getElementById('scHint');
+    if (el) el.style.display = 'none';
+    try { localStorage.setItem('scorecard_hint_hidden', '1'); } catch { /* ignore */ }
+    requestAnimationFrame(_sizeScTableWraps);
+}
+
 // Persist blurb collapsed/open state so users don't have to re-collapse each visit.
 (function _wireScBlurbs() {
     const setup = (id, storageKey) => {
@@ -3531,6 +3587,12 @@ function scViewAsClear() {
     document.addEventListener('DOMContentLoaded', () => {
         setup('scBlurbScorecard', 'scorecard_blurb_scorecard');
         setup('scBlurbForecast', 'scorecard_blurb_forecast');
+        try {
+            if (localStorage.getItem('scorecard_hint_hidden') === '1') {
+                const h = document.getElementById('scHint');
+                if (h) h.style.display = 'none';
+            }
+        } catch { /* ignore */ }
     });
 })();
 

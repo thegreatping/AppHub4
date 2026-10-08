@@ -53,15 +53,15 @@ _MEASURE_DEFS = [
     {"key": "TR", "label": "Training Compliance", "group": "leadership", "type": "bool",
      "blurb": "Average of the last recorded monthly compliance % (Grace Hill, soon Peak Academy) across the quarter's 3 months. Pass threshold is >=94%."},
     {"key": "PCARD", "label": "PPV / P-Card", "group": "leadership", "type": "bool",
-     "blurb": "CONFIRMED working as designed (2026-09-22 stakeholder meeting): fails if the property has ANY Prepaid Visa reconciliation transaction in the quarter; zero transactions = pass by default."},
+     "blurb": "Fails if the property has any Prepaid Visa reconciliation transaction in the quarter; zero transactions = pass by default."},
     {"key": "RA", "label": "Risk Assessment", "group": "leadership", "type": "bool",
-     "blurb": "Compliance import completion. FLAGGED: production hardcodes this to only ever evaluate Q4 -- likely a bug, pending stakeholder confirmation."},
+     "blurb": "Risk Assessment compliance completion for the quarter."},
     {"key": "IIPP", "label": "IIPP", "group": "leadership", "type": "bool",
-     "blurb": "CONFIRMED (2026-09-22): any monthly snapshot in the quarter showing incomplete fails the whole quarter -- not a simple single-flag passthrough."},
+     "blurb": "Any month in the quarter showing incomplete fails the whole quarter."},
     {"key": "LFA", "label": "Lease File Audit", "group": "leadership", "type": "bool",
-     "blurb": "CONFIRMED (2026-09-22): any monthly snapshot in the quarter showing incomplete fails the whole quarter -- not a simple single-flag passthrough."},
+     "blurb": "Any month in the quarter showing incomplete fails the whole quarter."},
     {"key": "PMLEO", "label": "PM LEO Compliance", "group": "leadership", "type": "bool",
-     "blurb": "CONFIRMED (2026-09-22): any monthly snapshot in the quarter showing incomplete fails the whole quarter -- not a simple single-flag passthrough."},
+     "blurb": "Any month in the quarter showing incomplete fails the whole quarter."},
     {"key": "REP", "label": "Reputation Score", "group": "leadership", "type": "bool",
      "blurb": "Compares this quarter's closing-Friday score vs. the prior quarter's. Pass if improvement is >1%; defaults to PASS if either score is missing."},
     {"key": "WO", "label": "Work Orders (PM)", "group": "leadership", "type": "bool",
@@ -69,7 +69,7 @@ _MEASURE_DEFS = [
     {"key": "RMSCORE", "label": "RM Score (0-5)", "group": "leadership", "type": "num5",
      "blurb": "Regional Manager's subjective 0-5 assessment of the Property Manager's leadership this quarter. Manually entered, not calculated."},
     {"key": "MSLEO", "label": "MS LEO Compliance", "group": "maintenance", "type": "bool",
-     "blurb": "CONFIRMED (2026-09-22): any monthly snapshot in the quarter showing incomplete fails the whole quarter -- not a simple single-flag passthrough."},
+     "blurb": "Any month in the quarter showing incomplete fails the whole quarter."},
     {"key": "CURB", "label": "Curb Appeal", "group": "maintenance", "type": "bool",
      "blurb": "RM Quarterly Inspection score for this section. When a property has more than one inspection in the quarter, the best score of any inspection is used. Pass threshold is >=85 points."},
     {"key": "PUBLICAREAS", "label": "Public Areas", "group": "maintenance", "type": "bool",
@@ -83,7 +83,7 @@ _MEASURE_DEFS = [
     {"key": "SURVEYS", "label": "Surveys", "group": "maintenance", "type": "bool01",
      "blurb": "Regional Manager's subjective 0/1 confirmation that resident surveys were completed this quarter. Manually entered, not calculated."},
     {"key": "NOI", "label": "Controllable NOI", "group": "maintenance", "type": "bool01",
-     "blurb": "CONFIRMED (2026-09-22): this is manually entered/overridden here -- there is no automated file feed for NOI today. Use this slideout to set it directly."},
+     "blurb": "Manually entered here -- there is no automated feed for NOI. Set it in the slideout."},
 ]
 _MEASURE_KEYS = [m["key"] for m in _MEASURE_DEFS]
 _MEASURE_DEFS_BY_KEY = {m["key"]: m for m in _MEASURE_DEFS}
@@ -475,6 +475,16 @@ def index():
     if check:
         return check
     return render_template("scorecard.html", **_ctx())
+
+
+@scorecard_bp.route("/cheat-sheet")
+@login_required
+def cheat_sheet_page():
+    """Standalone, shareable one-pager: quick cheat sheet + beta testing/demo
+    script. Login-only (any signed-in Peak employee) -- deliberately NOT behind
+    the Scorecard-access gate, so it can be shared with testers who don't have
+    the module granted yet. The page contains no property data."""
+    return render_template("scorecard_cheatsheet.html")
 
 
 # LeadershipScorecard/ is the sibling folder to APPHUB_4/ (see file layout in
