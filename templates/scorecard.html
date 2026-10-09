@@ -514,13 +514,13 @@
         <button type="button" class="sc-reference-btn" onclick="openScReference()">Help &amp; Criteria</button>
         <button type="button" class="sc-reference-btn" onclick="openScFeedback()" title="Send feedback about the Leadership Scorecard">Feedback</button>
         <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/cheat-sheet','_blank','noopener')" title="Printable one-page cheat sheet and beta testing guide">Cheat Sheet</button>
-        <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/qa'" title="Your private pre-beta QA sign-off checklist"><i class="fa-solid fa-clipboard-check"></i> QA Sign-Off</button>
         {% if is_admin %}
-        <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/qa/dashboard'" title="Admin aggregate view of every tester's QA progress"><i class="fa-solid fa-users"></i> All Testers</button>
-        <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/tables'" title="Browse every table feeding or produced by the Scorecard pipeline"><i class="fa-solid fa-database"></i> Table Manager</button>
-        <button type="button" class="sc-reference-btn" onclick="window.location.href='/scorecard/admin/runs'" title="Recent notebook executions with per-step outcomes"><i class="fa-solid fa-play-circle"></i> Notebook Runs</button>
-        <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/admin/diagram/dataflow','_blank','noopener')" title="Interactive data-flow diagram"><i class="fa-solid fa-diagram-project"></i> Data Flow</button>
-        <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/admin/diagram/table_manager','_blank','noopener')" title="Interactive table-manager diagram"><i class="fa-solid fa-sitemap"></i> Diagram</button>
+        <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/admin/qa','_blank','noopener')" title="Your private pre-beta QA sign-off checklist">QA Sign-Off</button>
+        <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/admin/qa/dashboard','_blank','noopener')" title="Admin aggregate view of every tester's QA progress">All Testers</button>
+        <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/admin/tables','_blank','noopener')" title="Browse every table feeding or produced by the Scorecard pipeline">Table Manager</button>
+        <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/admin/runs','_blank','noopener')" title="Recent notebook executions with per-step outcomes">Notebook Runs</button>
+        <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/admin/diagram/dataflow','_blank','noopener')" title="Interactive data-flow diagram">Data Flow</button>
+        <button type="button" class="sc-reference-btn" onclick="window.open('/scorecard/admin/diagram/table_manager','_blank','noopener')" title="Interactive table-manager diagram">Diagram</button>
         {% endif %}
     </div>
 </div>
@@ -529,8 +529,8 @@
 
     <div class="sc-tabbar">
         <button type="button" class="sc-tab active" id="scTabBtn_scorecard" onclick="showScTab('scorecard')" title="Quarterly pass/fail grid per property, rolled up to an Overall Score (Leadership + Maintenance + RM Score).">Scorecard</button>
-        <button type="button" class="sc-tab" id="scTabBtn_fallforecast" onclick="showScTab('fallforecast')" title="Weekly leasing snapshot vs. target (Complete / New / Renewal) that feeds the Bonus Calculation Form.">Fall Forecast</button>
         <button type="button" class="sc-tab" id="scTabBtn_compare" onclick="showScTab('compare')" title="Pick two quarters and see per-property deltas on every measure plus the rollups.">Compare Quarters</button>
+        <button type="button" class="sc-tab" id="scTabBtn_fallforecast" onclick="showScTab('fallforecast')" title="Weekly leasing snapshot vs. target (Complete / New / Renewal) that feeds the Bonus Calculation Form.">Fall Forecast</button>
     </div>
 
     <div id="scView_scorecard">
@@ -572,16 +572,16 @@
         </div>
         <div class="sc-toolbar">
             {% if is_admin or is_rvp %}
-            <button type="button" class="sc-export-btn" id="scRemindInputsBtn" style="display:none;" onclick="openScInputReminders()" title="Prepare unsent reminder drafts for the visible incomplete properties"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Email reminders</button>
+            <button type="button" class="sc-export-btn" id="scRemindInputsBtn" style="display:none;" onclick="openScInputReminders()" title="Prepare unsent reminder drafts for the visible incomplete properties">Email reminders</button>
             {% endif %}
             <label class="sc-q1-toggle">
                 <input type="checkbox" id="q1ToggleCb" onchange="toggleQ1History(this.checked)">
                 Show prior quarter totals
             </label>
             {% if not is_pm %}
-            <button type="button" class="sc-export-btn" onclick="showCalPrompt()">&#128197; Add Due Dates</button>
+            <button type="button" class="sc-export-btn" onclick="showCalPrompt()">Add Due Dates</button>
             {% endif %}
-            <button type="button" class="sc-export-btn" id="scFullExportBtn" style="display:none;" onclick="exportFullSummaryXls()" title="Excel with failure highlights">&#128190; Full Summary (Excel)</button>
+            <button type="button" class="sc-export-btn" id="scFullExportBtn" style="display:none;" onclick="exportFullSummaryXls()" title="Excel with failure highlights">Full Summary (Excel)</button>
             <button type="button" class="sc-export-btn" id="scFullExportCsvBtn" style="display:none;" onclick="exportFullSummary()" title="Plain CSV (no highlights)">CSV</button>
         </div>
     </div>
@@ -692,7 +692,7 @@
         <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
             <button type="button" class="sc-blurb-toggle" id="scBizLogicBtn" onclick="toggleScBusinessLogic()" title="Show each measure's scoring rule / criteria">Business Logic</button>
             <button type="button" class="sc-blurb-toggle" id="scScoringDetailsBtn" onclick="toggleScScoringDetails()" title="Show how this property specifically scored on each measure">Scoring Details</button>
-            <button type="button" class="sc-blurb-toggle" onclick="downloadScDetailHtml()">&#128190; Download scorecard (.html)</button>
+            <button type="button" class="sc-blurb-toggle" onclick="downloadScDetailHtml()">Download scorecard (.html)</button>
         </div>
     </div>
     <div class="popout-scroll" id="scDetailContent"></div>
@@ -720,7 +720,7 @@
             <input type="text" id="scDdFilterInput" class="sc-dd-search" style="max-width:170px;flex:0 0 auto;" placeholder="Filter rows..." autocomplete="off" oninput="onDdFilterInput(this.value)">
             <span class="sc-dd-legend"><span class="sc-dd-legend-swatch"></span>Fails the business rule</span>
             <span id="scDdCount" class="sc-dd-count"></span>
-            <button type="button" class="sc-dd-export-btn" onclick="exportDrilldownXls()" title="Excel with the dashboard failure highlights">&#128190; Excel</button>
+            <button type="button" class="sc-dd-export-btn" onclick="exportDrilldownXls()" title="Excel with the dashboard failure highlights">Excel</button>
             <button type="button" class="sc-dd-export-btn" onclick="exportDrilldownExcel()" title="Plain CSV (no highlights)">CSV</button>
         </div>
         <div class="sc-dd-table-wrap">
@@ -825,7 +825,7 @@
         <p class="sc-cal-hint">Each appointment downloads as a single-event file. Open it, then hit <b>Save &amp; Close</b> in Outlook.</p>
         <div class="sc-so-row">
             <button type="button" class="sc-so-btn-plain" onclick="closeScCalPrompt()">No thanks</button>
-            <button type="button" class="sc-so-btn sc-so-btn-primary" onclick="scAddSelectedDueDates()">&#128197; Add selected</button>
+            <button type="button" class="sc-so-btn sc-so-btn-primary" onclick="scAddSelectedDueDates()">Add selected</button>
         </div>
     </div>
 </div>
@@ -1112,7 +1112,7 @@ function showScReferenceTab(tab) {
             <button type="button" class="sc-reference-btn sc-crit-mini" onclick="toggleAllScCrit(true)">Expand all</button>
             <button type="button" class="sc-reference-btn sc-crit-mini" onclick="toggleAllScCrit(false)">Collapse all</button>
         </div>
-        <div class="sc-crit-links"><span>Source systems:</span><a href="https://www.paycomonline.net/" target="_blank" rel="noopener">Paycom</a><span class="sc-crit-link-pending" id="scCritLinkAcademy">Peak Academy</span></div>`;
+        <div class="sc-crit-links"><span>Source systems:</span><a href="https://www.paycomonline.net/" target="_blank" rel="noopener">Paycom</a><a href="https://peakcampus.sharepoint.com/sites/PeakAcademy/SitePages/Dashboard.aspx?isNewUI=true" target="_blank" rel="noopener">Peak Academy</a></div>`;
         SC_CRITERIA.forEach(c => {
             if (c.name === 'Using the Sheets') return;
             const src = c.src ? `<div class="sc-crit-src">Source: ${esc(c.src)}</div>` : '';
@@ -1882,7 +1882,7 @@ async function openScInputReminders() {
     if (reminders.unassigned.length) {
         html += `<div class="sc-reminder-row" role="status"><div><b>Missing or invalid RM email (${reminders.unassigned.length})</b><ul>${reminders.unassigned.map(rowHtml).join('')}</ul></div></div>`;
     }
-    html += reminders.groups.map((group, index) => `<section class="sc-reminder-row"><div><b>${esc(group.name || group.email)}</b><div class="sc-reminder-email">${esc(group.email)}</div><ul>${group.rows.map(rowHtml).join('')}</ul><div id="scReminderStatus${index}" role="status"></div></div><div><button type="button" class="sc-reference-btn" onclick="sendScInputReminder(${index}, this)" ${scMailAvailability.available ? '' : 'disabled'} title="Send as your signed-in account"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Send email</button><button type="button" class="sc-reference-btn" onclick="composeScInputReminder(${index})" title="Open an unsent draft to ${esc(group.email)}"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Compose draft</button></div></section>`).join('');
+    html += reminders.groups.map((group, index) => `<section class="sc-reminder-row"><div><b>${esc(group.name || group.email)}</b><div class="sc-reminder-email">${esc(group.email)}</div><ul>${group.rows.map(rowHtml).join('')}</ul><div id="scReminderStatus${index}" role="status"></div></div><div><button type="button" class="sc-reference-btn" onclick="sendScInputReminder(${index}, this)" ${scMailAvailability.available ? '' : 'disabled'} title="Send as your signed-in account">Send email</button><button type="button" class="sc-reference-btn" onclick="composeScInputReminder(${index})" title="Open an unsent draft to ${esc(group.email)}">Compose draft</button></div></section>`).join('');
     document.getElementById('scInputRemindersBody').innerHTML = html;
     document.getElementById('scInputRemindersOverlay').classList.add('open');
     document.getElementById('scInputRemindersOverlay').querySelector('.sc-ref-close').focus();
@@ -3714,10 +3714,10 @@ function exportBonusCalcForm() {
 // formula to derive them from the quarter alone (they're set by People Ops
 // each cycle). Must be updated with the real dates before Q3 2026 opens.
 const SC_DUE_DATES = [
-    { d: '20260731', label: '7/31/26', t: 'Add and email scores to People Operations', note: "Add notes if you see score discrepancies that should be addressed, and if applicable, share any exception approvals you've received from the owner of the data point with the exception." },
-    { d: '20260807', label: '8/7/26', t: 'Enter quarterly bonuses into Paycom', bold: true, preselect: true },
-    { d: '20260813', label: '8/13/26', t: 'Discuss scorecards with your Property Managers', note: 'Review each scorecard so Property Managers understand their achievements and areas of improvement, and have them share with their team before the payout date.', preselect: true },
-    { d: '20260814', label: '8/14/26', t: 'Payout of quarterly bonuses' },
+    { d: '20261023', label: '10/23/26', t: 'Add and email scores to People Operations', note: "Add notes if you see score discrepancies that should be addressed, and if applicable, share any exception approvals you've received from the owner of the data point with the exception." },
+    { d: '20261030', label: '10/30/26', t: 'Enter quarterly bonuses into Paycom', bold: true, preselect: true },
+    { d: '20261102', label: '11/2/26', t: 'Discuss scorecards with your Property Managers', note: 'Review each scorecard so Property Managers understand their achievements and areas of improvement, and have them share with their team before the payout date.', preselect: true },
+    { d: '20261106', label: '11/6/26', t: 'Payout of quarterly bonuses' },
 ];
 
 function icsEsc(t) { return String(t).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n'); }
