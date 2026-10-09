@@ -321,27 +321,33 @@ def _rvp_sees_all():
 
 def _scope_clause(alias="sc"):
     """Return (where_sql, params) that scopes a SELECT to the current user's
-    role. The RM/RVP/ED branches assume the caller has already joined
-    dbo.PROPERTY_0 p ON p.PROPERTY_KEY = <alias>.PROPERTY_KEY -- adds an
-    empty '1=1' filter otherwise, so admin/pm-only queries stay JOIN-free.
-      admin, rvp-all     -> no filter
+    role. ALL branches now reference dbo.PROPERTY_0 p (via the New-Dev filter
+    below), so every caller must join
+    dbo.PROPERTY_0 p ON p.PROPERTY_KEY = <alias>.PROPERTY_KEY.
+      admin, rvp-all     -> no role filter
       pm                 -> <alias>.PROPERTY_KEY = ?
       ed                 -> LOWER(p.EXEC_DIR_EMAIL) = ?
       rvp                -> LOWER(p.RVP_EMAIL) = ?
       rm (default)       -> LOWER(COALESCE(p.RM_EMAIL, <alias>.RM_EMAIL)) = ?
+    Plus, for every role, hides New-Development properties
+    (PROPERTY_0.FLAG_STABILIZED = 1) -- they are not eligible for the scorecard
+    this quarter (beta #50; also what reconciles the 111 -> 106 count, #49).
     """
     if _is_admin():
-        return "1=1", []
-    pm_key = _pm_property_key()
-    if pm_key:
-        return f"{alias}.PROPERTY_KEY = ?", [pm_key]
-    if _is_ed():
-        return "LOWER(p.EXEC_DIR_EMAIL) = ?", [_effective_ed_email()]
-    if _is_rvp():
-        if _rvp_sees_all():
-            return "1=1", []
-        return "LOWER(p.RVP_EMAIL) = ?", [_effective_rvp_email()]
-    return f"LOWER(COALESCE(p.RM_EMAIL, {alias}.RM_EMAIL)) = ?", [_effective_rm_email()]
+        base, params = "1=1", []
+    else:
+        pm_key = _pm_property_key()
+        if pm_key:
+            base, params = f"{alias}.PROPERTY_KEY = ?", [pm_key]
+        elif _is_ed():
+            base, params = "LOWER(p.EXEC_DIR_EMAIL) = ?", [_effective_ed_email()]
+        elif _is_rvp() and not _rvp_sees_all():
+            base, params = "LOWER(p.RVP_EMAIL) = ?", [_effective_rvp_email()]
+        elif _is_rvp():
+            base, params = "1=1", []
+        else:
+            base, params = f"LOWER(COALESCE(p.RM_EMAIL, {alias}.RM_EMAIL)) = ?", [_effective_rm_email()]
+    return f"({base}) AND ISNULL(p.FLAG_STABILIZED, 0) = 0", params
 
 
 def _scope_update_where():

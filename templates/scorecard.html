@@ -73,6 +73,8 @@
     .sc-table th.grp-leadership { background: var(--sc-brand-cyan); color: #04222c !important; font-weight: 900; letter-spacing: 0.6px; }
     .sc-table th.grp-maintenance { background: var(--sc-brand-orange); color: #3b2200 !important; font-weight: 900; letter-spacing: 0.6px; }
     .sc-table th.id-col, .sc-table td.id-col { text-align: left; }
+    /* #54: measure columns share one fixed width with centered, wrapping headers. */
+    .sc-table th.sc-measure-col { width: 72px; min-width: 72px; max-width: 72px; white-space: normal; vertical-align: bottom; line-height: 1.15; }
     .sc-table td.id-col.name-col { font-weight: 600; color: var(--text-primary); }
     #scFFTable td { text-align: center; }
     #scFFTable td.id-col { text-align: left; }
@@ -1656,9 +1658,9 @@ function renderHeader() {
     const labelRow = `<tr>
         ${ID_COLS.map(c => hc(c, 'id-col')).join('')}
         ${hc(OVERALL_COL, 'sc-overall-header')}
-        ${LEADERSHIP_COLS.map(c => hc(c)).join('')}
+        ${LEADERSHIP_COLS.map(c => hc(c, 'sc-measure-col')).join('')}
         ${showPrior ? `<th class="sc-prior-col">Prior Ldr Total</th>` : ''}
-        ${MAINT_COLS.map(c => hc(c)).join('')}
+        ${MAINT_COLS.map(c => hc(c, 'sc-measure-col')).join('')}
         ${showPrior ? `<th class="sc-prior-col">Prior Maint Total</th>` : ''}
         ${hc(NOTES_COL)}
     </tr>`;
