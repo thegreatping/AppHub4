@@ -87,6 +87,8 @@
     /* Overall Score -- deliberately oversized so it pops next to RM */
     .sc-overall-header { font-size: 0.82rem !important; color: var(--accent-cyan) !important; }
     .sc-overall-cell { font-family: Consolas, monospace; font-weight: 800; font-size: 1.25rem; color: var(--accent-cyan); text-align: center; }
+    .sc-hs-icon { display: inline-block; margin-left: 5px; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; vertical-align: middle; font-weight: 400; }
+    .sc-hs-icon:hover { color: var(--accent-cyan); }
 
     /* Override slideout (mirrors PDM's .detail-value / .override-check pattern) */
     .sc-detail-overall { font-family: Consolas, monospace; font-weight: 800; font-size: 1.6rem; color: var(--accent-cyan); }
@@ -178,6 +180,33 @@
     .sc-dd-lineage { margin-top: 4px; font-size: 0.72rem; color: var(--text-secondary); background: var(--input-bg); border: 1px solid var(--border-input); border-radius: 4px; padding: 6px 10px; max-width: 640px; }
     .sc-dd-close { background: none; border: none; color: var(--text-secondary); font-size: 1.4rem; line-height: 1; cursor: pointer; }
     .sc-dd-close:hover { color: var(--text-primary); }
+    /* Standalone "How this was scored" modal (beta #48) */
+    .sc-hs-modal { max-width: 760px; height: auto; max-height: 82vh; }
+    .sc-hs-body { overflow-y: auto; padding: 8px 0 14px; }
+    .sc-hs-group { padding: 10px 16px 4px; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: var(--text-secondary); }
+    .sc-hs-row { display: grid; grid-template-columns: 140px 42px 1fr; gap: 10px; align-items: start; padding: 6px 16px; font-size: 0.8rem; border-bottom: 1px solid var(--border-subtle); }
+    .sc-hs-measure { font-weight: 600; color: var(--text-primary); }
+    .sc-hs-badge { text-align: center; }
+    .sc-hs-explain { color: var(--text-secondary); line-height: 1.4; }
+    .sc-hs-score { font-weight: 800; color: var(--accent-cyan); }
+    .sc-hs-na { color: var(--text-secondary); }
+    .sc-hs-loading { padding: 20px 16px; color: var(--text-secondary); font-size: 0.8rem; }
+    /* "Reason for Override" modal (beta #50) */
+    .sc-ov-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 1100; align-items: center; justify-content: center; }
+    .sc-ov-overlay.open { display: flex; }
+    .sc-ov-modal { background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 8px; width: 460px; max-width: 92vw; padding: 18px 20px 16px; box-shadow: 0 10px 30px var(--shadow-overlay); }
+    .sc-ov-title { font-size: 1.05rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
+    .sc-ov-title::before { content: '\26A0'; color: #f59e0b; }
+    .sc-ov-sub { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.45; margin: 8px 0 10px; }
+    .sc-ov-field-label { font-size: 0.72rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+    .sc-ov-input { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); border-radius: 5px; padding: 8px 10px; font-size: 0.85rem; font-family: inherit; resize: vertical; }
+    .sc-ov-input:focus { outline: none; border-color: var(--accent-cyan); }
+    .sc-ov-hint { font-size: 0.66rem; color: var(--text-secondary); margin-top: 6px; }
+    .sc-ov-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+    .sc-ov-btn-plain { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); border-radius: 5px; padding: 6px 14px; font-size: 0.8rem; cursor: pointer; }
+    .sc-ov-btn-plain:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .sc-ov-btn-primary { background: #f59e0b; border: 1px solid #f59e0b; color: #1a1205; font-weight: 700; border-radius: 5px; padding: 6px 16px; font-size: 0.8rem; cursor: pointer; }
+    .sc-ov-btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
     .sc-dd-toolbar { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--border-input); flex-shrink: 0; }
     .sc-dd-combo { position: relative; flex: 0 0 260px; }
     .sc-dd-search { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 5px 8px; border-radius: 4px; font-size: 0.8rem; }
@@ -226,6 +255,9 @@
     .sc-note-role { background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 3px; padding: 0 5px; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.4px; }
     .sc-note-measure-tag { color: #04222c; background: var(--accent-cyan); border-radius: 3px; padding: 0 6px; font-size: 0.62rem; font-weight: 700; }
     .sc-note-text { font-size: 0.8rem; color: var(--text-primary); margin-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .sc-note-toolbar { display: flex; gap: 6px; margin-bottom: 4px; }
+    .sc-note-fmt-btn { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-secondary); border-radius: 4px; padding: 2px 9px; font-size: 0.7rem; cursor: pointer; }
+    .sc-note-fmt-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
     .sc-note-mentioned { margin-top: 5px; font-size: 0.68rem; color: var(--text-secondary); }
     .sc-note-delete { margin-left: auto; background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.72rem; }
     .sc-note-delete:hover { color: #f38ba8; }
@@ -407,6 +439,29 @@
     .col-filter-footer { display: flex; justify-content: space-between; gap: 8px; padding: 6px 8px; border-top: 1px solid var(--border-subtle); }
     .col-filter-footer button { background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); border-radius: 4px; padding: 3px 12px; font-size: 0.68rem; cursor: pointer; }
     .col-filter-footer button:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+
+    /* Column manager panel (hide/reorder, beta #35) + group collapse (beta #37) */
+    .sc-grp-toggle { cursor: pointer; user-select: none; }
+    .sc-grp-caret { font-size: 0.7rem; margin-right: 2px; }
+    .sc-columns-panel { display: none; position: fixed; z-index: 520; width: 300px; max-height: 70vh; overflow-y: auto; background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 6px; box-shadow: 0 8px 24px var(--shadow-overlay); text-transform: none; letter-spacing: normal; font-weight: normal; }
+    .sc-columns-panel.open { display: block; }
+    .sc-col-panel-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border-subtle); font-size: 0.78rem; font-weight: 700; color: var(--text-primary); }
+    .sc-col-panel-reset { font-size: 0.66rem; font-weight: 600; color: var(--accent-cyan); cursor: pointer; }
+    .sc-col-panel-reset:hover { text-decoration: underline; }
+    .sc-col-panel-body { padding: 4px 0; }
+    .sc-col-group-title { padding: 6px 10px 3px; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: var(--text-secondary); }
+    .sc-col-row { display: flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: 0.72rem; color: var(--text-secondary); cursor: pointer; }
+    .sc-col-row:hover { background: var(--hover-bg-strong); }
+    .sc-col-row.col-active { color: var(--text-primary); }
+    .sc-col-arrows { display: flex; flex-direction: column; line-height: 0.7; }
+    .sc-col-arrows button { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.55rem; padding: 0; height: 9px; }
+    .sc-col-arrows button:hover:not(:disabled) { color: var(--accent-cyan); }
+    .sc-col-arrows button:disabled { opacity: 0.25; cursor: default; }
+    .sc-col-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sc-col-eye { flex-shrink: 0; font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 3px; border: 1px solid var(--border-input); }
+    .sc-col-row.col-active .sc-col-eye { background: var(--accent-cyan); color: #fff; border-color: var(--accent-cyan); }
+    .sc-col-panel-hint { padding: 6px 10px; font-size: 0.58rem; color: var(--text-secondary); line-height: 1.4; border-top: 1px solid var(--border-subtle); }
+
     /* Drilldown reuses the header-menu styling but must sit above the modal. */
     .sc-dd-head-menu { z-index: 1300; }
     .sc-dd-head-th { cursor: pointer; }
@@ -572,6 +627,10 @@
             <span class="k">Comments</span>
             <span class="v" id="statComments">--</span>
         </div>
+        <button type="button" class="sc-stat clickable" id="statFailingBtn" onclick="toggleQuickFilter('failingOnly')" aria-pressed="false" title="Properties with at least one measure that fails its business rule">
+            <span class="k">Failing a Rule</span>
+            <span class="v" id="statFailing">--</span>
+        </button>
         <div class="sc-toolbar">
             {% if is_admin or is_rvp %}
             <button type="button" class="sc-export-btn" id="scRemindInputsBtn" style="display:none;" onclick="openScInputReminders()" title="Prepare unsent reminder drafts for the visible incomplete properties">Email reminders</button>
@@ -580,6 +639,7 @@
                 <input type="checkbox" id="q1ToggleCb" onchange="toggleQ1History(this.checked)">
                 Show prior quarter totals
             </label>
+            <button type="button" class="sc-export-btn" id="scColumnsBtn" onclick="openScColumnsPanel(this)" title="Show, hide, or reorder measure columns (exports keep the standard order)">Columns</button>
             {% if not is_pm %}
             <button type="button" class="sc-export-btn" onclick="showCalPrompt()">Add Due Dates</button>
             {% endif %}
@@ -730,6 +790,38 @@
                 <thead id="scDdThead"></thead>
                 <tbody id="scDdTbody"></tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Standalone "How this was scored" read-only modal (beta #48) -- the per-measure
+     scoring explanation reachable from the grid without opening the editable slideout. -->
+<div class="sc-dd-overlay" id="scHowScoredOverlay" onclick="if(event.target===this) closeHowScored()">
+    <div class="sc-dd-modal sc-hs-modal">
+        <div class="sc-dd-header">
+            <div>
+                <div class="sc-dd-title" id="scHowScoredTitle"></div>
+                <div class="sc-dd-subtitle" id="scHowScoredSubtitle"></div>
+            </div>
+            <button type="button" class="sc-dd-close" onclick="closeHowScored()">&times;</button>
+        </div>
+        <div class="sc-hs-body" id="scHowScoredBody"></div>
+    </div>
+</div>
+
+<!-- "Reason for Override" modal (beta #50) -- replaces the native prompt; always
+     shown when an override is set, requires a non-blank reason. Screenshot upload
+     is a planned follow-up (part 4). -->
+<div class="sc-ov-overlay" id="scOverrideReasonOverlay" onclick="if(event.target===this) _resolveOverrideReason(null)">
+    <div class="sc-ov-modal">
+        <div class="sc-ov-title">Reason for Override</div>
+        <div class="sc-ov-sub" id="scOvReasonSub">This value differs from the automatically computed score. Enter a reason so there is a clear record of why it was overridden.</div>
+        <div class="sc-ov-field-label">Reason for Override <span style="color:#f38ba8;">*</span></div>
+        <textarea id="scOvReasonInput" class="sc-ov-input" rows="4" placeholder="e.g., Credit of 1 from the Director of Operations Support" oninput="_onOverrideReasonInput()"></textarea>
+        <div class="sc-ov-hint">A reason is required. (Screenshot upload is coming soon.)</div>
+        <div class="sc-ov-actions">
+            <button type="button" class="sc-ov-btn-plain" onclick="_resolveOverrideReason(null)">Cancel</button>
+            <button type="button" class="sc-ov-btn-primary" id="scOvReasonSave" onclick="_submitOverrideReason()" disabled>Save override</button>
         </div>
     </div>
 </div>
@@ -1501,13 +1593,123 @@ const COL_BY_KEY = Object.fromEntries(ALL_COLS.map(c => [c.key, c]));
 // Measures with a backend drill-down (mirrors _MEASURE_TO_DRILLDOWN_GROUP in scorecard.py).
 // SURVEYS has no source table yet, so it's intentionally excluded.
 const DRILLDOWN_KEYS = new Set(['TC', 'TR', 'PCARD', 'RA', 'IIPP', 'LFA', 'PMLEO', 'MSLEO', 'REP', 'WO', 'MSWO', 'CURB', 'PUBLICAREAS', 'MAINT', 'LOGS', 'NOI']);
+// Scored pass/fail measures (excludes totals + RM Score) -- used by the
+// "Failing a Rule" quick filter (beta #42).
+const SC_FAIL_KEYS = [...LEADERSHIP_COLS, ...MAINT_COLS].filter(c => c.type === 'bool').map(c => c.key);
+
+// ── Column visibility / order / group collapse (beta #35 + #37) ──────────────
+// LEADERSHIP_COLS/MAINT_COLS stay immutable so exports keep the standard order;
+// these per-browser prefs only change the on-screen grid.
+const SC_COLPREF_KEY = 'scorecard_col_prefs_v1';
+let scHiddenCols = new Set();        // measure keys hidden from the grid
+let scColOrder = {};                 // { leadership:[keys], maintenance:[keys] }
+let scCollapsedGroups = new Set();   // 'leadership' and/or 'maintenance'
+
+function _scLoadColPrefs() {
+    try {
+        const p = JSON.parse(localStorage.getItem(SC_COLPREF_KEY) || '{}');
+        scHiddenCols = new Set(p.hidden || []);
+        scColOrder = p.order || {};
+        scCollapsedGroups = new Set(p.collapsed || []);
+    } catch (_) { /* ignore corrupt prefs */ }
+}
+function _scSaveColPrefs() {
+    localStorage.setItem(SC_COLPREF_KEY, JSON.stringify({
+        hidden: [...scHiddenCols], order: scColOrder, collapsed: [...scCollapsedGroups],
+    }));
+}
+function _scBaseGroup(groupKey) { return groupKey === 'leadership' ? LEADERSHIP_COLS : MAINT_COLS; }
+function _scOrdered(groupKey) {
+    const base = _scBaseGroup(groupKey);
+    const order = scColOrder[groupKey];
+    if (!order || !order.length) return base.slice();
+    const byKey = Object.fromEntries(base.map(c => [c.key, c]));
+    const out = order.map(k => byKey[k]).filter(Boolean);
+    for (const c of base) if (!out.includes(c)) out.push(c);  // newly added cols append
+    return out;
+}
+// Columns actually rendered in the grid for a group (applies collapse + hide).
+function scVisibleCols(groupKey) {
+    const ordered = _scOrdered(groupKey);
+    if (scCollapsedGroups.has(groupKey)) return ordered.filter(c => c.type === 'total');
+    return ordered.filter(c => !scHiddenCols.has(c.key));
+}
+function scIsHideable(key) {
+    return LEADERSHIP_COLS.some(c => c.key === key) || MAINT_COLS.some(c => c.key === key);
+}
+function scHideColumn(key) { scHiddenCols.add(key); _scSaveColPrefs(); closeColFilterMenus(); render(); }
+function scToggleColVisible(key) {
+    if (scHiddenCols.has(key)) scHiddenCols.delete(key); else scHiddenCols.add(key);
+    _scSaveColPrefs(); renderScColumnsPanel(); render();
+}
+function scMoveCol(groupKey, key, dir) {
+    const cur = _scOrdered(groupKey).map(c => c.key);
+    const i = cur.indexOf(key), j = i + dir;
+    if (i < 0 || j < 0 || j >= cur.length) return;
+    [cur[i], cur[j]] = [cur[j], cur[i]];
+    scColOrder[groupKey] = cur;
+    _scSaveColPrefs(); renderScColumnsPanel(); render();
+}
+function scToggleGroup(groupKey) {
+    if (scCollapsedGroups.has(groupKey)) scCollapsedGroups.delete(groupKey); else scCollapsedGroups.add(groupKey);
+    _scSaveColPrefs(); render();
+}
+function scResetColumns() {
+    scHiddenCols = new Set(); scColOrder = {}; scCollapsedGroups = new Set();
+    _scSaveColPrefs(); renderScColumnsPanel(); render();
+}
+
+const _scColumnsPanel = document.createElement('div');
+_scColumnsPanel.className = 'sc-columns-panel';
+_scColumnsPanel.id = 'scColumnsPanel';
+document.body.appendChild(_scColumnsPanel);
+
+function openScColumnsPanel(btn) {
+    const panel = _scColumnsPanel;
+    if (panel.classList.contains('open')) { panel.classList.remove('open'); return; }
+    renderScColumnsPanel();
+    const rect = btn.getBoundingClientRect();
+    panel.style.top = (rect.bottom + 4) + 'px';
+    panel.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - 308)) + 'px';
+    panel.classList.add('open');
+}
+function renderScColumnsPanel() {
+    const panel = _scColumnsPanel;
+    const block = (groupKey, title) => {
+        const cols = _scOrdered(groupKey);
+        const rows = cols.map((c, i) => {
+            const hidden = scHiddenCols.has(c.key);
+            return `<div class="sc-col-row ${hidden ? '' : 'col-active'}">
+                <div class="sc-col-arrows">
+                    <button type="button" ${i === 0 ? 'disabled' : ''} onclick="event.stopPropagation(); scMoveCol('${groupKey}','${c.key}',-1)" title="Move up">&#9650;</button>
+                    <button type="button" ${i === cols.length - 1 ? 'disabled' : ''} onclick="event.stopPropagation(); scMoveCol('${groupKey}','${c.key}',1)" title="Move down">&#9660;</button>
+                </div>
+                <div class="sc-col-name" onclick="scToggleColVisible('${c.key}')">${esc(c.label)}</div>
+                <div class="sc-col-eye" onclick="scToggleColVisible('${c.key}')">${hidden ? 'Hidden' : 'Shown'}</div>
+            </div>`;
+        }).join('');
+        return `<div class="sc-col-group-title">${title}</div>${rows}`;
+    };
+    panel.innerHTML = `
+        <div class="sc-col-panel-head">Columns <span class="sc-col-panel-reset" onclick="scResetColumns()">Reset</span></div>
+        <div class="sc-col-panel-body">
+            ${block('leadership', 'Leadership')}
+            ${block('maintenance', 'Maintenance')}
+        </div>
+        <div class="sc-col-panel-hint">Click a row to show/hide &bull; arrows reorder &bull; exports always use the standard order.</div>`;
+}
+document.addEventListener('pointerdown', e => {
+    if (e.target.closest('.sc-columns-panel') || e.target.closest('#scColumnsBtn')) return;
+    _scColumnsPanel.classList.remove('open');
+});
+_scLoadColPrefs();
 
 let allRows = [];
 let priorByPropertyKey = {};
 let scPriorQuarters = [];   // [{quarter_label, byKey:{pk->row}}] up to 2 priors (Item #16)
 let colFilters = {};      // key -> Set of allowed display-values, or undefined/null = "All"
 let searchQuery = '';
-let quickFilters = { inputsSaved: false, needsInput: false, hasNotes: false };
+let quickFilters = { inputsSaved: false, needsInput: false, hasNotes: false, failingOnly: false };
 let sort = { col: null, dir: 1 };
 let showPrior = false;
 let scQuarterLabel = '';
@@ -1600,6 +1802,11 @@ function missingScRmInputs(row) {
     return Object.keys(SC_RM_INPUT_LABELS).filter(key => row[key] === null || row[key] === undefined || row[key] === '');
 }
 
+// True if any scored measure is an explicit Fail (0/false) -- NA (null) doesn't count.
+function hasFailingMeasure(row) {
+    return SC_FAIL_KEYS.some(k => row[k] === 0 || row[k] === false);
+}
+
 function passesFilters(row) {
     for (const [key, sel] of Object.entries(colFilters)) {
         if (!sel) continue; // "All" selected
@@ -1612,6 +1819,7 @@ function passesFilters(row) {
     }
     if (quickFilters.inputsSaved && missingScRmInputs(row).length) return false;
     if (quickFilters.needsInput && !missingScRmInputs(row).length) return false;
+    if (quickFilters.failingOnly && !hasFailingMeasure(row)) return false;
     if (quickFilters.hasNotes) {
         if (!row.NOTES) return false;
     }
@@ -1648,19 +1856,23 @@ function colFilterLabel(col) {
 
 function renderHeader() {
     const thead = document.getElementById('scThead');
+    const ldrCols = scVisibleCols('leadership');
+    const maintCols = scVisibleCols('maintenance');
+    const ldrCaret = scCollapsedGroups.has('leadership') ? '\u25B8' : '\u25BE';
+    const maintCaret = scCollapsedGroups.has('maintenance') ? '\u25B8' : '\u25BE';
     const groupRow = `<tr>
         <th class="id-col" colspan="${ID_COLS.length + 1}"></th>
-        <th class="grp-leadership" colspan="${LEADERSHIP_COLS.length + (showPrior ? 1 : 0)}">Leadership</th>
-        <th class="grp-maintenance" colspan="${MAINT_COLS.length + (showPrior ? 1 : 0)}">Maintenance</th>
+        <th class="grp-leadership sc-grp-toggle" colspan="${ldrCols.length + (showPrior ? 1 : 0)}" onclick="scToggleGroup('leadership')" title="Collapse or expand the Leadership measures"><span class="sc-grp-caret">${ldrCaret}</span>Leadership</th>
+        <th class="grp-maintenance sc-grp-toggle" colspan="${maintCols.length + (showPrior ? 1 : 0)}" onclick="scToggleGroup('maintenance')" title="Collapse or expand the Maintenance measures"><span class="sc-grp-caret">${maintCaret}</span>Maintenance</th>
         <th></th>
     </tr>`;
     const hc = (c, extraCls = '') => `<th class="sc-head-th ${extraCls}" onclick="openHeadMenu('${c.key}', this, event)" title="${esc(c.blurb || blurbFor(c.key) || c.label)}">${esc(c.label)}${sortArrow(c.key)}${headMenuMarks(c.key)}</th>`;
     const labelRow = `<tr>
         ${ID_COLS.map(c => hc(c, 'id-col')).join('')}
         ${hc(OVERALL_COL, 'sc-overall-header')}
-        ${LEADERSHIP_COLS.map(c => hc(c, 'sc-measure-col')).join('')}
+        ${ldrCols.map(c => hc(c, 'sc-measure-col')).join('')}
         ${showPrior ? `<th class="sc-prior-col">Prior Ldr Total</th>` : ''}
-        ${MAINT_COLS.map(c => hc(c, 'sc-measure-col')).join('')}
+        ${maintCols.map(c => hc(c, 'sc-measure-col')).join('')}
         ${showPrior ? `<th class="sc-prior-col">Prior Maint Total</th>` : ''}
         ${hc(NOTES_COL)}
     </tr>`;
@@ -1715,12 +1927,14 @@ function sortCol(key) {
 
 function renderBody(rows) {
     const tbody = document.getElementById('scTbody');
+    const ldrColsV = scVisibleCols('leadership');
+    const maintColsV = scVisibleCols('maintenance');
     tbody.innerHTML = rows.map(row => {
         const idCells = ID_COLS.map(c => `<td class="id-col ${c.css || ''}">${esc(row[c.key] || '--')}</td>`).join('');
-        const overallCell = `<td class="sc-overall-cell">${row.OVERALL ?? '--'}</td>`;
-        const ldrCells = LEADERSHIP_COLS.map(c => cellHtml(c, row)).join('');
+        const overallCell = `<td class="sc-overall-cell">${row.OVERALL ?? '--'}<span class="sc-hs-icon" title="How this was scored" onclick="event.stopPropagation(); openHowScored(${row.PROPERTY_KEY})">&#9432;</span></td>`;
+        const ldrCells = ldrColsV.map(c => cellHtml(c, row)).join('');
         const priorLdr = showPrior ? `<td class="sc-prior-val sc-prior-col">${priorByPropertyKey[row.PROPERTY_KEY]?.LDRTOTAL ?? '--'}</td>` : '';
-        const maintCells = MAINT_COLS.map(c => cellHtml(c, row)).join('');
+        const maintCells = maintColsV.map(c => cellHtml(c, row)).join('');
         const priorMaint = showPrior ? `<td class="sc-prior-val sc-prior-col">${priorByPropertyKey[row.PROPERTY_KEY]?.MSTOTAL ?? '--'}</td>` : '';
         const notesCell = `<td class="notes-col" title="${esc(row.NOTES || '')}">${esc(row.NOTES || '--')}</td>`;
         return `<tr onclick="openScDetail(${row.PROPERTY_KEY})">${idCells}${overallCell}${ldrCells}${priorLdr}${maintCells}${priorMaint}${notesCell}</tr>`;
@@ -1777,11 +1991,14 @@ function updateRibbon(rows) {
     document.getElementById('statInputs').textContent = completedInputs;
     document.getElementById('statInputsIncomplete').textContent = allRows.length - completedInputs;
     document.getElementById('statComments').textContent = allRows.filter(r => r.NOTES).length;
+    document.getElementById('statFailing').textContent = allRows.filter(hasFailingMeasure).length;
     document.getElementById('statInputsBtn').classList.toggle('active', quickFilters.inputsSaved);
     document.getElementById('statInputsBtn').setAttribute('aria-pressed', String(quickFilters.inputsSaved));
     document.getElementById('statInputsIncompleteBtn').classList.toggle('active', quickFilters.needsInput);
     document.getElementById('statInputsIncompleteBtn').setAttribute('aria-pressed', String(quickFilters.needsInput));
     document.getElementById('statCommentsBtn').classList.toggle('active', quickFilters.hasNotes);
+    document.getElementById('statFailingBtn').classList.toggle('active', quickFilters.failingOnly);
+    document.getElementById('statFailingBtn').setAttribute('aria-pressed', String(quickFilters.failingOnly));
     const reminderButton = document.getElementById('scRemindInputsBtn');
     if (reminderButton) {
         reminderButton.style.display = quickFilters.needsInput ? '' : 'none';
@@ -1796,6 +2013,7 @@ function renderChipBar() {
     if (quickFilters.inputsSaved) chips.push(`<span class="sc-chip" title="RM Score, Surveys & Reviews, and Controllable NOI are all entered.">RM Inputs Saved <button onclick="toggleQuickFilter('inputsSaved')">&times;</button></span>`);
     if (quickFilters.needsInput) chips.push(`<span class="sc-chip" title="Showing properties missing RM Score, Surveys & Reviews, or Controllable NOI.">RM Inputs Incomplete <button onclick="toggleQuickFilter('needsInput')">&times;</button></span>`);
     if (quickFilters.hasNotes) chips.push(`<span class="sc-chip">Has Notes <button onclick="toggleQuickFilter('hasNotes')">&times;</button></span>`);
+    if (quickFilters.failingOnly) chips.push(`<span class="sc-chip" title="Showing properties with at least one measure that fails its business rule.">Failing a Rule <button onclick="toggleQuickFilter('failingOnly')">&times;</button></span>`);
     for (const [key, sel] of Object.entries(colFilters)) {
         if (!sel) continue;
         const col = COL_BY_KEY[key];
@@ -1965,7 +2183,7 @@ function clearColFilter(key) { delete colFilters[key]; render(); }
 function clearSort() { sort = { col: null, dir: 1 }; render(); }
 function clearAllFilters() {
     searchQuery = ''; const el = document.getElementById('scSearch'); if (el) el.value = '';
-    quickFilters = { inputsSaved: false, needsInput: false, hasNotes: false };
+    quickFilters = { inputsSaved: false, needsInput: false, hasNotes: false, failingOnly: false };
     colFilters = {}; sort = { col: null, dir: 1 };
     render();
 }
@@ -2017,11 +2235,15 @@ function renderHeadMenuContents(key) {
     const showData = DRILLDOWN_KEYS.has(key)
         ? `<div class="col-head-action" onclick="headShowData('${key}')"><span class="ico">&#128269;</span> Show Data</div>
            <div class="col-head-divider"></div>` : '';
+    const hideCol = scIsHideable(key)
+        ? `<div class="col-head-action" onclick="scHideColumn('${key}')"><span class="ico">&#128065;</span> Hide column</div>
+           <div class="col-head-divider"></div>` : '';
     menu.innerHTML = `
         <div class="col-head-action" onclick="headSort('${key}', 1)"><span class="ico">&#9650;</span> Sort A to Z</div>
         <div class="col-head-action" onclick="headSort('${key}', -1)"><span class="ico">&#9660;</span> Sort Z to A</div>
         <div class="col-head-divider"></div>
         ${showData}
+        ${hideCol}
         <div class="col-filter-search"><input type="text" placeholder="Filter list..." oninput="filterColFilterItems(this)"></div>
         <div class="col-filter-all-row" onclick="headFilterAll('${key}')">
             <input type="checkbox" ${isAllSelected ? 'checked' : ''} tabindex="-1" style="pointer-events:none"> <strong>(Select all)</strong>
@@ -2106,8 +2328,7 @@ document.addEventListener('pointerdown', e => {
     if (e.target.closest('.sc-head-th') || e.target.closest('.col-filter-menu')) return;
     closeColFilterMenus();
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeColFilterMenus(); });
-document.addEventListener('scroll', e => {
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeColFilterMenus(); });document.addEventListener('scroll', e => {
     if (e.target instanceof Element && e.target.closest('.col-filter-menu')) return;
     closeColFilterMenus();
 }, true);
@@ -2324,7 +2545,6 @@ document.addEventListener('pointerdown', e => {
     closeDdHeadMenu();
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDdHeadMenu(); });
-
 function renderDrilldownTable() {
     if (!scDrilldownData) return;
     const { columns, rows } = scDrilldownData;
@@ -2660,6 +2880,45 @@ function scoreExplanationHtml(m, row) {
     return `<div class="sc-score-explain">${verdictHtml}${ruleHtml}</div>`;
 }
 
+// Standalone "How this was scored" modal (beta #48) -- read-only per-measure
+// explanations reachable from the grid without opening the editable slideout.
+let _scHowScoredKey = null;
+function openHowScored(propertyKey) {
+    const row = allRows.find(r => r.PROPERTY_KEY === propertyKey);
+    if (!row) return;
+    _scHowScoredKey = propertyKey;
+    document.getElementById('scHowScoredTitle').textContent = `${row.PROPERTY_NAME || 'Property'} -- How this was scored`;
+    document.getElementById('scHowScoredSubtitle').textContent =
+        `${scQuarterLabel ? scQuarterLabel + ' -- ' : ''}Overall Score: ${row.OVERALL ?? '--'}`;
+    const body = document.getElementById('scHowScoredBody');
+    body.innerHTML = '<div class="sc-hs-loading">Loading explanations...</div>';
+    document.getElementById('scHowScoredOverlay').classList.add('open');
+    fetch(`/scorecard/api/property/${propertyKey}/why-summary`).then(r => r.json()).then(j => {
+        if (_scHowScoredKey !== propertyKey) return; // stale
+        body.innerHTML = renderHowScoredBody(row, (j && j.summaries) || {});
+    }).catch(() => {
+        if (_scHowScoredKey === propertyKey) body.innerHTML = '<div class="sc-hs-loading">Could not load explanations.</div>';
+    });
+}
+function renderHowScoredBody(row, sums) {
+    const section = (title, cols) => {
+        const items = cols.map(c => {
+            const v = row[c.key];
+            let badge;
+            if (c.type === 'total') badge = `<span class="sc-hs-score">${v ?? '--'}</span>`;
+            else if (v === null || v === undefined) badge = '<span class="sc-hs-na">--</span>';
+            else badge = v ? '<span class="sc-chip-pass">P</span>' : '<span class="sc-chip-fail">F</span>';
+            const s = sums[c.key];
+            const explain = s && s.text ? esc(s.text) : esc(blurbFor(c.key) || '');
+            return `<div class="sc-hs-row"><div class="sc-hs-measure">${esc(c.label)}</div><div class="sc-hs-badge">${badge}</div><div class="sc-hs-explain">${explain}</div></div>`;
+        }).join('');
+        return `<div class="sc-hs-group">${title}</div>${items}`;
+    };
+    return section('Leadership', LEADERSHIP_COLS) + section('Maintenance', MAINT_COLS);
+}
+function closeHowScored() { _scHowScoredKey = null; document.getElementById('scHowScoredOverlay').classList.remove('open'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && _scHowScoredKey !== null) closeHowScored(); });
+
 // Download the current slideout scorecard as a standalone HTML file.
 function downloadScDetailHtml() {
     if (!scDetailData) return;
@@ -2795,6 +3054,16 @@ function scNotesForMeasure(key) {
     return scNotesData && scNotesData.notes ? scNotesData.notes.filter(n => n.measure_key === key) : [];
 }
 
+// Render note text with simple bullet support (beta #57): escape first (XSS-safe),
+// then turn a leading "- " / "* " on any line into a bullet. .sc-note-text is
+// white-space:pre-wrap so line breaks and indentation are preserved as typed.
+function formatScNoteText(raw) {
+    return esc(String(raw ?? ''))
+        .split('\n')
+        .map(l => l.replace(/^(\s*)[-*]\s+/, '$1\u2022 '))
+        .join('\n');
+}
+
 function scNoteItemHtml(n) {
     const when = n.created_at ? new Date(n.created_at).toLocaleString() : 'just now';
     const measureTag = n.measure_key ? `<span class="sc-note-measure-tag">${esc(scMeasureLabel(n.measure_key))}</span>` : '';
@@ -2809,7 +3078,7 @@ function scNoteItemHtml(n) {
             <span>${esc(when)}</span>
             ${del}
         </div>
-        <div class="sc-note-text">${esc(n.text)}</div>
+        <div class="sc-note-text">${formatScNoteText(n.text)}</div>
         ${mentions}
     </div>`;
 }
@@ -2841,7 +3110,8 @@ function notesSectionHtml(d) {
             <span class="sc-notes-meta" style="margin:0;">Attach to:</span>
             <select id="scNoteMeasure">${measureOpts}</select>
         </div>
-        <textarea id="scNotesInput" class="sc-notes-input" placeholder="Add a note (explain a result, leave context, or tag someone)..."></textarea>
+        <div class="sc-note-toolbar"><button type="button" class="sc-note-fmt-btn" onclick="scNoteInsertBullet()" title="Insert a bullet (or start a line with - )">&#8226; Bullet</button></div>
+        <textarea id="scNotesInput" class="sc-notes-input" placeholder="Add a note (explain a result, leave context, or tag someone). Tip: click Bullet or start a line with - for a list."></textarea>
         ${mentionChips}
         <div class="sc-notes-actions">
             ${candidates.length ? `<label><input type="checkbox" id="scNoteEmailMentions" ${scMailAvailability.available ? '' : 'disabled'}> Email mentioned people</label>` : ''}
@@ -2859,6 +3129,18 @@ function composeScNoteFor(measureKey) {
         const input = document.getElementById('scNotesInput');
         if (input) { input.focus(); input.scrollIntoView({ block: 'center' }); }
     }, 0);
+}
+
+function scNoteInsertBullet() {
+    const ta = document.getElementById('scNotesInput');
+    if (!ta) return;
+    const s = ta.selectionStart, e = ta.selectionEnd, v = ta.value;
+    const atLineStart = s === 0 || v[s - 1] === '\n';
+    const insert = (atLineStart ? '' : '\n') + '\u2022 ';
+    ta.value = v.slice(0, s) + insert + v.slice(e);
+    const pos = s + insert.length;
+    ta.focus();
+    ta.setSelectionRange(pos, pos);
 }
 
 function addScNote() {
@@ -3049,6 +3331,9 @@ function measureRowHtml(m) {
 }
 
 function saveScMeasure(field, valueStr, selectEl) {
+    _saveScMeasure(field, valueStr, selectEl);
+}
+async function _saveScMeasure(field, valueStr, selectEl) {
     if (!scDetailData) return;
     // "--" (empty) clears the value back to blank/null. This must be allowed
     // through -- an early return on '' previously stopped an overridden
@@ -3067,7 +3352,7 @@ function saveScMeasure(field, valueStr, selectEl) {
     const wasLocked = !!scDetailData[`${field}_LOCKED`];
     let overrideReason = null;
     if (shouldBeLocked) {
-        overrideReason = promptScOverrideReason();
+        overrideReason = await askOverrideReason();
         if (!overrideReason) {
             if (selectEl) selectEl.value = originalValue == null ? '' : String(originalValue);
             return;
@@ -3102,22 +3387,42 @@ function saveScMeasure(field, valueStr, selectEl) {
     });
 }
 
-function promptScOverrideReason() {
-    const reason = prompt('Required: enter a reason for overriding this measure.');
-    if (reason === null) return null;
-    const trimmed = reason.trim();
-    if (!trimmed) {
-        alert('An override reason is required. The value was not changed.');
-        return null;
-    }
-    return trimmed;
+// Styled "Reason for Override" modal (beta #50) -- replaces the native prompt().
+// Returns a Promise that resolves to the trimmed reason, or null if cancelled.
+let _overrideReasonResolver = null;
+function askOverrideReason() {
+    return new Promise(resolve => {
+        _overrideReasonResolver = resolve;
+        const input = document.getElementById('scOvReasonInput');
+        input.value = '';
+        document.getElementById('scOvReasonSave').disabled = true;
+        document.getElementById('scOverrideReasonOverlay').classList.add('open');
+        setTimeout(() => input.focus(), 30);
+    });
 }
+function _onOverrideReasonInput() {
+    document.getElementById('scOvReasonSave').disabled = !document.getElementById('scOvReasonInput').value.trim();
+}
+function _submitOverrideReason() {
+    const trimmed = document.getElementById('scOvReasonInput').value.trim();
+    if (trimmed) _resolveOverrideReason(trimmed);
+}
+function _resolveOverrideReason(val) {
+    document.getElementById('scOverrideReasonOverlay').classList.remove('open');
+    const r = _overrideReasonResolver;
+    _overrideReasonResolver = null;
+    if (r) r(val);
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && _overrideReasonResolver) _resolveOverrideReason(null); });
 
 function toggleScOverride(field, enabled) {
+    _toggleScOverride(field, enabled);
+}
+async function _toggleScOverride(field, enabled) {
     if (!scDetailData) return;
     let reason = null;
     if (enabled) {
-        reason = promptScOverrideReason();
+        reason = await askOverrideReason();
         if (!reason) {
             renderScDetail();
             return;
