@@ -3872,13 +3872,13 @@ def _dd_leo(conn_wh, portfolio, q_start, q_end, measure_code, ref):
     for pk, dk, iipp, lfa, pmleo, msleo, pm_name, rm_name in rows:
         if pk not in portfolio:
             continue
-        row = {"Property": portfolio[pk]["name"], "Snapshot Date": dk, "IIPP Complete": iipp,
+        row = {"Property": portfolio[pk]["name"], "Entity": portfolio[pk]["entity"], "Snapshot Date": dk, "IIPP Complete": iipp,
                "Lease File Audit Complete": lfa, "PM LEO Score": pmleo, "MS LEO Score": msleo,
                "PM Name": pm_name, "RM Name": rm_name}
         watch_val = row.get(watch_col) if watch_col else None
         row["_fail"] = watch_val is not None and float(watch_val) == 0
         out.append(row)
-    cols = ["Property", "Snapshot Date", "IIPP Complete", "Lease File Audit Complete", "PM LEO Score", "MS LEO Score", "PM Name", "RM Name"]
+    cols = ["Property", "Entity", "Snapshot Date", "IIPP Complete", "Lease File Audit Complete", "PM LEO Score", "MS LEO Score", "PM Name", "RM Name"]
     return cols, out
 
 

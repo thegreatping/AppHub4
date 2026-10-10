@@ -212,6 +212,8 @@
     .sc-attach-link:hover { text-decoration: underline; }
     .sc-dd-toolbar { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--border-input); flex-shrink: 0; }
     .sc-dd-combo { position: relative; flex: 0 0 260px; }
+    .sc-dd-failonly { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; color: var(--text-primary); cursor: pointer; white-space: nowrap; }
+    .sc-dd-failonly input { cursor: pointer; }
     .sc-dd-search { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 5px 8px; border-radius: 4px; font-size: 0.8rem; }
     .sc-dd-combo-list {
         display: none; position: absolute; top: calc(100% + 2px); left: 0; right: 0; z-index: 10;
@@ -771,7 +773,7 @@
                 <div class="sc-dd-title" id="scDdTitle"></div>
                 <div class="sc-dd-subtitle" id="scDdSubtitle"></div>
                 <div class="sc-dd-rule" id="scDdRule" style="display:none;"></div>
-                <button type="button" class="sc-dd-lineage-toggle" id="scDdLineageToggle" onclick="toggleDdLineage()">Show data source &#9662;</button>
+                <button type="button" class="sc-dd-lineage-toggle" id="scDdLineageToggle" onclick="toggleDdLineage()" style="display:none;">Show data source &#9662;</button>
                 <div class="sc-dd-lineage" id="scDdLineage" style="display:none;"></div>
             </div>
             <button type="button" class="sc-dd-close" onclick="closeDrilldown()">&times;</button>
@@ -783,7 +785,8 @@
                 <div class="sc-dd-combo-list" id="scDdPropertyList"></div>
             </div>
             <input type="text" id="scDdFilterInput" class="sc-dd-search" style="max-width:170px;flex:0 0 auto;" placeholder="Filter rows..." autocomplete="off" oninput="onDdFilterInput(this.value)">
-            <span class="sc-dd-legend"><span class="sc-dd-legend-swatch"></span>Fails the business rule</span>
+            <label class="sc-dd-failonly" title="Show only records that fail the business rule"><input type="checkbox" id="scDdFailOnlyCb" checked onchange="toggleDdFailOnly(this.checked)"> Failing only</label>
+            <span class="sc-dd-legend" id="scDdLegend"><span class="sc-dd-legend-swatch"></span>Fails the business rule</span>
             <span id="scDdCount" class="sc-dd-count"></span>
             <button type="button" class="sc-dd-export-btn" onclick="exportDrilldownXls()" title="Excel with the dashboard failure highlights">Excel</button>
             <button type="button" class="sc-dd-export-btn" onclick="exportDrilldownExcel()" title="Plain CSV (no highlights)">CSV</button>
@@ -1429,7 +1432,7 @@ const SC_HELP_CONTENT = {
 
         <div class="sc-crit-item">
           <div class="sc-crit-name">Read-only means read-only</div>
-          <div class="sc-crit-body"><p>You can click into the slideout, see how each measure was scored, read notes, use the drill-down pages to see underlying source records, and export the scorecard by email to yourself. But dropdowns, override checkboxes, and the notes save button are all hidden.</p></div>
+          <div class="sc-crit-body"><p>You can click into the slideout, see how each measure was scored, read notes, use the drill-down pages to see underlying source records, and download the scorecard as an HTML file. But dropdowns, override checkboxes, and the notes save button are all hidden.</p></div>
         </div>
 
         <div class="sc-crit-item">
@@ -2350,6 +2353,7 @@ let scDdMeasureCode = null;
 let scDdSelectedProperty = null;   // null = All Properties
 let scDdSort = { col: null, dir: 1 };
 let scDdVisibleRows = [];
+let scDdFailOnly = true;   // Item #66: drill-down defaults to failing records only
 
 function openDrilldown(measureCode) {
     document.getElementById('scDrilldownOverlay').classList.add('open');
@@ -2365,6 +2369,8 @@ function openDrilldown(measureCode) {
     scDdSort = { col: null, dir: 1 };
     scDdFilterText = '';
     scDdColFilters = {};
+    scDdFailOnly = true;
+    const foCb = document.getElementById('scDdFailOnlyCb'); if (foCb) foCb.checked = true;
     const fin = document.getElementById('scDdFilterInput'); if (fin) fin.value = '';
     closeDdHeadMenu();
     fetchDrilldownData();
@@ -2392,7 +2398,7 @@ function fetchDrilldownData() {
                 (data.truncated ? ` -- showing first ${data.rows.length} of ${data.total_rows} rows (use the property dropdown to narrow)` : ` -- ${data.total_rows} rows`);
             const ruleBox = document.getElementById('scDdRule');
             ruleBox.textContent = data.rule || '';
-            ruleBox.style.display = data.rule ? 'block' : 'none';
+            ruleBox.style.display = 'none';  // business rule text hidden (Item #66)
             document.getElementById('scDdLineage').textContent = data.lineage || '';
             renderDrilldownTable();
         })
@@ -2414,6 +2420,7 @@ function toggleDdLineage() {
     box.style.display = open ? 'none' : 'block';
     document.getElementById('scDdLineageToggle').textContent = open ? 'Show data source \u25BE' : 'Hide data source \u25B4';
 }
+function toggleDdFailOnly(on) { scDdFailOnly = on; renderDrilldownTable(); }
 
 function ddPropertyList() {
     if (!scDrilldownData) return [];
@@ -2564,6 +2571,11 @@ function renderDrilldownTable() {
         if (!fsel) continue;
         filtered = filtered.filter(r => fsel.has(String(r[fcol] ?? '--')));
     }
+    // Item #66: default to only records that fail the business rule; the legend
+    // is redundant in that mode (every visible row fails), so hide it then.
+    if (scDdFailOnly) filtered = filtered.filter(r => r._fail);
+    const _legend = document.getElementById('scDdLegend');
+    if (_legend) _legend.style.display = scDdFailOnly ? 'none' : '';
     if (scDdSort.col) {
         const col = scDdSort.col, dir = scDdSort.dir;
         filtered = filtered.slice().sort((a, b) => {
@@ -2590,7 +2602,7 @@ function renderDrilldownTable() {
     }
     document.getElementById('scDdTbody').innerHTML = filtered.map(r =>
         `<tr class="${r._fail ? 'sc-dd-fail-row' : ''}">${columns.map(c => `<td>${esc(r[c] ?? '--')}</td>`).join('')}</tr>`
-    ).join('') || `<tr><td colspan="${columns.length}" class="sc-dd-empty">No rows match the current filters.</td></tr>`;
+    ).join('') || `<tr><td colspan="${columns.length}" class="sc-dd-empty">${scDdFailOnly ? 'No failing records this quarter \u2014 every record passes. Uncheck \u2018Failing only\u2019 to see all.' : 'No rows match the current filters.'}</td></tr>`;
     document.getElementById('scDdCount').textContent = `${filtered.length} of ${rows.length} shown`;
     scDdVisibleRows = filtered;
 }
