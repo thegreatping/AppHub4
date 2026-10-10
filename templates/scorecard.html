@@ -207,6 +207,9 @@
     .sc-ov-btn-plain:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
     .sc-ov-btn-primary { background: #f59e0b; border: 1px solid #f59e0b; color: #1a1205; font-weight: 700; border-radius: 5px; padding: 6px 16px; font-size: 0.8rem; cursor: pointer; }
     .sc-ov-btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+    .sc-ov-file { width: 100%; box-sizing: border-box; font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; }
+    .sc-attach-link { display: inline-block; margin-left: 8px; font-size: 0.68rem; color: var(--accent-cyan); text-decoration: none; white-space: nowrap; }
+    .sc-attach-link:hover { text-decoration: underline; }
     .sc-dd-toolbar { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--border-input); flex-shrink: 0; }
     .sc-dd-combo { position: relative; flex: 0 0 260px; }
     .sc-dd-search { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--border-input); color: var(--text-primary); padding: 5px 8px; border-radius: 4px; font-size: 0.8rem; }
@@ -818,7 +821,9 @@
         <div class="sc-ov-sub" id="scOvReasonSub">This value differs from the automatically computed score. Enter a reason so there is a clear record of why it was overridden.</div>
         <div class="sc-ov-field-label">Reason for Override <span style="color:#f38ba8;">*</span></div>
         <textarea id="scOvReasonInput" class="sc-ov-input" rows="4" placeholder="e.g., Credit of 1 from the Director of Operations Support" oninput="_onOverrideReasonInput()"></textarea>
-        <div class="sc-ov-hint">A reason is required. (Screenshot upload is coming soon.)</div>
+        <div class="sc-ov-field-label" style="margin-top:10px;">Screenshot (optional)</div>
+        <input type="file" id="scOvScreenshot" class="sc-ov-file" accept="image/png,image/jpeg,image/gif,image/webp">
+        <div class="sc-ov-hint">A reason is required. Optionally attach a screenshot as evidence (PNG/JPEG/GIF/WebP, max 3 MB).</div>
         <div class="sc-ov-actions">
             <button type="button" class="sc-ov-btn-plain" onclick="_resolveOverrideReason(null)">Cancel</button>
             <button type="button" class="sc-ov-btn-primary" id="scOvReasonSave" onclick="_submitOverrideReason()" disabled>Save override</button>
@@ -2707,6 +2712,7 @@ function openScDetail(propertyKey) {
             scDetailPopout.open();
             _positionScDetailPanel();
             loadScWhySummary(propertyKey);
+            loadScAttachments(propertyKey, true);
             loadScNotes(propertyKey);
             markScMentionsRead(propertyKey);
         });
@@ -2893,14 +2899,18 @@ function openHowScored(propertyKey) {
     const body = document.getElementById('scHowScoredBody');
     body.innerHTML = '<div class="sc-hs-loading">Loading explanations...</div>';
     document.getElementById('scHowScoredOverlay').classList.add('open');
-    fetch(`/scorecard/api/property/${propertyKey}/why-summary`).then(r => r.json()).then(j => {
+    Promise.all([
+        fetch(`/scorecard/api/property/${propertyKey}/why-summary`).then(r => r.json()).catch(() => ({})),
+        fetch(`/scorecard/api/overrides/${propertyKey}/attachments`).then(r => r.json()).catch(() => ({})),
+    ]).then(([j, a]) => {
         if (_scHowScoredKey !== propertyKey) return; // stale
-        body.innerHTML = renderHowScoredBody(row, (j && j.summaries) || {});
+        body.innerHTML = renderHowScoredBody(row, (j && j.summaries) || {}, (a && a.attachments) || {});
     }).catch(() => {
         if (_scHowScoredKey === propertyKey) body.innerHTML = '<div class="sc-hs-loading">Could not load explanations.</div>';
     });
 }
-function renderHowScoredBody(row, sums) {
+function renderHowScoredBody(row, sums, atts) {
+    atts = atts || {};
     const section = (title, cols) => {
         const items = cols.map(c => {
             const v = row[c.key];
@@ -2910,7 +2920,8 @@ function renderHowScoredBody(row, sums) {
             else badge = v ? '<span class="sc-chip-pass">P</span>' : '<span class="sc-chip-fail">F</span>';
             const s = sums[c.key];
             const explain = s && s.text ? esc(s.text) : esc(blurbFor(c.key) || '');
-            return `<div class="sc-hs-row"><div class="sc-hs-measure">${esc(c.label)}</div><div class="sc-hs-badge">${badge}</div><div class="sc-hs-explain">${explain}</div></div>`;
+            const shots = (atts[c.key] || []).map(a => `<a class="sc-attach-link" href="/scorecard/api/overrides/attachment/${a.attachment_id}" target="_blank" rel="noopener">&#128206; Screenshot</a>`).join('');
+            return `<div class="sc-hs-row"><div class="sc-hs-measure">${esc(c.label)}</div><div class="sc-hs-badge">${badge}</div><div class="sc-hs-explain">${explain}${shots}</div></div>`;
         }).join('');
         return `<div class="sc-hs-group">${title}</div>${items}`;
     };
@@ -3304,7 +3315,7 @@ function measureRowHtml(m) {
     if (!canEditThis) {
         return `<div class="popout-row ${failCls}">
             <div class="popout-label">${esc(m.label)}${infoIcon}${measureNoteBtnHtml(m.key)}</div>
-            <div class="sc-readonly-val ${cls}">${displayText}</div>
+            <div class="sc-readonly-val ${cls}">${displayText}${scAttachmentLinkHtml(m.key)}</div>
             ${scoreExplanationHtml(m, d)}
         </div>`;
     }
@@ -3324,7 +3335,7 @@ function measureRowHtml(m) {
                 <input type="checkbox" class="sc-override-check" ${locked ? 'checked' : ''} onchange="toggleScOverride('${m.key}', this.checked)">
                 Override
             </label>
-            ${byHtml}
+            ${byHtml}${scAttachmentLinkHtml(m.key)}
         </div>
         ${scoreExplanationHtml(m, d)}
     </div>`;
@@ -3350,13 +3361,14 @@ async function _saveScMeasure(field, valueStr, selectEl) {
     const baselineVal = hasOrig ? origVal : (scDetailBaseline ? scDetailBaseline[field] : undefined);
     const shouldBeLocked = baselineVal !== undefined && value !== baselineVal;
     const wasLocked = !!scDetailData[`${field}_LOCKED`];
-    let overrideReason = null;
+    let overrideReason = null, overrideFile = null;
     if (shouldBeLocked) {
-        overrideReason = await askOverrideReason();
-        if (!overrideReason) {
+        const ov = await askOverrideReason();
+        if (!ov || !ov.reason) {
             if (selectEl) selectEl.value = originalValue == null ? '' : String(originalValue);
             return;
         }
+        overrideReason = ov.reason; overrideFile = ov.file;
     }
     fetch(`/scorecard/api/properties/${scDetailData.PROPERTY_KEY}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -3381,6 +3393,7 @@ async function _saveScMeasure(field, valueStr, selectEl) {
         if (shouldBeLocked) {
             if (!hasOrig) scDetailData[`${field}_ORIG`] = originalValue;
             setScOverride(field, true, overrideReason);
+            if (overrideFile) uploadOverrideAttachment(scDetailData.PROPERTY_KEY, field, overrideFile);
         } else if (wasLocked) {
             setScOverride(field, false, null);
         }
@@ -3395,6 +3408,8 @@ function askOverrideReason() {
         _overrideReasonResolver = resolve;
         const input = document.getElementById('scOvReasonInput');
         input.value = '';
+        const fileEl = document.getElementById('scOvScreenshot');
+        if (fileEl) fileEl.value = '';
         document.getElementById('scOvReasonSave').disabled = true;
         document.getElementById('scOverrideReasonOverlay').classList.add('open');
         setTimeout(() => input.focus(), 30);
@@ -3405,13 +3420,44 @@ function _onOverrideReasonInput() {
 }
 function _submitOverrideReason() {
     const trimmed = document.getElementById('scOvReasonInput').value.trim();
-    if (trimmed) _resolveOverrideReason(trimmed);
+    if (!trimmed) return;
+    const fileEl = document.getElementById('scOvScreenshot');
+    const file = fileEl && fileEl.files && fileEl.files[0] ? fileEl.files[0] : null;
+    _resolveOverrideReason({ reason: trimmed, file });
 }
 function _resolveOverrideReason(val) {
     document.getElementById('scOverrideReasonOverlay').classList.remove('open');
     const r = _overrideReasonResolver;
     _overrideReasonResolver = null;
-    if (r) r(val);
+    if (r) r(val);  // {reason, file} on submit, null on cancel
+}
+// Upload an optional override screenshot tied to a measure (beta #50 part 4).
+function uploadOverrideAttachment(propertyKey, field, file) {
+    const fd = new FormData();
+    fd.append('measure_key', field);
+    fd.append('file', file);
+    fetch(`/scorecard/api/overrides/${propertyKey}/attachment`, { method: 'POST', body: fd })
+        .then(r => r.json()).then(res => {
+            if (res.error) { alert('Screenshot upload failed: ' + res.error); return; }
+            loadScAttachments(propertyKey, true);
+        }).catch(() => alert('Screenshot upload failed (network error).'));
+}
+let scAttachments = {};
+let scAttachmentsPropertyKey = null;
+function loadScAttachments(propertyKey, force) {
+    if (!force && scAttachmentsPropertyKey === propertyKey) return;
+    scAttachmentsPropertyKey = propertyKey;
+    scAttachments = {};
+    fetch(`/scorecard/api/overrides/${propertyKey}/attachments`).then(r => r.json()).then(j => {
+        if (scAttachmentsPropertyKey !== propertyKey) return;
+        scAttachments = (j && j.attachments) || {};
+        if (scDetailData && scDetailData.PROPERTY_KEY === propertyKey) renderScDetail();
+    }).catch(() => {});
+}
+function scAttachmentLinkHtml(key) {
+    const atts = scAttachments[key];
+    if (!atts || !atts.length) return '';
+    return atts.map(a => `<a class="sc-attach-link" href="/scorecard/api/overrides/attachment/${a.attachment_id}" target="_blank" rel="noopener" title="View screenshot: ${esc(a.file_name || '')}">&#128206; Screenshot</a>`).join('');
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && _overrideReasonResolver) _resolveOverrideReason(null); });
 
@@ -3420,15 +3466,17 @@ function toggleScOverride(field, enabled) {
 }
 async function _toggleScOverride(field, enabled) {
     if (!scDetailData) return;
-    let reason = null;
+    let reason = null, file = null;
     if (enabled) {
-        reason = await askOverrideReason();
-        if (!reason) {
+        const ov = await askOverrideReason();
+        if (!ov || !ov.reason) {
             renderScDetail();
             return;
         }
+        reason = ov.reason; file = ov.file;
     }
     setScOverride(field, enabled, reason);
+    if (enabled && file) uploadOverrideAttachment(scDetailData.PROPERTY_KEY, field, file);
 }
 
 function setScOverride(field, enabled, reason) {

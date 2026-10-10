@@ -11,6 +11,7 @@ from flask import Blueprint, render_template, session, jsonify, request, abort, 
 from html import escape
 from urllib.parse import urlsplit
 from uuid import UUID
+import io
 import json
 import os
 import re
@@ -2976,6 +2977,129 @@ def api_toggle_override(property_key):
             reason=reason_val,
         )
         return jsonify({"ok": True, "rows_affected": cur.rowcount, "locked_by": locked_by, "reason": reason_val})
+    finally:
+        conn.close()
+
+
+# ── Override screenshot attachments (beta #50 / Item #64 part 4) ──────────────
+# Evidence images for an overridden measure, stored as VARBINARY(MAX) in
+# DB_APP_SUPPORT (same pattern as PeakLink's DOCUMENT_* columns) -- low volume,
+# small files, no new Azure infrastructure.
+_ATTACH_MAX_BYTES = 3 * 1024 * 1024  # 3 MB
+_ATTACH_ALLOWED_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"}
+
+
+@scorecard_bp.route("/api/overrides/<int:property_key>/attachment", methods=["POST"])
+@login_required
+def api_upload_override_attachment(property_key):
+    """Store a screenshot (evidence) for an overridden measure. multipart/form-data
+    with 'measure_key' + 'file'. Same role rules as the override toggle: PMs/EDs are
+    read-only; pipeline measures are RVP/admin-only."""
+    check = _require_access()
+    if check:
+        return check
+    if _is_pm() or _is_ed():
+        return jsonify({"error": "read-only for Property Managers and Executive Directors"}), 403
+    user = session.get("user", {})
+    field = (request.form.get("measure_key") or "").strip()
+    if field not in _MEASURE_KEYS:
+        return jsonify({"error": f"unknown measure '{field}'"}), 400
+    if field in _OVERRIDE_MEASURE_KEYS and not (_is_admin() or _is_rvp()):
+        return jsonify({"error": "overriding measures is restricted to RVPs and admins"}), 403
+    file = request.files.get("file")
+    if not file or not file.filename:
+        return jsonify({"error": "no file provided"}), 400
+    ctype = (file.mimetype or "").lower()
+    if ctype not in _ATTACH_ALLOWED_TYPES:
+        return jsonify({"error": "only PNG, JPEG, GIF, or WebP images are allowed"}), 400
+    data = file.read()
+    if not data:
+        return jsonify({"error": "the file was empty"}), 400
+    if len(data) > _ATTACH_MAX_BYTES:
+        return jsonify({"error": f"image too large (max {_ATTACH_MAX_BYTES // (1024 * 1024)} MB)"}), 400
+
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        admin = _is_admin()
+        email = _effective_rm_email()
+        ay, quarter = _latest_period(conn)
+        owned = _scoped_property_row(conn, property_key, ay, quarter, admin, email, ["PROPERTY_KEY"])
+        if owned is None:
+            return jsonify({"error": "not found or not authorized"}), 404
+        fname = (file.filename or "screenshot")[:260]
+        attachment_id = conn.scalar(
+            "INSERT INTO dbo.SCORECARD_OVERRIDE_ATTACHMENTS "
+            "(PROPERTY_KEY, MEASURE_KEY, AY, QUARTER, CONTENT_TYPE, FILE_NAME, FILE_SIZE, IMAGE_BYTES, UPLOADED_BY) "
+            "OUTPUT INSERTED.ATTACHMENT_ID "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [property_key, field, ay, quarter, ctype, fname, len(data), data,
+             (user.get("email") or user.get("name") or "")])
+        conn.commit()
+        return jsonify({"ok": True, "attachment_id": attachment_id,
+                        "file_name": fname, "content_type": ctype})
+    finally:
+        conn.close()
+
+
+@scorecard_bp.route("/api/overrides/<int:property_key>/attachments")
+@login_required
+def api_list_override_attachments(property_key):
+    """List screenshot attachments for a property (metadata only, no bytes),
+    grouped by measure, so the slideout can show a view link."""
+    check = _require_access()
+    if check:
+        return check
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        admin = _is_admin()
+        email = _effective_rm_email()
+        ay, quarter = _latest_period(conn)
+        owned = _scoped_property_row(conn, property_key, ay, quarter, admin, email, ["PROPERTY_KEY"])
+        if owned is None:
+            return jsonify({"error": "not found or not authorized"}), 404
+        rows = conn.fetchall(
+            "SELECT ATTACHMENT_ID, MEASURE_KEY, FILE_NAME, CONTENT_TYPE, FILE_SIZE, UPLOADED_BY, UPLOADED_AT "
+            "FROM dbo.SCORECARD_OVERRIDE_ATTACHMENTS WHERE PROPERTY_KEY = ? ORDER BY UPLOADED_AT DESC",
+            [property_key])
+        by_measure = {}
+        for r in rows:
+            by_measure.setdefault(r[1], []).append({
+                "attachment_id": r[0], "file_name": r[2], "content_type": r[3],
+                "file_size": r[4], "uploaded_by": r[5],
+                "uploaded_at": r[6].isoformat() if r[6] else None,
+            })
+        return jsonify({"attachments": by_measure})
+    finally:
+        conn.close()
+
+
+@scorecard_bp.route("/api/overrides/attachment/<int:attachment_id>")
+@login_required
+def api_get_override_attachment(attachment_id):
+    """Stream one stored screenshot inline (for viewing). Scoped: the caller must
+    have access to the attachment's property."""
+    check = _require_access()
+    if check:
+        return check
+    env = _get_env()
+    conn = SafeConnection(env, "DB_APP_SUPPORT", None, direct=True)
+    try:
+        rows = conn.fetchall(
+            "SELECT PROPERTY_KEY, CONTENT_TYPE, IMAGE_BYTES "
+            "FROM dbo.SCORECARD_OVERRIDE_ATTACHMENTS WHERE ATTACHMENT_ID = ?",
+            [attachment_id])
+        if not rows:
+            abort(404)
+        property_key, ctype, img = rows[0]
+        admin = _is_admin()
+        email = _effective_rm_email()
+        ay, quarter = _latest_period(conn)
+        owned = _scoped_property_row(conn, property_key, ay, quarter, admin, email, ["PROPERTY_KEY"])
+        if owned is None:
+            abort(403)
+        return send_file(io.BytesIO(bytes(img)), mimetype=ctype or "application/octet-stream")
     finally:
         conn.close()
 
